@@ -95,7 +95,7 @@ def manage(trade: ManagedTrade, price: float, atr: float = 0.0, *,
     # 2) Partial TP: chot mot phan tai +partial_at_r, dong thoi dua SL ve hoa von
     if (partial_at_r > 0 and not trade.partial_done and r >= partial_at_r
             and 0.0 < partial_pct < 1.0 and trade.qty > 0):
-        cq = max(0.0, min(round(trade.init_qty * partial_pct, 10), trade.qty))
+        cq = max(0.0, min(round(trade.qty * partial_pct, 10), trade.qty))
         if cq > 0:
             trade.booked_pnl += (cq * abs(price - trade.entry)) * (1.0 - FEE_ROUNDTRIP_PCT)
             trade.qty = round(trade.qty - cq, 10)

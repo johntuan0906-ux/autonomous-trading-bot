@@ -91,6 +91,10 @@ def collect(cfg, ex=None, pair_filter: str | None = None,
 
     ms_path = str(getattr(cfg, "managed_state_path", "logs/managed_state.json"))
     mtr = managed_trades(ms_path)
+    # Chi tinh la 'bot dang quan ly' khi state con qty > 0: state 'xac' (da chot het,
+    # qty=0) khong duoc coi la dang quan ly — neu khong se bao nham vi the MO TAY cua
+    # nguoi dung (cung symbol) thanh vi the cua bot.
+    mtr = {k: v for k, v in mtr.items() if float(v.get("qty") or 0) > 0}
     ms_syms = {str(k).upper() for k in mtr}
     orphans = [r for r in journal_orphans(journal_path) if _match(r["pair"])]
     managed = {k: v for k, v in mtr.items() if _match(k)}

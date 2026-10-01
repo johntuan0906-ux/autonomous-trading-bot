@@ -67,7 +67,7 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
     """
     ex = bot.exchange
     rep: dict = {"adopted": [], "armed": [], "unarmed": [], "unmanaged": [],
-                 "skipped": [], "errors": []}
+                 "skipped": [], "errors": [], "stale": []}
     for p in normalize(rows):
         sym, d, qty, entry = p["symbol"], p["direction"], p["qty"], p["entry"]
         if sym in bot.portfolio.positions:
@@ -75,6 +75,12 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
             continue
         try:
             state = (managed or {}).get(sym)
+            if state is not None and float(state.get("qty") or 0) <= 0:
+                # State 'xac': lenh cu da dong het (vi du XRP qty=0 sau khi chot so).
+                # KHONG duoc dung lam moc 1R cho vi the MOI tren cung cap — co the la
+                # lenh mo TAY cua nguoi dung; neu lay sl/tp cu (sat entry cu) thi bot
+                # se 'dong' vi the do ngay khi vua adopt.
+                state = None
             prot = ex.fetch_protection(sym) if hasattr(ex, "fetch_protection") else {}
             sl = tp = 0.0
             src = "none"
@@ -131,4 +137,12 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
                           f"— kiem tra tay tren san ngay!")
         except Exception as e:  # noqa: BLE001
             rep["errors"].append(f"{sym}: {str(e)[:120]}")
+    # Don state 'xac': symbol co state trong managed_state nhung KHONG con vi the nao
+    # tren san (vi du XRP qty=0 sau khi chot so het). Neu de lai, ms_save giu mai ->
+    # file phinh + `positions.py` bao nham la "bot dang quan ly".
+    keep = set(rep["adopted"]) | set(rep["skipped"])
+    for sym in list(getattr(bot, "managed", {})):
+        if sym not in keep:
+            bot.managed.pop(sym, None)
+            rep["stale"].append(sym)
     return rep

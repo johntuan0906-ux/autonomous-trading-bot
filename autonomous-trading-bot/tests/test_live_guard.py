@@ -184,6 +184,23 @@ class TestPositionsDiagnostic(unittest.TestCase):
         self.assertEqual(rep["unmanaged"], [])
         self.assertIn("BTC/USDT:USDT", rep["managed"])
 
+    def test_state_xac_qty_0_khong_coi_la_bot_dang_quan_ly(self):
+        """State cu qty=0 (da chot so het) KHONG duoc bao nham vi the MO TAY la cua bot."""
+        class _Ex:
+            def fetch_positions(self, symbols=None):
+                return [{"symbol": "XRP/USDT:USDT", "side": "short", "contracts": 7338.7,
+                         "entryPrice": 1.48554, "markPrice": 1.4815,
+                         "unrealizedPnl": 29.7}]
+
+        ms = os.path.join(self.tmp, "ms3.json")
+        with open(ms, "w", encoding="utf-8") as f:
+            json.dump({"trades": {"XRP/USDT:USDT": {"direction": "SHORT",
+                                                    "entry": 1.4908, "qty": 0.0}}}, f)
+        cfg = SimpleNamespace(managed_state_path=ms, risk_state_path="")
+        rep = P.collect(cfg, ex=_Ex(), journal_path=self.jp)
+        self.assertEqual(rep["managed"], {})
+        self.assertEqual(len(rep["unmanaged"]), 1)
+
     def test_collect_khi_san_loi_thi_bao_loi_khong_crash(self):
         class _Bad:
             def fetch_positions(self, symbols=None):

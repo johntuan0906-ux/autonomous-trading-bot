@@ -27,6 +27,7 @@ if str(ROOT) not in sys.path:
 import exchange as exmod                                                       # noqa: E402
 import managed_state                                                          # noqa: E402
 import position_sync                                                          # noqa: E402
+import bot as botmod                                                          # noqa: E402
 from run_forever import (heartbeat_age, next_delay, plan_delay, rotate_log,    # noqa: E402
                          should_restart, tail_has, touch_heartbeat)
 from bot import TradingBot                                                     # noqa: E402
@@ -477,6 +478,25 @@ class TestWatchdog(unittest.TestCase):
         self.assertFalse(tail_has(p, "loi khac khong co"))
         self.assertFalse(tail_has(p.parent / "khong-ton-tai.log", "x"))
 
+    def test_trip_do_5_thua_lien_tiep_phai_duoc_luu_ngay(self):
+        """P0-2 fix 01/10: trip o nhanh register_close (5 thua lien tiep) PHAI luu state.
+
+        Thuc te 20:25: bot trip '5 consecutive losses' -> flatten -> break TRUOC dong
+        save_risk_state -> file giu ban cu (tripped=False) -> supervisor restart la bot
+        TU MO LAI va trade tiep. Test nay chot rang buoc: trip => save => load lai van trip.
+        """
+        from risk import KillSwitch as KS, load_state, save_state
+        p = os.path.join(tempfile.mkdtemp(), "risk.json")
+        ks = KS(max_daily_loss_pct=2.0, start_balance=1000.0)
+        for _ in range(4):
+            self.assertFalse(ks.register_close(False, 1000.0))
+        self.assertTrue(ks.register_close(False, 1000.0), "lan thua thu 5 phai trip")
+        save_state(p, ks)                        # <- dong ma ban cu thieu (break som)
+        ks2 = KS()
+        load_state(p, ks2)
+        self.assertTrue(ks2.tripped, "trip phai song sot qua restart")
+        self.assertIn("consecutive losses", ks2.reason)
+
     def test_rotate_log_nho_thi_khong_dong_gi(self):
         p = Path(tempfile.mkdtemp()) / "err.log"
         p.write_text("it thoi\n", encoding="utf-8")
@@ -572,6 +592,42 @@ class TestAdoptViTheSan(unittest.TestCase):
         self.assertAlmostEqual(bot.portfolio.positions["BTC/USDT:USDT"].sl, 95.0)
         self.assertEqual(rep["unmanaged"], [])
 
+    def test_adopt_bo_qua_state_xac_khong_dong_oan_vi_the_mo_tay(self):
+        """State cu da chot het (qty=0) KHONG duoc dung lam moc 1R cho vi the MOI.
+
+        Thuc te 01/10: XRP state qty=0 nhung tren san co vi the XRP MO TAY qty=7338 —
+        neu lay sl/tp cu (1.5006 ~ entry cu) thi bot 'dong' vi the do ngay sau adopt.
+        Phai tinh lai SL/TP theo ATR.
+        """
+        rows = [{"symbol": "XRP/USDT:USDT", "side": "short", "contracts": 7338.7,
+                 "entryPrice": 1.48554}]
+        ex = FakeExchange(rows=rows)
+        bot = self._bot(ex)
+        dead = managed_state.dump_trade(
+            new_trade("XRP/USDT:USDT", "SHORT", 1.4908, 1032.4, 1.500586, 1.466685))
+        dead["qty"] = 0.0
+        rep = position_sync.adopt(bot, rows, managed={"XRP/USDT:USDT": dead},
+                                  atr_fn=lambda s: {"price": 1.48554, "atr": 0.01})
+        self.assertEqual(rep["adopted"], ["XRP/USDT:USDT"])
+        mt = bot.managed["XRP/USDT:USDT"]
+        self.assertFalse(mt.partial_done, "khong ke thua state da chot het")
+        self.assertAlmostEqual(mt.qty, 7338.7, places=3)
+        self.assertNotAlmostEqual(mt.initial_sl, 1.500586, places=4,
+                                  msg="SL phai tinh lai theo ATR, khong dung SL cu")
+
+    def test_adopt_don_state_xac_khong_con_vi_the(self):
+        """State 'xac' (khong con vi the tren san) phai bi don khoi managed."""
+        ex = FakeExchange(rows=self.ROW)                 # tren san chi co BTC
+        bot = self._bot(ex)
+        stale = managed_state.dump_trade(
+            new_trade("SOL/USDT:USDT", "SHORT", 117.66, 0.0, 118.36, 115.89))
+        bot.managed["SOL/USDT:USDT"] = managed_state.load_trade("SOL/USDT:USDT", stale)
+        rep = position_sync.adopt(bot, self.ROW, managed={"SOL/USDT:USDT": stale},
+                                  atr_fn=lambda s: {"price": 100.0, "atr": 2.0})
+        self.assertEqual(rep["stale"], ["SOL/USDT:USDT"])
+        self.assertNotIn("SOL/USDT:USDT", bot.managed)
+        self.assertIn("BTC/USDT:USDT", bot.managed)
+
     def test_adopt_chua_co_bao_ve_thi_tinh_lai_bang_atr(self):
         ex = FakeExchange(rows=self.ROW)
         bot = self._bot(ex)
@@ -612,6 +668,68 @@ class TestBotSafety(unittest.TestCase):
     def _bot(self, ex, **kw) -> TradingBot:
         return TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0, **kw),
                           exchange=ex)
+
+    def test_managed_for_khong_mat_state_khi_entry_lech_float(self):
+        """P0-fix 01/10: entry so lech float nhon KHONG duoc lam mat moc 1R/partial.
+
+        Ban cu: `abs(mt.entry - pos.entry) > 1e-12` -> tao trade moi -> partial_done
+        ve False -> partial chay lai -> dong het vi the (XRP/SOL/AVAX 19:53).
+        """
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        t = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        t.partial_done = True
+        t.booked_pnl = 5.0
+        bot.managed[self.SYM] = t
+        pos = Position(self.SYM, "LONG", 100.0000000001, 5.0, 100.0, 200.0)
+        got = bot._managed_for(self.SYM, pos)
+        self.assertIs(got, t, "phai dung state cu")
+        self.assertTrue(got.partial_done, "partial_done phai duoc giu")
+        self.assertAlmostEqual(got.booked_pnl, 5.0)
+
+    def test_vi_the_bui_duoc_chot_so_va_ghi_CLOSE(self):
+        """0.01 lot (< minNotional) khong the dong bang lenh -> phai ghi journal CLOSE.
+
+        Khong lam: 'xac' vi the nam mai trong portfolio (SKIP_OPEN vinh vien) va `n`
+        trong journal ket -> khong bao gio dat moc 50 lenh cho LIVE.
+        """
+        from unittest import mock
+        ex = FakeExchange()
+        bot = TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0,
+                             min_notional_usdt=20.0), exchange=ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 0.1,
+                                                     98.0, 200.0)
+        t = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        t.qty, t.partial_done, t.booked_pnl = 0.1, True, 3.0
+        bot.managed[self.SYM] = t
+        recs: list = []
+        with mock.patch.object(botmod, "log_trade", lambda **kw: recs.append(kw)):
+            closed = bot._monitor(candles_provider=lambda s: pd.DataFrame({"close": [100.0]}))
+        self.assertEqual(closed.get(self.SYM), "DUST")
+        self.assertNotIn(self.SYM, bot.portfolio.positions)
+        self.assertNotIn(self.SYM, bot.managed)
+        self.assertEqual(len(recs), 1, "phai ghi DUNG 1 dong CLOSE")
+        self.assertEqual(recs[0]["event"], "CLOSE")
+        self.assertEqual(recs[0]["reason"], "DUST")
+        self.assertTrue(recs[0]["won"])
+        self.assertEqual(bot.last_exits[self.SYM]["reason"], "DUST")
+
+    def test_vi_the_binh_thuong_thi_khong_bi_coi_la_bui(self):
+        """Vi the binh thuong (notional >= minNotional) khong duoc dong oan."""
+        from unittest import mock
+        ex = FakeExchange()
+        bot = TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0,
+                             min_notional_usdt=20.0), exchange=ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        # Sentiment la goi MANG that (RSS/CryptoPanic) -> test phai stub, neu khong
+        # moi lan chay test se ton ~15s cho timeout feed.
+        with mock.patch.object(bot.sentiment, "get",
+                               return_value=mock.Mock(score=0.0)):
+            closed = bot._monitor(candles_provider=lambda s: pd.DataFrame({"close": [100.5]}))
+        self.assertNotIn(self.SYM, closed)
+        self.assertIn(self.SYM, bot.portfolio.positions)
 
     def test_partial_arm_lai_sl_tp_theo_qty_con_lai(self):
         ex = FakeExchange()

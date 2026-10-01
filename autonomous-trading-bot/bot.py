@@ -56,6 +56,16 @@ class TradingBot:
             try:
                 price = self._price(sym, candles_provider)
                 mt = self._managed_for(sym, pos)
+                # Vi the 'bui' ton dong (notional < MIN_NOTIONAL_USDT): san tu choi
+                # dong lenh nua -> coi nhu DA DONG (ghi journal + bo state). Khong lam
+                # thi 'xac' vi the nam mai trong portfolio (SKIP_OPEN vinh vien) va `n`
+                # trong journal ket -> khong bao gio dat moc 50 lenh cho LIVE.
+                if self._is_dust(mt.qty, price):
+                    log.warning("DUST %s qty=%g notional=%.2f < %.2f -> chot so + ghi CLOSE",
+                                sym, mt.qty, mt.qty * price, self.cfg.min_notional_usdt)
+                    self._dust_close(sym, pos, mt, price)
+                    closed[sym] = "DUST"
+                    continue
                 atr_est = abs(mt.entry - mt.initial_sl) / max(self.cfg.sl_atr_mult, 1e-9)
                 mg = manage_trade(mt, price, atr_est)
                 act = mg["action"]
@@ -74,6 +84,13 @@ class TradingBot:
                     except Exception as e:  # noqa: BLE001
                         log.warning("re-arm SL/TP sau PARTIAL %s that bai: %s", sym, e)
                     log.info("PARTIAL %s qty=%s SL->%s (%s)", sym, q, pos.sl, mg["reason"])
+                    # Sau partial, qty con lai co the roi xuong duoi minNotional ->
+                    # chot so luon (neu khong: 'xac' lenh + journal thieu CLOSE).
+                    if self._is_dust(mt.qty, price):
+                        log.warning("DUST sau PARTIAL %s qty=%g -> chot so + ghi CLOSE",
+                                    sym, mt.qty)
+                        self._dust_close(sym, pos, mt, price)
+                        closed[sym] = "DUST"
                     continue
 
                 if act in ("BE", "TRAIL") and mg["new_sl"]:
@@ -126,12 +143,45 @@ class TradingBot:
         return closed
 
     def _managed_for(self, sym: str, pos: Position) -> ManagedTrade:
-        """Lay (hoac tao) trang thai quan ly lenh cho 1 vi the dang mo."""
+        """Lay (hoac tao) trang thai quan ly lenh cho 1 vi the dang mo.
+
+        P0-fix (2026-10-01): ban cu so sanh `abs(mt.entry - pos.entry) > 1e-12` —
+        chi can entry lech float nhon (hoac san lam tron khac chut) la TAO TRADE MOI,
+        mat sach `initial_sl`/`partial_done`/`booked_pnl`. Hau qua that: partial chay
+        lai lan 2 -> dong het vi the (XRP/SOL/AVAX dong oan 19:53) va journal thieu
+        dong CLOSE (`n` ket o 46/50 -> khong bao gio qua duoc cong LIVE).
+        Moc 1R + trang thai chot loi CHI co trong state => phai uu tien state.
+        """
         mt = self.managed.get(sym)
-        if mt is None or abs(mt.entry - pos.entry) > 1e-12:
+        if mt is None or str(mt.direction).upper() != str(pos.direction).upper():
             mt = new_trade(sym, pos.direction, pos.entry, pos.qty, pos.sl, pos.tp)
             self.managed[sym] = mt
         return mt
+
+    def _is_dust(self, qty: float, price: float) -> bool:
+        """True neu notional qua nho de san cho phep dat/dong lenh."""
+        try:
+            return 0.0 < float(qty) * float(price) < float(self.cfg.min_notional_usdt)
+        except (TypeError, ValueError):
+            return False
+
+    def _dust_close(self, sym: str, pos, mt: ManagedTrade, price: float) -> None:
+        """Chot mot vi the 'bui' (qty con lai < minNotional) nhu mot lan CLOSE that.
+
+        Vi sao: sau partial/BE, qty con lai co the nho den muc san TU CHOI dong lenh
+        -> 'xac' vi the 0.01 lot nam mai trong portfolio (SKIP_OPEN vinh vien) va
+        journal KHONG bao gio co dong CLOSE cho lenh do (WR/PF sai + `n` ket).
+        """
+        res = trade_result(mt, "PARTIAL", price)
+        self.last_exits[sym] = {"reason": "DUST", "r": res["r"], "won": res["won"],
+                                "pnl": res["pnl"], "partial": res.get("partial_done"),
+                                "mfe_r": res.get("mfe_r")}
+        log_trade(event="CLOSE", pair=sym, direction=mt.direction,
+                  timeframe=self.cfg.timeframe, entry=mt.entry, qty=mt.init_qty,
+                  exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
+                  reason="DUST", partial=res.get("partial_done"),
+                  mfe_r=res.get("mfe_r"))
+        self._close(sym, f"DUST qty={mt.qty:g} < minNotional @ {price}")
 
     def _scan_and_maybe_open(self, candles_provider=None) -> dict:
         cfg = self.cfg

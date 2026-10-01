@@ -755,6 +755,12 @@ def main() -> None:
         if bot.kill.tripped:
             log.error("KILL-SWITCH truoc round -> dung han: %s", bot.kill.reason)
             tg(cfg, fmt_kill(bot.kill.reason))
+            # P0-2 fix (01/10): PHAI luu state NGAY tai day. Ban cu break luon ->
+            # file logs/risk_state.json giu ban CU (trupped=False, chua tinh lan thua
+            # thu 5) -> supervisor restart la bot TU MO LAI va trade tiep du vua trip
+            # "5 thua lien tiep". Thuc te gap luc 20:25 (trip roi van chay lai).
+            save_risk_state(cfg.risk_state_path, bot.kill)
+            ms_save(cfg.managed_state_path, bot)
             break
         try:
             res = turbo_round(bot)

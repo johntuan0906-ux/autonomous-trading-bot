@@ -93,6 +93,26 @@ class TestTradeMgmt(unittest.TestCase):
                                "BE_AT_R": "0.5", "TRAIL_ATR_MULT": "1.0"})
         self.assertEqual(mg["action"], "PARTIAL")
 
+    def test_partial_chay_lai_khong_duoc_dong_het_vi_the(self):
+        """P0-fix 01/10: neu flag partial bi mat (state cu/restart) thi lan chot thu 2
+        PHAI tinh tren qty CON LAI — ban cu dung `init_qty * pct` -> dong not 100%
+        (XRP/SOL/AVAX bi dong oan luc 19:53, journal thieu CLOSE -> `n` ket 46/50).
+        """
+        t = new_trade("SOLUSDT", "SHORT", 117.66, 14.15, 118.3667, 115.89325)
+        kw = {"partial_at_r": 0.3, "partial_pct": 0.5, "be_at_r": 0.3}
+        mg1 = manage(t, 117.2, 1.0, **kw)            # ~0.65R -> chot 50%
+        self.assertEqual(mg1["action"], "PARTIAL")
+        self.assertAlmostEqual(mg1["close_qty"], 7.075, places=6)
+        self.assertAlmostEqual(t.qty, 7.075, places=6)
+        # gia lap state bi mat flag nhung qty con lai dung (dung nhu sau restart)
+        t.partial_done = False
+        qty_before = t.qty
+        mg2 = manage(t, 117.2, 1.0, **kw)
+        self.assertEqual(mg2["action"], "PARTIAL")
+        self.assertLess(mg2["close_qty"], qty_before,
+                        "khong duoc dong het phan con lai")
+        self.assertAlmostEqual(mg2["close_qty"], 3.5375, places=6)
+
     def test_trade_result_pnl_signs(self):
         win = new_trade("XRPUSDT", "LONG", 1.0, 1000, 0.98, 1.04)
         r1 = trade_result(win, "TP", 1.04)

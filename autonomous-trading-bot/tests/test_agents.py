@@ -300,6 +300,25 @@ class _FakeRunner:
         self.calls.append({"cmd": cmd, "timeout": timeout, "cwd": cwd})
         return self.rc, self.out, self.err
 
+class TestReviewPayload(unittest.TestCase):
+    """01/10: review phai gui DU ngu canh, neu khong agent luon tra NO_OPINION."""
+
+    def test_extra_duoc_gui_kem(self):
+        p = A.review_payload("SOL/USDT:USDT", "SHORT", -1.02, False, "SL", "NONE",
+                             extra={"entry": 117.9, "mfe_r": 0.4, "partial": True,
+                                    "pnl": -10.5, "had_feats": True})
+        for k in ("entry", "mfe_r", "partial", "pnl", "had_feats"):
+            self.assertIn(k, p)
+        self.assertEqual(p["strategy"], "NONE")
+        self.assertEqual(p["direction"], "SHORT")
+        self.assertEqual(p["exit_reason"], "SL")
+
+    def test_khong_extra_van_chay(self):
+        p = A.review_payload("BTC/USDT:USDT", "long", 0.5, True, "TP", "NONE")
+        self.assertEqual(p["direction"], "LONG")
+        self.assertTrue(p["won"])
+
+
 class TestSplitCmd(unittest.TestCase):
     """AGENT_COPILOT_BIN: duong dan Windows co khoang trang phai duoc cat dung.
 

@@ -755,6 +755,8 @@ class TestBotSafety(unittest.TestCase):
         self.assertEqual(recs[0]["reason"], "DUST")
         self.assertTrue(recs[0]["won"])
         self.assertEqual(bot.last_exits[self.SYM]["reason"], "DUST")
+        # 01/10: review cua agent can direction (truoc day thieu -> NO_OPINION vo dung)
+        self.assertEqual(bot.last_exits[self.SYM]["direction"], "LONG")
 
     def test_vi_the_binh_thuong_thi_khong_bi_coi_la_bui(self):
         """Vi the binh thuong (notional >= minNotional) khong duoc dong oan."""

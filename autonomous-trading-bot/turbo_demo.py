@@ -344,13 +344,18 @@ def agent_veto(cfg, sym: str, direction: str, alpha: float, strat: str, tech: di
 
 
 def agent_vote_review(cfg, sym: str, direction: str, r_multiple: float, won: bool,
-                      reason: str, strat: str) -> None:
-    """Ghi y kien review sau khi dong lenh — CHAY NEN, chi ghi nhan."""
+                      reason: str, strat: str, extra: dict | None = None) -> None:
+    """Ghi y kien review sau khi dong lenh — CHAY NEN, chi ghi nhan.
+
+    `extra` (01/10): truoc day review chi duoc gui symbol/direction/R/strategy ->
+    agent tra NO_OPINION "thieu du lieu" (strategy=NONE, khong co entry/SL/TP/MFE).
+    Nay gui them entry/sl/tp/mfe_r/pnl/partial de agent rut duoc bai hoc that.
+    """
     layer = agent_layer(cfg)
     if layer is None:
         return
     try:
-        pay = review_payload(sym, direction, r_multiple, won, reason, strat)
+        pay = review_payload(sym, direction, r_multiple, won, reason, strat, extra)
     except Exception as e:  # noqa: BLE001
         log.warning("AGENTS: payload review loi (bo qua): %s", e)
         return
@@ -584,7 +589,8 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             bot.portfolio.positions[sym] = Position(sym, direction, lv["entry"], qty,
                                                     lv["sl"], lv["tp"])
             _pending_feats[sym] = {"feats": feats, "direction": direction,
-                                   "strategy": strat}
+                                   "strategy": strat, "entry": lv["entry"],
+                                   "sl": lv["sl"], "tp": lv["tp"]}
             # Nhat ky giao dich day du (muc 17): regime/struct/OI/funding/news/score100
             log_trade(event="OPEN", pair=sym, direction=direction, timeframe=cfg.timeframe,
                       entry=lv["entry"], sl=lv["sl"], tp=lv["tp"], qty=qty,
@@ -637,7 +643,8 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                 bot.portfolio.positions[sym] = pos
                 bot._managed_for(sym, pos)
                 _pending_feats[sym] = {"feats": feats, "direction": direction,
-                                       "strategy": strat}
+                                       "strategy": strat, "entry": lv["entry"],
+                                       "sl": lv["sl"], "tp": lv["tp"]}
                 try:                       # arm loi KHONG duoc lam mat vi the
                     bot.exchange.stop_tp_orders(sym, direction, landed, lv["sl"], lv["tp"])
                 except Exception as e2:  # noqa: BLE001
@@ -786,10 +793,19 @@ def main() -> None:
             except Exception as e:  # noqa: BLE001
                 log.warning("strat_bump fail: %s", e)
             # Phase 1: agent CHI CO VAN — ghi "bai hoc" sau khi dong lenh (shadow).
+            # 01/10: gui kem entry/sl/tp/mfe_r/pnl/partial -> agent moi co du lieu de
+            # "rut kinh nghiem" (truoc day thieu -> luon NO_OPINION, vo dung).
             agent_vote_review(cfg, sym,
                               str((pend or {}).get("direction") or exr.get("direction")
                                   or "?"),
-                              r_real, bool(exr.get("won", won)), str(reason), strat)
+                              r_real, bool(exr.get("won", won)), str(reason), strat,
+                              extra={"entry": (pend or {}).get("entry"),
+                                     "sl": (pend or {}).get("sl"),
+                                     "tp": (pend or {}).get("tp"),
+                                     "mfe_r": exr.get("mfe_r"),
+                                     "pnl": exr.get("pnl"),
+                                     "partial": exr.get("partial"),
+                                     "had_feats": bool(pend)})
             if pend:
                 try:
                     upd = _learner.update(pend["feats"], pend["direction"], won)

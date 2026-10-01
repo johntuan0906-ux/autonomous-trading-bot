@@ -110,7 +110,8 @@ class TradingBot:
                     self.last_exits[sym] = {"reason": reason, "r": res["r"],
                                             "won": res["won"], "pnl": res["pnl"],
                                             "partial": res.get("partial_done"),
-                                            "mfe_r": res.get("mfe_r")}
+                                            "mfe_r": res.get("mfe_r"),
+                                            "direction": mt.direction}
                     if self.kill.register_close(bool(res["won"]), self.balance):
                         self._flatten("kill-switch: thua lien tiep")
                         return {"_error": self.kill.reason}
@@ -128,7 +129,7 @@ class TradingBot:
                 if (pos.direction == "LONG" and s <= -SENT_REVERSAL) or \
                    (pos.direction == "SHORT" and s >= SENT_REVERSAL):
                     self.last_exits[sym] = {"reason": "SENT", "r": 0.0, "won": False,
-                                            "pnl": 0.0}
+                                            "pnl": 0.0, "direction": pos.direction}
                     self._close(sym, f"sentiment reversal {s}")
                     log_trade(event="CLOSE", pair=sym, direction=pos.direction,
                               timeframe=self.cfg.timeframe, entry=pos.entry,
@@ -175,7 +176,7 @@ class TradingBot:
         res = trade_result(mt, "PARTIAL", price)
         self.last_exits[sym] = {"reason": "DUST", "r": res["r"], "won": res["won"],
                                 "pnl": res["pnl"], "partial": res.get("partial_done"),
-                                "mfe_r": res.get("mfe_r")}
+                                "mfe_r": res.get("mfe_r"), "direction": mt.direction}
         log_trade(event="CLOSE", pair=sym, direction=mt.direction,
                   timeframe=self.cfg.timeframe, entry=mt.entry, qty=mt.init_qty,
                   exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],

@@ -1,0 +1,16 @@
+NHIỆM VỤ: Phân tích hiệu suất chiến lược giao dịch của bot và đề xuất cải thiện có bằng chứng.
+
+Dữ liệu trong context:
+- Journal: số lệnh đã đóng (n), WR, PF(R), E(R), by_strategy, by_direction, các CLOSE gần nhất.
+- logs/strategy_stats.json (thống kê theo mã setup), logs/learner.json (trọng số online learner), logs/monitor_report.json (kết luận gate).
+- 40 dòng log cuối: trạng thái từng vòng (OPENED/SKIP_OPEN/BLOCKED_LEARN/BLOCKED_STRAT/SKIP_MARGIN...).
+
+Sự thật cần biết (không được mâu thuẫn):
+- Cổng LIVE của dự án: n>=50 lệnh đóng VÀ PF(R)>=1.2 VÀ trần risk<=2% VÀ đòn bẩy<=10 (<=8 nếu PF<1.5) VÀ kill-switch sạch VÀ LIVE_CONFIRM=true.
+- Backtest 30 ngày (8 cặp, 1404 lệnh): PF=1.148; backtest 14 ngày: PF=0.954; journal live: PF~0.9. Nhóm A_TREND_PULLBACK đã bị chặn có chủ đích (âm ở cả 2 cửa sổ).
+
+YÊU CẦU ĐẦU RA (tiếng Việt):
+1) Chẩn đoán: vì sao PF < 1.2? Chỉ ra nhóm gây lỗ (theo strategy/hướng/cặp) nếu số liệu cho phép; nêu rõ mẫu nào quá nhỏ để kết luận (n<30) — không suy diễn quá mức.
+2) 3-5 đề xuất cải thiện CỤ THỂ, xếp theo (a) kỳ vọng tăng PF, (b) chi phí/độ phức tạp, (c) rủi ro. Mỗi đề xuất phải nêu: giả thuyết, cách kiểm chứng (backtest 14d/30d + tiêu chí tối thiểu), và điều kiện bác bỏ.
+3) Điều gì KHÔNG nên làm (ví dụ hạ ngưỡng gate, tăng đòn bẩy khi chưa có edge, thêm bộ lọc đánh đổi số mẫu lấy WR) và vì sao.
+4) Nếu dữ liệu chưa đủ kết luận, nói thẳng và đề xuất thí nghiệm/dữ liệu cần thu thêm (kèm cách thu trong hệ thống hiện có).

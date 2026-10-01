@@ -1,0 +1,17 @@
+NHIỆM VỤ: Đánh giá "đã đủ điều kiện chạy tiền thật (LIVE) chưa?" và lập checklist bắt buộc.
+
+Cổng chặn của dự án (live_guard.py — interlock cứng, chạy TRƯỚC mọi vòng trade khi BINANCE_TESTNET=false):
+1) LIVE_CONFIRM=true (xác nhận thủ công trong .env)
+2) Số lệnh đã đóng n >= 50 và PF(R) >= 1.2 (nguồn: journal, cùng monitor_report)
+3) MAX_TOTAL_RISK_PCT <= 2.0
+4) LEVERAGE <= 10, và <= 8 nếu PF < 1.5
+5) kill-switch phải sạch (không tripped)
+
+Dữ liệu thật trong context: journal stats + by_strategy, monitor_report.json (verdict), risk_state, tham số .env đang chạy, log 40 dòng cuối.
+
+YÊU CẦU ĐẦU RA (tiếng Việt):
+1) Bảng đánh giá TỪNG điều kiện: đạt/chưa, số liệu dẫn chứng, và (nếu chưa) điều kiện cụ thể để đạt.
+2) Kết luận rõ: NÊN hay KHÔNG NÊN chuyển LIVE ở thời điểm dữ liệu này; nếu KHÔNG, nêu chuỗi hành động tối thiểu (theo thứ tự) để đạt.
+3) Danh sách 7-10 việc PHẢI làm trước khi bật tiền thật (không lặp lại điều kiện cổng): ví dụ xác nhận vị thế không mồ côi, kiểm tra lệnh treo, thiết lập API key chỉ quyền Futures + IP whitelist, kích thước lệnh đầu tiên, giới hạn thua lỗ ngày, kênh cảnh báo, quy trình rollback.
+4) Nêu rủi ro đặc thù của tài khoản demo hiện tại khi chuyển sang tài khoản thật (ví dụ: DEMO chặn lệnh stop -4045, chênh lệch thanh khoản, phí/trượt giá khác) và cách kiểm chứng trước khi chạy tiền thật.
+5) Không được khẳng định đã chạy test/sửa file; nêu rõ phần chưa kiểm chứng.

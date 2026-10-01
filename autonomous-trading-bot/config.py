@@ -168,6 +168,29 @@ class Settings:
     # Bat: macro -> critic (doc y kien macro) -> arbiter (chu toa) theo quy tac quorum
     # tat dinh trong agents._final_from_council. Van la SHADOW (chi ghi nhan/di Telegram).
     agents_council: bool = field(default_factory=lambda: _get_bool("AGENTS_COUNCIL", False))
+    # Hoi dong NHIEU MODEL THAT chay song song (vd claude-sonnet-5.5, gemini-3.8-flash,
+    # grok-4.6, kimi-k3...) thay vi 1 model dong 3 vai. Model treo/loi = phieu trang,
+    # KHONG co buoc chon 1 model "hop ly nhat". Danh sach: AGENT_COUNCIL_MODELS (csv),
+    # trong = dung agents.COUNCIL_MULTI_MODELS (da kiem chung qua CLI 01/10/2026).
+    agents_council_multi_model: bool = field(
+        default_factory=lambda: _get_bool("AGENTS_COUNCIL_MULTI_MODEL", False))
+    agent_council_models: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_MODELS", ""))
+    # Ngan sach LINH HOAT theo do kho: van de de (hau het model dong thuan, it phieu
+    # trang) -> dung ngan sach thuong (AGENT_TIMEOUT_SEC/AGENT_DAILY_CALLS/BUDGET o
+    # tren), KHONG ton them. Van de kho (hoa phieu HOAC >= AGENT_HARD_ABSTAIN_RATIO
+    # model bi treo) -> tu dong thu lai CAC MODEL TREO voi ngan sach "hard" o duoi
+    # (bo qua chi phi, uu tien co cau tra loi). Tat bang AGENT_BUDGET_ADAPTIVE=false.
+    agent_budget_adaptive: bool = field(
+        default_factory=lambda: _get_bool("AGENT_BUDGET_ADAPTIVE", True))
+    agent_hard_abstain_ratio: float = field(
+        default_factory=lambda: _get_float("AGENT_HARD_ABSTAIN_RATIO", 0.3))
+    agent_timeout_sec_hard: float = field(
+        default_factory=lambda: _get_float("AGENT_TIMEOUT_SEC_HARD", 240.0))
+    agent_daily_calls_hard: int = field(
+        default_factory=lambda: _get_int("AGENT_DAILY_CALLS_HARD", 2000))
+    agent_daily_budget_usd_hard: float = field(
+        default_factory=lambda: _get_float("AGENT_DAILY_BUDGET_USD_HARD", 1000.0))
     # Gui tom tat phien hop hoi dong len Telegram (mac dinh TAT de khong spam).
     agent_tg_votes: bool = field(default_factory=lambda: _get_bool("AGENT_TG_VOTES", False))
     # Nguon bang chung de cap quyen veto: "SETUP" (macro/critic) hoac "COUNCIL" (arbiter).

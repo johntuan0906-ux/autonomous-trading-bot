@@ -23,6 +23,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures as _fut
 import hashlib
 import json
 import os
@@ -45,6 +46,12 @@ ACTIONS = ("ALLOW", "VETO", "NO_OPINION")
 ROLES = ("macro", "critic", "review", "reflect", "arbiter")
 # Hoi dong (council) = 2 vong + chu toa: macro -> critic (da doc y kien macro) -> arbiter.
 COUNCIL_ROLES = ("macro", "critic", "arbiter")
+# Hoi dong NHIEU MODEL THAT (kiem chung qua Copilot CLI headless, 01/10/2026).
+# 5 model con lai trong model picker (gpt-5.3-codex, gpt-5.6-luna, gpt-6-luna,
+# grok-4.7, mai-code-1.1-flash) van o trang thai cho cap quyen headless -> treo
+# roi tu fail-open ve NO_OPINION; KHONG dua vao danh sach mac dinh nay.
+COUNCIL_MULTI_MODELS = ("claude-sonnet-5.5", "claude-sonnet-5", "claude-haiku-4.5",
+                       "gemini-3.8-flash", "grok-4.6", "kimi-k3", "gpt-5.6-terra")
 STATE_PATH = "logs/agent_state.json"
 JOURNAL_PATH = "logs/journal.jsonl"
 PROPOSALS_PATH = "logs/agent_proposals.jsonl"
@@ -1264,17 +1271,137 @@ def council_summary_text(symbol: str, direction: str, res: dict) -> str:
     return "\n".join([head] + [x for x in (_line(r) for r in COUNCIL_ROLES) if x])
 
 
+def _council_models(cfg) -> list:
+    raw = str(getattr(cfg, "agent_council_models", "") or "")
+    models = [m.strip() for m in raw.split(",") if m.strip()]
+    return models or list(COUNCIL_MULTI_MODELS)
+
+
+class _CfgOverride:
+    """Nhin xuyen qua 1 cfg goc, ghi de vai thuoc tinh — KHONG sua cfg that (Settings
+    thuong la frozen dataclass). Dung de "tang ngan sach" chi cho 1 lan goi lai."""
+
+    def __init__(self, base, **overrides):
+        self._base = base
+        self._overrides = overrides
+
+    def __getattr__(self, name):
+        if name in self._overrides:
+            return self._overrides[name]
+        return getattr(self._base, name)
+
+
+def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
+                        models: list | None = None, provider_factory=None) -> dict:
+    """HOI DONG NHIEU MODEL THAT chay SONG SONG — khong chon 1 model "hop ly nhat".
+
+    Moi model trong `models` (mac dinh COUNCIL_MULTI_MODELS) duoc hoi CUNG 1 cau hoi
+    qua 1 AgentLayer/provider rieng, chay dong thoi (ThreadPoolExecutor). Model nao
+    treo/loi -> AgentLayer.vote() da tu fail-open ve NO_OPINION sau agent_timeout_sec;
+    o day coi do la PHIEU TRANG (bi loai khoi quorum), KHONG phai "khong duoc chon" —
+    khong co buoc nao chon ra 1 cau tra loi dai dien ca nhom. Ket qua CUOI la quorum
+    ALLOW/VETO cua CAC PHIEU THAT con lai (hoa phieu hoac khong ai tra loi -> NO_OPINION,
+    tuc KHONG chan lenh — giu nguyen triet ly fail-open cua ca module).
+
+    Ngan sach LINH HOAT (agent_budget_adaptive, mac dinh BAT): van de DE (da dong
+    thuan, it phieu trang) -> dung nguyen ngan sach/timeout thuong, KHONG ton them.
+    Van de KHO (hoa phieu HOAC >= agent_hard_abstain_ratio model bi treo) -> tu dong
+    hoi LAI CAC MODEL TREO voi timeout/ngan sach "hard" (AGENT_*_HARD trong .env,
+    mac dinh rat cao — co y bo qua chi phi de co cau tra loi dut khoat hon).
+    """
+    if not bool(getattr(cfg, "agents_enabled", False)):
+        return {"votes": {}, "abstained": [], "action": "NO_OPINION",
+               "confidence": 0.0, "why": "agents_enabled=false"}
+    names = list(models) if models else _council_models(cfg)
+    bin_path = str(getattr(cfg, "agent_copilot_bin", "copilot") or "copilot")
+    args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
+    make_provider = provider_factory or (
+        lambda m: CopilotCliProvider(model=m, bin_path=bin_path, args=args))
+    state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)
+
+    def _run_round(ask: list, round_cfg, budget) -> dict:
+        def _one(name: str) -> Decision:
+            member = AgentLayer(round_cfg, provider=make_provider(name), budget=budget, log=log)
+            return member.vote(role, payload)
+        out: dict = {}
+        with _fut.ThreadPoolExecutor(max_workers=max(1, len(ask))) as pool:
+            futs = {pool.submit(_one, name): name for name in ask}
+            for fut_ in _fut.as_completed(futs):
+                name = futs[fut_]
+                try:
+                    out[name] = fut_.result()
+                except Exception as e:  # noqa: BLE001 — 1 model loi khong duoc lam hong ca hoi dong
+                    out[name] = Decision(role=role, agent=f"{role}_agent", action="NO_OPINION",
+                                        note=f"loi luong: {str(e)[:100]}", ts=time.time())
+        return out
+
+    budget = AgentBudget(
+        path=state_path, daily_calls=_i(getattr(cfg, "agent_daily_calls", 200)),
+        daily_budget_usd=_f(getattr(cfg, "agent_daily_budget_usd", 1.0), 1.0),
+        max_errors=_i(getattr(cfg, "agent_max_errors", 5)))
+    decisions = _run_round(names, cfg, budget)
+
+    def _tally(decs: dict) -> tuple:
+        abst = sorted(m for m, d in decs.items() if d.action not in ("ALLOW", "VETO"))
+        vts = {m: d for m, d in decs.items() if d.action in ("ALLOW", "VETO")}
+        na = sum(1 for d in vts.values() if d.action == "ALLOW")
+        nv = sum(1 for d in vts.values() if d.action == "VETO")
+        act = "VETO" if nv > na else ("ALLOW" if na > nv else "NO_OPINION")
+        return abst, vts, na, nv, act
+
+    abstained, votes, n_allow, n_veto, action = _tally(decisions)
+    escalated = False
+    hard_ratio = _f(getattr(cfg, "agent_hard_abstain_ratio", 0.3), 0.3)
+    is_hard = action == "NO_OPINION" or (abstained and len(abstained) / len(names) >= hard_ratio)
+    if is_hard and bool(getattr(cfg, "agent_budget_adaptive", True)) and abstained:
+        escalated = True
+        hard_cfg = _CfgOverride(
+            cfg, agent_timeout_sec=_f(getattr(cfg, "agent_timeout_sec_hard", 240.0), 240.0))
+        hard_budget = AgentBudget(
+            path=state_path, daily_calls=_i(getattr(cfg, "agent_daily_calls_hard", 2000)),
+            daily_budget_usd=_f(getattr(cfg, "agent_daily_budget_usd_hard", 1000.0), 1000.0),
+            max_errors=_i(getattr(cfg, "agent_max_errors", 5)))
+        retry = _run_round(abstained, hard_cfg, hard_budget)
+        decisions.update(retry)
+        abstained, votes, n_allow, n_veto, action = _tally(decisions)
+    why = (f"hoi dong {len(names)} model that: {n_allow} ALLOW / {n_veto} VETO "
+          f"(bo qua {len(abstained)} phieu trang: {', '.join(abstained) or '-'})"
+          + (" [da tang ngan sach/thoi gian cho vi vong dau kho/chia re]" if escalated else ""))
+    conf = (sum(float(d.confidence or 0.0) for d in votes.values()) / len(votes)) if votes else 0.0
+    if log:
+        log.info("MULTI-MODEL COUNCIL role=%s -> %s (%.2f) [%s]", role, action, conf, why)
+    return {"votes": {m: d.to_dict() for m, d in votes.items()},
+           "abstained": abstained, "action": action, "confidence": round(conf, 2),
+           "why": why, "escalated": escalated}
+
+
 def veto_decision(cfg, layer, payload: dict) -> dict:
     """Phase 4 (opt-in): xin y kien DONG BO de chan 1 lenh sap mo.
 
     CHI duoc goi khi: agents_veto_enabled=true VA agent_authority da cap quyen.
-    Neu `agents_council=true` -> quyet dinh lay tu HOI DONG (2 vong + chu toa, quy tac
-    quorum tat dinh); nguoc lai dung 1 phieu 'critic' nhu truoc.
+    Thu tu uu tien: agents_council_multi_model=true -> HOI DONG NHIEU MODEL THAT
+    (multi_model_council, khong chon 1 model dai dien); agents_council=true -> hoi
+    dong 1 model 2 vong + chu toa (council_decision); con lai -> 1 phieu 'critic'.
     Tra {"block": bool, "decision": dict}. Loi/khong chac chan -> block=False
     (fail-open: quyen veto khong duoc phep lam bot bo lo co hoi vi loi ky thuat).
     """
     try:
-        if bool(getattr(cfg, "agents_council", False)):
+        if bool(getattr(cfg, "agents_council_multi_model", False)):
+            res = multi_model_council(cfg, payload, role="critic", log=getattr(layer, "log", None))
+            action = str(res.get("action") or "NO_OPINION").upper()
+            conf = float(res.get("confidence") or 0.0)
+            info = {"role": "council_multi_model", "agent": "council_multi_model",
+                    "action": action, "confidence": round(conf, 3),
+                    "reasons": [str(res.get("why") or "")], "risk_flags": [],
+                    "provider": "multi_model_council",
+                    "model": ",".join(sorted(res.get("votes") or {})),
+                    "shadow": bool(getattr(cfg, "agents_shadow", True)), "cache_hit": False,
+                    "latency_ms": 0.0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0,
+                    "ts": time.time(), "note": str(res.get("why") or ""), "raw_text": "",
+                    "multi_model": True, "votes": res.get("votes"),
+                    "abstained": res.get("abstained"), "final_action": action,
+                    "final_confidence": round(conf, 3)}
+        elif bool(getattr(cfg, "agents_council", False)):
             res = council_decision(layer, payload)
             dec = (res.get("stages") or {}).get("arbiter")
             action = str(res.get("action") or "NO_OPINION").upper()
@@ -1516,6 +1643,10 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--council-test", nargs=2, metavar=("SYMBOL", "DIRECTION"),
                     default=None,
                     help="chay thu 1 phien hoi dong THAT (macro/critic/arbiter) va in ket qua")
+    ap.add_argument("--council-multi-test", nargs=2, metavar=("SYMBOL", "DIRECTION"),
+                    default=None,
+                    help="chay thu HOI DONG NHIEU MODEL THAT song song (AGENT_COUNCIL_MODELS) "
+                         "va in tung phieu + ket qua quorum")
     ap.add_argument("--authority", action="store_true",
                     help="Phase 4: xem da du bang chung de cap quyen VETO cho agent chua")
     ap.add_argument("--auto-apply", action="store_true",
@@ -1591,6 +1722,29 @@ def main(argv: list | None = None) -> int:
         print(f"  => KET LUAN: {res.get('action')} ({res.get('consensus')}) — {res.get('why')}")
         print("  --- Tin Telegram se gui (neu AGENT_TG_VOTES=true): ---")
         print(council_summary_text(sym, direction, res))
+        return 0
+
+    if args.council_multi_test:
+        # Hoi dong NHIEU MODEL THAT song song (ton 1 cuoc goi CLI/model, chay dong thoi).
+        object.__setattr__(cfg, "agents_enabled", True)
+        sym = str(args.council_multi_test[0])
+        direction = str(args.council_multi_test[1]).upper()
+        pay = setup_payload(sym, direction, 0.42, "NONE",
+                            {"rsi": 58.0, "atr_pct": 0.012, "vol_ratio": 1.1,
+                             "pattern": "none"},
+                            {"score": 0.1, "urgent_bearish": 0}, "UPTREND",
+                            {"note": "council multi-model test (du lieu gia de thu)"})
+        models = _council_models(cfg)
+        print(f"HOI DONG NHIEU MODEL (test) — {sym} {direction} | models={', '.join(models)}")
+        res = multi_model_council(cfg, pay, role="critic", log=None, models=models)
+        for m in models:
+            d = (res.get("votes") or {}).get(m)
+            if d is None:
+                print(f"  {m:20} -> (phieu trang / treo / NO_OPINION)")
+                continue
+            print(f"  {m:20} -> {d['action']:11} conf={d['confidence']:.2f} "
+                  f"{('| ' + '; '.join(d.get('reasons') or [])[:70]) if d.get('reasons') else ''}")
+        print(f"  => KET LUAN: {res.get('action')} ({res.get('why')})")
         return 0
 
     if args.auto_apply:

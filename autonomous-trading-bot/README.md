@@ -290,6 +290,45 @@ provider phát hiện shim, báo lỗi rõ, fail-open ⇒ bot không thể treo.
 | 4 | **Cấp quyền hành động** cho agent — chỉ khi có bằng chứng shadow | ✅ cơ chế xong, đang **khoá** (chưa đủ bằng chứng) |
 | 5 | **Interlock LIVE** — chặn cứng khi sang tiền thật (`live_guard.py`) | ✅ xong (đã nối vào `turbo_demo.main()`) |
 
+### Multi-AI ClinePass — 14 model cùng làm 1 việc (code/phân tích, KHÔNG dùng để trade)
+
+`Multi_AI_Agent/` là harness: gửi **1 nhiệm vụ** cho **14 model ClinePass song song** (mỗi model 1 vai:
+phân rã yêu cầu, phản biện logic, thiết kế API, ca kiểm thử, an toàn dữ liệu…) rồi **1 finalizer**
+(`cline-pass/glm-5.3`) đọc tất cả báo cáo và tổng hợp thành `report.md`. Nó **không chạy code** và
+**không tự sửa file** — kết quả là đề xuất để người dùng (hoặc Cline) triển khai.
+
+Wrapper của dự án `clinepass_review.py` gom **dữ liệu thật của bot** làm context rồi gọi harness:
+
+```bash
+python clinepass_review.py --list                      # xem task/bundle có sẵn
+python clinepass_review.py --task safety_audit --bundle safety      # mock (offline, 0 quota)
+python clinepass_review.py --task code_review --file turbo_demo.py --provider clinepass --tg
+python clinepass_review.py --task strategy_review --bundle strategy --group all
+python clinepass_review.py --engine lab --mode consensus --task live_readiness --provider openai
+```
+
+| Thành phần | Ý nghĩa |
+|---|---|
+| `--task` | `code_review` / `strategy_review` / `safety_audit` / `live_readiness` (mẫu trong `tasks/*.txt`) |
+| `--bundle` | gom dữ liệu bot: `bot_state` (journal + monitor + log) / `strategy` / `safety` (risk, agent votes) / `none` |
+| `--engine` | `clinepass` (14 model) hoặc `lab` (`Multi_AI_Agent/main.py`, 4 chế độ group/handoff/parallel/consensus) |
+| `--provider` | `mock` (**mặc định**, offline) · `clinepass` (cần `CLINE_API_KEY`) · `openai` (lab, cần key) |
+| `--file` | thêm file context (lặp lại được), ví dụ `--file exchange.py --file bot.py` |
+| `--tg` | gửi tóm tắt `report.md` lên Telegram |
+
+- Kết quả: `logs/clinepass/outputs/clinepass_<ts>_<id>/report.md` (+ `run.json`, `events.jsonl`);
+  bundle: `logs/clinepass/bundle_<kind>_<ts>.md` (đã bị `.gitignore` chặn).
+- **Bí mật**: bundle **không bao giờ** chứa API key (có test khẳng định) và harness tự từ chối file
+  `.env*`/`secret`/`credential`.
+- **Giới hạn cần biết**: harness nhận ≤ 20.000 ký tự context (biến `CLINE_MAX_CONTEXT_CHARS`) và
+  ≤ 6.000 ký tự nhiệm vụ; file context phải là `.py/.md/.txt/.json/.toml/.yaml/.yml/.csv`.
+- Cài đặt: `python -m pip install -r Multi_AI_Agent/requirements-clinepass.txt` (httpx, dotenv).
+  Engine `lab` cần thêm `-r Multi_AI_Agent/requirements.txt` (openai, pydantic).
+  Kiểm tra harness còn nguyên vẹn: `cd Multi_AI_Agent && python -m unittest discover -s tests -t .`
+  (31 test; trên Windows nên đặt `PYTHONUTF8=1` để đọc/ghi file UTF-8 đúng).
+- **Một key dùng cho hai việc**: `CLINE_API_KEY` vừa chạy hội đồng 14 model, vừa có thể làm provider
+  cho hội đồng trading nội bộ (`AGENT_PROVIDER=openai_compat` + `AGENT_COMPAT_*`, xem `.env.example`).
+
 ### Phase 3b/4b — Council: hội đồng 2 vòng + chủ toạ (01/10)
 
 Ngoài macro/critic độc lập, bật `AGENTS_COUNCIL=true` để chạy **hội đồng** cho mỗi setup mới:

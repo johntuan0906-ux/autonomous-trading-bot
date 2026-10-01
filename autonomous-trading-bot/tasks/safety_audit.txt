@@ -1,0 +1,20 @@
+NHIỆM VỤ: Kiểm toán AN TOÀN của bot trước khi nghĩ tới tiền thật (LIVE) — tìm lỗ hổng, không khen ngợi.
+
+Bối cảnh (đã triển khai, cần bạn soi lại):
+- P0-1: khi khởi động lại, `position_sync.adopt()` đọc vị thế THẬT trên sàn → nạp vào portfolio/managed, khôi phục mốc 1R từ logs/managed_state.json; state "xác" (qty<=0) bị bỏ và dọn khỏi state.
+- P0-2: kill-switch (`risk.py`) sống sót qua restart; trip khi lỗ ngày >= MAX_DAILY_LOSS_PCT (theo equity thật đầu ngày) HOẶC >=5 lệnh thua liên tiếp; trip phải được LƯU ngay (kể cả nhánh đóng lệnh) rồi mới dừng.
+- P0-3: lỗi monitor ⇒ flatten + dừng hẳn (không mở lệnh mới).
+- P0-4: mọi lệnh có clientOrderId; nếu lỗi mạng sau khi khớp thì kiểm tra vị thế thật để không mở trùng.
+- P0-5: huỷ lệnh STOP/TP treo cũ trước khi arm mới; đóng lệnh cũng dọn lệnh treo; partial re-arm theo qty còn lại.
+- P0-6: trần risk danh mục theo mốc 1R (MAX_TOTAL_RISK_PCT), DD theo equity thật.
+- Chống treo: watchdog theo nhịp tim (logs/heartbeat.json, trước/sau ADOPT), ROUND_TIMEOUT_SEC, socket timeout.
+- Chống mất vị thế khi sàn chặn stop (-4045): mở lệnh ghi sổ TRƯỚC, arm sau; `_rearm_missing()` thử lại mỗi 5 vòng; monitor phần mềm tự đóng khi giá chạm SL/TP.
+- Interlock LIVE: chặn chạy tiền thật nếu thiếu LIVE_CONFIRM/n<50/PF<1.2/risk>2%/lev>10/kill-switch đang trip.
+
+DỮ LIỆU trong context: risk_state, managed_state, phiếu agent (shadow), tham số .env, log 40 dòng cuối.
+
+YÊU CẦU ĐẦU RA (tiếng Việt):
+1) Bảng: RỦI RO → kịch bản cụ thể → khả năng (Cao/Vừa/Thấp) → hậu quả (mất tiền/sai số/kẹt bot) → cách vá đề xuất. Ưu tiên kịch bản có thể xảy ra TRONG THỰC TẾ với dữ liệu đang thấy (ví dụ log cho thấy lệnh không có SL trên sàn).
+2) Chỉ ra chỗ mà một lớp an toàn CÓ THỂ bị vô hiệu hoá do lỗi khác (ví dụ lỗi khiến state không được lưu, khiến trip bị mất sau restart, khiến vị thế mồ côi).
+3) Đề xuất 5 ca kiểm thử an toàn (tên + tình huống + kỳ vọng can thiệp) và 3 chỉ số giám sát cần gửi cảnh báo tự động.
+4) Nêu rõ điều bạn KHÔNG thể xác minh từ context (không được nói đã chạy test/sửa file).

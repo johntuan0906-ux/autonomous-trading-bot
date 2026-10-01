@@ -17,6 +17,8 @@ memory-graph/
 *.log.*
 
 # ---- Artifact generated (tao lai duoc: build_glow.py / build_dashboard.py / sweep.py) ----
+Multi_AI_Agent/outputs/
+Multi_AI_Agent/.env
 memory.db
 memory.db-wal
 memory.db-shm

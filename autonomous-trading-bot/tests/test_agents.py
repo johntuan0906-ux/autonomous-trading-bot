@@ -419,8 +419,170 @@ class TestCouncil(unittest.TestCase):
         self.assertLessEqual(len(txt), 400)
 
 
+class _FixedModelProvider:
+    """Provider gia lap 1 model that CO THE "treo" (loi) de kiem tra bo qua phieu."""
+
+    name = "fixed_model"
+
+    def __init__(self, model: str, response: dict | None = None, boom: bool = False):
+        self.model = model
+        self.response = dict(response or {"action": "NO_OPINION", "confidence": 0.0})
+        self.boom = boom
+        self.calls = 0
+
+    def complete(self, system: str, user: str, *, timeout: float = 5.0) -> dict:
+        self.calls += 1
+        if self.boom:
+            raise RuntimeError("treo/loi mo phong")
+        return {"text": json.dumps(self.response), "tokens_in": 50, "tokens_out": 10}
+
+
+class TestMultiModelCouncil(unittest.TestCase):
+    """Hoi dong NHIEU MODEL THAT song song: khong chon 1 model, chi loai phieu trang."""
+
+    def _cfg_mm(self, tmp):
+        return _cfg(agent_state_path=os.path.join(tmp, "state.json"))
+
+    def _factory(self, responses: dict, hung: tuple = ()):
+        def make(model: str):
+            return _FixedModelProvider(model, response=responses.get(model),
+                                       boom=model in hung)
+        return make
+
+    def test_chay_het_cac_model_va_bo_qua_model_treo(self):
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b", "model-c"]
+        factory = self._factory({
+            "model-a": {"action": "ALLOW", "confidence": 0.6},
+            "model-b": {"action": "ALLOW", "confidence": 0.8},
+        }, hung=("model-c",))
+        res = A.multi_model_council(self._cfg_mm(tmp), {"symbol": "BTC/USDT:USDT"},
+                                    role="critic", models=models, provider_factory=factory)
+        self.assertEqual(res["action"], "ALLOW")
+        self.assertEqual(res["abstained"], ["model-c"], "model treo phai bi loai, khong tinh phieu")
+        self.assertEqual(set(res["votes"]), {"model-a", "model-b"})
+
+    def test_khong_co_model_nao_duoc_chon_dai_dien_quorum_quyet_dinh(self):
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b", "model-c"]
+        factory = self._factory({
+            "model-a": {"action": "VETO", "confidence": 0.7},
+            "model-b": {"action": "VETO", "confidence": 0.9},
+            "model-c": {"action": "ALLOW", "confidence": 0.5},
+        })
+        res = A.multi_model_council(self._cfg_mm(tmp), {"symbol": "ETH/USDT:USDT"},
+                                    role="critic", models=models, provider_factory=factory)
+        self.assertEqual(res["action"], "VETO", "2 VETO > 1 ALLOW -> VETO (khong phai 1 model quyet)")
+        self.assertEqual(len(res["votes"]), 3, "ca 3 model deu duoc hoi, khong ai bi bo qua khi tra loi")
+
+    def test_hoa_phieu_thi_no_opinion_khong_chan_lenh(self):
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b"]
+        factory = self._factory({
+            "model-a": {"action": "VETO", "confidence": 0.7},
+            "model-b": {"action": "ALLOW", "confidence": 0.7},
+        })
+        res = A.multi_model_council(self._cfg_mm(tmp), {"symbol": "SOL/USDT:USDT"},
+                                    role="critic", models=models, provider_factory=factory)
+        self.assertEqual(res["action"], "NO_OPINION")
+
+    def test_tat_ca_model_treo_thi_no_opinion_khong_crash(self):
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b"]
+        factory = self._factory({}, hung=("model-a", "model-b"))
+        res = A.multi_model_council(self._cfg_mm(tmp), {"symbol": "XRP/USDT:USDT"},
+                                    role="critic", models=models, provider_factory=factory)
+        self.assertEqual(res["action"], "NO_OPINION")
+        self.assertEqual(set(res["abstained"]), {"model-a", "model-b"})
+        self.assertEqual(res["votes"], {})
+
+    def test_van_de_de_khong_ton_them_ngan_sach(self):
+        """Dong thuan ro rang, khong model nao treo -> KHONG escalate (giam nhe chi phi)."""
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b", "model-c"]
+        factory = self._factory({
+            "model-a": {"action": "ALLOW", "confidence": 0.6},
+            "model-b": {"action": "ALLOW", "confidence": 0.7},
+            "model-c": {"action": "ALLOW", "confidence": 0.8},
+        })
+        res = A.multi_model_council(self._cfg_mm(tmp), {"symbol": "BTC/USDT:USDT"},
+                                    role="critic", models=models, provider_factory=factory)
+        self.assertFalse(res["escalated"])
+        self.assertEqual(res["action"], "ALLOW")
+
+    def test_van_de_kho_tu_hoi_lai_model_treo_voi_ngan_sach_hard(self):
+        """Vong 1 hoa phieu (1 ALLOW/1 VETO) + 1 model treo -> tu dong hoi lai model
+        treo voi timeout/ngan sach 'hard'; neu lan nay model tra loi -> het hoa phieu."""
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b", "model-c"]
+        attempts = {"model-c": 0}
+
+        def factory(model: str):
+            if model == "model-a":
+                return _FixedModelProvider(model, response={"action": "ALLOW", "confidence": 0.6})
+            if model == "model-b":
+                return _FixedModelProvider(model, response={"action": "VETO", "confidence": 0.7})
+            attempts["model-c"] += 1
+            return _FixedModelProvider(model, response={"action": "ALLOW", "confidence": 0.5},
+                                       boom=(attempts["model-c"] == 1))
+
+        res = A.multi_model_council(self._cfg_mm(tmp), {"symbol": "XRP/USDT:USDT"},
+                                    role="critic", models=models, provider_factory=factory)
+        self.assertTrue(res["escalated"], "vong 1 hoa phieu -> phai tu hoi lai model treo")
+        self.assertEqual(res["action"], "ALLOW", "model-c tra loi o lan hoi lai -> het hoa phieu")
+        self.assertNotIn("model-c", res["abstained"])
+        self.assertIn("da tang ngan sach", res["why"])
+        self.assertEqual(attempts["model-c"], 2, "model treo phai duoc hoi LAI, khong bi bo luon")
+
+    def test_tat_adaptive_thi_khong_tu_hoi_lai(self):
+        tmp = tempfile.mkdtemp()
+        models = ["model-a", "model-b", "model-c"]
+        cfg = self._cfg_mm(tmp)
+        cfg.agent_budget_adaptive = False
+        factory = self._factory({
+            "model-a": {"action": "ALLOW", "confidence": 0.6},
+            "model-b": {"action": "VETO", "confidence": 0.7},
+        }, hung=("model-c",))
+        res = A.multi_model_council(cfg, {"symbol": "XRP/USDT:USDT"}, role="critic",
+                                    models=models, provider_factory=factory)
+        self.assertFalse(res["escalated"])
+        self.assertEqual(res["action"], "NO_OPINION")
+        self.assertIn("model-c", res["abstained"])
+
+    def test_agents_enabled_false_thi_khong_goi_model_nao(self):
+        tmp = tempfile.mkdtemp()
+        cfg = self._cfg_mm(tmp)
+        cfg.agents_enabled = False
+        called = []
+        res = A.multi_model_council(cfg, {}, models=["model-a"],
+                                    provider_factory=lambda m: called.append(m))
+        self.assertEqual(res["action"], "NO_OPINION")
+        self.assertEqual(called, [])
+
+    def test_veto_decision_dung_hoi_dong_nhieu_model_khi_bat_co(self):
+        tmp = tempfile.mkdtemp()
+        cfg = self._cfg_mm(tmp)
+        cfg.agents_council_multi_model = True
+        cfg.agent_veto_min_conf = 0.5
+        models = ["model-a", "model-b"]
+        factory = self._factory({
+            "model-a": {"action": "VETO", "confidence": 0.9},
+            "model-b": {"action": "VETO", "confidence": 0.8},
+        })
+        import unittest.mock as _mock
+        with _mock.patch.object(A, "_council_models", return_value=models), \
+             _mock.patch.object(A, "CopilotCliProvider",
+                                side_effect=lambda model=None, **kw: factory(model)):
+            res = A.veto_decision(cfg, _layer(A.StubProvider(), tmp=tmp), {"symbol": "BTC/USDT:USDT"})
+        self.assertTrue(res["block"], "2 VETO that -> chan lenh")
+        self.assertEqual(res["decision"]["action"], "VETO")
+        self.assertTrue(res["decision"].get("multi_model"))
+        self.assertEqual(set(res["decision"]["votes"]), {"model-a", "model-b"})
+
+
 class TestCouncilAuthority(unittest.TestCase):
     """Do bang chung RIENG cho hoi dong: status=COUNCIL tach khoi SETUP."""
+
 
     def _journal(self, d: str, status: str) -> str:
         jp = os.path.join(d, "j.jsonl")

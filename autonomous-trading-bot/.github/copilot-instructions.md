@@ -38,3 +38,4 @@
 5. **Memory Graph Logging**:
    - Record significant errors or fixes: `python memory_graph.py observe --kind error --sym <symbol> --detail "<cause + fix>"`
    - Sync graph after structural changes: `python memory_agent.py sync`
+   - Whenever source code, indexed knowledge, or map input data changes, identify the affected graph/index/maps and update or rebuild them before finishing. At minimum run `python memory_agent.py sync` after source/structure changes; refresh generated map data/visualizations (for example `memory_map.py`, `graph_memory.py`, or Glow map builders) only when their source data or generator inputs changed. Verify the resulting artifacts are current; do not treat trading-market/runtime data as source-code graph data.

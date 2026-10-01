@@ -204,6 +204,38 @@ def build_bundle(kind: str) -> Path | None:
     return path
 
 
+def _abs_file(p) -> Path:
+    """Duong dan nguoi dung nhap (co the tuong doi) -> TUYET DOI theo goc du an.
+
+    Vi sao: harness chay voi cwd=Multi_AI_Agent nen `--file bot.py` se bi hieu thanh
+    Multi_AI_Agent/bot.py -> "Loi cau hinh/file" (da gap khi chay thu 02/10).
+    """
+    q = Path(str(p)).expanduser()
+    if not q.is_absolute():
+        q = ROOT / q
+    return q.resolve()
+
+
+def _catalog_models() -> list:
+    """Danh sach model trong catalog (dung de loai model chay cham/hay treo)."""
+    try:
+        data = json.loads((MAA / "models.clinepass.json").read_text(encoding="utf-8-sig"))
+        return [str(a.get("model")) for a in (data.get("agents") or [])]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _skip_models() -> list:
+    """Model bo qua khi chay `--group all` (env CLINE_SKIP_MODELS, comma-separated).
+
+    Ly do (02/10): `cline-pass/glm-5.3-flash` treo/timeout o CA HAI phien 14 model voi
+    prompt lon -> `status=timeout` va finalizer khong bao gio chay (harness chi tong hop
+    khi MOI nhanh xong). Bo qua model nay giup phien 14 model chay tron ven.
+    """
+    raw = os.getenv("CLINE_SKIP_MODELS", "").strip()
+    return [m.strip() for m in raw.split(",") if m.strip()]
+
+
 def build_cmd(args, bundle: Path | None, task_file: Path) -> list:
     """Len lenh cho harness (tach rieng de test duoc, khong chay that)."""
     if getattr(args, "check", False):
@@ -226,10 +258,16 @@ def build_cmd(args, bundle: Path | None, task_file: Path) -> list:
                "--task-file", str(task_file), "--output-dir", str(args.output_dir)]
         if args.concurrency:
             cmd += ["--concurrency", str(args.concurrency)]
-        for m in (args.model or []):
+        models = list(args.model or [])
+        if not models and args.group == "all":
+            skip = set(_skip_models())
+            models = [m for m in _catalog_models() if m not in skip]
+            if skip and models:
+                print(f"[info] bo qua model cham: {sorted(skip)} -> con {len(models)} model")
+        for m in models:
             cmd += ["--model", str(m)]
     for f in (args.file or []):
-        cmd += ["--context", str(f)]
+        cmd += ["--context", str(_abs_file(f))]
     if bundle is not None:
         cmd += ["--context", str(bundle)]
     return cmd
@@ -255,6 +293,8 @@ def child_env(args) -> dict:
         v = os.getenv(k, "").strip()
         if v:
             env[k] = v
+    if getattr(args, "max_context", None):
+        env["CLINE_MAX_CONTEXT_CHARS"] = str(int(args.max_context))
     return env
 
 
@@ -273,7 +313,7 @@ def summarize_report(report: Path, limit: int = 2600) -> str:
     return tail.strip()[:limit]
 
 
-def preflight(args, task_file: Path, need_task: bool = True) -> str:
+def preflight(args, task_file: Path, need_task: bool = True, bundle: Path | None = None) -> str:
     """Kiem tra truoc khi chay: tra ve thong bao loi ('' = san sang)."""
     try:
         import httpx  # noqa: F401
@@ -288,6 +328,21 @@ def preflight(args, task_file: Path, need_task: bool = True) -> str:
                     "Multi_AI_Agent/requirements.txt")
     if need_task and not task_file.is_file():
         return f"Khong thay file nhiem vu: {task_file}"
+    for f in (getattr(args, "file", None) or []):
+        if not _abs_file(f).is_file():
+            return f"Khong thay file context: {f} (da thu {_abs_file(f)})"
+    # Tong dung luong context: harness (va 02/10: 2 file code + bundle = 45k > 20k) se
+    # tu choi -> kiem tra TRUOC de bao ro rang, kem cach xu ly.
+    if need_task:
+        limit = int(getattr(args, "max_context", None)
+                    or os.getenv("CLINE_MAX_CONTEXT_CHARS", "20000") or 20000)
+        total = len(_read(task_file)) + sum(len(_read(_abs_file(f)))
+                                            for f in (getattr(args, "file", None) or []))
+        if bundle is not None:
+            total += len(_read(bundle))
+        if total > limit:
+            return (f"Context {total} ky tu > gioi han {limit}. Chon it file hon, hoac tang "
+                    f"CLINE_MAX_CONTEXT_CHARS (vi du --max-context {int(total * 1.2) // 1000 * 1000}).")
     if args.engine == "clinepass" and args.provider == "clinepass" \
             and not os.getenv("CLINE_API_KEY", "").strip():
         return ("Thieu CLINE_API_KEY trong .env. Lay key tai app.cline.bot -> Settings -> "
@@ -332,6 +387,8 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--model", action="append", help="chon model cline-pass/... (lap lai duoc)")
     ap.add_argument("--concurrency", type=int)
     ap.add_argument("--output-dir", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("--max-context", type=int, default=None,
+                    help="ghi de CLINE_MAX_CONTEXT_CHARS cho lan chay nay (ky tu)")
     ap.add_argument("--tg", action="store_true", help="gui tom tat ket qua len Telegram")
     ap.add_argument("--check", action="store_true",
                     help="kiem tra ket noi tung model ClinePass (KHONG goi finalizer, ton quota)")
@@ -354,13 +411,13 @@ def main(argv: list | None = None) -> int:
         if args.provider == "mock":
             args.provider = "clinepass"      # check mock la vo nghia
     task_file = TASKS / TASK_FILES[args.task]
-    err = preflight(args, task_file, need_task=not args.check)
-    if err:
-        print("[LOI] " + err, file=sys.stderr)
-        return 2
     bundle = None if args.check else build_bundle(args.bundle)
     if not args.check:
         task_file = build_task_file(task_file)
+    err = preflight(args, task_file, need_task=not args.check, bundle=bundle)
+    if err:
+        print("[LOI] " + err, file=sys.stderr)
+        return 2
     cmd = build_cmd(args, bundle, task_file)
     print("Task   :", args.task, "| bundle:", args.bundle,
           f"({bundle.name})" if bundle else "")

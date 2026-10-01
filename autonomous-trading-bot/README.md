@@ -313,7 +313,8 @@ python clinepass_review.py --engine lab --mode consensus --task live_readiness -
 | `--bundle` | gom dữ liệu bot: `bot_state` (journal + monitor + log) / `strategy` / `safety` (risk, agent votes) / `none` |
 | `--engine` | `clinepass` (14 model) hoặc `lab` (`Multi_AI_Agent/main.py`, 4 chế độ group/handoff/parallel/consensus) |
 | `--provider` | `mock` (**mặc định**, offline) · `clinepass` (cần `CLINE_API_KEY`) · `openai` (lab, cần key) |
-| `--file` | thêm file context (lặp lại được), ví dụ `--file exchange.py --file bot.py` |
+| `--file` | thêm file context (lặp lại được), ví dụ `--file exchange.py --file bot.py` (đường dẫn tương đối tính từ gốc dự án) |
+| `--max-context N` | nâng giới hạn ký tự context cho lần chạy (mặc định theo `CLINE_MAX_CONTEXT_CHARS`) |
 | `--tg` | gửi tóm tắt `report.md` lên Telegram |
 
 - Kết quả: `logs/clinepass/outputs/clinepass_<ts>_<id>/report.md` (+ `run.json`, `events.jsonl`);
@@ -343,6 +344,16 @@ python clinepass_review.py --engine lab --mode consensus --task live_readiness -
 `--group all` (14+1) ≈ 20–25 phút, có thể `partial` nếu model chậm/cắt output.
 
 **Đối chiếu nhanh**: `python clinepass_review.py --check --group all` (chỉ kiểm tra kết nối, không gọi finalizer).
+
+#### Hội đồng chỉ ra gì → đã sửa gì (02/10/2026)
+
+| Phát hiện từ hội đồng | Kết luận của tôi | Đã làm |
+|---|---|---|
+| "MAX_POSITIONS=1 / MAX_TOTAL_RISK_PCT=3% bị vượt khi adopt" | ❌ **false positive** — bundle chỉ có `.env.example` (giá trị mẫu) | Bundle giờ gửi **tham số đang chạy thật** (`config.Settings`, 27 khóa, không secret) |
+| "`risk_state.json` ghi `max_daily_loss_pct=2.0` khác `.env` 5.0" | ❌ false positive (`.env` cũng 2.0) — nhưng **thiếu cảnh báo khi CÓ drift thật** | `risk.load_state(..., warn=...)`: `.env` là nguồn sự thật cho ngưỡng, lệch thì log `CANH BAO drift nguong kill-switch` |
+| `MIN_NOTIONAL_USDT=20` > mức live (5) → có thể ghi CLOSE khi lệnh còn | ✅ đúng | Mặc định **theo chế độ**: demo/testnet 20, LIVE 5 (`.env` ghi đè được) |
+| "1000 hay 4947 là mẫu số sizing?" | ✅ mơ hồ thật | Log + journal `OPEN` nay có `size_base` và `risk_usdt` (`size_base = min(BALANCE_USDT, equity)`) |
+| — | — | `--file` tự đổi thành **đường dẫn tuyệt đối** (harness chạy `cwd=Multi_AI_Agent`); `preflight` **kiểm tra tổng dung lượng context** và báo trước; thêm `--max-context` |
 
 ### Phase 3b/4b — Council: hội đồng 2 vòng + chủ toạ (01/10)
 

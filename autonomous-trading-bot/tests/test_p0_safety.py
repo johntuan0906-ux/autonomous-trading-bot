@@ -417,6 +417,38 @@ class TestManagedState(unittest.TestCase):
         self.assertAlmostEqual(b3.managed["A"].initial_sl, 97.5)
 
 
+class TestMinNotionalTheoCheDo(unittest.TestCase):
+    """(Hội đồng 14 model 01/10) MIN_NOTIONAL mặc định phải theo CHẾ ĐỘ:
+    demo/testnet = 20 (binance demo đòi 20), LIVE = 5 (chuẩn USDT-M)."""
+
+    def _mn(self, testnet: str, override: str | None = None) -> float:
+        import importlib
+        old = {k: os.environ.get(k) for k in ("BINANCE_TESTNET", "MIN_NOTIONAL_USDT")}
+        try:
+            os.environ["BINANCE_TESTNET"] = testnet
+            if override is None:
+                os.environ.pop("MIN_NOTIONAL_USDT", None)
+            else:
+                os.environ["MIN_NOTIONAL_USDT"] = override
+            import config as cfgmod
+            importlib.reload(cfgmod)
+            return float(cfgmod.Settings().min_notional_usdt)
+        finally:
+            for k, v in old.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+            importlib.reload(cfgmod)
+
+    def test_demo_20_va_live_5(self):
+        self.assertEqual(self._mn("true"), 20.0)
+        self.assertEqual(self._mn("false"), 5.0)
+
+    def test_env_ghi_de_duoc_uu_tien(self):
+        self.assertEqual(self._mn("false", override="12"), 12.0)
+
+
 class TestWatchdog(unittest.TestCase):
     """P0-watchdog: bot treo (tien trinh van song) phai bi phat hien."""
 
@@ -498,6 +530,34 @@ class TestWatchdog(unittest.TestCase):
         load_state(p, ks2)
         self.assertTrue(ks2.tripped, "trip phai song sot qua restart")
         self.assertIn("consecutive losses", ks2.reason)
+
+    def test_drift_nguong_thi_canh_bao_va_env_thang(self):
+        """(Hoi dong 14 model 01/10) File state luu nguong khac .env phai CANH BAO va
+        .env la nguon su that (truoc day khong co canh bao -> de ket luan nham)."""
+        from risk import KillSwitch as KS, load_state, save_state
+        p = os.path.join(tempfile.mkdtemp(), "risk.json")
+        old = KS(max_daily_loss_pct=9.9, max_atr_pct=0.99, max_errors=1)
+        save_state(p, old)
+        ks = KS(max_daily_loss_pct=2.0, max_atr_pct=0.02, max_errors=5)
+        msgs: list = []
+        load_state(p, ks, warn=msgs.append)
+        self.assertEqual(ks.max_daily_loss_pct, 2.0, ".env phai thang")
+        self.assertEqual(ks.max_atr_pct, 0.02)
+        self.assertEqual(ks.max_errors, 5)
+        self.assertEqual(len(msgs), 1)
+        self.assertIn("drift", msgs[0])
+        self.assertIn("9.9", msgs[0])
+
+    def test_khong_canh_bao_khi_nguong_khop(self):
+        from risk import KillSwitch as KS, load_state, save_state
+        p = os.path.join(tempfile.mkdtemp(), "risk2.json")
+        save_state(p, KS(max_daily_loss_pct=2.0, max_atr_pct=0.02, max_errors=5,
+                         tripped=True, reason="test"))
+        ks = KS(max_daily_loss_pct=2.0, max_atr_pct=0.02, max_errors=5)
+        msgs: list = []
+        load_state(p, ks, warn=msgs.append)
+        self.assertEqual(msgs, [])
+        self.assertTrue(ks.tripped, "trip van phai song sot")
 
     def test_rotate_log_nho_thi_khong_dong_gi(self):
         p = Path(tempfile.mkdtemp()) / "err.log"

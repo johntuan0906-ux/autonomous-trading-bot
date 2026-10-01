@@ -150,8 +150,14 @@ class KillSwitch:
         return True
 
 
-def load_state(path: str, ks: KillSwitch) -> KillSwitch:
-    """Doc state da luu (neu co) va gop vao `ks` -> kill-switch song sot restart."""
+def load_state(path: str, ks: KillSwitch, warn=None) -> KillSwitch:
+    """Doc state da luu (neu co) va gop vao `ks` -> kill-switch song sot restart.
+
+    Nguon su that cho NGUONG (max_daily_loss_pct / max_atr_pct / max_errors) la
+    `ks` (tu .env dang chay) — state cu KHONG ghi de nguong. Neu file luu nguong
+    KHAC .env thi goi `warn(msg)` (hoi dong 14 model 01/10 tung ket luan nham rang
+    bot dung nguong trong file; thuc te .env thang, va nay co canh bao ro rang).
+    """
     try:
         import json
         with open(path, "r", encoding="utf-8") as f:
@@ -169,6 +175,14 @@ def load_state(path: str, ks: KillSwitch) -> KillSwitch:
     ks.peak_balance = max(ks.peak_balance, old.peak_balance)
     ks.start_equity = old.start_equity or ks.start_equity
     ks.day = old.day or ks.day
+    if warn:
+        drift = []
+        for name in ("max_daily_loss_pct", "max_atr_pct", "max_errors"):
+            was, now = getattr(old, name), getattr(ks, name)
+            if was != now:
+                drift.append(f"{name}: file={was} -> dung {now} (.env)")
+        if drift:
+            warn("CANH BAO drift nguong kill-switch (" + "; ".join(drift) + ")")
     return ks
 
 

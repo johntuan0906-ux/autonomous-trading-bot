@@ -109,7 +109,7 @@ class TestCommand(unittest.TestCase):
     def test_lenh_clinepass_dung_tham_so(self):
         tf = Path("tasks/code_review.txt")
         cmd = CR.build_cmd(self._args(file=["turbo_demo.py"], model=["cline-pass/glm-5.3"],
-                                      concurrency=6), Path("b.md"), tf)
+                                      concurrency=6), (ROOT / "bundle.md"), tf)
         self.assertEqual(cmd[1], str(CR.MAA / "cline_multi.py"))
         self.assertIn("run", cmd)
         self.assertIn("--provider", cmd)
@@ -117,6 +117,22 @@ class TestCommand(unittest.TestCase):
         self.assertEqual(cmd.count("--context"), 2)          # file + bundle
         self.assertIn("cline-pass/glm-5.3", cmd)
         self.assertEqual(cmd[cmd.index("--concurrency") + 1], "6")
+        # 02/10: harness chay cwd=Multi_AI_Agent -> file nguoi dung nhap phai TUYET DOI
+        ctx = [cmd[i + 1] for i, x in enumerate(cmd) if x == "--context"]
+        for p in ctx:
+            self.assertTrue(Path(p).is_absolute(), f"context phai tuyet doi: {p}")
+
+    def test_preflight_bao_loi_khi_thieu_file_context(self):
+        err = CR.preflight(self._args(file=["khong-ton-tai-xyz.py"]),
+                           ROOT / "tasks" / "code_review.txt")
+        self.assertIn("Khong thay file context", err)
+
+    def test_preflight_chan_khi_context_qua_lon(self):
+        """02/10: 2 file code + bundle = ~46k > 20k -> harness tu choi; phai bao TRUOC."""
+        args = self._args(file=["bot.py", "exchange.py"], max_context=20000)
+        err = CR.preflight(args, ROOT / "tasks" / "code_review.txt",
+                           bundle=ROOT / "logs" / "clinepass" / "bundle_safety_test.md")
+        self.assertIn("> gioi han", err or "")   # bundle khong ton tai -> chi tinh task+files
 
     def test_lenh_lab_dung_mode(self):
         cmd = CR.build_cmd(self._args(engine="lab", provider="openai", mode="consensus"),

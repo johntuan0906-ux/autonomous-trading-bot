@@ -89,10 +89,13 @@ class Settings:
     max_atr_pct: float = field(default_factory=lambda: _get_float("MAX_ATR_PCT", 0.05))
     max_consecutive_errors: int = field(default_factory=lambda: _get_int("MAX_CONSECUTIVE_ERRORS", 5))
     min_tp_pct: float = field(default_factory=lambda: _get_float("MIN_TP_PCT", 0.0))
-    # Notional toi thieu cua san (Binance USDT-M: 5 USDT; DEMO doi khi bao -4164
-    # "notional must be no smaller than 20"). Vi the con lai nho hon muc nay KHONG
-    # the dong bang lenh -> bot coi nhu da dong (ghi journal) thay vi giu 'xac' lenh.
-    min_notional_usdt: float = field(default_factory=lambda: _get_float("MIN_NOTIONAL_USDT", 20.0))
+    # Notional toi thieu cua san: Binance USDT-M LIVE = 5 USDT; DEMO/testnet doi khi
+    # bao -4164 "notional must be no smaller than 20". Mac dinh theo CHE DO dang chay
+    # (co the ghi de bang MIN_NOTIONAL_USDT trong .env) — hoi dong 14 model 01/10 da
+    # chi ra rang de 20 tren live se lam bot coi vai vi the nho la "bui" va ghi CLOSE
+    # trong khi lenh van con tren san.
+    min_notional_usdt: float = field(default_factory=lambda: _get_float(
+        "MIN_NOTIONAL_USDT", 20.0 if _get_bool("BINANCE_TESTNET", True) else 5.0))
 
     # Position life-cycle management (muc 12/13 tai lieu): partial / breakeven / trail
     partial_at_r: float = field(default_factory=lambda: _get_float("PARTIAL_AT_R", 0.3))

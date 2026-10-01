@@ -608,6 +608,11 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         if qty <= 0:
             results.append({"symbol": sym, "status": "BLOCKED_QTY"})
             continue
+        # Minh bach mau so sizing (hoi dong 14 model da thac mac "1000 hay 4947?"):
+        # `size_base` = bot.balance = min(BALANCE_USDT, equity thuc) = TRAN size;
+        # risk thuc = risk_pct% x size_base. Ghi vao log + journal de khong con tranh cai.
+        size_base = float(bot.balance)
+        risk_usdt = planned_risk_usd(lv["entry"], lv["sl"], qty)
         need = qty * lv["entry"] / max(cfg.leverage, 1)
         # Margin con lai = wallet - margin dang dung (neu doc duoc chi tiet).
         # Tranh mo them khi sap het margin -> -2019 lien tuc.
@@ -660,10 +665,13 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                       news_score=senti.score,
                       econ_event=nf.get("econ_event"), sentiment_n=senti.n_articles,
                       strategy=strat, kelly_size_mult=size_mult,
+                      size_base=size_base, risk_usdt=round(risk_usdt, 4),
                       feats=feats)
             flag = (" [TP_MONG]" if tp_small else "") + (" [FEE_THIN]" if fee_thin else "")
-            log.info("TURBO OPEN %s %s qty=%s SL=%s TP=%s alpha=%s strat=%s%s", direction,
-                     sym, qty, lv["sl"], lv["tp"], alpha, strat, flag)
+            log.info("TURBO OPEN %s %s qty=%s SL=%s TP=%s alpha=%s strat=%s%s | size_base=%.2f "
+                     "risk=%.2f$ (%.2f%% cua size_base)", direction,
+                     sym, qty, lv["sl"], lv["tp"], alpha, strat, flag,
+                     size_base, risk_usdt, 100.0 * cfg.risk_per_trade_pct)
             oid = entry_res.get("id") if isinstance(entry_res, dict) else None
             tg(cfg, fmt_open(sym, direction, qty, lv["entry"], lv["sl"], lv["tp"],
                              alpha, oid, flag))
@@ -720,7 +728,8 @@ def main() -> None:
     socket.setdefaulttimeout(float(cfg.socket_timeout_sec))
     heartbeat({"phase": "boot"})
     # P0-2: nap kill-switch da luu -> restart/supervisor KHONG con reset duoc lenh ngung
-    load_risk_state(cfg.risk_state_path, bot.kill)
+    load_risk_state(cfg.risk_state_path, bot.kill,
+                    warn=lambda m: log.warning("%s", m))
     # Phase 5: INTERLOCK LIVE — chan cung khi chua du dieu kien sang tien that
     # (LIVE_CONFIRM, n>=50, PF>=1.2, risk<=2%, lev<=10, kill-switch sach).
     # Dat TRUOC reconcile/adopt de khong ton tien API khi cau hinh chua hop le.

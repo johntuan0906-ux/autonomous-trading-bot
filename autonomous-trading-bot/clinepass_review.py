@@ -50,6 +50,15 @@ TASK_FILES = {
 }
 KINDS = ("none", "bot_state", "strategy", "safety")
 
+# Ràng buộc độ dài (thêm tự động vào nhiệm vụ) — rút ra từ phiên thật 01/10:
+# model glm-5.3 trả lời dài -> `finish_reason=length` -> nhánh bị coi là lỗi, và
+# finalizer (cùng model) đọc quá nhiều văn bản nên cũng bị cắt/thời gian chờ.
+LENGTH_FOOTER = (
+    "\n\nGIỚI HẠN ĐỘ DÀI (bắt buộc): mỗi chuyên gia trả lời TỐI ĐA 450 từ, "
+    "trình bày dạng gạch đầu dòng: phát hiện → bằng chứng trong dữ liệu → cách vá. "
+    "Không lặp lại nội dung context, không viết lan man; trả lời ngắn để không bị cắt."
+)
+
 
 
 def _read(path: Path, limit: int | None = None) -> str:
@@ -115,6 +124,22 @@ def _agent_stats() -> dict:
     return out
 
 
+def build_task_file(task_file: Path) -> Path:
+    """Nhiệm vụ gửi harness = nội dung gốc + ràng buộc độ dài (LENGTH_FOOTER).
+
+    Vì sao: phiên thật 01/10 cho thấy model trả lời dài bị `finish_reason=length`
+    (nhánh tính là lỗi) và finalizer bị quá tải. Giới hạn 450 từ/chuyên gia giúp
+    mọi nhánh kết thúc gọn. Nếu nhiệm vụ đã có ràng buộc thì giữ nguyên file gốc.
+    """
+    base = _read(task_file, 5000)
+    if not base.strip() or "GIỚI HẠN ĐỘ DÀI" in base:
+        return task_file
+    BUNDLE_DIR.mkdir(parents=True, exist_ok=True)
+    out = BUNDLE_DIR / f"task_{task_file.stem}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+    out.write_text(base + LENGTH_FOOTER, encoding="utf-8")
+    return out
+
+
 def build_bundle(kind: str) -> Path | None:
     """Gom du lieu THAT cua bot -> 1 file .md lam context cho hoi dong.
 
@@ -155,6 +180,16 @@ def build_bundle(kind: str) -> Path | None:
 
 def build_cmd(args, bundle: Path | None, task_file: Path) -> list:
     """Len lenh cho harness (tach rieng de test duoc, khong chay that)."""
+    if getattr(args, "check", False):
+        # `check` KHONG nhan task/context (harness tu choi) — chi kiem tra ket noi model.
+        cmd = [sys.executable, str(MAA / "cline_multi.py"), "check",
+               "--provider", str(args.provider), "--group", str(args.group),
+               "--output-dir", str(args.output_dir)]
+        if args.concurrency:
+            cmd += ["--concurrency", str(args.concurrency)]
+        for m in (args.model or []):
+            cmd += ["--model", str(m)]
+        return cmd
     if args.engine == "lab":
         cmd = [sys.executable, str(MAA / "main.py"), "run",
                "--mode", str(args.mode), "--provider", str(args.provider),
@@ -212,7 +247,7 @@ def summarize_report(report: Path, limit: int = 2600) -> str:
     return tail.strip()[:limit]
 
 
-def preflight(args, task_file: Path) -> str:
+def preflight(args, task_file: Path, need_task: bool = True) -> str:
     """Kiem tra truoc khi chay: tra ve thong bao loi ('' = san sang)."""
     try:
         import httpx  # noqa: F401
@@ -225,7 +260,7 @@ def preflight(args, task_file: Path) -> str:
         except ImportError:
             return ("Engine lab can openai + pydantic. Chay: python -m pip install -r "
                     "Multi_AI_Agent/requirements.txt")
-    if not task_file.is_file():
+    if need_task and not task_file.is_file():
         return f"Khong thay file nhiem vu: {task_file}"
     if args.engine == "clinepass" and args.provider == "clinepass" \
             and not os.getenv("CLINE_API_KEY", "").strip():
@@ -235,6 +270,23 @@ def preflight(args, task_file: Path) -> str:
             and not os.getenv("OPENAI_API_KEY", "").strip():
         return "Thieu OPENAI_API_KEY trong .env (hoac chay --provider mock)."
     return ""
+
+
+def _print_check_table(run_dir: Path) -> None:
+    """In bang trang thai tung model tu run.json (sau lenh --check/run)."""
+    try:
+        data = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        print("[warn] khong doc duoc run.json:", e)
+        return
+    rows = list(data.get("agents") or []) + ([data["finalizer"]] if data.get("finalizer") else [])
+    ok = [r for r in rows if r.get("status") == "ok"]
+    bad = [r for r in rows if r.get("status") != "ok"]
+    print(f"— Trang thai model: {len(ok)}/{len(rows)} OK | status tong: {data.get('status')}")
+    for r in bad:
+        print(f"   [LOI] {r.get('model')}: {str(r.get('error') or r.get('status'))[:110]}")
+    for r in ok:
+        print(f"   [OK ] {r.get('model')} ({r.get('label')})")
 
 
 def main(argv: list | None = None) -> int:
@@ -255,6 +307,8 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--concurrency", type=int)
     ap.add_argument("--output-dir", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--tg", action="store_true", help="gui tom tat ket qua len Telegram")
+    ap.add_argument("--check", action="store_true",
+                    help="kiem tra ket noi tung model ClinePass (KHONG goi finalizer, ton quota)")
     ap.add_argument("--list", action="store_true", help="in cac task/bundle co san roi thoat")
     ap.add_argument("--print-cmd", action="store_true", help="chi in lenh se chay (dry-run)")
     args = ap.parse_args(argv)
@@ -269,12 +323,18 @@ def main(argv: list | None = None) -> int:
               "Multi_AI_Agent/main.py (lab: group/handoff/parallel/consensus)")
         return 0
 
+    if args.check:
+        args.bundle = "none"
+        if args.provider == "mock":
+            args.provider = "clinepass"      # check mock la vo nghia
     task_file = TASKS / TASK_FILES[args.task]
-    err = preflight(args, task_file)
+    err = preflight(args, task_file, need_task=not args.check)
     if err:
         print("[LOI] " + err, file=sys.stderr)
         return 2
-    bundle = build_bundle(args.bundle)
+    bundle = None if args.check else build_bundle(args.bundle)
+    if not args.check:
+        task_file = build_task_file(task_file)
     cmd = build_cmd(args, bundle, task_file)
     print("Task   :", args.task, "| bundle:", args.bundle,
           f"({bundle.name})" if bundle else "")
@@ -292,6 +352,8 @@ def main(argv: list | None = None) -> int:
         if runs:
             rep = runs[-1] / "report.md"
             print("Report :", rep.resolve())
+            if args.check:
+                _print_check_table(runs[-1])
             if args.tg:
                 head = summarize_report(rep)
                 import notify  # gui Telegram bang chinh bot cua du an

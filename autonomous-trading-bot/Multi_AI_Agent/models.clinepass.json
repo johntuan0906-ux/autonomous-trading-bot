@@ -1,5 +1,5 @@
 {
-  "finalizer_model": "cline-pass/glm-5.3",
+  "finalizer_model": "cline-pass/deepseek-v4-pro",
   "agents": [
     {"model": "cline-pass/mimo-v2.6-flash", "label": "MiMo-V2.6-Flash", "role": "Phân rã yêu cầu, giả định và tiêu chí hoàn thành", "core": true},
     {"model": "cline-pass/mimo-v2.6-pro", "label": "MiMo-V2.6-Pro", "role": "Đề xuất kiến trúc và ranh giới các thành phần"},

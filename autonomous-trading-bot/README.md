@@ -329,6 +329,21 @@ python clinepass_review.py --engine lab --mode consensus --task live_readiness -
 - **Một key dùng cho hai việc**: `CLINE_API_KEY` vừa chạy hội đồng 14 model, vừa có thể làm provider
   cho hội đồng trading nội bộ (`AGENT_PROVIDER=openai_compat` + `AGENT_COMPAT_*`, xem `.env.example`).
 
+#### Kinh nghiệm chạy thật (01/10/2026)
+
+| Quan sát | Cách xử lý đã áp dụng |
+|---|---|
+| Gateway Cline bọc kết quả trong `{"data": {...}, "success": true}` → client cũ báo *"Phản hồi không đúng định dạng Chat Completions"* | `agent_lab/clinepass.unwrap_envelope()` nhận **cả hai** dạng (có test) |
+| Gateway **giới hạn ~4096 token output**; model nào "suy nghĩ" nhiều sẽ bị `finish_reason=length` → nhánh tính là lỗi | Rút ngắn yêu cầu trong prompt hệ thống (chuyên gia ≤450 từ, tổng hợp ≤800 từ) + tự thêm ràng buộc độ dài vào nhiệm vụ (`clinepass_review.LENGTH_FOOTER`) |
+| `cline-pass/glm-5.3` luôn chạm trần 4096 khi làm **finalizer** (không bao giờ có bản tổng hợp) | Đổi `finalizer_model` sang `cline-pass/deepseek-v4-pro` trong `Multi_AI_Agent/models.clinepass.json` (đã kiểm chứng hoàn thành >8000 token) |
+| Model chậm vượt 180s/ request | `CLINE_REQUEST_TIMEOUT=300`, `CLINE_RUN_TIMEOUT=1200` |
+| Báo cáo dài làm finalizer quá tải | `CLINE_SUMMARY_CHARS_PER_AGENT=1500` (finalizer ghi chú `excerpt_clipped=true`) |
+
+**Thời gian đo được**: `--check --group all` 14 model ≈ 18s · `--group core` (4+1) ≈ 2,5 phút ·
+`--group all` (14+1) ≈ 20–25 phút, có thể `partial` nếu model chậm/cắt output.
+
+**Đối chiếu nhanh**: `python clinepass_review.py --check --group all` (chỉ kiểm tra kết nối, không gọi finalizer).
+
 ### Phase 3b/4b — Council: hội đồng 2 vòng + chủ toạ (01/10)
 
 Ngoài macro/critic độc lập, bật `AGENTS_COUNCIL=true` để chạy **hội đồng** cho mỗi setup mới:

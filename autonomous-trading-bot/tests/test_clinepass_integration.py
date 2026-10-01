@@ -21,6 +21,27 @@ if str(ROOT) not in sys.path:
 
 import clinepass_review as CR                                                   # noqa: E402
 
+sys.path.insert(0, str(ROOT / "Multi_AI_Agent"))
+from agent_lab.clinepass import unwrap_envelope                               # noqa: E402
+
+
+class TestEnvelope(unittest.TestCase):
+    """Gateway Cline boc ket qua trong {"data": ...} (01/10) — client phai nhan ca 2 dang."""
+
+    def test_boc_data(self):
+        inner = {"choices": [{"message": {"content": "OK"}, "finish_reason": "stop"}],
+                 "usage": {"prompt_tokens": 5, "completion_tokens": 1}}
+        got = unwrap_envelope({"data": inner, "success": True})
+        self.assertIs(got, inner)
+
+    def test_dang_phang_giu_nguyen(self):
+        flat = {"choices": [{"message": {"content": "OK"}}]}
+        self.assertIs(unwrap_envelope(flat), flat)
+
+    def test_dang_la_giu_nguyen_de_bao_loi_sai_dinh_dang(self):
+        self.assertEqual(unwrap_envelope({"error": "model not found"}), {"error": "model not found"})
+        self.assertEqual(unwrap_envelope(None), {})
+
 
 def _env_secret_values() -> list:
     """Các giá trị bí mật (khác rỗng) trong .env — dùng để chắc chắn không lọt vào bundle."""
@@ -37,6 +58,22 @@ def _env_secret_values() -> list:
     except OSError:
         pass
     return out
+
+
+class TestTaskFile(unittest.TestCase):
+    """Nhiệm vụ gửi harness phải kèm ràng buộc độ dài (tránh finish_reason=length)."""
+
+    def test_them_ràng_buoc_do_dai(self):
+        p = CR.build_task_file(ROOT / "tasks" / "safety_audit.txt")
+        body = p.read_text(encoding="utf-8")
+        self.assertIn("GIỚI HẠN ĐỘ DÀI", body)
+        self.assertIn("450 từ", body)
+        self.assertLessEqual(len(body), 6000, "harness chi nhan task <= 6000 ky tu")
+
+    def test_khong_nhan_doi_neu_da_co(self):
+        p1 = CR.build_task_file(ROOT / "tasks" / "safety_audit.txt")
+        p2 = CR.build_task_file(p1)
+        self.assertEqual(p1, p2, "task da co rang buoc thi giu nguyen")
 
 
 class TestBundle(unittest.TestCase):

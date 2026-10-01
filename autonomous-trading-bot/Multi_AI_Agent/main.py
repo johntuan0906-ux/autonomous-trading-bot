@@ -22,7 +22,7 @@ def parser() -> argparse.ArgumentParser:
     check = commands.add_parser("doctor", help="Kiem tra cai dat; mac dinh khong goi API")
     check.add_argument("--live", action="store_true", help="Goi 1 request API nho, co the tinh phi")
     run = commands.add_parser("run", help="Thuc hien 1 nhiem vu bang nhom agent")
-    run.add_argument("--mode", choices=("group", "handoff", "parallel"), default="handoff")
+    run.add_argument("--mode", choices=("group", "handoff", "parallel", "consensus"), default="handoff")
     run.add_argument("--provider", choices=("mock", "openai"))
     task = run.add_mutually_exclusive_group(required=True)
     task.add_argument("--task", help="Mo ta nhiem vu; dat trong dau ngoac kep")

@@ -18,7 +18,8 @@ import time
 from pathlib import Path
 
 from bot import TradingBot
-from agents import AgentLayer, review_payload, setup_payload
+from agents import (COUNCIL_ROLES, AgentLayer, council_decision,               # noqa: E402
+                    council_summary_text, review_payload, setup_payload)
 from config import Settings
 from derivatives import derivatives_guard, fetch_liquidations, fetch_oi_funding
 from exchange import BinanceFutures
@@ -249,7 +250,16 @@ def agent_layer(cfg):
 
 def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
                      tech: dict, senti, regime: str) -> None:
-    """Ghi y kien macro+critic cho 1 setup — CHAY NEN, khong doi hanh vi/khong chan."""
+    """Ghi y kien agent cho 1 setup — CHAY NEN, khong doi hanh vi/khong chan.
+
+    Che do (AGENTS_COUNCIL):
+      - False (mac dinh): macro + critic doc lap (nhu cu).
+      - True: HOI DONG — macro -> critic (doc y kien macro) -> arbiter (chu toa),
+        quy tac quorum tat dinh trong agents._final_from_council. Ket qua arbiter
+        duoc ghi voi status="COUNCIL" de do RIENG bang chung cap quyen veto
+        (AGENT_VETO_SOURCE=COUNCIL).
+    AGENT_TG_VOTES=true: gui tom tat phien hop (hoac 2 phieu) len Telegram.
+    """
     layer = agent_layer(cfg)
     if layer is None:
         return
@@ -262,15 +272,56 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
         log.warning("AGENTS: payload loi (bo qua): %s", e)
         return
 
+    use_council = bool(getattr(cfg, "agents_council", False))
+    tg_votes = bool(getattr(cfg, "agent_tg_votes", False))
+
+    def _tg_once(text: str) -> None:
+        if not (tg_votes and text):
+            return
+        try:
+            tg(cfg, text[:900])
+        except Exception:  # noqa: BLE001
+            pass
+
+    if use_council:
+        def _job_council():
+            res = council_decision(layer, pay, log=log)
+            hit = False
+            for role in COUNCIL_ROLES:
+                d = (res.get("stages") or {}).get(role)
+                if d is None:
+                    continue
+                hit = hit or bool(d.cache_hit)
+                layer.log_decision(d, extra={
+                    "symbol": sym, "direction": direction, "stage": role,
+                    "consensus": res.get("consensus"),
+                    "final_action": res.get("action"),
+                    "status": "COUNCIL" if role == "arbiter" else "SETUP"})
+            if res.get("action") == "VETO":
+                log.warning("COUNCIL VETO %s %s (%s, conf=%.2f) [shadow]", direction, sym,
+                            res.get("consensus"), float(res.get("confidence") or 0))
+            if not hit:                      # chi gui khi co cuoc goi THAT (khong cache)
+                _tg_once(council_summary_text(sym, direction, res))
+
+        _agent_submit(_job_council)
+        return
+
     def _job():
+        lines = []
+        cached = False
         for role in ("macro", "critic"):
             d = layer.vote(role, pay)
+            cached = cached or bool(d.cache_hit)
             layer.log_decision(d, extra={"symbol": sym, "direction": direction,
                                          "status": "SETUP"})
+            lines.append(f"{role}: {d.action} {float(d.confidence or 0):.2f}")
             if d.action == "VETO":
                 log.warning("AGENT %s VETO %s %s (conf=%.2f): %s [shadow=%s]",
                             role, direction, sym, d.confidence,
                             "; ".join(d.reasons)[:120], d.shadow)
+        if not cached:
+            _tg_once(f"🧠 AGENTS {sym.split('/')[0]} {direction.upper()} -> "
+                     + " | ".join(lines))
 
     _agent_submit(_job)
 
@@ -285,7 +336,8 @@ def agent_authority_cached(cfg, ttl_sec: float = 3600.0) -> dict:
         from agents import agent_authority as _auth
         res = _auth(str(getattr(cfg, "agent_journal_path", "logs/journal.jsonl")),
                     min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
-                    min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15))
+                    min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15),
+                    status=str(getattr(cfg, "agent_veto_source", "SETUP") or "SETUP"))
     except Exception as e:  # noqa: BLE001
         res = {"granted": False, "reason": f"loi tinh authority: {str(e)[:80]}"}
     _AGENT_AUTH["ts"] = now

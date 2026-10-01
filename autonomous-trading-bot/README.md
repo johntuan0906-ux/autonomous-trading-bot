@@ -290,6 +290,34 @@ provider phát hiện shim, báo lỗi rõ, fail-open ⇒ bot không thể treo.
 | 4 | **Cấp quyền hành động** cho agent — chỉ khi có bằng chứng shadow | ✅ cơ chế xong, đang **khoá** (chưa đủ bằng chứng) |
 | 5 | **Interlock LIVE** — chặn cứng khi sang tiền thật (`live_guard.py`) | ✅ xong (đã nối vào `turbo_demo.main()`) |
 
+### Phase 3b/4b — Council: hội đồng 2 vòng + chủ toạ (01/10)
+
+Ngoài macro/critic độc lập, bật `AGENTS_COUNCIL=true` để chạy **hội đồng** cho mỗi setup mới:
+
+```
+vòng 1: macro  → đọc dữ liệu thị trường
+vòng 2: critic → đọc dữ liệu + Ý KIẾN CỦA MACRO ('peer') → đồng ý/phản đối
+vòng 3: arbiter (chủ toạ) → đọc CẢ HAI ('council') → quyết định cuối
+```
+
+**Quy tắc quorum tất định** (`agents._final_from_council`, không phụ thuộc LLM):
+
+| macro | critic | kết quả |
+|---|---|---|
+| VETO | VETO | **VETO** (đồng thuận chặn — chủ toạ không ghi đè được) |
+| ALLOW | ALLOW | **ALLOW** (chủ toạ không chặn được đồng thuận cho phép) |
+| VETO | ALLOW | **chủ toạ quyết** (`consensus=split`) |
+| thiếu phiếu | — | chủ toạ quyết (`arbiter_only`) |
+
+- Chạy thử ngay 1 phiên thật: `python agents.py --council-test SOL/USDT:USDT SHORT`
+- Đo bằng chứng **riêng** cho hội đồng: `python agents.py --authority` in hai khối `[SETUP]` và
+  `[COUNCIL]`; đổi nguồn cấp quyền veto bằng `AGENT_VETO_SOURCE=COUNCIL` khi khối COUNCIL đủ mẫu.
+- `AGENT_TG_VOTES=true`: mỗi phiên hội đồng (không tính cache) gửi 1 tin Telegram:
+  `🧠 COUNCIL SOL SHORT -> VETO (arbiter_only)` + ý kiến từng vai.
+- Khi veto được cấp quyền, đường veto cũng dùng **hội đồng** nếu `AGENTS_COUNCIL=true`
+  (macro+critic+chủ toạ, quorum tất định) thay vì 1 phiếu critic.
+- Vẫn **shadow 100%**: hội đồng chỉ ghi journal + Telegram, không tự đổi qty/SL/TP/kill-switch.
+
 ### Phase 5 — interlock LIVE (không thể vô tình sang tiền thật)
 
 Trước đây đổi `BINANCE_TESTNET=false` là bot chạy tiền thật ngay. Giờ **không thể**:

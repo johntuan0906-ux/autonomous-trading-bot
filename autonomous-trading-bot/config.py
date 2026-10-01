@@ -164,6 +164,16 @@ class Settings:
         default_factory=lambda: _get("AGENT_PROPOSALS_PATH", "logs/agent_proposals.jsonl"))
     reflect_min_n: int = field(default_factory=lambda: _get_int("REFLECT_MIN_N", 20))
 
+    # ---- Council (hoi dong 2 vong + chu toa) — 01/10, MAC DINH TAT ----
+    # Bat: macro -> critic (doc y kien macro) -> arbiter (chu toa) theo quy tac quorum
+    # tat dinh trong agents._final_from_council. Van la SHADOW (chi ghi nhan/di Telegram).
+    agents_council: bool = field(default_factory=lambda: _get_bool("AGENTS_COUNCIL", False))
+    # Gui tom tat phien hop hoi dong len Telegram (mac dinh TAT de khong spam).
+    agent_tg_votes: bool = field(default_factory=lambda: _get_bool("AGENT_TG_VOTES", False))
+    # Nguon bang chung de cap quyen veto: "SETUP" (macro/critic) hoac "COUNCIL" (arbiter).
+    agent_veto_source: str = field(
+        default_factory=lambda: _get("AGENT_VETO_SOURCE", "SETUP").strip().upper() or "SETUP")
+
     # ---- Phase 4: cap quyen hanh dong CHO AGENT, nhung phai co bang chung shadow ----
     # MAC DINH TAT: chi bat khi agent_authority() chung minh nhom VETO te hon ALLOW
     # (n_veto >= AGENT_VETO_MIN_N va gap >= AGENT_VETO_MIN_GAP). Veto chi duoc PHEP

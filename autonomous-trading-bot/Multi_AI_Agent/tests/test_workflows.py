@@ -7,9 +7,9 @@ from pathlib import Path
 
 from agent_lab.config import Settings
 from agent_lab.context import load_context
-from agent_lab.engine import Engine
+from agent_lab.engine import AGENTS, Engine
 from agent_lab.providers import MockProvider, ModelResult, ProviderError
-from agent_lab.schemas import Contribution, Decision, FinalAnswer
+from agent_lab.schemas import Contribution, ConsensusTurn, Decision, FinalAnswer
 from agent_lab.storage import RunStore
 
 
@@ -37,7 +37,7 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
                       "Test mục tiêu", [{"file": "a.py", "text": "x = 1"}], [], mode)
 
     async def test_all_modes_terminate_and_persist_real_transcripts(self):
-        for mode, calls in (("handoff", 4), ("group", 8), ("parallel", 4)):
+        for mode, calls in (("handoff", 4), ("group", 8), ("parallel", 4), ("consensus", 6)):
             with self.subTest(mode=mode):
                 engine = self.make_engine(mode)
                 state = await engine.run()
@@ -125,6 +125,33 @@ class Workflows(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(state["status"], "limit_reached")
         self.assertEqual(len(state["transcript"]), 1)
         self.assertIsNotNone(state["final"])
+
+    async def test_consensus_builds_final_from_agents_once_all_agree(self):
+        provider = CaptureMock()
+        state = await self.make_engine("consensus", provider).run()
+        self.assertEqual(state["status"], "completed")
+        self.assertEqual(state["usage"]["calls_attempted"], 6)
+        self.assertNotIn("finalizer", {r.role for r in provider.requests})
+        self.assertEqual({x["agent"] for x in state["transcript"][:3]}, set(AGENTS))
+        for role in AGENTS:
+            self.assertIn(role, state["final"]["answer_markdown"])
+        self.assertEqual(state["final"]["limitations"], [])
+
+    async def test_consensus_discloses_unresolved_disagreement_instead_of_picking(self):
+        class NeverAgrees(MockProvider):
+            async def generate(self, request):
+                if request.schema is ConsensusTurn:
+                    return ModelResult(ConsensusTurn(
+                        content=f"[MÔ PHỎNG] {request.role} vẫn giữ lập trường.",
+                        recommendation=f"[MÔ PHỎNG] đề xuất của {request.role}",
+                        agrees_with_all=False, open_disagreements=[f"{request.role} không đồng ý mốc thời gian"],
+                    ))
+                return await super().generate(request)
+        state = await self.make_engine("consensus", NeverAgrees(), max_turns=2).run()
+        self.assertEqual(state["status"], "limit_reached")
+        self.assertEqual(state["usage"]["calls_attempted"], 6)
+        self.assertIn("Chưa đạt đồng thuận", state["final"]["answer_markdown"])
+        self.assertEqual(len(state["final"]["limitations"]), 3)
 
     async def test_global_timeout_cancels_parallel_workers_and_saves_work(self):
         class Slow(MockProvider):

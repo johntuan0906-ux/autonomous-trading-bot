@@ -42,7 +42,9 @@ except Exception:  # noqa: BLE001
     pass
 
 ACTIONS = ("ALLOW", "VETO", "NO_OPINION")
-ROLES = ("macro", "critic", "review", "reflect")
+ROLES = ("macro", "critic", "review", "reflect", "arbiter")
+# Hoi dong (council) = 2 vong + chu toa: macro -> critic (da doc y kien macro) -> arbiter.
+COUNCIL_ROLES = ("macro", "critic", "arbiter")
 STATE_PATH = "logs/agent_state.json"
 JOURNAL_PATH = "logs/journal.jsonl"
 PROPOSALS_PATH = "logs/agent_proposals.jsonl"
@@ -916,9 +918,17 @@ _SYSTEM = {
               "\"confidence\":0..1,\"reasons\":[..],\"risk_flags\":[..]}. "
               "Chi VETO khi co ly do vi mo ro rang (tin khan cap / chi so xau)."),
     "critic": ("Ban la nguoi phan bien setup giao dich. Voi du lieu nen/dong luong duoc "
-               "cho, chi ra vi sao lenh nay CO THE THUA. Tra ve DUY NHAT 1 JSON: "
+               "cho, chi ra vi sao lenh nay CO THE THUA. Neu payload co 'peer' (y kien "
+               "cua agent khac), hay noi RO ban DONG Y hay PHAN DOI va vi sao. "
+               "Tra ve DUY NHAT 1 JSON: "
                "{\"action\":\"ALLOW|VETO|NO_OPINION\",\"confidence\":0..1,"
                "\"reasons\":[..],\"risk_flags\":[..]}. Khong bia so lieu."),
+    "arbiter": ("Ban la CHU TOA hoi dong (macro + critic da cho y kien trong payload "
+                "['council']). Nhiem vu: quyet dinh CUOI CUNG cho lenh nay, co tinh den "
+                "ca hai y kien va muc do dong thuan. Uu tien bao toan von: neu co ly do "
+                "rui ro ro rang thi VETO. Tra ve DUY NHAT 1 JSON: "
+                "{\"action\":\"ALLOW|VETO|NO_OPINION\",\"confidence\":0..1,"
+                "\"reasons\":[..],\"risk_flags\":[..]}. Khong bia so lieu."),
     "review": ("Ban rut kinh nghiem sau khi 1 lenh dong. Tra ve DUY NHAT 1 JSON: "
                "{\"action\":\"ALLOW|VETO|NO_OPINION\",\"confidence\":0..1,"
                "\"reasons\":[..],\"risk_flags\":[..]}; reasons la bai hoc cu the, "
@@ -1096,11 +1106,13 @@ def review_payload(symbol: str, direction: str, r_multiple: float, won: bool,
 
 
 def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
-                    min_gap: float = 0.15, horizon_h: float = 48.0) -> dict:
+                    min_gap: float = 0.15, horizon_h: float = 48.0,
+                    status: str = "SETUP") -> dict:
     """Phase 4: co du bang chung SHADOW de cap quyen VETO that cho agent khong?
 
     Cach lam (tat dinh, khong LLM): doc journal ->
-      * lay cac ban ghi event=AGENT status=SETUP (macro/critic) co VETO/ALLOW;
+      * lay cac ban ghi event=AGENT status=`status` (mac dinh SETUP = macro/critic;
+        dat status="COUNCIL" de do RIENG quyet dinh cua hoi dong/arbiter) co VETO/ALLOW;
       * ghep moi ban ghi voi lenh CLOSE DAU TIEN cung symbol/direction sau thoi diem
         do (trong `horizon_h` gio);
       * so sanh avgR nhom VETO vs nhom ALLOW.
@@ -1126,7 +1138,7 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
     except Exception:  # noqa: BLE001
         recs = []
     for rec in recs:
-        if rec.get("event") != "AGENT" or str(rec.get("status")) != "SETUP":
+        if rec.get("event") != "AGENT" or str(rec.get("status")) != str(status):
             continue
         act = str(rec.get("action") or "").upper()
         if act not in cohorts:
@@ -1153,24 +1165,134 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
               if granted else
               f"chua du bang chung (n_veto={nv}/{min_n}, gap={gap:+.3f}R/{min_gap})")
     return {"granted": granted, "reason": reason, "veto_n": nv, "veto_avg_r": av,
-            "allow_n": na, "allow_avg_r": aa, "gap": gap}
+            "allow_n": na, "allow_avg_r": aa, "gap": gap, "status": str(status)}
+
+
+# ---- HOI DONG (council): 2 vong + chu toa ------------------------------------
+
+def consensus_of(macro: str, critic: str, final: str, arbiter: str = "NO_OPINION") -> str:
+    """Nhan xet dong thuan (TAT DINH, chi de do luong + hien thi)."""
+    m, c, f = str(macro).upper(), str(critic).upper(), str(final).upper()
+    if m == "VETO" and c == "VETO":
+        return "unanimous_veto"
+    if m == "ALLOW" and c == "ALLOW":
+        return "unanimous_allow"
+    if m in ("ALLOW", "VETO") and c in ("ALLOW", "VETO"):
+        return "split"
+    if str(arbiter).upper() in ("ALLOW", "VETO") and f in ("ALLOW", "VETO"):
+        return "arbiter_only"
+    return "none"
+
+
+def _final_from_council(macro, critic, arbiter) -> tuple:
+    """Quy tac quorum TAT DINH (khong phu thuoc LLM): (action, conf, why).
+
+    - Ca hai VETO  -> VETO (dong thuan chan, khong the ghi de).
+    - Ca hai ALLOW -> ALLOW (chu toa khong the chan mot dong thuan cho phep).
+    - Chia phieu (1 VETO / 1 ALLOW) -> CHU TOA quyet dinh.
+    - Thieu phieu (NO_OPINION / loi) -> chu toa; neu chu toa cung khong co -> NO_OPINION.
+    """
+    m, c = str(getattr(macro, "action", "")).upper(), str(getattr(critic, "action", "")).upper()
+    a = str(getattr(arbiter, "action", "")).upper()
+    mc, cc, ac = (float(getattr(x, "confidence", 0.0) or 0.0)
+                  for x in (macro, critic, arbiter))
+    if m == "VETO" and c == "VETO":
+        return "VETO", max(mc, cc), "macro+critic cung VETO"
+    if m == "ALLOW" and c == "ALLOW":
+        return "ALLOW", max(mc, cc), "macro+critic cung ALLOW"
+    if m in ("ALLOW", "VETO") and c in ("ALLOW", "VETO"):
+        if a in ("ALLOW", "VETO"):
+            return a, ac, f"chia phieu -> chu toa quyet {a}"
+        return "NO_OPINION", 0.0, "chia phieu nhung chu toa khong co y kien"
+    if a in ("ALLOW", "VETO"):
+        return a, ac, "thieu phieu -> chu toa quyet"
+    return "NO_OPINION", 0.0, "khong du phieu"
+
+
+def council_decision(layer, payload: dict, log=None) -> dict:
+    """HOI DONG 2 vong + chu toa (SHADOW, chi co van).
+
+    Vong 1: macro + critic doc CUNG du lieu -> critic con duoc doc y kien macro
+            (`peer`) de dong y / phan doi tuong minh.
+    Vong 2: arbiter doc ca hai y kien (`council`) -> quyet dinh cuoi theo quy tac
+            quorum tat dinh o `_final_from_council`.
+
+    Tra {stages, action, confidence, consensus, why}. Moi buoc deu di qua `layer.vote`
+    nen VAN tuan thu ngan sach/cache/circuit-breaker va KHONG the doi hanh vi trading
+    (nguoi goi quyet dinh co dung hay khong).
+    """
+    stages: dict = {}
+    macro = layer.vote("macro", payload)
+    stages["macro"] = macro
+    peer = {"role": "macro", "action": macro.action,
+            "confidence": round(float(macro.confidence or 0.0), 2),
+            "reasons": [str(x) for x in list(macro.reasons or [])[:2]]}
+    critic = layer.vote("critic", {**(payload or {}), "peer": peer})
+    stages["critic"] = critic
+    council = {
+        "macro": peer,
+        "critic": {"role": "critic", "action": critic.action,
+                   "confidence": round(float(critic.confidence or 0.0), 2),
+                   "reasons": [str(x) for x in list(critic.reasons or [])[:3]]},
+    }
+    arbiter = layer.vote("arbiter", {**(payload or {}), "council": council})
+    stages["arbiter"] = arbiter
+    action, conf, why = _final_from_council(macro, critic, arbiter)
+    cons = consensus_of(macro.action, critic.action, action, arbiter.action)
+    if log:
+        log.info("COUNCIL %s %s -> %s (%.2f) [%s] %s",
+                 (payload or {}).get("symbol", "?"), (payload or {}).get("direction", "?"),
+                 action, conf, cons, why)
+    return {"stages": stages, "action": action, "confidence": round(conf, 2),
+            "consensus": cons, "why": why}
+
+
+def council_summary_text(symbol: str, direction: str, res: dict) -> str:
+    """Tom tat 1 tin Telegram cho 1 phien hop hoi dong (ngan, de doc)."""
+    st = res.get("stages") or {}
+
+    def _line(role: str) -> str:
+        d = st.get(role)
+        if d is None:
+            return ""
+        why = "; ".join(str(x) for x in list(getattr(d, "reasons", []) or [])[:1])[:70]
+        return (f"{role}: {d.action} {float(d.confidence or 0.0):.2f}"
+                + (f" | {why}" if why else ""))
+
+    head = (f"🧠 COUNCIL {str(symbol).split('/')[0]} {str(direction).upper()} -> "
+            f"{res.get('action')} ({res.get('consensus')})")
+    return "\n".join([head] + [x for x in (_line(r) for r in COUNCIL_ROLES) if x])
 
 
 def veto_decision(cfg, layer, payload: dict) -> dict:
     """Phase 4 (opt-in): xin y kien DONG BO de chan 1 lenh sap mo.
 
     CHI duoc goi khi: agents_veto_enabled=true VA agent_authority da cap quyen.
+    Neu `agents_council=true` -> quyet dinh lay tu HOI DONG (2 vong + chu toa, quy tac
+    quorum tat dinh); nguoc lai dung 1 phieu 'critic' nhu truoc.
     Tra {"block": bool, "decision": dict}. Loi/khong chac chan -> block=False
     (fail-open: quyen veto khong duoc phep lam bot bo lo co hoi vi loi ky thuat).
     """
     try:
-        dec = layer.vote("critic", payload)
+        if bool(getattr(cfg, "agents_council", False)):
+            res = council_decision(layer, payload)
+            dec = (res.get("stages") or {}).get("arbiter")
+            action = str(res.get("action") or "NO_OPINION").upper()
+            conf = float(res.get("confidence") or 0.0)
+            info = dict(getattr(dec, "to_dict", lambda: {})() or {})
+            info.update({"council": True, "consensus": res.get("consensus"),
+                         "why": res.get("why"), "final_action": action,
+                         "final_confidence": round(conf, 3)})
+        else:
+            dec = layer.vote("critic", payload)
+            action = str(dec.action).upper()
+            conf = float(dec.confidence or 0.0)
+            info = dec.to_dict()
     except Exception as e:  # noqa: BLE001
         return {"block": False, "decision": {"error": str(e)[:120]}}
-    conf = float(dec.confidence or 0.0)
     min_conf = _f(getattr(cfg, "agent_veto_min_conf", 0.7), 0.7)
-    block = (str(dec.action).upper() == "VETO" and conf >= min_conf)
-    return {"block": bool(block), "decision": dec.to_dict(), "min_conf": min_conf}
+    block = (action == "VETO" and conf >= min_conf)
+    return {"block": bool(block), "decision": info, "min_conf": min_conf}
 
 
 def reflect_payload(digest: dict, blocked=()) -> dict:
@@ -1391,6 +1513,9 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--apply", type=int, default=-1, metavar="ID",
                     help="ap dung de xuat so ID (can --yes de ghi that; ID bat dau tu 0)")
     ap.add_argument("--yes", action="store_true", help="xac nhan ghi that (--apply)")
+    ap.add_argument("--council-test", nargs=2, metavar=("SYMBOL", "DIRECTION"),
+                    default=None,
+                    help="chay thu 1 phien hoi dong THAT (macro/critic/arbiter) va in ket qua")
     ap.add_argument("--authority", action="store_true",
                     help="Phase 4: xem da du bang chung de cap quyen VETO cho agent chua")
     ap.add_argument("--auto-apply", action="store_true",
@@ -1411,25 +1536,61 @@ def main(argv: list | None = None) -> int:
     if args.doctor:
         return doctor(cfg)
     if args.authority:
-        auth = agent_authority(args.journal,
-                               min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
-                               min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15))
-        print("Phase 4 — quyen VETO cho agent:")
-        print("  granted = %s | %s" % (auth.get("granted"), auth.get("reason")))
-        print("  nhom VETO : n=%s avgR=%+.4f" % (auth.get("veto_n"), auth.get("veto_avg_r") or 0))
-        print("  nhom ALLOW: n=%s avgR=%+.4f" % (auth.get("allow_n"), auth.get("allow_avg_r") or 0))
-        print("  gap (ALLOW-VETO) = %+.4f  (can >= %s va n_veto >= %s)"
-              % (auth.get("gap") or 0, getattr(cfg, "agent_veto_min_gap", 0.15),
+        print("Phase 4 — quyen VETO cho agent (do theo tung nguon bang chung):")
+        for src in ("SETUP", "COUNCIL"):
+            auth = agent_authority(args.journal, status=src,
+                                   min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
+                                   min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15))
+            tag = "  (dang dung de cap quyen)" if src == getattr(
+                cfg, "agent_veto_source", "SETUP") else ""
+            print(f"[{src}]{tag}")
+            print("  granted = %s | %s" % (auth.get("granted"), auth.get("reason")))
+            print("  nhom VETO : n=%s avgR=%+.4f" % (auth.get("veto_n"), auth.get("veto_avg_r") or 0))
+            print("  nhom ALLOW: n=%s avgR=%+.4f" % (auth.get("allow_n"), auth.get("allow_avg_r") or 0))
+            print("  gap (ALLOW-VETO) = %+.4f  (can >= %s va n_veto >= %s)"
+                  % (auth.get("gap") or 0, getattr(cfg, "agent_veto_min_gap", 0.15),
                  getattr(cfg, "agent_veto_min_n", 10)))
         print("  AGENTS_VETO_ENABLED trong .env = %s"
               % getattr(cfg, "agents_veto_enabled", False))
-        if not auth.get("granted"):
+        print("  AGENT_VETO_SOURCE = %s (doi sang COUNCIL neu muon hoi dong lam nguon "
+              "bang chung)" % getattr(cfg, "agent_veto_source", "SETUP"))
+        _any = any(agent_authority(args.journal, status=s).get("granted")
+                   for s in ("SETUP", "COUNCIL"))
+        if not _any:
             print("  -> CHUA cap quyen: bot KHONG bi chan lenh nao boi agent.")
         elif not getattr(cfg, "agents_veto_enabled", False):
-            print("  -> Du bang chung nhung veto dang TAT: dat AGENTS_VETO_ENABLED=true de bat.")
+            print("  -> Du bang chung nhung veto dang TAT: dat AGENTS_VETO_ENABLED=true.")
         else:
             print("  -> Veto DANG BAT: lenh co the bi bo qua khi agent VETO (conf >= %s)."
                   % getattr(cfg, "agent_veto_min_conf", 0.7))
+        return 0
+
+    if args.council_test:
+        # Hoi dong chay THAT (1 lan, ton ~3 cuoc goi): xem 3 vai + tom tat Telegram.
+        object.__setattr__(cfg, "agents_enabled", True)
+        layer = AgentLayer(cfg, journal=args.journal, state_path=args.state)
+        sym = str(args.council_test[0])
+        direction = str(args.council_test[1]).upper()
+        pay = setup_payload(sym, direction, 0.42, "NONE",
+                            {"rsi": 58.0, "atr_pct": 0.012, "vol_ratio": 1.1,
+                             "pattern": "none"},
+                            {"score": 0.1, "urgent_bearish": 0}, "UPTREND",
+                            {"note": "council test (du lieu gia de thu)"})
+        print(f"HOI DONG (test) — {sym} {direction} | provider={getattr(layer.provider, 'name', '?')}")
+        res = council_decision(layer, pay, log=None)
+        for role in COUNCIL_ROLES:
+            d = (res.get("stages") or {}).get(role)
+            if d is None:
+                continue
+            print(f"  {role:8} -> {d.action:11} conf={d.confidence:.2f} "
+                  f"cache={d.cache_hit} {('| ' + '; '.join(d.reasons)[:90]) if d.reasons else ''}")
+            layer.log_decision(d, extra={"symbol": sym, "direction": direction,
+                                         "stage": role, "consensus": res.get("consensus"),
+                                         "final_action": res.get("action"),
+                                         "status": "COUNCIL" if role == "arbiter" else "SETUP"})
+        print(f"  => KET LUAN: {res.get('action')} ({res.get('consensus')}) — {res.get('why')}")
+        print("  --- Tin Telegram se gui (neu AGENT_TG_VOTES=true): ---")
+        print(council_summary_text(sym, direction, res))
         return 0
 
     if args.auto_apply:

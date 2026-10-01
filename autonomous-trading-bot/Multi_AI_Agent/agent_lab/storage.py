@@ -44,7 +44,14 @@ class RunStore:
             sections.extend(["## Lỗi", "\n".join("- " + x for x in state["errors"])])
         sections.append("## Đóng góp của từng agent")
         for row in state["transcript"]:
-            sections.extend([f"### {row['agent']}", row["content"], "Bàn giao: " + row["handoff_note"]])
+            sections.append(f"### {row['agent']}")
+            sections.append(row["content"])
+            if "handoff_note" in row:
+                sections.append("Bàn giao: " + row["handoff_note"])
+            if "recommendation" in row:
+                sections.append("Đề xuất: " + row["recommendation"])
+            if row.get("open_disagreements"):
+                sections.append("Bất đồng còn lại: " + "; ".join(row["open_disagreements"]))
         usage = state["usage"]
         sections.extend(["## Thống kê", f"Lượt gọi thử: {usage['calls_attempted']}; "
                          f"input tokens: {usage['input_tokens']}; output tokens: {usage['output_tokens']}.",

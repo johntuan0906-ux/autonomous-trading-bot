@@ -6,7 +6,7 @@ import time
 from .config import Settings
 from .prompts import instructions
 from .providers import ModelRequest, Provider, ProviderError
-from .schemas import Contribution, Decision, FinalAnswer
+from .schemas import ConsensusTurn, Contribution, Decision, FinalAnswer
 from .storage import RunStore, now
 
 AGENTS = ("planner", "builder", "reviewer")
@@ -168,16 +168,76 @@ class Engine:
             self.state["status"] = "partial"
             self.state["warnings"].append("Thiếu báo cáo của ít nhất một chuyên gia; bản tổng hợp có giới hạn.")
 
+    def _consensus_final(self, turns: dict, *, converged: bool) -> None:
+        """Ghep cau tra loi bang code tu chinh cac agent — khong qua model nao chon/dien giai lai."""
+        heading = ("## Đồng thuận giữa planner/builder/reviewer" if converged
+                  else "## Chưa đạt đồng thuận — các vai trò còn khác biệt")
+        lines = [heading]
+        for role in AGENTS:
+            turn = turns.get(role)
+            if turn is not None:
+                lines.append(f"**{role}**: {turn.recommendation}")
+        disagreements = sorted({d for t in turns.values() for d in t.open_disagreements})
+        if not converged and not disagreements:
+            disagreements = ["Het so vong cho phep (MAX_TURNS) ma chua ca ba xac nhan dong y."]
+        self.state["final"] = {"answer_markdown": "\n\n".join(lines), "limitations": disagreements}
+
+    async def consensus(self) -> None:
+        """Khong co nguoi chon cau tra loi: dung khi CA BA agent TU xac nhan dong y
+        (agrees_with_all), khong thi bao ro con bat dong thay vi an di bang 1 ban tong
+        hop nghe tron tru. Vong 1 doc lap; tu vong 2 moi agent doc recommendation/
+        open_disagreements vong truoc cua CA BA roi tu quyet dinh co con phan doi khong.
+        """
+        last: dict[str, ConsensusTurn] = {}
+        for turn in range(self.settings.max_turns):
+            independent = turn == 0
+            instruction = (
+                "Vòng 1: đánh giá độc lập, đề xuất recommendation cụ thể và nêu điểm còn cần kiểm tra."
+                if independent else
+                f"Vòng {turn + 1}: đọc recommendation/open_disagreements vòng trước của CẢ BA vai trò. "
+                "Nếu không còn phản đối, đặt agrees_with_all=true và open_disagreements rỗng. "
+                "Nếu còn, giữ agrees_with_all=false và nêu cụ thể trong open_disagreements."
+            )
+            common = self.payload(instruction, independent=independent)
+            round_turns: dict[str, ConsensusTurn] = {}
+
+            async def worker(role: str) -> None:
+                result = await self.call(role, ConsensusTurn, copy.deepcopy(common))
+                self.append(role, result)
+                round_turns[role] = result
+
+            results = await asyncio.gather(*(worker(role) for role in AGENTS), return_exceptions=True)
+            for role, outcome in zip(AGENTS, results):
+                if isinstance(outcome, BaseException):
+                    if isinstance(outcome, asyncio.CancelledError):
+                        raise outcome
+                    if not isinstance(outcome, (ProviderError, BudgetExceeded, WorkflowError)):
+                        raise outcome
+                    self.state["errors"].append(f"{role}: {outcome}")
+            last.update(round_turns)
+            if len(round_turns) < len(AGENTS):
+                self.state["status"] = "partial"
+                self.state["warnings"].append("Thiếu phản hồi ít nhất một agent trong vòng đồng thuận; dừng sớm.")
+                self._consensus_final(last, converged=False)
+                return
+            if all(t.agrees_with_all for t in round_turns.values()):
+                self._consensus_final(last, converged=True)
+                return
+        self._consensus_final(last, converged=False)
+        self.limited(f"Không đồng thuận sau {self.settings.max_turns} vòng; xem các bất đồng còn lại.")
+
     async def run(self) -> dict:
         self.snapshot()
         try:
             async with asyncio.timeout(self.settings.run_timeout):
                 mode = self.state["mode"]
-                if mode not in ("group", "handoff", "parallel"):
+                if mode not in ("group", "handoff", "parallel", "consensus"):
                     raise WorkflowError("Mode khong hop le")
-                await {"group": self.group, "handoff": self.handoff, "parallel": self.parallel}[mode]()
-                final = await self.call("finalizer", FinalAnswer, self.payload("Tổng hợp kết quả có thể áp dụng."))
-                self.state["final"] = final.model_dump()
+                await {"group": self.group, "handoff": self.handoff, "parallel": self.parallel,
+                      "consensus": self.consensus}[mode]()
+                if self.state["final"] is None:
+                    final = await self.call("finalizer", FinalAnswer, self.payload("Tổng hợp kết quả có thể áp dụng."))
+                    self.state["final"] = final.model_dump()
                 if self.state["status"] == "running":
                     self.state["status"] = "completed"
         except BudgetExceeded as exc:

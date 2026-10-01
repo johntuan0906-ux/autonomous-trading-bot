@@ -6,7 +6,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ValidationError
 
 from .config import ConfigurationError, Settings
-from .schemas import Contribution, Decision, FinalAnswer
+from .schemas import ConsensusTurn, Contribution, Decision, FinalAnswer
 
 
 class ProviderError(RuntimeError):
@@ -127,6 +127,14 @@ class MockProvider:
                                  "chuyển việc, chạy song song và lưu log. "
                                  "Để AI giải quyết yêu cầu, cấu hình API key rồi chạy --provider openai."),
                 limitations=["Nội dung mô phỏng không chứng minh chất lượng AI hay kết nối API thật."],
+            ))
+        if request.schema is ConsensusTurn:
+            has_peers = bool(history)
+            return ModelResult(ConsensusTurn(
+                content=f"[MÔ PHỎNG] Góp ý vòng {'2' if has_peers else '1'} của {request.role}.",
+                recommendation=f"[MÔ PHỎNG] Đề xuất của {request.role}.",
+                agrees_with_all=has_peers,
+                open_disagreements=[] if has_peers else [f"{request.role}: cần thêm vòng để chốt."],
             ))
         next_role = {"planner": "builder", "builder": "reviewer", "reviewer": "finish"}[request.role]
         texts = {

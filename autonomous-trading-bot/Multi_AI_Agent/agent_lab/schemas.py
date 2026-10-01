@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 AgentName = Literal["planner", "builder", "reviewer"]
 
@@ -37,3 +37,23 @@ class FinalAnswer(StrictModel):
         if not value.strip():
             raise ValueError("Ket qua tong hop rong")
         return value
+
+
+class ConsensusTurn(StrictModel):
+    content: str
+    recommendation: str
+    agrees_with_all: bool
+    open_disagreements: list[str]
+
+    @field_validator("content", "recommendation")
+    @classmethod
+    def nonempty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Agent tra ve noi dung rong")
+        return value
+
+    @model_validator(mode="after")
+    def consistent_agreement(self) -> "ConsensusTurn":
+        if self.agrees_with_all and self.open_disagreements:
+            raise ValueError("agrees_with_all=true nhung van con open_disagreements")
+        return self

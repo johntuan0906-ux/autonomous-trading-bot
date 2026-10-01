@@ -319,6 +319,141 @@ class TestReviewPayload(unittest.TestCase):
         self.assertTrue(p["won"])
 
 
+class _RoleProvider:
+    """Provider gia lap tra JSON khac nhau theo VAI TRO (doc tu user message)."""
+
+    name = "rolebot"
+    model = "role-1"
+
+    def __init__(self, by_role: dict, default: dict | None = None):
+        self.by_role = dict(by_role or {})
+        self.default = dict(default or {"action": "NO_OPINION", "confidence": 0.0})
+        self.calls = 0
+        self.seen = []
+
+    def complete(self, system: str, user: str, *, timeout: float = 5.0) -> dict:
+        self.calls += 1
+        role = "?"
+        for r in ("arbiter", "critic", "macro", "review", "reflect"):
+            if f'"role": "{r}"' in user or f'"role":"{r}"' in user:
+                role = r
+                break
+        self.seen.append((role, user))
+        payload = {**self.default, **self.by_role.get(role, {})}
+        return {"text": json.dumps(payload), "tokens_in": 100, "tokens_out": 20}
+
+
+class TestCouncil(unittest.TestCase):
+    """Hoi dong 2 vong + chu toa (01/10): quy tac quorum TAT DINH + tom tat Telegram."""
+
+    def test_ca_hai_allow_thi_allow_du_arbiter_muon_veto(self):
+        p = _RoleProvider({"macro": {"action": "ALLOW", "confidence": 0.6},
+                           "critic": {"action": "ALLOW", "confidence": 0.5},
+                           "arbiter": {"action": "VETO", "confidence": 0.9}})
+        res = A.council_decision(_layer(p), {"symbol": "SOL/USDT:USDT", "direction": "SHORT"})
+        self.assertEqual(res["action"], "ALLOW", "dong thuan ALLOW khong bi ghi de")
+        self.assertEqual(res["consensus"], "unanimous_allow")
+        self.assertEqual(p.calls, 3, "phai goi du 3 vai (macro/critic/arbiter)")
+
+    def test_ca_hai_veto_thi_veto_du_arbiter_allow(self):
+        p = _RoleProvider({"macro": {"action": "VETO", "confidence": 0.8},
+                           "critic": {"action": "VETO", "confidence": 0.7},
+                           "arbiter": {"action": "ALLOW", "confidence": 0.9}})
+        res = A.council_decision(_layer(p), {"symbol": "BTC/USDT:USDT", "direction": "LONG"})
+        self.assertEqual(res["action"], "VETO", "dong thuan VETO khong the bi ghi de")
+        self.assertEqual(res["consensus"], "unanimous_veto")
+        self.assertAlmostEqual(res["confidence"], 0.8, places=6)
+
+    def test_chia_phieu_thi_chu_toa_quyet(self):
+        p = _RoleProvider({"macro": {"action": "ALLOW", "confidence": 0.6},
+                           "critic": {"action": "VETO", "confidence": 0.75},
+                           "arbiter": {"action": "ALLOW", "confidence": 0.65}})
+        res = A.council_decision(_layer(p), {"symbol": "XRP/USDT:USDT", "direction": "SHORT"})
+        self.assertEqual(res["action"], "ALLOW", "chia phieu -> theo chu toa")
+        self.assertEqual(res["consensus"], "split")
+        p2 = _RoleProvider({"macro": {"action": "ALLOW", "confidence": 0.6},
+                            "critic": {"action": "VETO", "confidence": 0.75},
+                            "arbiter": {"action": "VETO", "confidence": 0.8}})
+        res2 = A.council_decision(_layer(p2), {"symbol": "XRP/USDT:USDT", "direction": "SHORT"})
+        self.assertEqual(res2["action"], "VETO")
+        self.assertEqual(res2["consensus"], "split")
+
+    def test_critic_nhan_duoc_y_kien_macro(self):
+        """Vong 2: critic PHAI doc duoc y kien cua macro (peer)."""
+        p = _RoleProvider({"macro": {"action": "VETO", "confidence": 0.9},
+                           "critic": {"action": "ALLOW", "confidence": 0.4},
+                           "arbiter": {"action": "ALLOW", "confidence": 0.4}})
+        A.council_decision(_layer(p), {"symbol": "ADA/USDT:USDT", "direction": "LONG"})
+        critic_msgs = [u for r, u in p.seen if r == "critic"]
+        self.assertTrue(critic_msgs, "critic phai duoc goi")
+        self.assertIn('"peer"', critic_msgs[0], "critic phai nhan y kien macro")
+        arb_msgs = [u for r, u in p.seen if r == "arbiter"]
+        self.assertIn('"council"', arb_msgs[0], "chu toa phai nhan ca 2 y kien")
+
+    def test_provider_loi_thi_khong_crash(self):
+        res = A.council_decision(_layer(_BoomProvider()),
+                                 {"symbol": "SOL/USDT:USDT", "direction": "SHORT"})
+        self.assertEqual(res["action"], "NO_OPINION")
+
+    def test_quorum_khi_thieu_phieu(self):
+        m = SimpleNamespace(action="NO_OPINION", confidence=0.0)
+        c = SimpleNamespace(action="NO_OPINION", confidence=0.0)
+        a = SimpleNamespace(action="VETO", confidence=0.8)
+        act, conf, _why = A._final_from_council(m, c, a)
+        self.assertEqual((act, conf), ("VETO", 0.8))
+        self.assertEqual(A.consensus_of("NO_OPINION", "NO_OPINION", act, "VETO"),
+                         "arbiter_only")
+
+    def test_tom_tat_telegram_ngan_va_du_vai(self):
+        p = _RoleProvider({"macro": {"action": "ALLOW", "confidence": 0.6,
+                                     "reasons": ["tin trung tinh"]},
+                           "critic": {"action": "VETO", "confidence": 0.8,
+                                      "reasons": ["RSI qua ban"]},
+                           "arbiter": {"action": "VETO", "confidence": 0.8,
+                                       "reasons": ["uu tien von"]}})
+        res = A.council_decision(_layer(p), {"symbol": "SOL/USDT:USDT", "direction": "SHORT"})
+        txt = A.council_summary_text("SOL/USDT:USDT", "SHORT", res)
+        self.assertIn("COUNCIL SOL SHORT", txt)
+        for role in ("macro", "critic", "arbiter"):
+            self.assertIn(role, txt)
+        self.assertLessEqual(len(txt), 400)
+
+
+class TestCouncilAuthority(unittest.TestCase):
+    """Do bang chung RIENG cho hoi dong: status=COUNCIL tach khoi SETUP."""
+
+    def _journal(self, d: str, status: str) -> str:
+        jp = os.path.join(d, "j.jsonl")
+        rows = []
+        now = time.time()
+        for i in range(12):
+            rows.append({"ts": now - 3600 + i, "event": "AGENT", "role": "arbiter",
+                         "status": status, "action": "VETO", "confidence": 0.8,
+                         "symbol": "SOL/USDT:USDT", "direction": "SHORT"})
+            rows.append({"ts": now - 1800 + i, "event": "CLOSE", "pair": "SOL/USDT:USDT",
+                         "direction": "SHORT", "r": -1.0, "won": False})
+            rows.append({"ts": now + i, "event": "AGENT", "role": "arbiter",
+                         "status": status, "action": "ALLOW", "confidence": 0.6,
+                         "symbol": "BTC/USDT:USDT", "direction": "LONG"})
+            rows.append({"ts": now + 60 + i, "event": "CLOSE", "pair": "BTC/USDT:USDT",
+                         "direction": "LONG", "r": 1.0, "won": True})
+        with open(jp, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+        return jp
+
+    def test_cohort_tach_theo_status(self):
+        jp = self._journal(tempfile.mkdtemp(), "COUNCIL")
+        council = A.agent_authority(jp, min_n=10, status="COUNCIL")
+        setup = A.agent_authority(jp, min_n=10, status="SETUP")
+        default = A.agent_authority(jp, min_n=10)          # mac dinh = SETUP
+        self.assertEqual(council["veto_n"], 12)
+        self.assertTrue(council["granted"], "VETO -1R vs ALLOW +1R -> du bang chung")
+        self.assertEqual(setup["veto_n"], 0, "khong duoc lan sang cohort SETUP")
+        self.assertEqual(default["status"], "SETUP", "mac dinh van la SETUP (tuong thich cu)")
+        self.assertEqual(default["veto_n"], 0)
+
+
 class TestSplitCmd(unittest.TestCase):
     """AGENT_COPILOT_BIN: duong dan Windows co khoang trang phai duoc cat dung.
 

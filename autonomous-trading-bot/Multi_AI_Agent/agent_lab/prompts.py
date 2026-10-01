@@ -8,6 +8,10 @@ các công cụ đó. Chỉ các file trong context được cung cấp nội du
 Phân biệt phát hiện có bằng chứng, giả định và việc còn cần kiểm tra.
 Không coi ý kiến đồng thuận của các agent là bằng chứng đã kiểm thử.
 Viết kết quả và giải thích ngắn gọn, không trình bày suy nghĩ nội bộ.
+Trong chế độ consensus: chỉ đặt agrees_with_all=true khi bạn thực sự không còn
+phản đối recommendation mới nhất của hai vai trò kia; nếu còn, liệt kê cụ thể
+trong open_disagreements thay vì tự ý nhượng bộ cho xong. Không có người chọn
+câu trả lời thắng — quyết định cuối chỉ được chốt khi cả ba cùng xác nhận.
 """
 
 ROLES = {

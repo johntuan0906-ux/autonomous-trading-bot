@@ -441,6 +441,18 @@ Ngoài ra `.clineignore` + `.aiignore` (ở **gốc workspace**) chặn AI quét
 ngữ cảnh hội thoại đã dài (mỗi lượt trả lời phải đọc lại **toàn bộ** ngữ cảnh — đây là nguyên nhân
 chính của "thinking rất lâu/treo").
 
+### Kết luận sweep 01/10 (đọc trước khi mong đợi mốc LIVE)
+
+- Cấu hình đang chạy `SL2.0_TP5.0_PARTIAL0.3_BE1.0_TRAIL1.0` là **tốt nhất trong 40 cấu hình** sweep:
+  30 ngày × 8 cặp → n=1404, WR 68.2%, **PF 1.148**, net **+360**, DD 10.4% (`logs/sweep_grid_30d_8sym.json`).
+- **Nhưng 14 ngày gần nhất chỉ PF 0.954 (net −46.7)** và journal live PF 0.899 ⇒ **edge không ổn định**;
+  không cấu hình nào trong grid đạt PF ≥ 1.2 ⇒ **cổng LIVE đang chặn đúng**, đừng hạ ngưỡng.
+- Đã bỏ **ETH** khỏi `SYMBOLS` (âm ở cả 2 cửa sổ: 30d −0.066R/171 lệnh, 14d −0.089R/75 lệnh).
+  Bỏ ETH: 30d net +360 → +419, PF ~1.19. Muốn thử lại: thêm vào `SYMBOLS` rồi chạy `python sweep.py`.
+- `SHORT` âm ở backtest (−0.02 / −0.10) nhưng **dương trên journal live (+0.03)** ⇒ chưa đủ bằng chứng
+  để lọc theo hướng, giữ nguyên hai chiều.
+- `MAX_TOTAL_RISK_PCT` đã hạ **3.0 → 2.0** (đúng chuẩn cổng LIVE, giảm trần rủi ro danh mục).
+
 ### SL/TP trên sàn bị chặn (`-4045`) — chuyện thật ngày 01/10
 
 Binance **DEMO** có lúc trả `{"code":-4045,"msg":"Reach max stop order limit."}` cho **mọi** lệnh
@@ -459,6 +471,12 @@ python telegram_report.py          # cảnh báo này cũng được gửi vào 
 ADOPT khi không arm được sẽ log **ERROR** rõ ràng (`KHONG dat duoc SL/TP TREN SAN`, kèm `unarmed=[...]`)
 và gửi Telegram, nhưng **không** coi là lỗi chết: vị thế vẫn vào `portfolio`/`managed` để monitor
 phần mềm quản lý. Vì thế **đừng tắt bot** khi sàn đang chặn stop — tắt bot = mất luôn lớp bảo vệ.
+
+**Tự "liền sẹo" (01/10):** demo trả `-4045` theo kiểu *hạn ngạch* (lúc cho, lúc chặn) nên:
+- mở lệnh **không còn bị mất vị thế** khi arm lỗi (ghi sổ trước, arm sau — trước đây arm lỗi làm
+  vòng lỗi và vị thế mồ côi: BTC short 0.0568 lúc 20:43);
+- `_rearm_missing()` thử đặt lại SL/TP mỗi `PROTECT_RETRY_EVERY` vòng (mặc định 5, ~3–8 phút) và
+  gửi Telegram khi thành công ⇒ không cần restart bot để có SL/TP trên sàn.
 
 ## 9. Cleanup
 

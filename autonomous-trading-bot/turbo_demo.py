@@ -71,6 +71,9 @@ _btc_cache: dict = {"ts": 0.0, "df": None}  # cache BTC 1h 60s de 4 cap dung chu
 # supervisor chi restart theo exit-code se khong bao gio phat hien. Nhip tim ra file
 # la kenh duy nhat de run_forever.py biet bot con thuc su chay.
 _HEARTBEAT = Path(__file__).resolve().parent / "logs" / "heartbeat.json"
+# P0-fix (01/10): demo tra -4045 theo kieu "han ngach" -> vi the co the mo ra ma
+# khong co SL/TP tren san. Thu dat lai moi PROTECT_RETRY_EVERY vong (~3-8 phut).
+PROTECT_RETRY_EVERY = int(os.getenv("PROTECT_RETRY_EVERY", "5") or 5)
 
 
 def heartbeat(extra: dict | None = None) -> None:
@@ -95,6 +98,38 @@ def atr_of(ex, cfg, sym: str) -> dict:
         log.warning("adopt: khong lay duoc ATR cho %s: %s", sym, e)
         return {}
 
+
+
+def _rearm_missing(bot, log) -> list:
+    """Thu dat lai SL/TP TREN SAN cho cac vi the dang thieu bao ve.
+
+    Vi sao can: demo Binance tra `-4045 Reach max stop order limit` theo kieu HAN
+    NGACH (luc cho, luc chan) du so lenh treo = 0 -> vi the mo ra co the khong co
+    SL/TP tren san. Truoc day chi thu DUNG 1 LAN luc mo lenh, nen vi the bi "tran"
+    mai cho toi khi restart. Gio thu lai dinh ky (moi vai vong) de tu "lien se".
+
+    Tra danh sach symbol dat duoc. Moi loi chi log WARNING (khong nem ra ngoai).
+    """
+    done: list = []
+    for sym, pos in list(bot.portfolio.positions.items()):
+        try:
+            prot = (bot.exchange.fetch_protection(sym)
+                    if hasattr(bot.exchange, "fetch_protection") else {}) or {}
+            if prot.get("sl") and prot.get("tp"):
+                continue                      # da duoc bao ve tren san
+            mt = bot.managed.get(sym)
+            sl = float(getattr(mt, "sl", 0) or pos.sl or 0)
+            tp = float(getattr(mt, "tp", 0) or pos.tp or 0)
+            if sl <= 0 or tp <= 0:
+                continue
+            bot.exchange.stop_tp_orders(sym, pos.direction, pos.qty, sl, tp,
+                                        cid_prefix="retry")
+            done.append(sym)
+            log.warning("RE-ARM: da dat lai SL/TP tren san cho %s (sl=%s tp=%s)",
+                        sym, sl, tp)
+        except Exception as e:  # noqa: BLE001
+            log.warning("RE-ARM %s that bai (se thu lai vong sau): %s", sym, str(e)[:120])
+    return done
 
 
 def _fetch_one(args):
@@ -545,7 +580,6 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         try:
             bot.exchange.set_leverage(sym, cfg.leverage)
             entry_res = bot.exchange.market_entry(sym, direction, qty)
-            bot.exchange.stop_tp_orders(sym, direction, qty, lv["sl"], lv["tp"])
             # Bypass MAX_POSITIONS: ghi thang vao portfolio (van cam trung symbol)
             bot.portfolio.positions[sym] = Position(sym, direction, lv["entry"], qty,
                                                     lv["sl"], lv["tp"])
@@ -580,6 +614,19 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             # Phase 1: agent CHI CO VAN — ghi y kien macro/critic vao journal.
             agent_vote_setup(cfg, sym, direction, alpha, strat, t, senti,
                              str(reg.get("regime", "")))
+            # P0-fix (01/10): ARM SL/TP la buoc CO THE THAT BAI — demo hay tra
+            # -4045 "Reach max stop order limit" theo kieu han ngach (luc cho luc
+            # khong). Vi the DA MO va DA ghi so o tren, nen arm loi chi duoc coi la
+            # CANH BAO (khong lam vong loi, khong lam vi the mo coi khong ai quan ly
+            # — dung loi da xay ra 20:43: BTC short 0.0568 mo ra roi bo quen).
+            # `_rearm_missing()` se thu lai o cac vong sau; monitor phan mem bao ve
+            # trong luc chua co SL/TP tren san.
+            try:
+                bot.exchange.stop_tp_orders(sym, direction, qty, lv["sl"], lv["tp"])
+            except Exception as e:  # noqa: BLE001
+                log.warning("arm SL/TP %s that bai ngay sau khi mo (%s) — se thu lai "
+                            "vong sau; vi the dang duoc monitor phan mem quan ly",
+                            sym, str(e)[:120])
         except Exception as e:  # noqa: BLE001
             # P0-4: loi mang co the xay ra SAU khi san da khop -> kiem tra vi the THAT.
             # Neu khong kiem tra, vong sau bot se mo them 1 lenh nua = gap doi risk va
@@ -587,11 +634,14 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             landed = bot.exchange.position_qty(sym)
             if landed:
                 pos = Position(sym, direction, lv["entry"], landed, lv["sl"], lv["tp"])
-                bot.exchange.stop_tp_orders(sym, direction, landed, lv["sl"], lv["tp"])
                 bot.portfolio.positions[sym] = pos
                 bot._managed_for(sym, pos)
                 _pending_feats[sym] = {"feats": feats, "direction": direction,
                                        "strategy": strat}
+                try:                       # arm loi KHONG duoc lam mat vi the
+                    bot.exchange.stop_tp_orders(sym, direction, landed, lv["sl"], lv["tp"])
+                except Exception as e2:  # noqa: BLE001
+                    log.warning("arm SL/TP (recovered) %s that bai: %s", sym, str(e2)[:120])
                 log.warning("TURBO OPEN %s %s bao loi nhung vi the DA mo qty=%s -> "
                             "ghi nhan (recovered)", direction, sym, landed)
                 results.append({"symbol": sym, "status": "OPENED", "direction": direction,
@@ -705,6 +755,12 @@ def main() -> None:
         # 1) monitor: cap nao vua dong -> cooldown + LEARN that/bai
         before = set(bot.portfolio.positions)
         mon = bot._monitor()
+        # P0-fix (01/10): san demo tra -4045 theo kieu han ngach -> vi the co the mo
+        # ra ma KHONG co SL/TP tren san. Thu lai dinh ky (moi PROTECT_RETRY_EVERY
+        # vong) de tu "lien se" thay vi phai restart bot.
+        if i % PROTECT_RETRY_EVERY == 1 and bot.portfolio.positions:
+            for _s in _rearm_missing(bot, log):
+                tg(cfg, f"🔒 da dat lai SL/TP tren san cho {_s}")
         if isinstance(mon, dict) and "_error" in mon:
             # P0-3: ban cu log warning roi VAN vao lenh moi ngay sau khi da flatten
             log.error("monitor loi -> flatten + dung: %s", mon)

@@ -11,6 +11,7 @@ Chay: python -m unittest tests.test_p0_safety -v
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -28,6 +29,7 @@ import exchange as exmod                                                       #
 import managed_state                                                          # noqa: E402
 import position_sync                                                          # noqa: E402
 import bot as botmod                                                          # noqa: E402
+import turbo_demo as td                                                       # noqa: E402
 from run_forever import (heartbeat_age, next_delay, plan_delay, rotate_log,    # noqa: E402
                          should_restart, tail_has, touch_heartbeat)
 from bot import TradingBot                                                     # noqa: E402
@@ -658,6 +660,46 @@ class TestAdoptViTheSan(unittest.TestCase):
                                    atr_fn=lambda s: {"price": 100.0, "atr": 2.0})
         self.assertEqual(rep2["skipped"], ["BTC/USDT:USDT"])
         self.assertEqual(rep2["adopted"], [])
+
+
+class TestRearmBaoVe(unittest.TestCase):
+    """P0-fix 01/10: vi the mo ra khong co SL/TP tren san (demo -4045) phai duoc
+    thu dat lai dinh ky — truoc day chi thu DUNG 1 LAN luc mo lenh."""
+
+    SYM = "BTC/USDT:USDT"
+
+    def _bot(self, ex):
+        return TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0),
+                          exchange=ex)
+
+    def test_thieu_bao_ve_thi_dat_lai(self):
+        ex = FakeExchange()                       # fetch_protection -> {sl:None,tp:None}
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        done = td._rearm_missing(bot, logging.getLogger("test"))
+        self.assertEqual(done, [self.SYM])
+        arms = ex.named("stop_tp_orders")
+        self.assertEqual(len(arms), 1)
+        self.assertEqual(arms[0][1]["sl"], 98.0)
+
+    def test_da_co_bao_ve_thi_khong_dung_vao(self):
+        ex = FakeExchange(prot={self.SYM: {"sl": 95.0, "tp": 115.0}})
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     95.0, 115.0)
+        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test")), [])
+        self.assertEqual(ex.named("stop_tp_orders"), [])
+
+    def test_san_van_chan_thi_khong_crash(self):
+        """San tra -4045 -> tra [] va chi log, de vong sau thu lai."""
+        ex = FakeExchange(arm_boom=True)
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test")), [])
+        self.assertIn(self.SYM, bot.portfolio.positions)   # vi the khong bi mat
 
 
 class TestBotSafety(unittest.TestCase):

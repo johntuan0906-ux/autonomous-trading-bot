@@ -1,8 +1,0 @@
-﻿Provider=clinepass; sß╗æ agent=13; concurrency=4.
-Kß║┐t quß║ú sß║╜ l╞░u tß║íi: C:\Users\User\.vscode\Projects\autonomous-trading-bot\logs\clinepass\outputs\clinepass_20261001_173310_dda360cd
-[17:33:11 UTC] call_start: model=cline-pass/mimo-v2.6-flash, attempt=1
-[17:33:11 UTC] call_start: model=cline-pass/mimo-v2.6-pro, attempt=1
-[17:33:11 UTC] call_start: model=cline-pass/glm-5.3, attempt=1
-[17:33:11 UTC] call_start: model=cline-pass/deepseek-v4-pro, attempt=1
-[17:33:41 UTC] call_done: model=cline-pass/glm-5.3
-[17:33:41 UTC] call_start: model=cline-pass/qwen3.8-max, attempt=1

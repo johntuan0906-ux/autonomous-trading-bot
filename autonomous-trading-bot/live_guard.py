@@ -106,6 +106,11 @@ def _gather(cfg, journal_path: str) -> tuple:
                             "`python risk.py --reset`")
         if dry_run:
             warns.append("DRY_RUN=true — bot se khong gui lenh that du da qua interlock")
+        if bool(getattr(cfg, "agents_council", False)) and \
+                not bool(getattr(cfg, "agents_veto_enabled", False)):
+            warns.append("AGENTS_COUNCIL=true nhung AGENTS_VETO_ENABLED=false — hoi dong chi "
+                         "CO VAN (khong chan lenh nao). Neu muon hoi dong co quyen chan thi "
+                         "phai du bang chung (`python agents.py --authority`) roi bat veto.")
         if still:
             warns.append(f"{len(still)} OPEN chua co CLOSE trong journal (co the la vi the "
                          "mo tay hoac lenh dong bi thieu) — xem `python positions.py`")

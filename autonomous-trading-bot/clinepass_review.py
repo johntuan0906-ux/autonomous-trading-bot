@@ -171,7 +171,18 @@ def build_bundle(kind: str) -> Path | None:
     """
     if kind == "none":
         return None
-    parts: list = [f"# DU LIEU BOT (bundle={kind}) — {time.strftime('%Y-%m-%d %H:%M:%S')}"]
+    parts: list = [f"# DU LIEU BOT (bundle={kind}) — gio VN: {time.strftime('%Y-%m-%d %H:%M:%S')} "
+                   f"| UTC: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}"]
+    parts.append("## LUU Y VE THOI GIAN va NGAY\n"
+                 "`risk_state.day`, `start_equity` va moc rollover ngay cua kill-switch dung "
+                 "**UTC** (khong phai gio VN). Vi du: gio VN 02/10 00:33 = UTC 01/10 17:33, nen "
+                 "`day=2026-10-01` la DUNG, khong phai 'chua rollover'. Gio trong log/turbo_err.log "
+                 "la gio local (VN).\n\n"
+                 "`size_base` trong log OPEN = min(BALANCE_USDT, equity thuc) = tran size; "
+                 "risk/lenh = RISK_PER_TRADE_PCT x size_base. `start_balance` trong risk_state "
+                 "chi la gia tri khoi tao, DD ngay tinh tren `start_equity` (equity that).\n\n"
+                 "Partial tai PARTIAL_AT_R se dat SL ve hoa von va set `be_done=true` — do la "
+                 "THIET KE (khong phai 'BE dat som'), ke ca khi `mfe_r` nho hon BE_AT_R.")
     if kind in ("bot_state", "strategy"):
         parts.append("## Journal (nguon su that ve ket qua giao dich)\n```json\n"
                      + json.dumps(_journal_stats(), ensure_ascii=False, indent=1) + "\n```")

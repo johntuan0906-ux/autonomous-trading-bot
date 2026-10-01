@@ -125,6 +125,35 @@ class TestLiveGuard(unittest.TestCase):
         self.assertEqual(LG.main(["--journal", self.jp]), 0)
 
 
+class TestCouncilWarnLive(unittest.TestCase):
+    """(Hội đồng 01/10) LIVE mà council bật nhưng veto tắt -> phải CẢNH BÁO rõ."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.jp = os.path.join(self.tmp, "j.jsonl")
+        with open(self.jp, "w", encoding="utf-8") as f:
+            for i in range(50):                       # du mau de khong bi chan vì n<50
+                f.write(json.dumps({"event": "CLOSE", "pair": "BTC/USDT:USDT",
+                                    "direction": "LONG", "won": True, "r": 1.0,
+                                    "pnl": 1.0, "ts": 1000 + i}) + "\n")
+
+    def test_canh_bao_khi_council_bat_veto_tat(self):
+        cfg = SimpleNamespace(testnet=False, dry_run=False, live_confirm=True,
+                              max_total_risk_pct=2.0, leverage=8, risk_state_path="",
+                              managed_state_path="", agents_council=True,
+                              agents_veto_enabled=False)
+        rep = LG.check(cfg, journal_path=self.jp)
+        self.assertTrue(any("hoi dong chi" in w for w in rep["warnings"]))
+
+    def test_khong_canh_bao_khi_veto_bat(self):
+        cfg = SimpleNamespace(testnet=False, dry_run=False, live_confirm=True,
+                              max_total_risk_pct=2.0, leverage=8, risk_state_path="",
+                              managed_state_path="", agents_council=True,
+                              agents_veto_enabled=True)
+        rep = LG.check(cfg, journal_path=self.jp)
+        self.assertFalse(any("hoi dong chi" in w for w in rep["warnings"]))
+
+
 class TestPositionsDiagnostic(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()

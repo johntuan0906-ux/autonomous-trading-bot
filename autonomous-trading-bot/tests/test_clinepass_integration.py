@@ -82,11 +82,13 @@ class TestBundle(unittest.TestCase):
         self.assertIsNotNone(p)
         self.assertTrue(p.is_file())
         text = p.read_text(encoding="utf-8")
-        for marker in ("DU LIEU BOT", "Phieu agent", "risk_state", "Tham so dang chay"):
+        for marker in ("DU LIEU BOT", "Phieu agent", "risk_state", "THAM SO AN TOAN DANG CHAY THAT"):
             self.assertIn(marker, text)
         self.assertLessEqual(len(text), CR.MAX_BUNDLE_CHARS + 40)
         leaks = [v for v in _env_secret_values() if v in text]
         self.assertEqual(leaks, [], "bundle KHONG duoc chua API key/token tu .env")
+        # Tham so dang chay THAT phai co (tranh hoi dong doc nham gia tri mau)
+        self.assertIn("max_total_risk_pct", text)
 
     def test_bundle_none_tra_ve_none(self):
         self.assertIsNone(CR.build_bundle("none"))

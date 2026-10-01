@@ -140,6 +140,29 @@ def build_task_file(task_file: Path) -> Path:
     return out
 
 
+def _runtime_params() -> dict:
+    """Tham so AN TOAN dang chay THAT (khong gom secret) — de hoi dong khong doc nham
+    gia tri mau trong .env.example (da gap: hoi dong ket luan sai vi thay MAX_POSITIONS=1
+    va MAX_TOTAL_RISK_PCT=3% cua file mau)."""
+    keys = ("symbols", "extra_symbols", "max_positions", "allow_hedge_opposite",
+            "max_total_risk_pct", "risk_per_trade_pct", "leverage", "max_daily_loss_pct",
+            "max_atr_pct", "min_notional_usdt", "adopt_positions", "partial_at_r",
+            "partial_pct", "be_at_r", "trail_atr_mult", "sl_atr_mult", "tp_atr_mult",
+            "cooldown_sec", "strategy_gate", "agents_enabled", "agents_shadow",
+            "agents_council", "agents_veto_enabled", "agent_veto_source",
+            "live_confirm", "testnet", "dry_run")
+    out: dict = {}
+    try:
+        from config import Settings
+        cfg = Settings()
+        for k in keys:
+            v = getattr(cfg, k, "<khong co>")
+            out[k] = str(v) if isinstance(v, (list, tuple, set)) else v
+    except Exception as e:  # noqa: BLE001
+        out["error"] = f"khong doc duoc Settings: {str(e)[:120]}"
+    return out
+
+
 def build_bundle(kind: str) -> Path | None:
     """Gom du lieu THAT cua bot -> 1 file .md lam context cho hoi dong.
 
@@ -164,8 +187,11 @@ def build_bundle(kind: str) -> Path | None:
         parts.append("## Phieu agent (multi-AI noi bo cua bot)\n```json\n"
                      + json.dumps(_agent_stats(), ensure_ascii=False, indent=1) + "\n```")
     if kind in ("bot_state", "safety"):
-        parts.append("## Tham so dang chay (.env.example — KHONG co secret)\n```text\n"
-                     + _read(ROOT / ".env.example", 2500) + "\n```")
+        parts.append("## THAM SO AN TOAN DANG CHAY THAT (nguon: config.Settings — "
+                     "KHONG co secret; dung cai nay thay vi doc .env.example)\n```json\n"
+                     + json.dumps(_runtime_params(), ensure_ascii=False, indent=1) + "\n```")
+        parts.append("## Cau hinh mau (.env.example — CHI LA MAU, khong phai dang chay)\n```text\n"
+                     + _read(ROOT / ".env.example", 1800) + "\n```")
     if kind in ("bot_state", "strategy"):
         parts.append("## 40 dong log cuoi (logs/turbo_err.log)\n```text\n"
                      + _tail(ROOT / "logs" / "turbo_err.log", 40) + "\n```")

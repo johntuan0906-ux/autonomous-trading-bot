@@ -1,0 +1,65 @@
+# .clineignore — chặn AI agent (Cline/khác) QUÉT vào file rác/generated/vendor.
+# ĐẶT Ở GỐC WORKSPACE (c:\Users\User\.vscode\Projects) vì Cline tính pattern
+# theo path TƯƠNG ĐỐI từ gốc workspace.
+#
+# 2026-10-01: memory-mcp/ va memory-graph/ da duoc CHUYEN RA NGOAI workspace
+# (c:\Users\User\.vscode\Projects-vendor\) -> workspace con ~62 MB / 616 file.
+# Cac dong duoi day giu lai de phong khi clone/tao lai cac thu muc do.
+
+# --- Rác nặng nhất: memory-mcp 2244 file / 1.31 GB (model, node_modules, build) ---
+autonomous-trading-bot/memory-mcp/
+
+# --- Artifact generated ở gốc project (6–16 MB/file, làm chậm read/index) ---
+autonomous-trading-bot/memory.db
+autonomous-trading-bot/memory.db-wal
+autonomous-trading-bot/memory.db-shm
+autonomous-trading-bot/graph_memory.json
+autonomous-trading-bot/graph_memory.html
+autonomous-trading-bot/memory_map_data.json
+autonomous-trading-bot/memory_map_data.js
+autonomous-trading-bot/glow_map_webgl.html
+autonomous-trading-bot/*.html
+autonomous-trading-bot/vendor/
+
+# --- Bản sao cũ của bot (không phải code đang chạy) ---
+autonomous-trading-bot/binance_futures_ai_bot/
+
+# --- Log/state runtime: chỉ cần khi đang điều tra; chặn khi quét thường ---
+autonomous-trading-bot/logs/
+**/logs/*.log
+**/*.pyc
+
+# --- Media/model/nhị phân ---
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.mp4
+**/*.zip
+**/*.7z
+**/*.rar
+**/*.exe
+**/*.dll
+**/*.pyd
+**/*.so
+**/*.bin
+**/*.safetensors
+**/*.gguf
+**/*.onnx
+**/*.parquet
+**/*.db
+
+# --- Dependency/build ---
+**/node_modules/
+**/dist/
+**/build/
+**/__pycache__/
+**/.pytest_cache/
+**/htmlcov/
+**/coverage.xml
+**/.venv/
+**/venv/
+
+# --- Git nội bộ (không bao giờ cần đọc) ---
+**/.git/

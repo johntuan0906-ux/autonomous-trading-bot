@@ -1,0 +1,19 @@
+{
+  "finalizer_model": "cline-pass/glm-5.3",
+  "agents": [
+    {"model": "cline-pass/mimo-v2.6-flash", "label": "MiMo-V2.6-Flash", "role": "Phân rã yêu cầu, giả định và tiêu chí hoàn thành", "core": true},
+    {"model": "cline-pass/mimo-v2.6-pro", "label": "MiMo-V2.6-Pro", "role": "Đề xuất kiến trúc và ranh giới các thành phần"},
+    {"model": "cline-pass/glm-5.3", "label": "GLM-5.3", "role": "Đề xuất cách triển khai Python và mã minh họa", "core": true},
+    {"model": "cline-pass/deepseek-v4-pro", "label": "DeepSeek V4 Pro", "role": "Phản biện logic, tìm giả định sai và điểm thiếu", "core": true},
+    {"model": "cline-pass/qwen3.8-max", "label": "Qwen3.8 Max", "role": "Thiết kế giao diện hàm, API và hợp đồng dữ liệu"},
+    {"model": "cline-pass/deepseek-v4.1-flash", "label": "DeepSeek V4.1 Flash", "role": "Đề xuất ca kiểm thử và kết quả mong đợi", "core": true},
+    {"model": "cline-pass/muse-spark-1.3-contributor", "label": "Muse Spark 1.3 Contributor", "role": "Đánh giá trải nghiệm và thông báo cho người dùng"},
+    {"model": "cline-pass/kimi-k3", "label": "Kimi K3", "role": "Đọc kỹ dữ liệu đầu vào và tìm yêu cầu bị bỏ sót"},
+    {"model": "cline-pass/glm-5.3-flash", "label": "GLM-5.3-Flash", "role": "Tìm tình huống biên và cách xử lý lỗi"},
+    {"model": "cline-pass/minimax-m3", "label": "MiniMax-M3", "role": "Đánh giá hiệu năng và tài nguyên"},
+    {"model": "cline-pass/qwen3.7-plus", "label": "Qwen3.7 Plus", "role": "Viết hướng dẫn sử dụng và ví dụ đầu vào đầu ra"},
+    {"model": "cline-pass/qwen3.7-max", "label": "Qwen3.7 Max", "role": "Rà soát tích hợp giữa các thành phần"},
+    {"model": "cline-pass/mimo-v2.5-pro", "label": "MiMo-V2.5-Pro", "role": "Rà soát quyền truy cập, bí mật và an toàn dữ liệu"},
+    {"model": "cline-pass/mimo-v2.5", "label": "MiMo-V2.5", "role": "Đề xuất cách đơn giản hóa và bảo trì"}
+  ]
+}

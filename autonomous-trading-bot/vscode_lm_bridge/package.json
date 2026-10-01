@@ -1,0 +1,33 @@
+{
+  "name": "copilot-lm-bridge",
+  "displayName": "Copilot LM Bridge (local)",
+  "description": "Cau noi localhost cho bot Python dung GitHub Copilot qua vscode.lm (khong can API key).",
+  "version": "0.1.0",
+  "publisher": "local",
+  "private": true,
+  "engines": { "vscode": "^1.95.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "copilotLmBridge.start", "title": "Copilot LM Bridge: Start server" },
+      { "command": "copilotLmBridge.stop", "title": "Copilot LM Bridge: Stop server" }
+    ],
+    "configuration": {
+      "title": "Copilot LM Bridge",
+      "properties": {
+        "copilotLmBridge.port": { "type": "number", "default": 8765 },
+        "copilotLmBridge.token": {
+          "type": "string", "default": "",
+          "description": "Neu dat, client phai gui Authorization: Bearer <token>"
+        },
+        "copilotLmBridge.model": {
+          "type": "string", "default": "",
+          "description": "Tran model (de trong = dung model Copilot dang chon)"
+        }
+      }
+    }
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,136 @@
+# .clinerules — Rules cho AI agent (Cline & các model khác)
+# Mục tiêu: GIẢM token, TĂNG độ chính xác & tốc độ khi giải bài toán code phức tạp.
+# Áp dụng mọi mode (plan/act/yolo). Vi phạm rule = sửa trước khi tiếp tục.
+
+## 1. CONTEXT — đọc đúng, đọc ít
+- KHÔNG đọc lại file đã biết nội dung trong cùng session (dùng state đã ghi).
+- Đọc theo RANGE (`start_line/end_line`); file >300 dòng thì đọc hàm cần thôi.
+- Trước khi sửa: `search_codebase` regex NGẮN, nhắm symbol cụ thể, không từ chung chung.
+- Batch tool calls: gom mọi read/search/command ĐỘC LẬP vào MỘT lượt.
+- >2 vòng khám phá cho 1 câu hỏi → dừng, ghi giả định, đi tiếp.
+
+## 2. OUTPUT — nói ngắn, sửa nhỏ
+- Không in lại toàn bộ file; chỉ tóm tắt thay đổi + path + dòng.
+- EDIT CỤC BỘ (old_text nhỏ & chính xác) — CẤM rewrite cả file trừ khi tạo mới.
+- Trả lời: bullet ngắn, không lặp lại yêu cầu, không chữ thừa.
+- Log chỉ lấy đuôi: `| Select-Object -Last N` (N<=12).
+
+## 3. VERIFY — một vòng, chốt sớm
+- Sau mỗi batch sửa: chạy MỘT lệnh verify (py_compile + test module liên quan).
+- Không chạy full test-suite khi chỉ sửa 1 module — chọn subset.
+- Lỗi indent/compile: sửa bằng PowerShell line-based hoặc edit chính xác;
+  KHÔNG editor-fuzzy lặp (tránh +4 indent drift).
+
+## 4. PLAN → ACT
+- Trước khi act: liệt kê (a) file đổi, (b) hàm thêm/sửa, (c) verify — tối đa 5 dòng.
+- Giữ "state ledger" ngắn: PID, config đã nạp, artifacts đã sinh. Không khai lại.
+- Giả định low-risk: ghi 1 dòng "assume X", không hỏi lại.
+
+## 5. MÔI TRƯỜNG WINDOWS/PS (hard rules)
+- `$py="C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe"` —
+  python Store 3.13 thiếu pandas/ccxt; CẤM bare `python` cho job nặng.
+- Không heredoc (`<<`), không `&&`/`||` trong PS. Dùng `;` + `$py` + `&`.
+- `2>$null` thay vì `2>nul`.
+- Start-Process: `-RedirectStandardOutput`/`-RedirectStandardError` PHẢI khác file;
+  không đi cùng `-NoNewWindow`.
+
+## 6. TRUY TÌM NHANH = GRAPH MEMORY (bắt buộc dùng trước khi đọc lại code)
+- `python graph_memory.py` (rebuild) → `graph_memory.json` (268N/293E).
+- `python memory_graph.py search --query <từ khóa>` — FTS5 Porter.
+- `python memory_graph.py related <concept-id>` — đi theo liên kết.
+- Concept anchors: PositionManagement | SweepOptimalConfig | StrategyABC |
+  RiskKillSwitch | LearnerFeedback | ScanRankOpen | TradeLifecycleStates | ExecutionLayer.
+- Sửa quản lý lệnh: `trade_mgmt.py:manage_trade → bot.py:_monitor → .env:PARTIAL_*`.
+
+## 7. GHI NHỚ — observe để lần sau không học lại
+- Fix lỗi đáng nhớ: `python memory_graph.py observe --kind error --sym <sym> --detail "<nguyên nhân + fix>"`
+- Config đổi: `observe --kind config`.
+- Trade close có pattern: `observe --kind trade --r <R> --won 0/1`.
+
+## 8. TUẦN TỰ KHI GẶP CODE MỚI
+1) Đọc schema/contract của module liên quan (không đọc cả repo).
+2) Chạy module 1 lần với input nhỏ để thấy output thật.
+3) Sửa nhỏ → verify → chốt. Không loop >3 lần cùng lỗi.
+
+## 9. OPENBRAIN ENGINES (đã port) — dùng thay vì đọc lại code
+- `python memory_agent.py context "<từ khoá>"` → block ~10-40 dòng (TIẾT KIỆM TOKEN
+  thay cho mở 5-10 file). LUÔN thử lệnh này trước khi grep/đọc file.
+- `python memory_agent.py sync`     — đồng bộ: rebuild graph + reseed db + reflect logs.
+- `python memory_agent.py watch`    — chạy ngầm (đang bật, PID riêng), tự sync khi file đổi.
+- `python memory_agent.py reflect`  — biến logs thành mistake/lesson/pattern/decision.
+- `python memory_agent.py dream`    — bảo trì: dedupe/compress(>7d)/promote(≥0.95)/archive(>30d).
+- `python memory_agent.py skills`   — skill + usage_count + success_rate (skill lỗi tự hạ).
+- Sau mỗi fix đáng nhớ: `memory_graph.py observe --kind error --sym <sym> --detail "..."`.
+
+## 10. FILE THỪA ĐÃ DỌN (không quét lại)
+- `binance_futures_ai_bot/` : 93 → 49 file. Đã xóa `__pycache__`, `*.pyc`, `.pytest_cache`,
+  2 cây trùng (`binance/`, `binance_futures_ai_bot/binance_futures_ai_bot/`).
+  File giàu hơn được giữ ở `binance_futures_ai_bot/_archive/binance_dup_keep/`.
+  Package gốc `.py` khôi phục từ `C:\Users\User\Downloads\binance_futures_ai_bot\`.
+- `openbrain-master/` : chỉ đọc `src/` + `README/ROADMAP`; bỏ `dist/ media/ assets/`.
+- Xem `.clineignore` + `.aiignore` để biết toàn bộ path bị chặn.
+
+## 11. AN TOÀN KHI XOÁ (bài học thực tế)
+- TRƯỚC khi xoá: `git status --porcelain -- <path>` — nếu untracked (`??`) thì KHÔNG restore được.
+- Ưu tiên: (a) liệt kê file sẽ xoá; (b) xoá chỉ generated (`__pycache__`, `*.pyc`, `.pytest_cache`);
+  (c) với cây trùng → MOVE vào `_archive/` thay vì xoá.
+- Sau khi xoá: kiểm tra toàn vẹn file gốc (Test-Path) + `py_compile` ngay.
+- Nguồn khôi phục: `C:\Users\User\Downloads\<project>.zip` (bản gốc luôn còn ở đó).
+
+## 12. MEMORY-MCP / CBM PARITY (đã port) — thay thế đọc file bằng truy vấn graph
+Đối chiếu tool của `codebase-memory-mcp` (CBM) → lệnh Python tương đương:
+
+| CBM tool | Lệnh trong dự án |
+|---|---|
+| `search_graph` | `memory_graph.py search --query <q> [--types ...]` (FTS5) |
+| `semantic_query` | `memory_agent.py context "<q>"` (relevance ngắn, tiết kiệm token) |
+| `trace_path` / `trace_call_path` | `memory_agent.py trace <start> [end] [--depth N]` |
+| `get_architecture` | `memory_agent.py arch [--hubs N]` |
+| `get_code_snippet` | `memory_agent.py snippet <id>` (đọc đúng dòng quanh node) |
+| `detect_changes` | `memory_agent.py changes [--minutes N]` (mtime + `git status`) |
+| `check_index_coverage` | `memory_graph.py stats` + `memory_agent.py arch` (node/edge/type) |
+| watcher / daemon | `memory_agent.py watch` hoặc `memory_agent.py daemon --dream-every 10` |
+| `graph-ui` (3D) | `memory_map.py --serve` (bản đồ hợp nhất code+memories, LIVE 15s) |
+| `.cbmignore` | `.cbmignore` ở root (đã tạo) + `.clineignore` + `.aiignore` |
+| `ingest_traces` (runtime, KHÔNG edge tĩnh) | `memory_graph.py ingest --project bot --traces '<json>'` → bảng `runtime_*` riêng; đọc qua `memory_graph.py overlay <symbol>` |
+| `query_graph` (Cypher) | `memory_graph.py search/recall/related` + `memory_agent.py trace` (BFS, không Cypher) |
+
+Quy tắc: **trước khi mở file để hiểu code, chạy `arch` / `context` / `trace` / `snippet`.**
+Runtime facts (bot chạy) KHÔNG trộn vào graph tĩnh — dùng `ingest` + `overlay`.
+
+## 13b. DISCOVERY LAYERS + EDGE MỚI (CBM parity trong `graph_memory.py`)
+- Walk prune theo 5 lớp: builtin skip → repo `.gitignore` → nested `.gitignore` →
+  `.cbmignore` → suffix/size-cap (512KiB/file). `.git`/`node_modules` là safety core
+  (phủ định `!` không cứu được). Kết quả báo trong `graph_memory.json/meta`:
+  `excluded_dirs/excluded_count/ignored_files/ignored_total` (reason: gitignore,
+  cbmignore, ignored-suffix, size-cap).
+- Edge mới trên graph tĩnh: `CALLS` (strip string/comment, bỏ keyword/builtin),
+  `SIMILAR_TO` (MinHash token tên def/class), `SEMANTICALLY_RELATED` (chung từ vựng
+  domain trade/risk/strategy/…).
+- `seed_from_graph(clear=True)`: reseed xoá node seed cũ (`seed:1`) trước khi nạp →
+  DB không phình khi watcher sync liên tục. Edge dedupe theo (src,dst,label).
+- FTS sanitize: query tách terms `[^\w]+`, nối `OR` → `check bot.py` không lỗi FTS5.
+- Watcher (`SyncEngine.snapshot`): bỏ qua generated state
+  (`memory.db*/graph_memory.json/memory_map_data.json`), bỏ file >512KiB, bỏ qua
+  `openbrain-master/ memory-mcp/ memory-graph/ binance_futures_ai_bot/`; `sync()`
+  giờ rebuild cả `memory_map_data.json` (+`memory_map.html` nếu chưa có).
+- Map (`memory_map.py`): bridge code↔memory (`FOUND_IN` khi content nhắc `*.py`,
+  `APPLIES_TO` khi nhắc tên def) + `meta.code_memory_bridges`; giữ nhãn edge CBM
+  nguyên bản trong viewer.
+- **FTS5 fix (SQLite ≥3.44)**: bỏ cột `UNINDEXED` khỏi trigger `delete-by-rowid`
+  (gây `SQL logic error` mọi DELETE); dùng `DELETE FROM memories_fts WHERE id=…`
+  thay cho `INSERT ... VALUES('delete',...)`. Rebuild FTS bằng
+  `DROP TABLE memories_fts` + `initialize_schema()` (recreate triggers).
+
+## 13. BẢN ĐỒ TƯƠNG TÁC HỢP NHẤT (code + memories)
+- Nguồn: `graph_memory.json` (cấu trúc code) ∪ `memory.db` (memories/relationships).
+- Sinh: `memory_map_data.json` (~2000 node / ~2000 link) + `memory_map.html`.
+- Chạy nền: `memory_map.py --serve` (cổng 8790) + `memory_map.py --watch 60` (rebuild data).
+- Viewer: pan/zoom/drag, chip lọc theo kind, search, click node → nội dung + liên kết;
+  tự `fetch` lại data mỗi 15s → **thấy thay đổi dự án ngay khi daemon sync**.
+- Luồng tự động hoàn chỉnh:
+  `file đổi → memory_agent watch → graph_memory + memory.db (+reflect) → memory_map --watch
+   → memory_map_data.json → viewer (LIVE)`.
+
+
+

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "binance-futures-autobot"
+version = "1.0.0"
+description = "Bot giao dịch Binance Futures Long/Short tự động, xoay vòng nhiều cặp, kết hợp phân tích kỹ thuật và tín hiệu tin tức."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "python-binance>=1.0.37",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "PyYAML>=6.0",
+    "python-dotenv>=1.0.0",
+    "vaderSentiment>=3.3.2",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+binance-futures-bot = "bot.main:run"
+
+[tool.setuptools.packages.find]
+include = ["bot*"]

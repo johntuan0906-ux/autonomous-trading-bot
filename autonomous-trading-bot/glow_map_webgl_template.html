@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Glow Map WebGL — 3D graph view</title>
+__GLOW_VENDOR__
+<style>
+:root{
+  --bg:#0a161a; --panel:#0c1a20; --fg:#e0eded; --muted:#6a9e9e;
+  --primary:#1DA27E; --accent:#1C8585; --border:#1a3a40; --danger:#e05252;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+#app{display:flex;flex-direction:column;height:100%}
+#top{display:flex;align-items:center;gap:18px;height:48px;padding:0 18px;flex:0 0 auto;
+  background:rgba(11,25,32,.85);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 8px var(--primary)}
+#tabs{display:flex;gap:2px}
+#tabs button{padding:4px 11px;border:0;border-radius:6px;background:transparent;cursor:pointer;
+  font-size:12px;font-weight:500;color:var(--muted);font-family:inherit}
+#tabs button:hover{color:var(--fg);background:rgba(255,255,255,.04)}
+#tabs button.on{background:rgba(29,162,126,.15);color:var(--primary)}
+#graphName{flex:1 1 auto;text-align:right;font:10px "JetBrains Mono",ui-monospace,monospace;
+  color:rgba(224,237,237,.35);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.refresh{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;
+  color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit}
+.refresh:hover{color:var(--fg);border-color:var(--accent)}
+#main{flex:1 1 auto;display:flex;min-height:0}
+#side{width:296px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;min-height:0}
+.side-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px}
+.side-title{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:rgba(224,237,237,.5)}
+.side-actions{display:flex;align-items:center;gap:7px}
+.side-actions button{border:0;background:transparent;color:rgba(29,162,126,.75);font-size:10px;
+  cursor:pointer;font-family:inherit;padding:0}
+.side-actions button:hover{color:var(--primary)}
+.sep{color:rgba(255,255,255,.15);font-size:10px}
+.side-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 14px 18px}
+.side-body::-webkit-scrollbar{width:8px}
+.side-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:4px}
+.group{margin-bottom:12px}
+.glabel{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(224,237,237,.4);margin:0 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);cursor:pointer;
+  font-size:10px;font-weight:500;font-family:inherit;transition:opacity .12s}
+.chip.off{opacity:.25;border-color:transparent}
+.chip.sel{border-color:rgba(29,162,126,.55);background:rgba(29,162,126,.14)}
+.chip .cdot{width:5px;height:5px;border-radius:50%}
+.chip .cnt{color:rgba(224,237,237,.2);font-variant-numeric:tabular-nums}
+.checkrow{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);
+  margin:2px 0 10px;cursor:pointer}
+.checkrow input{accent-color:var(--primary)}
+.search{width:100%;padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.07);
+  background:rgba(12,28,34,.6);color:var(--fg);font-size:11px;font-family:inherit;outline:none}
+.search:focus{border-color:var(--primary)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:10px;color:rgba(224,237,237,.55)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{width:6px;height:6px;border-radius:50%;display:inline-block}
+.items{display:flex;flex-direction:column;gap:1px;max-height:230px;overflow:auto}
+.item{display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;
+  color:rgba(224,237,237,.6);background:transparent;border:0;font-family:inherit;text-align:left}
+.item:hover{background:rgba(255,255,255,.04);color:var(--fg)}
+.item.on{background:rgba(29,162,126,.14);color:var(--primary)}
+.item .nm{flex:1 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  font-family:"JetBrains Mono",monospace;font-size:10px}
+.item .cnt{color:rgba(224,237,237,.22);font-variant-numeric:tabular-nums;font-size:10px}
+.slider{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);margin-bottom:6px}
+.slider input{flex:1 1 auto;accent-color:var(--primary);height:3px}
+.slider b{width:26px;text-align:right;font-weight:500;color:rgba(224,237,237,.5);font-variant-numeric:tabular-nums}
+#stage{position:relative;flex:1 1 auto;min-width:0;background:#070f13}
+#cv{display:block;width:100%;height:100%}
+#stats{position:absolute;top:10px;left:14px;font:11px "JetBrains Mono",ui-monospace,monospace;
+  color:rgba(224,237,237,.45);pointer-events:none}
+#hint{position:absolute;bottom:10px;left:14px;font-size:10px;color:rgba(224,237,237,.28);pointer-events:none}
+#detail{position:absolute;top:38px;right:14px;width:270px;max-height:calc(100% - 60px);overflow:auto;
+  padding:12px 13px;border-radius:10px;background:rgba(14,32,40,.94);border:1px solid var(--border);
+  box-shadow:0 10px 30px rgba(0,0,0,.55);font-size:11px}
+#detail h3{margin:0 22px 2px 0;font-size:12px;font-weight:600;word-break:break-all;
+  font-family:"JetBrains Mono",monospace}
+#detail .sub{color:var(--muted);font-size:10px;margin-bottom:8px}
+#detail .row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;
+  border-top:1px solid rgba(255,255,255,.05);color:rgba(224,237,237,.62)}
+#detail .row b{font-weight:500;color:var(--fg)}
+#detail .nb{display:block;width:100%;text-align:left;border:0;background:transparent;cursor:pointer;
+  padding:3px 0;color:rgba(29,162,126,.85);font-family:"JetBrains Mono",monospace;font-size:10px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#detail .nb:hover{color:var(--primary)}
+#detail .close{position:absolute;top:6px;right:9px;border:0;background:transparent;cursor:pointer;
+  color:rgba(224,237,237,.35);font-size:14px;line-height:1}
+#tip{position:absolute;pointer-events:none;display:none;padding:7px 9px;border-radius:8px;
+  background:rgba(9,20,26,.95);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.5);
+  font-size:10.5px;max-width:300px;z-index:5}
+#tip b{display:block;font:600 11px "JetBrains Mono",monospace;color:var(--fg);margin-bottom:3px}
+#tip .sub{color:var(--muted);display:block;margin-bottom:4px;word-break:break-all}
+#tip .tag{display:inline-block;margin-top:4px;padding:1px 5px;border-radius:4px;font-size:9px;
+  border:1px solid rgba(255,255,255,.12)}
+#err{position:fixed;left:0;right:0;bottom:0;padding:8px 12px;background:#2a1215;color:#ffb4b4;
+  border-top:1px solid var(--danger);font:11px ui-monospace,monospace;display:none;white-space:pre-wrap;z-index:9}
+/*__GLOW_SIGNALS_CSS__*/
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand"><span class="dot"></span> Trading Memory</div>
+    <nav id="tabs"></nav>
+    <div id="graphName">offline · Canvas2D + bloom</div>
+    <button id="refresh" class="refresh" title="Ve lai tu dau">Refresh</button>
+  </header>
+  <div id="main">
+    <aside id="side">
+      <div class="side-head">
+        <span class="side-title">Filters</span>
+        <span class="side-actions">
+          <button id="allBtn">All</button><span class="sep">|</span><button id="noneBtn">None</button>
+        </span>
+      </div>
+      <div class="side-body">
+        <div class="group"><p class="glabel">Nodes</p><div id="nodeChips" class="chips"></div></div>
+        <div class="group"><p class="glabel">Edges</p><div id="edgeChips" class="chips"></div></div>
+        <label class="checkrow"><input type="checkbox" id="hubOnly"> Chỉ hubs (deg ≥ 7)</label>
+        <div class="group"><p class="glabel">Spectral class (degree)</p><div id="stellar" class="legend"></div></div>
+        <label class="checkrow"><input type="checkbox" id="showLabels" checked> Show labels</label>
+        <input id="search" class="search" type="search" placeholder="Search...">
+        <div class="group" style="margin-top:12px"><p class="glabel" id="listTitle">Files</p>
+          <div id="items" class="items"></div></div>
+        <div class="group"><p class="glabel">Hiển thị</p>
+          <div class="slider">Edge <input id="sEdge" type="range" min="10" max="300" value="100"><b id="vEdge">1.0</b></div>
+          <div class="slider">Glow <input id="sGlow" type="range" min="0" max="200" value="100"><b id="vGlow">1.0</b></div>
+          <div class="slider">Bloom <input id="sBloom" type="range" min="0" max="200" value="100"><b id="vBloom">1.0</b></div>
+        </div>
+        <div class="group"><p class="glabel">Kiểu khối cầu (3D)</p>
+          <div class="chips" id="layChips"></div>
+        </div>
+        <div class="group"><p class="glabel">Hiệu ứng</p>
+          <label class="checkrow"><input type="checkbox" id="fxTwinkle" checked> Twinkle (sao nhấp nháy)</label>
+          <label class="checkrow"><input type="checkbox" id="fxDof" checked> Depth of field (mờ theo độ sâu)</label>
+          <label class="checkrow"><input type="checkbox" id="fxFlow" checked> Dòng chảy trên cross edge</label>
+          <label class="checkrow"><input type="checkbox" id="fxRipple" checked> Sóng lan khi click</label>
+          <label class="checkrow"><input type="checkbox" id="fxSat" checked> Galaxy vệ tinh (mem records)</label>
+          <label class="checkrow"><input type="checkbox" id="fxNebula" checked> Nebula + vignette</label>
+          <label class="checkrow"><input type="checkbox" id="fxAuto" checked> Tự xoay khi rảnh (60s)</label>
+        </div>
+        <div class="group"><p class="glabel">Tín hiệu truy xuất AI</p>
+          <label class="checkrow"><input type="checkbox" id="fxSignals" checked> Vòng/vệt sáng theo agent</label>
+          <div id="sigPanel">
+            <div id="sigStats"></div>
+            <div id="sigAgents"></div>
+            <div id="sigEvents"></div>
+          </div>
+        </div>
+        <div class="group"><p class="glabel">Bản Canvas2D (nhẹ, tương thích)</p>
+          <a class="item" href="glow_map.html" style="text-decoration:none">
+            <span class="nm">glow_map.html ← (Canvas2D)</span>
+          </a>
+        </div>
+      </div>
+    </aside>
+    <section id="stage">
+      <canvas id="cv"></canvas>
+      <div id="stats"></div>
+      <div id="hint">kéo = xoay · lăn chuột = zoom · Shift+kéo = pan · hover = tooltip · click node = chọn/highlight · 1/2/3 = cụm sao/vỏ cầu/cầu đặc · Q = chạy 1 vòng truy xuất · Shift+A = auto</div>
+      <div id="tip"></div>
+      <div id="detail" style="display:none"></div>
+    </section>
+  </div>
+</div>
+<div id="err"></div>
+<script>
+__GLOW_SIGNALS_LIB__
+const DATA = __GLOW_PAYLOAD__;
+__GLOW_ENGINE__
+</script>
+</body></html>
+

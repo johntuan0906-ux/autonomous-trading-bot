@@ -1,0 +1,92 @@
+﻿[1/4] bench Python ...
+[2/4] bench Node (kernel JS nhung trong ban do) ...
+[3/4] bench Chrome headless (web that) ...
+[4/4] bao cao
+
+================================================================================================
+BENCH TRUY XUAT DU LIEU BAN DO  |  200 iters/strategy  |  7 queries  |  k=12
+================================================================================================
+Queries: risk stop loss, layout 3d, memory agent, rsi signal, backtest pnl, satellite cross link, bloom pass
+Engine : py(1.0), node(1.0), chrome(1.0)
+
+-- STARTUP TOOLING PYTHON (glow_agents / serve_glow / build_glow) --
+  nap du lieu 2 file JSON :    41.94 ms
+  dung chi muc nghich      :    28.86 ms
+    Graph Memory    397 nodes /  8756 edges
+    Memory Map      939 nodes / 16399 edges
+
+-- PARSE + DUNG INDEX (payload nhung trong ban do) --
+dataset          engine         parseMs     docsMs  idxLiveMs   idxOffMs
+Graph Memory     py               12.66       4.82       7.46       6.61
+                 node              3.01       0.44       8.94       3.13
+                 chrome            2.70       0.90      13.80          5
+
+Memory Map       py               12.66       4.68      18.53      19.83
+                 node              3.01       0.67      14.55      12.42
+                 chrome            2.70       0.50       9.90       6.70
+
+-- TIM KIEM (search) p50/p95 ms [QPS] + hit TB + token tiet kiem --
+dataset          strategy   py p50/p95 [QPS] node p50/p95 [QPS] chrome p50/p95 [QPS]    hits  saved%
+Graph Memory     fast     0.015/0.161 [24798]    0/0.030 [97089]    0/0.040 [93023]    5.88    98.7
+                 code     0.179/0.449 [5023] 0.140/0.220 [7808] 0.120/0.310 [7642]    6.17    98.7
+                 hybrid   0.077/0.282 [9930] 0.020/0.080 [36524] 0.020/0.100 [29806]    9.60    99.7
+                 deep     0.181/0.486 [4584] 0.050/0.140 [16728] 0.050/0.120 [19212]   10.32    99.7
+                 semantic 0.081/0.429 [7907] 0.070/0.220 [9488] 0.060/0.180 [11312]    6.17    98.7
+
+Memory Map       fast     0.026/0.056 [30009] 0.010/0.020 [86745] 0.010/0.020 [111732]    7.35    98.7
+                 code     0.516/0.823 [2151] 0.460/0.720 [2493] 0.370/0.600 [3041]    7.93    98.0
+                 hybrid   0.102/0.196 [9183] 0.030/0.060 [30240] 0.030/0.060 [34423]   10.32    98.7
+                 deep     0.197/0.261 [5559] 0.090/0.120 [12913] 0.080/0.110 [14545]   10.32    98.7
+                 semantic 0.131/0.339 [6100] 0.240/0.720 [2995] 0.210/0.640 [3279]    7.93    98.6
+
+-- CACHE LRU+TTL (us/op) + SIDEBAR SEARCH (o Search) --
+dataset          engine         missUs        hitUs  sidebar p50ms    sidebar QPS
+Graph Memory     py               0.35         0.21          0.077          12784
+                 node             0.15         0.18          0.050          19666
+                 chrome           0.15         0.15          0.100          17699
+
+Memory Map       py               0.28         0.22          0.179           5560
+                 node             0.12         0.15          0.110           9227
+                 chrome           0.20         0.30          0.100           7220
+
+-- 1 VONG 5 AGENT x 7 QUERY (nhan Q trong ban do) --
+dataset          engine       coldMs     warmMs   tietKiem%   cacheHit%   savedTok
+Graph Memory     py             5.24       0.88        99.1       100.0     398128
+                 node           3.60       0.31        99.1         100     398128
+                 chrome         3.50       0.40        99.1         100     398128
+
+Memory Map       py             7.80       0.95        98.8       100.0     329066
+                 node           7.86       0.32        98.8         100     329066
+                 chrome            8       0.80        98.8         100     329066
+
+-- 5 AGENT RIENG (chi tang py, cold) --
+  Graph Memory:
+    scout        0.56 ms / 7 query  (ngan sach 45 ms)
+    analyst      1.35 ms / 7 query  (ngan sach 120 ms)
+    coder        1.39 ms / 7 query  (ngan sach 70 ms)
+    auditor      0.88 ms / 7 query  (ngan sach 100 ms)
+    oracle       1.04 ms / 7 query  (ngan sach 60 ms)
+
+  Memory Map:
+    scout        0.39 ms / 7 query  (ngan sach 45 ms)
+    analyst      1.57 ms / 7 query  (ngan sach 120 ms)
+    coder        3.05 ms / 7 query  (ngan sach 70 ms)
+    auditor      1.08 ms / 7 query  (ngan sach 100 ms)
+    oracle       1.71 ms / 7 query  (ngan sach 60 ms)
+
+-- CHI PHI TOKEN TRA VE vs DOC NGUYEN FILE (query 'risk stop loss') --
+dataset          strategy        live%   offline%         hits
+Graph Memory     fast             98.7       88.4         5.88
+                 code             98.7       88.4         6.17
+                 hybrid           99.7       92.5         9.60
+                 deep             99.7       92.5        10.32
+                 semantic         98.7       88.4         6.17
+
+Memory Map       fast             98.7       92.4         7.35
+                 code             98.0       91.0         7.93
+                 hybrid           98.7       92.4        10.32
+                 deep             98.7       92.4        10.32
+                 semantic         98.6       92.0         7.93
+
+================================================================================================
+[out] bench_results.json

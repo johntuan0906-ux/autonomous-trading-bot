@@ -1,0 +1,762 @@
+{
+  "meta": {
+    "iters": 200,
+    "queries": [
+      "risk stop loss",
+      "layout 3d",
+      "memory agent",
+      "rsi signal",
+      "backtest pnl",
+      "satellite cross link",
+      "bloom pass"
+    ],
+    "k": 12,
+    "strategies": [
+      "fast",
+      "code",
+      "hybrid",
+      "deep",
+      "semantic"
+    ],
+    "engines": [
+      "py",
+      "node",
+      "chrome"
+    ]
+  },
+  "tooling": {
+    "loadDocsMs": 41.94,
+    "buildIdxMs": 28.86,
+    "bothIdxSearchMs": {
+      "n": 50,
+      "p50": 0.107,
+      "p95": 0.115,
+      "max": 0.206,
+      "mean": 0.109,
+      "qps": 9205.7
+    },
+    "datasets": {
+      "Graph Memory": {
+        "nodes": 397,
+        "edges": 8756
+      },
+      "Memory Map": {
+        "nodes": 939,
+        "edges": 16399
+      }
+    }
+  },
+  "results": {
+    "py": {
+      "engine": "py",
+      "ver": "1.0",
+      "payloadMs": 12.66,
+      "datasets": [
+        {
+          "name": "Graph Memory",
+          "nodes": 402,
+          "edges": 8756,
+          "docsMs": 4.82,
+          "idxLiveMs": 7.46,
+          "idxOffMs": 6.61,
+          "search": {
+            "fast": {
+              "n": 200,
+              "p50": 0.015,
+              "p95": 0.161,
+              "max": 0.174,
+              "mean": 0.04,
+              "qps": 24797.9,
+              "hitsAvg": 5.88,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            },
+            "code": {
+              "n": 200,
+              "p50": 0.179,
+              "p95": 0.449,
+              "max": 0.696,
+              "mean": 0.199,
+              "qps": 5023.1,
+              "hitsAvg": 6.17,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            },
+            "hybrid": {
+              "n": 200,
+              "p50": 0.077,
+              "p95": 0.282,
+              "max": 0.335,
+              "mean": 0.101,
+              "qps": 9930.0,
+              "hitsAvg": 9.6,
+              "savedLivePct": 99.7,
+              "savedOffPct": 92.5
+            },
+            "deep": {
+              "n": 200,
+              "p50": 0.181,
+              "p95": 0.486,
+              "max": 1.142,
+              "mean": 0.218,
+              "qps": 4584.1,
+              "hitsAvg": 10.32,
+              "savedLivePct": 99.7,
+              "savedOffPct": 92.5
+            },
+            "semantic": {
+              "n": 200,
+              "p50": 0.081,
+              "p95": 0.429,
+              "max": 0.472,
+              "mean": 0.126,
+              "qps": 7907.0,
+              "hitsAvg": 6.17,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            }
+          },
+          "cache": {
+            "missUs": 0.35,
+            "hitUs": 0.21
+          },
+          "round": {
+            "agents": 5,
+            "queries": 7,
+            "coldMs": 5.24,
+            "warmMs": 0.88,
+            "perAgent": [
+              {
+                "id": "scout",
+                "coldMs": 0.56
+              },
+              {
+                "id": "analyst",
+                "coldMs": 1.35
+              },
+              {
+                "id": "coder",
+                "coldMs": 1.39
+              },
+              {
+                "id": "auditor",
+                "coldMs": 0.88
+              },
+              {
+                "id": "oracle",
+                "coldMs": 1.04
+              }
+            ],
+            "totals": {
+              "runs": 35,
+              "ret": 3477,
+              "base": 401605,
+              "saved": 398128,
+              "cost": 0.012907,
+              "cache": 35,
+              "saved_pct": 99.1,
+              "cache_hit_pct": 100.0
+            }
+          },
+          "sidebar": {
+            "n": 200,
+            "p50": 0.077,
+            "p95": 0.093,
+            "max": 0.171,
+            "mean": 0.078,
+            "qps": 12784.2
+          }
+        },
+        {
+          "name": "Memory Map",
+          "nodes": 939,
+          "edges": 16399,
+          "docsMs": 4.68,
+          "idxLiveMs": 18.53,
+          "idxOffMs": 19.83,
+          "search": {
+            "fast": {
+              "n": 200,
+              "p50": 0.026,
+              "p95": 0.056,
+              "max": 0.065,
+              "mean": 0.033,
+              "qps": 30009.2,
+              "hitsAvg": 7.35,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "code": {
+              "n": 200,
+              "p50": 0.516,
+              "p95": 0.823,
+              "max": 0.894,
+              "mean": 0.465,
+              "qps": 2150.9,
+              "hitsAvg": 7.93,
+              "savedLivePct": 98.0,
+              "savedOffPct": 91.0
+            },
+            "hybrid": {
+              "n": 200,
+              "p50": 0.102,
+              "p95": 0.196,
+              "max": 0.296,
+              "mean": 0.109,
+              "qps": 9183.3,
+              "hitsAvg": 10.32,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "deep": {
+              "n": 200,
+              "p50": 0.197,
+              "p95": 0.261,
+              "max": 0.378,
+              "mean": 0.18,
+              "qps": 5559.0,
+              "hitsAvg": 10.32,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "semantic": {
+              "n": 200,
+              "p50": 0.131,
+              "p95": 0.339,
+              "max": 0.42,
+              "mean": 0.164,
+              "qps": 6100.5,
+              "hitsAvg": 7.93,
+              "savedLivePct": 98.6,
+              "savedOffPct": 92.0
+            }
+          },
+          "cache": {
+            "missUs": 0.28,
+            "hitUs": 0.22
+          },
+          "round": {
+            "agents": 5,
+            "queries": 7,
+            "coldMs": 7.8,
+            "warmMs": 0.95,
+            "perAgent": [
+              {
+                "id": "scout",
+                "coldMs": 0.39
+              },
+              {
+                "id": "analyst",
+                "coldMs": 1.57
+              },
+              {
+                "id": "coder",
+                "coldMs": 3.05
+              },
+              {
+                "id": "auditor",
+                "coldMs": 1.08
+              },
+              {
+                "id": "oracle",
+                "coldMs": 1.71
+              }
+            ],
+            "totals": {
+              "runs": 35,
+              "ret": 4124,
+              "base": 333190,
+              "saved": 329066,
+              "cost": 0.012784,
+              "cache": 35,
+              "saved_pct": 98.8,
+              "cache_hit_pct": 100.0
+            }
+          },
+          "sidebar": {
+            "n": 200,
+            "p50": 0.179,
+            "p95": 0.192,
+            "max": 0.295,
+            "mean": 0.18,
+            "qps": 5559.8
+          }
+        }
+      ]
+    },
+    "node": {
+      "engine": "node",
+      "ver": "1.0",
+      "payloadMs": 3.01,
+      "datasets": [
+        {
+          "name": "Graph Memory",
+          "nodes": 402,
+          "edges": 8756,
+          "docsMs": 0.44,
+          "idxLiveMs": 8.94,
+          "idxOffMs": 3.13,
+          "search": {
+            "fast": {
+              "n": 200,
+              "p50": 0,
+              "p95": 0.03,
+              "max": 0.13,
+              "mean": 0.01,
+              "qps": 97089,
+              "hitsAvg": 5.88,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            },
+            "code": {
+              "n": 200,
+              "p50": 0.14,
+              "p95": 0.22,
+              "max": 0.32,
+              "mean": 0.13,
+              "qps": 7808,
+              "hitsAvg": 6.17,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            },
+            "hybrid": {
+              "n": 200,
+              "p50": 0.02,
+              "p95": 0.08,
+              "max": 0.14,
+              "mean": 0.03,
+              "qps": 36524,
+              "hitsAvg": 9.6,
+              "savedLivePct": 99.7,
+              "savedOffPct": 92.5
+            },
+            "deep": {
+              "n": 200,
+              "p50": 0.05,
+              "p95": 0.14,
+              "max": 0.22,
+              "mean": 0.06,
+              "qps": 16728,
+              "hitsAvg": 10.32,
+              "savedLivePct": 99.7,
+              "savedOffPct": 92.5
+            },
+            "semantic": {
+              "n": 200,
+              "p50": 0.07,
+              "p95": 0.22,
+              "max": 0.29,
+              "mean": 0.11,
+              "qps": 9488,
+              "hitsAvg": 6.17,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            }
+          },
+          "cache": {
+            "missUs": 0.15,
+            "hitUs": 0.18
+          },
+          "round": {
+            "agents": 5,
+            "queries": 7,
+            "coldMs": 3.6,
+            "warmMs": 0.31,
+            "perAgent": [
+              {
+                "id": "scout",
+                "coldMs": 0.96
+              },
+              {
+                "id": "analyst",
+                "coldMs": 0.54
+              },
+              {
+                "id": "coder",
+                "coldMs": 1.04
+              },
+              {
+                "id": "auditor",
+                "coldMs": 0.28
+              },
+              {
+                "id": "oracle",
+                "coldMs": 0.78
+              }
+            ],
+            "totals": {
+              "runs": 35,
+              "ret": 3477,
+              "base": 401605,
+              "saved": 398128,
+              "cost": 0.012908,
+              "cache": 35,
+              "saved_pct": 99.1,
+              "cache_hit_pct": 100
+            }
+          },
+          "sidebar": {
+            "n": 200,
+            "p50": 0.05,
+            "p95": 0.08,
+            "max": 0.41,
+            "mean": 0.05,
+            "qps": 19666
+          }
+        },
+        {
+          "name": "Memory Map",
+          "nodes": 939,
+          "edges": 16399,
+          "docsMs": 0.67,
+          "idxLiveMs": 14.55,
+          "idxOffMs": 12.42,
+          "search": {
+            "fast": {
+              "n": 200,
+              "p50": 0.01,
+              "p95": 0.02,
+              "max": 0.12,
+              "mean": 0.01,
+              "qps": 86745,
+              "hitsAvg": 7.35,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "code": {
+              "n": 200,
+              "p50": 0.46,
+              "p95": 0.72,
+              "max": 0.79,
+              "mean": 0.4,
+              "qps": 2493,
+              "hitsAvg": 7.93,
+              "savedLivePct": 98,
+              "savedOffPct": 91
+            },
+            "hybrid": {
+              "n": 200,
+              "p50": 0.03,
+              "p95": 0.06,
+              "max": 0.08,
+              "mean": 0.03,
+              "qps": 30240,
+              "hitsAvg": 10.32,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "deep": {
+              "n": 200,
+              "p50": 0.09,
+              "p95": 0.12,
+              "max": 0.13,
+              "mean": 0.08,
+              "qps": 12913,
+              "hitsAvg": 10.32,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "semantic": {
+              "n": 200,
+              "p50": 0.24,
+              "p95": 0.72,
+              "max": 0.78,
+              "mean": 0.33,
+              "qps": 2995,
+              "hitsAvg": 7.93,
+              "savedLivePct": 98.6,
+              "savedOffPct": 92
+            }
+          },
+          "cache": {
+            "missUs": 0.12,
+            "hitUs": 0.15
+          },
+          "round": {
+            "agents": 5,
+            "queries": 7,
+            "coldMs": 7.86,
+            "warmMs": 0.32,
+            "perAgent": [
+              {
+                "id": "scout",
+                "coldMs": 0.25
+              },
+              {
+                "id": "analyst",
+                "coldMs": 0.82
+              },
+              {
+                "id": "coder",
+                "coldMs": 3.39
+              },
+              {
+                "id": "auditor",
+                "coldMs": 0.39
+              },
+              {
+                "id": "oracle",
+                "coldMs": 3.01
+              }
+            ],
+            "totals": {
+              "runs": 35,
+              "ret": 4124,
+              "base": 333190,
+              "saved": 329066,
+              "cost": 0.012785,
+              "cache": 35,
+              "saved_pct": 98.8,
+              "cache_hit_pct": 100
+            }
+          },
+          "sidebar": {
+            "n": 200,
+            "p50": 0.11,
+            "p95": 0.12,
+            "max": 0.56,
+            "mean": 0.11,
+            "qps": 9227
+          }
+        }
+      ]
+    },
+    "chrome": {
+      "engine": "chrome",
+      "ver": "1.0",
+      "payloadMs": 2.7,
+      "datasets": [
+        {
+          "name": "Graph Memory",
+          "nodes": 402,
+          "edges": 8756,
+          "docsMs": 0.9,
+          "idxLiveMs": 13.8,
+          "idxOffMs": 5,
+          "search": {
+            "fast": {
+              "n": 200,
+              "p50": 0,
+              "p95": 0.04,
+              "max": 0.16,
+              "mean": 0.01,
+              "qps": 93023,
+              "hitsAvg": 5.88,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            },
+            "code": {
+              "n": 200,
+              "p50": 0.12,
+              "p95": 0.31,
+              "max": 0.41,
+              "mean": 0.13,
+              "qps": 7642,
+              "hitsAvg": 6.17,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            },
+            "hybrid": {
+              "n": 200,
+              "p50": 0.02,
+              "p95": 0.1,
+              "max": 0.18,
+              "mean": 0.03,
+              "qps": 29806,
+              "hitsAvg": 9.6,
+              "savedLivePct": 99.7,
+              "savedOffPct": 92.5
+            },
+            "deep": {
+              "n": 200,
+              "p50": 0.05,
+              "p95": 0.12,
+              "max": 0.18,
+              "mean": 0.05,
+              "qps": 19212,
+              "hitsAvg": 10.32,
+              "savedLivePct": 99.7,
+              "savedOffPct": 92.5
+            },
+            "semantic": {
+              "n": 200,
+              "p50": 0.06,
+              "p95": 0.18,
+              "max": 0.3,
+              "mean": 0.09,
+              "qps": 11312,
+              "hitsAvg": 6.17,
+              "savedLivePct": 98.7,
+              "savedOffPct": 88.4
+            }
+          },
+          "cache": {
+            "missUs": 0.15,
+            "hitUs": 0.15
+          },
+          "round": {
+            "agents": 5,
+            "queries": 7,
+            "coldMs": 3.5,
+            "warmMs": 0.4,
+            "perAgent": [
+              {
+                "id": "scout",
+                "coldMs": 0.8
+              },
+              {
+                "id": "analyst",
+                "coldMs": 0.6
+              },
+              {
+                "id": "coder",
+                "coldMs": 1
+              },
+              {
+                "id": "auditor",
+                "coldMs": 0.3
+              },
+              {
+                "id": "oracle",
+                "coldMs": 0.8
+              }
+            ],
+            "totals": {
+              "runs": 35,
+              "ret": 3477,
+              "base": 401605,
+              "saved": 398128,
+              "cost": 0.012908,
+              "cache": 35,
+              "saved_pct": 99.1,
+              "cache_hit_pct": 100
+            }
+          },
+          "sidebar": {
+            "n": 200,
+            "p50": 0.1,
+            "p95": 0.1,
+            "max": 0.3,
+            "mean": 0.06,
+            "qps": 17699
+          }
+        },
+        {
+          "name": "Memory Map",
+          "nodes": 939,
+          "edges": 16399,
+          "docsMs": 0.5,
+          "idxLiveMs": 9.9,
+          "idxOffMs": 6.7,
+          "search": {
+            "fast": {
+              "n": 200,
+              "p50": 0.01,
+              "p95": 0.02,
+              "max": 0.09,
+              "mean": 0.01,
+              "qps": 111732,
+              "hitsAvg": 7.35,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "code": {
+              "n": 200,
+              "p50": 0.37,
+              "p95": 0.6,
+              "max": 0.7,
+              "mean": 0.33,
+              "qps": 3041,
+              "hitsAvg": 7.93,
+              "savedLivePct": 98,
+              "savedOffPct": 91
+            },
+            "hybrid": {
+              "n": 200,
+              "p50": 0.03,
+              "p95": 0.06,
+              "max": 0.07,
+              "mean": 0.03,
+              "qps": 34423,
+              "hitsAvg": 10.32,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "deep": {
+              "n": 200,
+              "p50": 0.08,
+              "p95": 0.11,
+              "max": 0.12,
+              "mean": 0.07,
+              "qps": 14545,
+              "hitsAvg": 10.32,
+              "savedLivePct": 98.7,
+              "savedOffPct": 92.4
+            },
+            "semantic": {
+              "n": 200,
+              "p50": 0.21,
+              "p95": 0.64,
+              "max": 1.1,
+              "mean": 0.31,
+              "qps": 3279,
+              "hitsAvg": 7.93,
+              "savedLivePct": 98.6,
+              "savedOffPct": 92
+            }
+          },
+          "cache": {
+            "missUs": 0.2,
+            "hitUs": 0.3
+          },
+          "round": {
+            "agents": 5,
+            "queries": 7,
+            "coldMs": 8,
+            "warmMs": 0.8,
+            "perAgent": [
+              {
+                "id": "scout",
+                "coldMs": 0.3
+              },
+              {
+                "id": "analyst",
+                "coldMs": 1.3
+              },
+              {
+                "id": "coder",
+                "coldMs": 3.4
+              },
+              {
+                "id": "auditor",
+                "coldMs": 0.4
+              },
+              {
+                "id": "oracle",
+                "coldMs": 2.6
+              }
+            ],
+            "totals": {
+              "runs": 35,
+              "ret": 4124,
+              "base": 333190,
+              "saved": 329066,
+              "cost": 0.012785,
+              "cache": 35,
+              "saved_pct": 98.8,
+              "cache_hit_pct": 100
+            }
+          },
+          "sidebar": {
+            "n": 200,
+            "p50": 0.1,
+            "p95": 0.2,
+            "max": 0.5,
+            "mean": 0.14,
+            "qps": 7220
+          }
+        }
+      ]
+    }
+  }
+}

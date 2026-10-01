@@ -1,0 +1,53 @@
+# .cbmignore — ignore file chuẩn của codebase-memory-mcp (CBM).
+# Cú pháp gitignore. Áp dụng ở bước file-discovery nên path bị loại sẽ KHÔNG vào graph.
+# Mục đích: index nhanh, ít node rác, giảm token khi agent query graph.
+
+# --- vendor / build / generated ---
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/node_modules/
+**/dist/
+**/build/
+**/.venv/
+**/venv/
+**/*.egg-info/
+
+# --- project copies / archives (không index bản sao) ---
+/binance_futures_ai_bot/_archive/
+/binance_futures_ai_bot/binance_futures_bot/
+
+# --- binary/media nặng ---
+**/*.png
+**/*.jpg
+**/*.gif
+**/*.svg
+**/*.zip
+**/*.7z
+**/*.rar
+**/*.png
+**/*.db
+**/*.db-wal
+**/*.db-shm
+
+# --- vendor hạ tầng của chính memory-mcp (không cần index) ---
+/memory-mcp/vendored/
+/memory-mcp/.github/
+/memory-mcp/docs/EVALUATION_PLAN.md
+/memory-mcp/docs/graph-ui-screenshot.png
+/memory-mcp/graph-ui/package-lock.json
+/memory-mcp/pkg/
+
+# --- package build artifacts của memory-graph TS ---
+/memory-graph/ts/vendor/
+/memory-graph/ts/dist/
+/memory-graph/docs/archive/
+
+# --- generated local state ---
+/logs/
+/graph_memory.json
+/graph_memory.html
+/memory_map.html
+/memory.db
+/memory.db-wal
+/memory.db-shm

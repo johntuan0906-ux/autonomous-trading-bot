@@ -1,0 +1,30 @@
+# .clineignore (cấp project) — dùng khi tool scan GIỚI HẠN trong thư mục này.
+# Bản CHÍNH THỨC/khoá chặn thật nằm ở GỐC WORKSPACE: ..\.clineignore
+# (Cline tính pattern theo path tương đối từ gốc workspace; file này trước đây
+# trỏ vào openbrain-master/, memory-graph/ là thư mục ANH EM nên vô hiệu.)
+
+memory-mcp/
+memory.db
+memory.db-wal
+memory.db-shm
+graph_memory.json
+graph_memory.html
+memory_map_data.json
+memory_map_data.js
+glow_map_webgl.html
+*.html
+vendor/
+binance_futures_ai_bot/
+logs/
+*.log
+*.pyc
+**/__pycache__/
+**/.pytest_cache/
+**/node_modules/
+**/dist/
+**/build/
+**/.venv/
+**/.git/
+*.db
+*.bin
+*.zip

@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "0. ClinePass - Mo phong 14 model (offline)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/cline_multi.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["run", "--provider", "mock", "--group", "all", "--concurrency", "14", "--task-file", "examples/review_task.txt", "--context", "examples/buggy_stats.py"]
+    },
+    {
+      "name": "1. Mo phong Hand-off",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["run", "--provider", "mock", "--mode", "handoff", "--task-file", "examples/task.txt"]
+    },
+    {
+      "name": "2. AI that - Group Chat (ton phi API)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": ["run", "--provider", "openai", "--mode", "group", "--task-file", "examples/task.txt"]
+    }
+  ]
+}

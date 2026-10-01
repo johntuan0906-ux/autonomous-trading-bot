@@ -1,0 +1,92 @@
+# ==============================================================
+# CẤU HÌNH BOT GIAO DỊCH FUTURES BINANCE (LONG/SHORT TỰ ĐỘNG)
+# ==============================================================
+
+exchange:
+  leverage: 5                 # đòn bẩy áp dụng cho tất cả cặp
+  margin_type: ISOLATED       # ISOLATED hoặc CROSSED
+
+# Các cặp xoay vòng đánh giá mỗi chu kỳ (thêm/bớt tự do)
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+  - SOLUSDT
+  - XRPUSDT
+
+timeframe: "15m"                # khung nến dùng để phân tích kỹ thuật
+lookback_candles: 300           # số nến lấy về mỗi lần tính chỉ báo
+cycle_interval_seconds: 300     # chu kỳ quét lại toàn bộ danh sách (giây)
+
+risk:
+  risk_per_trade_pct: 1.0          # % vốn (equity) chấp nhận rủi ro mỗi lệnh
+  max_concurrent_positions: 2      # số lệnh mở đồng thời tối đa trong 4 cặp
+  max_daily_loss_pct: 5.0          # ngắt mạch: dừng vào lệnh mới nếu lỗ trong ngày vượt %
+  atr_period: 14
+  sl_atr_multiplier: 1.5           # SL = giá vào lệnh -/+ ATR * hệ số
+  tp_atr_multiplier: 3.0           # TP = giá vào lệnh -/+ ATR * hệ số (R:R mặc định 1:2)
+  cooldown_minutes_after_close: 30 # thời gian "nghỉ" 1 cặp sau khi vừa đóng lệnh
+
+signal:
+  # composite = technical_weight * điểm_kỹ_thuật + news_weight * điểm_tin_tức
+  # (dạng CỘNG, không phải trung bình có trọng số) — technical_weight=1.0
+  # nghĩa là điểm kỹ thuật được giữ nguyên, tin tức chỉ cộng/trừ thêm. Nhờ
+  # vậy nếu chưa cấu hình API tin tức (điểm tin tức luôn = 0), bot vẫn vào
+  # lệnh bình thường dựa trên phân tích kỹ thuật, không bị "khoá" vì thiếu
+  # tin tức.
+  technical_weight: 1.0
+  news_weight: 0.4                 # mức cộng/trừ thêm khi tin tức đồng thuận/trái chiều
+  long_threshold: 0.35             # điểm tổng hợp >= ngưỡng này -> LONG
+  short_threshold: -0.35           # điểm tổng hợp <= ngưỡng này -> SHORT
+
+indicators:
+  ema_fast: 50
+  ema_slow: 200
+  rsi_period: 14
+  rsi_overbought: 70
+  rsi_oversold: 30
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bb_period: 20
+  bb_std: 2.0
+
+news:
+  enabled: true
+  refresh_minutes: 15
+  lookback_hours: 12
+  # Từ khoá để lọc tin tức riêng cho từng coin (dùng với CryptoPanic)
+  symbol_keywords:
+    BTCUSDT: ["BTC"]
+    ETHUSDT: ["ETH"]
+    SOLUSDT: ["SOL"]
+    XRPUSDT: ["XRP"]
+  # Từ khoá tin vĩ mô: Fed / lãi suất / pháp lý ... ảnh hưởng chung toàn thị trường
+  macro_keywords:
+    - "federal reserve"
+    - "fed interest rate"
+    - "sec cryptocurrency"
+    - "crypto regulation"
+    - "bitcoin etf"
+    - "cpi inflation report"
+  # Trọng số cộng thêm thủ công cho các từ khoá có tác động mạnh
+  # (cộng vào điểm VADER, không thay thế hoàn toàn)
+  keyword_weight_overrides:
+    "rate hike": -0.6
+    "rate cut": 0.6
+    "hawkish": -0.4
+    "dovish": 0.4
+    "etf approval": 0.7
+    "etf approved": 0.7
+    "hack": -0.7
+    "exploit": -0.6
+    "ban": -0.6
+    "lawsuit": -0.5
+    "sec charges": -0.5
+    "adoption": 0.4
+    "partnership": 0.3
+    "crackdown": -0.6
+    "bankrupt": -0.7
+
+logging:
+  level: INFO
+  file: "logs/bot.log"

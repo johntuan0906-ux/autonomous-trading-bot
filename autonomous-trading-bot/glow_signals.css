@@ -1,0 +1,42 @@
+
+/* ══ Tín hiệu truy xuất AI (HUD dùng chung 2 engine, class sg-*) ══ */
+#sigPanel{margin-top:8px}
+#sigStats .sg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sg-badge{font:600 10px "JetBrains Mono",monospace;padding:2px 7px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.14);color:rgba(224,237,237,.55)}
+.sg-badge.on{border-color:rgba(52,211,153,.6);color:#34d399;box-shadow:0 0 8px rgba(52,211,153,.35)}
+.sg-sig{font:10px "JetBrains Mono",monospace;color:rgba(224,237,237,.35)}
+.sg-nums{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.sg-nums div{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+  border-radius:7px;padding:5px 7px}
+.sg-nums b{display:block;font-size:13px;color:var(--fg);font-variant-numeric:tabular-nums}
+.sg-nums span{font-size:9px;color:var(--muted)}
+.sg-solo{font-size:10px;color:var(--muted);margin-bottom:6px}
+.sg-solo button{border:0;background:transparent;color:var(--danger);cursor:pointer;font-size:11px}
+#sigAgents{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.sg-ag{display:flex;align-items:center;gap:6px;width:100%;padding:4px 6px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);cursor:pointer;
+  font-family:inherit;text-align:left}
+.sg-ag.off{opacity:.35}
+.sg-ag i{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.sg-an{flex:1 1 auto;font-size:10px;color:var(--fg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sg-am{font:9px "JetBrains Mono",monospace;color:rgba(224,237,237,.4);max-width:110px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sg-as{font:600 10px "JetBrains Mono",monospace;color:var(--primary);min-width:30px;text-align:right}
+.sg-ctl{display:flex;gap:4px;margin-top:2px}
+.sg-ctl button{flex:1 1 auto;padding:4px 2px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit}
+.sg-ctl button:hover{color:var(--fg);border-color:var(--accent)}
+#sigEvents{display:flex;flex-direction:column;gap:2px;max-height:220px;overflow:auto}
+.sg-ev{display:flex;align-items:center;gap:6px;width:100%;padding:4px 6px;border-radius:6px;
+  border:0;background:transparent;cursor:pointer;font-family:inherit;text-align:left}
+.sg-ev:hover{background:rgba(255,255,255,.04)}
+.sg-ev i{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+.sg-eq{flex:1 1 auto;font-size:10px;color:rgba(224,237,237,.75);overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis}
+.sg-em{font:9px "JetBrains Mono",monospace;color:rgba(224,237,237,.38);white-space:nowrap}
+.sg-empty{font-size:10px;color:var(--muted);padding:6px 2px}
+#sigReload{position:absolute;top:10px;right:14px;z-index:6;padding:7px 10px;border-radius:8px;
+  background:rgba(14,32,40,.95);border:1px solid rgba(251,191,36,.5);font-size:11px;display:none}
+#sigReload button{margin-left:6px;padding:3px 9px;border-radius:6px;border:1px solid var(--accent);
+  background:rgba(29,162,126,.15);color:var(--primary);cursor:pointer;font-size:11px;font-family:inherit}

@@ -1,0 +1,34 @@
+__pycache__/
+*.pyc
+.env
+# Backup .env do reconcile/script tao ra cung chua API key -> phai ignore.
+.env.bak-*
+.env.*.bak
+.venv/
+logs/.supervisor.lock
+
+# ---- Nang / khong phai source cua bot (2026-10-01: don de repo & IDE nhe) ----
+# memory-mcp/ va memory-graph/ da duoc CHUYEN sang ..\..\Projects-vendor\ (ngoai workspace).
+logs/
+memory-mcp/
+memory-graph/
+**/node_modules/
+*.log
+*.log.*
+
+# ---- Artifact generated (tao lai duoc: build_glow.py / build_dashboard.py / sweep.py) ----
+memory.db
+memory.db-wal
+memory.db-shm
+graph_memory.json
+graph_memory.html
+memory_map.html
+memory_map_data.js
+memory_map_data.json
+interactive_mcp.html
+preview_dashboard.html
+preview_*.svg
+glow_map.html
+glow_map_webgl.html
+glow_map_*_preview.png
+cross_index.json

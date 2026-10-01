@@ -1,0 +1,76 @@
+symbols: [BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT]
+timeframes: [5m, 15m, 1h, 4h]
+loop_seconds: 60
+
+strategy:
+  min_score: 0.62
+  min_edge: 0.10
+  max_spread_bps: 15
+  atr_sl_mult: 1.8
+  risk_reward: 2.2
+  cooldown_minutes: 30
+  news_weight: 0.25
+  technical_weight: 0.75
+  risk_off_threshold: -0.65
+  news_blackout_minutes: 20
+  fomc_dates_utc: [2026-01-27, 2026-01-28, 2026-03-17, 2026-03-18, 2026-04-28, 2026-04-29, 2026-06-16, 2026-06-17, 2026-07-28, 2026-07-29, 2026-09-15, 2026-09-16, 2026-10-27, 2026-10-28, 2026-12-08, 2026-12-09]
+
+risk:
+  risk_per_trade: 0.005
+  max_daily_loss: 0.02
+  max_drawdown: 0.08
+  max_notional_fraction: 0.20
+  max_leverage: 3
+  min_qty_usdt: 10
+
+news:
+  max_items_per_feed: 30
+  feeds:
+    - https://www.federalreserve.gov/feeds/press_monetary.xml
+    - https://feeds.reuters.com/reuters/businessNews
+    - https://www.coindesk.com/arc/outboundfeeds/rss/
+    - https://cointelegraph.com/rss
+  positive:
+    - approval
+    - inflow
+    - adoption
+    - easing
+    - dovish
+    - rate cut
+    - etf
+    - institutional
+    - bullish
+  negative:
+    - hack
+    - exploit
+    - lawsuit
+    - ban
+    - seizure
+    - war
+    - invasion
+    - tariff
+    - hawkish
+    - rate hike
+    - inflation
+    - recession
+    - liquidation
+    - bankruptcy
+    - crackdown
+    - bearish
+  macro:
+    - fed
+    - fomc
+    - federal reserve
+    - interest rate
+    - cpi
+    - pce
+    - jobs
+    - unemployment
+    - nonfarm payroll
+    - treasury
+    - yield
+    - elections
+    - election
+    - president
+    - sanctions
+    - geopolitics

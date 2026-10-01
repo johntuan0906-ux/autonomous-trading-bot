@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "binance-futures-ai-rotation-bot"
+version = "0.1.0"
+description = "Risk-controlled Binance USD-M Futures rotation bot"
+requires-python = ">=3.11"
+dependencies = [
+  "httpx>=0.27,<1",
+  "pandas>=2.2,<3",
+  "numpy>=2,<3",
+  "PyYAML>=6,<7",
+  "python-dotenv>=1.0,<2"
+]

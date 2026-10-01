@@ -1,0 +1,4 @@
+Thiết kế một công cụ Python quản lý công việc cá nhân bằng SQLite.
+Cần thêm, liệt kê và đánh dấu hoàn thành công việc từ dòng lệnh.
+Hãy cung cấp kế hoạch, mã cốt lõi có thể chạy, lệnh sử dụng và các ca kiểm thử.
+Ưu tiên ít phụ thuộc, giải thích bằng tiếng Việt. Không cần giao diện web.

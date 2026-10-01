@@ -1,0 +1,5 @@
+Đọc file buggy_stats.py được cung cấp.
+Yêu cầu: average phải báo ValueError rõ ràng khi danh sách rỗng.
+last_three phải trả về ba phần tử cuối, giữ nguyên thứ tự; nếu ít hơn ba thì trả tất cả.
+Tìm lỗi, đưa mã sửa hoàn chỉnh và unittest cho các trường hợp biên.
+Không nói đã chạy test khi bạn chỉ đang đề xuất mã.

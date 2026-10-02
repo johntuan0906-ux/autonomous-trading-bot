@@ -731,7 +731,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             log.info("TURBO OPEN %s %s qty=%s SL=%s TP=%s alpha=%s strat=%s%s | size_base=%.2f "
                      "risk=%.2f$ (%.2f%% cua size_base)", direction,
                      sym, qty, lv["sl"], lv["tp"], alpha, strat, flag,
-                     size_base, risk_usdt, 100.0 * cfg.risk_per_trade_pct)
+                     size_base, risk_usdt, float(cfg.risk_per_trade_pct))
             oid = entry_res.get("id") if isinstance(entry_res, dict) else None
             tg(cfg, fmt_open(sym, direction, qty, lv["entry"], lv["sl"], lv["tp"],
                              alpha, oid, flag))
@@ -936,9 +936,22 @@ def monitor_only_loop(bot, cfg, ex, log, syms, *, sleep_sec=None, max_rounds=Non
     tg(cfg, fmt_kill(f"{bot.kill.reason} — bot chi QUAN LY vi the dang mo, khong mo lenh moi"))
     adopt_now(bot, cfg, ex, log, syms)          # vi the tren san phai duoc theo doi
     n = 0
+    _last_sig: tuple | None = None              # chi ghi lai state khi CO THAY DOI
     while True:
         n += 1
         heartbeat({"round": n, "phase": "monitor_only"})
+        # (02/10) KIEM TRUOC KHI GHI: ban dau kiem SAU khi save_risk_state -> chinh vong lap
+        # lai tao file tripped=true moi vong -> `risk.py --reset` (xoa file) khong bao gio
+        # duoc phat hien (da gap that khi chay lai bot: reset roi bot van bao "van ngung").
+        if _kill_cleared(cfg.risk_state_path):
+            # ai do da chay `risk.py --reset` -> doc lai state (tripped/consec_losses)
+            load_risk_state(cfg.risk_state_path, bot.kill,
+                            warn=lambda m: log.warning("%s", m))
+            bot.kill.tripped = False        # truong hop file bi XOA -> load_state khong doi
+            bot.kill.reason = ""
+            log.warning("KILL-SWITCH da duoc go -> quay lai trade binh thuong")
+            tg(cfg, "✅ kill-switch da duoc go -> bot quay lai trade binh thuong")
+            return True
         try:
             mng = manage_open_positions(bot, cfg, log)
             if mng["fatal"]:
@@ -952,19 +965,17 @@ def monitor_only_loop(bot, cfg, ex, log, syms, *, sleep_sec=None, max_rounds=Non
                             ", ".join(sorted(bot.portfolio.positions)) or "khong co")
         except Exception as e:  # noqa: BLE001
             log.exception("monitor-only loi: %s", e)
-        save_risk_state(cfg.risk_state_path, bot.kill)
+        # Chi luu khi state DOI (trip/consec/errors/day/equity): tranh "hoi sinh" file
+        # tripped sau khi nguoi van hanh xoa luc bot dang cho giua 2 vong.
+        sig = (bool(bot.kill.tripped), int(bot.kill.consec_losses), int(bot.kill.errors),
+               str(bot.kill.day), float(bot.kill.start_equity or 0),
+               float(bot.kill.peak_balance or 0))
+        if sig != _last_sig:
+            save_risk_state(cfg.risk_state_path, bot.kill)
+            _last_sig = sig
         ms_save(cfg.managed_state_path, bot)
         heartbeat({"phase": "monitor_only_end", "round": n,
                    "positions": len(bot.portfolio.positions)})
-        if _kill_cleared(cfg.risk_state_path):
-            # ai do da chay `risk.py --reset` -> doc lai state (tripped/consec_losses)
-            load_risk_state(cfg.risk_state_path, bot.kill,
-                            warn=lambda m: log.warning("%s", m))
-            bot.kill.tripped = False        # truong hop file bi XOA -> load_state khong doi
-            bot.kill.reason = ""
-            log.warning("KILL-SWITCH da duoc go -> quay lai trade binh thuong")
-            tg(cfg, "✅ kill-switch da duoc go -> bot quay lai trade binh thuong")
-            return True
         if max_rounds and n >= int(max_rounds):
             return False
         time.sleep(sleep_s)
@@ -1010,8 +1021,10 @@ def main() -> None:
         # san vi demo chan -4045, cung khong co monitor mem). Nay: CHI QUAN LY, khong mo moi.
         log.info("TURBO QUET %d cap: %s (kill-switch dang ngung -> chi quan ly vi the)",
                  len(syms0), list(syms0))
-        monitor_only_loop(bot, cfg, ex, log, syms0)
-        return
+        if not monitor_only_loop(bot, cfg, ex, log, syms0):
+            return          # van bi chan (hoac monitor loi) -> thoat, supervisor quyet dinh
+        # nguoi van hanh da `risk.py --reset` -> roi xuong vong lap trade BINH THUONG
+        log.info("kill-switch da duoc go -> bat dau trade binh thuong")
     if bot.kill.tripped:
         log.info("TURBO QUET %d cap: %s (dang ngung boi kill-switch -> khong trade)",
                  len(syms0), list(syms0))

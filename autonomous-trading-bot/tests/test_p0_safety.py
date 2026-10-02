@@ -946,12 +946,13 @@ class TestMonitorOnly(unittest.TestCase):
         ex = FakeExchange()
         bot = self._bot(ex)
         c = self._cfg(tmp)
+        save_state(c.risk_state_path, bot.kill)   # nhu caller: trip da duoc luu truoc khi vao
         ok = td.monitor_only_loop(bot, c, ex, logging.getLogger("test"), (self.SYM,),
                                   sleep_sec=0, max_rounds=2)
         self.assertFalse(ok, "kill-switch van ngung -> tra False khi het max_rounds")
         self.assertEqual(ex.named("market_entry"), [], "MONITOR-ONLY khong duoc mo lenh moi")
         self.assertIn(self.SYM, bot.portfolio.positions, "vi the van duoc giu")
-        self.assertTrue(os.path.exists(c.risk_state_path), "state phai duoc luu moi vong")
+        self.assertTrue(os.path.exists(c.risk_state_path), "state phai duoc luu")
         d = json.loads(Path(c.risk_state_path).read_text(encoding="utf-8"))
         self.assertTrue(d["tripped"], "khong duoc tu xoa trang thai ngung")
 
@@ -961,11 +962,12 @@ class TestMonitorOnly(unittest.TestCase):
         ex = FakeExchange()
         bot = self._bot(ex)
         c = self._cfg(tmp)
+        save_state(c.risk_state_path, bot.kill)
         real_hb = td.heartbeat
         seen = {"done": False}
 
         def fake_hb(extra=None):
-            # Xoa state NGAY SAU khi bot vua luu (giua save va kiem tra) = mo phong `--reset`
+            # Xoa state NGAY SAU khi bot vua luu (giua save va sleep) = mo phong `--reset`
             if not seen["done"] and (extra or {}).get("phase") == "monitor_only_end":
                 seen["done"] = True
                 try:
@@ -983,6 +985,39 @@ class TestMonitorOnly(unittest.TestCase):
         self.assertTrue(ok, "da --reset -> phai tra True de quay lai trade")
         self.assertFalse(bot.kill.tripped)
         self.assertEqual(ex.named("market_entry"), [])
+
+    def test_reset_duoc_phat_hien_du_bot_dang_tu_ghi_state(self):
+        """(02/10) Bug that da gap khi chay lai: vong lap tu ghi tripped=true moi vong ->
+        `risk.py --reset` (xoa file) vo tac dung (reset xong bot van bao "van ngung").
+
+        Nay kiem TRUOC khi ghi + chi ghi khi state thay doi -> reset phat hien trong 1 vong
+        du nguoi van hanh xoa file dung luc bot dang cho giua 2 vong.
+        """
+        tmp = tempfile.mkdtemp()
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        c = self._cfg(tmp)
+        save_state(c.risk_state_path, bot.kill)     # caller da luu tripped=true
+        real_sleep = td.time.sleep
+        seen = {"done": False}
+
+        def sleeper(s):
+            if not seen["done"]:
+                seen["done"] = True
+                try:
+                    os.remove(c.risk_state_path)     # --reset GIUA 2 vong (luc bot dang cho)
+                except OSError:
+                    pass
+            return real_sleep(s)
+
+        td.time.sleep = sleeper
+        try:
+            ok = td.monitor_only_loop(bot, c, ex, logging.getLogger("test"), (self.SYM,),
+                                      sleep_sec=0, max_rounds=5)
+        finally:
+            td.time.sleep = real_sleep
+        self.assertTrue(ok, "reset phai duoc phat hien du bot van dang tu ghi state")
+        self.assertFalse(bot.kill.tripped)
 
 
 class TestSentimentBudget(unittest.TestCase):

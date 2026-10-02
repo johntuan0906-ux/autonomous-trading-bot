@@ -568,8 +568,40 @@ phần mềm quản lý. Vì thế **đừng tắt bot** khi sàn đang chặn s
 **Tự "liền sẹo" (01/10):** demo trả `-4045` theo kiểu *hạn ngạch* (lúc cho, lúc chặn) nên:
 - mở lệnh **không còn bị mất vị thế** khi arm lỗi (ghi sổ trước, arm sau — trước đây arm lỗi làm
   vòng lỗi và vị thế mồ côi: BTC short 0.0568 lúc 20:43);
-- `_rearm_missing()` thử đặt lại SL/TP mỗi `PROTECT_RETRY_EVERY` vòng (mặc định 5, ~3–8 phút) và
-  gửi Telegram khi thành công ⇒ không cần restart bot để có SL/TP trên sàn.
+- `_rearm_missing()` đối soát SL/TP trên sàn **mỗi vòng** (throttle `PROTECT_CHECK_SEC`, mặc định 60s/cặp)
+  và gửi Telegram khi đặt lại thành công ⇒ không cần restart bot để có SL/TP trên sàn;
+- `clientOrderId` của lệnh bảo vệ được lưu vào state (`prot_ids`) để đối soát/truy vết — trước đây
+  state chỉ có mức `sl`/`tp` nên không biết lệnh treo còn trên sàn hay đã bị hủy;
+- **kill-switch fail-closed (02/10):** file `risk_state.json` **đọc được nhưng hỏng** (JSON lỗi/cấu
+  trúc sai) ⇒ coi như đang `tripped` + cảnh báo Telegram, thay vì im lặng chạy tiếp như không có gì.
+  File **chưa tồn tại** (lần đầu chạy / vừa `risk.py --reset`) vẫn là bình thường.
+
+### 8.1 Kill-switch đang ngưng ⇒ chế độ MONITOR-ONLY (02/10)
+
+Phát hiện khi chạy thật: kill-switch trip **lúc khởi động** thì bản cũ `return` ngay ⇒ **không ADOPT**,
+vị thế còn trên sàn bị **bỏ quên** (demo chặn mọi lệnh stop `-4045` nên không có SL trên sàn, monitor
+mềm cũng không chạy) — đúng kiểu "vị thế mồ côi" đã xảy ra 01/10.
+
+Nay `KILL_MONITOR_ONLY=true` (mặc định):
+
+| Việc | Khi kill-switch ngưng |
+|---|---|
+| Mở lệnh mới | **KHÔNG** (điều kiện an toàn giữ nguyên) |
+| ADOPT vị thế đang mở | **CÓ** — vào `portfolio`/`managed` ngay khi khởi động lại |
+| Monitor mềm (SL/TP/BE/trail) | **CÓ**, mỗi vòng |
+| Đối soát + arm lại SL/TP trên sàn | **CÓ** (throttle `PROTECT_CHECK_SEC`) |
+| Quay lại trade | **Tự động** khi bạn chạy `python risk.py --reset` |
+
+Log có dòng `MONITOR-ONLY: dang giu N vi the (...)`. Đặt `KILL_MONITOR_ONLY=false` để quay lại hành vi
+cũ (thoát hẳn + để supervisor restart).
+
+### 8.2 Nguồn tin RSS không được treo vòng lặp bảo vệ (02/10)
+
+`bot._monitor()` gọi sentiment (đường **bảo vệ SL/TP**) và `sentiment.fetch_rss()` cũ **không** đặt
+timeout cho từng feed (`feedparser` dùng `urllib`, chỉ dựa vào socket default timeout). Với **15 feed
+× 20s** thì một lần fetch có thể khoá vòng lặp ~300s — vượt cả `WATCHDOG_SEC` (360s) và mất khả năng
+bảo vệ vị thế. Nay có **ngân sách thời gian** `SENTIMENT_BUDGET_SEC` (mặc định 15s): hết ngân sách thì
+bỏ các feed còn lại, và timeout socket được trả về nguyên trạng sau khi xong.
 
 ## 9. Cleanup
 

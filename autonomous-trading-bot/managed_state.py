@@ -13,7 +13,7 @@ import time
 from trade_mgmt import ManagedTrade
 
 FIELDS = ("entry", "qty", "sl", "tp", "initial_sl", "init_qty",
-          "partial_done", "be_done", "booked_pnl", "mfe_r", "direction")
+          "partial_done", "be_done", "booked_pnl", "mfe_r", "direction", "prot_ids")
 
 
 def dump_trade(mt: ManagedTrade) -> dict:
@@ -34,6 +34,8 @@ def load_trade(sym: str, d: dict) -> ManagedTrade:
     mt.be_done = bool(d.get("be_done"))
     mt.booked_pnl = float(d.get("booked_pnl") or 0.0)
     mt.mfe_r = float(d.get("mfe_r") or 0.0)
+    _ids = d.get("prot_ids")
+    mt.prot_ids = {str(k): str(v) for k, v in _ids.items()} if isinstance(_ids, dict) else {}
     return mt
 
 

@@ -157,16 +157,34 @@ def load_state(path: str, ks: KillSwitch, warn=None) -> KillSwitch:
     `ks` (tu .env dang chay) — state cu KHONG ghi de nguong. Neu file luu nguong
     KHAC .env thi goi `warn(msg)` (hoi dong 14 model 01/10 tung ket luan nham rang
     bot dung nguong trong file; thuc te .env thang, va nay co canh bao ro rang).
+
+    FAIL-CLOSED (hoi dong 14 model 01/10, muc P0): file state CO ma doc/parse loi
+    (JSON hong, quyen truy cap, dia loi...) -> coi nhu DANG TRIPPED, khong duoc
+    im lang chay tiep nhu khong co gi. Truong hop file CHUA TON TAI (lan dau chay /
+    vua `python risk.py --reset`) van la binh thuong, khong trip.
     """
     try:
         import json
         with open(path, "r", encoding="utf-8") as f:
             d = json.load(f)
-    except Exception:
+    except FileNotFoundError:
+        return ks                       # chua co state -> lan dau chay, binh thuong
+    except Exception as e:              # noqa: BLE001  hong/khong doc duoc -> fail-closed
+        why = f"risk_state khong doc duoc ({type(e).__name__}: {str(e)[:80]})"
+        if not ks.tripped:
+            ks.trip(f"{why} — fail-closed, can nguoi kiem tra")
+        if warn:
+            warn(f"{why} -> da TRIP kill-switch (fail-closed). Sua/xoa {path} "
+                 f"roi `python risk.py --reset` neu muon chay tiep.")
         return ks
     try:
         old = KillSwitch.from_dict(d)
-    except Exception:
+    except Exception as e:              # noqa: BLE001  cau truc JSON la -> fail-closed
+        why = f"risk_state sai cau truc ({type(e).__name__}: {str(e)[:80]})"
+        if not ks.tripped:
+            ks.trip(f"{why} — fail-closed, can nguoi kiem tra")
+        if warn:
+            warn(f"{why} -> da TRIP kill-switch (fail-closed).")
         return ks
     ks.tripped = old.tripped
     ks.reason = old.reason

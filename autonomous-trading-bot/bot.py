@@ -12,7 +12,8 @@ from portfolio import PortfolioManager, Position
 from ranking import Candidate, rank_markets, sentiment_veto
 from risk import KillSwitch, atr_levels, position_size
 from sentiment import SentimentCache
-from trade_mgmt import ManagedTrade, new_trade, manage_trade, trade_result
+from trade_mgmt import (ManagedTrade, new_trade, manage_trade, trade_result,
+                        record_protection)
 
 log = logging.getLogger("bot")
 SENT_REVERSAL = 0.7
@@ -79,8 +80,9 @@ class TradingBot:
                     # P0-5: qty da doi -> phai arm lai SL/TP theo qty CON LAI
                     # (stop cu van giu qty goc va co the dang ton 2-3 lenh chong nhau).
                     try:
-                        self.exchange.stop_tp_orders(sym, pos.direction, pos.qty,
-                                                     pos.sl, pos.tp, cid_prefix="part")
+                        _r = self.exchange.stop_tp_orders(sym, pos.direction, pos.qty,
+                                                          pos.sl, pos.tp, cid_prefix="part")
+                        record_protection(mt, _r)      # luu clientOrderId -> doi soat vong sau
                     except Exception as e:  # noqa: BLE001
                         log.warning("re-arm SL/TP sau PARTIAL %s that bai: %s", sym, e)
                     log.info("PARTIAL %s qty=%s SL->%s (%s)", sym, q, pos.sl, mg["reason"])
@@ -96,8 +98,9 @@ class TradingBot:
                 if act in ("BE", "TRAIL") and mg["new_sl"]:
                     pos.sl = float(mg["new_sl"])
                     try:
-                        self.exchange.stop_tp_orders(sym, pos.direction, pos.qty,
-                                                     pos.sl, pos.tp)
+                        _r = self.exchange.stop_tp_orders(sym, pos.direction, pos.qty,
+                                                          pos.sl, pos.tp)
+                        record_protection(mt, _r)      # SL doi -> id lenh doi -> luu lai
                     except Exception as e:  # noqa: BLE001
                         log.warning("re-arm SL %s failed: %s", sym, e)
                     log.info("%s %s SL->%s (%s)", act, sym, pos.sl, mg["reason"])
@@ -246,18 +249,21 @@ class TradingBot:
                     "reason": f"margin uoc tinh {need_margin:.2f} USDT > so du {live_bal:.2f} "
                               f"(giam LEVERAGE/RISK hoac nap them faucet)"}
         self.exchange.set_leverage(symbol, cfg.leverage)
+        _r = None                              # response arm SL/TP (de luu clientOrderId)
         try:
             entry_res = self.exchange.market_entry(symbol, direction, qty)
-            self.exchange.stop_tp_orders(symbol, direction, qty, lv["sl"], lv["tp"])
+            _r = self.exchange.stop_tp_orders(symbol, direction, qty, lv["sl"], lv["tp"])
         except Exception as e:  # noqa: BLE001  (vd: -2019 margin, -4003 qty...)
             log.warning("order %s %s failed: %s", direction, symbol, e)
             # P0-4: loi mang co the xay ra SAU khi san da khop -> kiem tra vi the that
             # truoc khi ket luan that bai (neu khong vong sau se mo trung = gap doi risk).
             landed = self.exchange.position_qty(symbol)
             if landed:
-                self.exchange.stop_tp_orders(symbol, direction, landed, lv["sl"], lv["tp"])
-                self.portfolio.open(Position(symbol, direction, lv["entry"], landed,
-                                            lv["sl"], lv["tp"]))
+                _pos = Position(symbol, direction, lv["entry"], landed, lv["sl"], lv["tp"])
+                _r2 = self.exchange.stop_tp_orders(symbol, direction, landed,
+                                                   lv["sl"], lv["tp"])
+                self.portfolio.open(_pos)
+                record_protection(self._managed_for(symbol, _pos), _r2)
                 log.warning("entry %s bao loi nhung vi the DA mo qty=%s -> ghi nhan",
                             symbol, landed)
                 out = {"status": "OPENED", "symbol": symbol, "direction": direction,
@@ -267,6 +273,9 @@ class TradingBot:
             return {"status": "ORDER_FAILED", "symbol": symbol, "direction": direction,
                     "qty": qty, "reason": str(e)[:300]}
         self.portfolio.open(Position(symbol, direction, lv["entry"], qty, lv["sl"], lv["tp"]))
+        # (02/10) managed tao NGAY khi mo (truoc day tao o vong monitor dau tien) de
+        # initial_sl/init_qty dung tu dau va ghi duoc id lenh bao ve vao state.
+        record_protection(self._managed_for(symbol, self.portfolio.positions[symbol]), _r)
         log.info("OPEN %s %s qty=%s SL=%s TP=%s alpha=%s", direction, symbol,
                  qty, lv["sl"], lv["tp"], best.alpha)
         out = {"status": "OPENED", "symbol": symbol, "direction": direction, "qty": qty}

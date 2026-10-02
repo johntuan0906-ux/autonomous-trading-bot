@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-"""test_p0_safety.py — kiem thu 6 fix P0 + watchdog (truoc khi cho tien THAT vao).
+﻿# -*- coding: utf-8 -*-
+"""test_p0_safety.py â€” kiem thu 6 fix P0 + watchdog (truoc khi cho tien THAT vao).
 
 P0-1 adopt vi the san   | P0-2 kill-switch song sot restart + duoc wire
 P0-3 loi monitor -> dung| P0-4 clientOrderId + cuu lenh khi timeout mang
@@ -207,11 +207,37 @@ class TestRiskStateSongSotRestart(unittest.TestCase):
         self.assertAlmostEqual(fresh.start_equity, 5000.0)
         self.assertGreaterEqual(fresh.peak_balance, 5200.0)
 
-    def test_state_hong_khong_lam_chet_bot(self):
+    def test_state_hong_thi_FAIL_CLOSED(self):
+        """(02/10) JSON hong -> coi nhu DANG TRIPPED (truoc day im lang chay tiep).
+
+        Hoi dong 14 model: neu kill-switch khong doc duoc state ma van chay tiep thi
+        moi bao ve da kich hoat (trip, dem loi, tran ngay) deu co the bi "quen".
+        """
         Path(self.path).write_text("{khong-phai-json", encoding="utf-8")
         ks = KillSwitch()
-        self.assertIs(load_state(self.path, ks), ks)
-        self.assertFalse(ks.tripped)
+        self.assertIs(load_state(self.path, ks), ks)         # khong nem ra ngoai
+        self.assertTrue(ks.tripped, "state doc duoc nhung hong -> phai fail-closed")
+        self.assertIn("khong doc duoc", ks.reason)
+        msgs: list = []
+        ks2 = KillSwitch()
+        load_state(self.path, ks2, warn=msgs.append)
+        self.assertTrue(ks2.tripped)
+        self.assertEqual(len(msgs), 1, "phai bao cho nguoi van hanh biet")
+        self.assertIn("fail-closed", msgs[0])
+
+    def test_state_sai_cau_truc_thi_FAIL_CLOSED(self):
+        Path(self.path).write_text('{"max_daily_loss_pct": "khong-phai-so"}',
+                                   encoding="utf-8")
+        ks = KillSwitch()
+        load_state(self.path, ks)
+        self.assertTrue(ks.tripped)
+        self.assertIn("sai cau truc", ks.reason)
+
+    def test_chua_co_state_thi_binh_thuong(self):
+        """File CHUA ton tai (lan dau chay / vua `risk.py --reset`) khong duoc trip."""
+        ks = KillSwitch()
+        load_state(os.path.join(self.dir, "khong-ton-tai.json"), ks)
+        self.assertFalse(ks.tripped, "khong co state KHONG phai la loi")
 
     def test_reset_cho_phep_trade_lai(self):
         ks = KillSwitch()
@@ -418,8 +444,8 @@ class TestManagedState(unittest.TestCase):
 
 
 class TestMinNotionalTheoCheDo(unittest.TestCase):
-    """(Hội đồng 14 model 01/10) MIN_NOTIONAL mặc định phải theo CHẾ ĐỘ:
-    demo/testnet = 20 (binance demo đòi 20), LIVE = 5 (chuẩn USDT-M)."""
+    """(Há»™i Ä‘á»“ng 14 model 01/10) MIN_NOTIONAL máº·c Ä‘á»‹nh pháº£i theo CHáº¾ Äá»˜:
+    demo/testnet = 20 (binance demo Ä‘Ã²i 20), LIVE = 5 (chuáº©n USDT-M)."""
 
     def _mn(self, testnet: str, override: str | None = None) -> float:
         import importlib
@@ -486,7 +512,7 @@ class TestWatchdog(unittest.TestCase):
         self.assertLessEqual(next_delay(0.0, 300), 300)
 
     def test_chay_du_lau_thi_restart_nhanh_lai(self):
-        """Crash SAU khi bot da chay that -> quay ve delay goc 15s (khong phạt)."""
+        """Crash SAU khi bot da chay that -> quay ve delay goc 15s (khong pháº¡t)."""
         self.assertEqual(next_delay(3600.0, 300), 15)
         self.assertEqual(next_delay(30.0, 300), 15)        # bang nguong = du lau
 
@@ -657,7 +683,7 @@ class TestAdoptViTheSan(unittest.TestCase):
     def test_adopt_bo_qua_state_xac_khong_dong_oan_vi_the_mo_tay(self):
         """State cu da chot het (qty=0) KHONG duoc dung lam moc 1R cho vi the MOI.
 
-        Thuc te 01/10: XRP state qty=0 nhung tren san co vi the XRP MO TAY qty=7338 —
+        Thuc te 01/10: XRP state qty=0 nhung tren san co vi the XRP MO TAY qty=7338 â€”
         neu lay sl/tp cu (1.5006 ~ entry cu) thi bot 'dong' vi the do ngay sau adopt.
         Phai tinh lai SL/TP theo ATR.
         """
@@ -698,6 +724,8 @@ class TestAdoptViTheSan(unittest.TestCase):
         self.assertAlmostEqual(p.sl, 96.0)      # 100 - 2 x ATR(2)
         self.assertAlmostEqual(p.tp, 110.0)     # 100 + 5 x ATR(2)
         self.assertEqual(len(ex.named("stop_tp_orders")), 1)
+        self.assertEqual(bot.managed["BTC/USDT:USDT"].prot_ids, {"sl": "sl", "tp": "tp"},
+                         "clientOrderId lenh bao ve phai duoc luu vao state (02/10)")
 
     def test_khong_xac_dinh_duoc_SL_thi_canh_bao(self):
         ex = FakeExchange(rows=self.ROW)
@@ -724,7 +752,7 @@ class TestAdoptViTheSan(unittest.TestCase):
 
 class TestRearmBaoVe(unittest.TestCase):
     """P0-fix 01/10: vi the mo ra khong co SL/TP tren san (demo -4045) phai duoc
-    thu dat lai dinh ky — truoc day chi thu DUNG 1 LAN luc mo lenh."""
+    thu dat lai dinh ky â€” truoc day chi thu DUNG 1 LAN luc mo lenh."""
 
     SYM = "BTC/USDT:USDT"
 
@@ -738,7 +766,7 @@ class TestRearmBaoVe(unittest.TestCase):
         bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
                                                      98.0, 200.0)
         bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
-        done = td._rearm_missing(bot, logging.getLogger("test"))
+        done = td._rearm_missing(bot, logging.getLogger("test"), every_sec=0)
         self.assertEqual(done, [self.SYM])
         arms = ex.named("stop_tp_orders")
         self.assertEqual(len(arms), 1)
@@ -749,7 +777,7 @@ class TestRearmBaoVe(unittest.TestCase):
         bot = self._bot(ex)
         bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
                                                      95.0, 115.0)
-        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test")), [])
+        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
         self.assertEqual(ex.named("stop_tp_orders"), [])
 
     def test_san_van_chan_thi_khong_crash(self):
@@ -758,8 +786,299 @@ class TestRearmBaoVe(unittest.TestCase):
         bot = self._bot(ex)
         bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
                                                      98.0, 200.0)
-        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test")), [])
+        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
         self.assertIn(self.SYM, bot.portfolio.positions)   # vi the khong bi mat
+
+
+class TestProtIds(unittest.TestCase):
+    """(02/10) Hoi dong 14 model: lenh bao ve phai duoc LUU ID vao state de doi soat.
+
+    Truoc day state chi co muc sl/tp -> khong biet lenh bao ve con treo tren san hay
+    da bi huy/mat, va vi the co the "mo coi" ma bot khong phat hien.
+    """
+
+    SYM = "ETH/USDT:USDT"      # symbol rieng, tranh cache throttle cua test khac
+
+    def _bot(self, ex):
+        return TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0),
+                          exchange=ex)
+
+    def test_uu_tien_clientOrderId_va_song_sot_restart(self):
+        from trade_mgmt import record_protection
+        mt = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        ids = record_protection(mt, {"sl_order": {"clientOrderId": "glow-sl-1"},
+                                     "tp_order": {"clientOrderId": "glow-tp-1"}})
+        self.assertEqual(ids, {"sl": "glow-sl-1", "tp": "glow-tp-1"})
+        back = managed_state.load_trade(self.SYM, managed_state.dump_trade(mt))
+        self.assertEqual(back.prot_ids, {"sl": "glow-sl-1", "tp": "glow-tp-1"},
+                         "id lenh bao ve phai song sot restart")
+
+    def test_chiu_duoc_response_rong(self):
+        from trade_mgmt import record_protection
+        mt = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        self.assertEqual(record_protection(mt, None), {})
+        self.assertEqual(mt.prot_ids, {})
+        self.assertEqual(record_protection(None, {"sl_order": {"id": "x"}}), {"sl": "x"},
+                         "khong co managed trade thi chi tra id, khong crash")
+
+    def test_rearm_luu_id_va_throttle_moi_60s(self):
+        ex = FakeExchange()                      # fetch_protection -> thieu SL/TP
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        log = logging.getLogger("test")
+        # every_sec=0: tat throttle (bo qua cache con lai tu test khac)
+        self.assertEqual(td._rearm_missing(bot, log, every_sec=0), [self.SYM])
+        self.assertEqual(bot.managed[self.SYM].prot_ids, {"sl": "sl", "tp": "tp"},
+                         "clientOrderId cua lenh vua dat phai vao state")
+        # vua xac nhan -> trong 60s khong goi API lai
+        self.assertEqual(td._rearm_missing(bot, log), [])
+        self.assertEqual(len(ex.named("stop_tp_orders")), 1)
+        # tat throttle -> kiem tra lai ngay (tren san van chua co bao ve that)
+        self.assertEqual(td._rearm_missing(bot, log, every_sec=0), [self.SYM])
+        self.assertEqual(len(ex.named("stop_tp_orders")), 2)
+
+
+class TestRearmAnToan(unittest.TestCase):
+    """(02/10) Doc log THAT 01-02/10: retry khong duoc Huy bao ve dang co roi arm that bai.
+
+    Su that tren demo: `-4045` bi tra cho MOI lenh stop du so lenh treo = 0 -> neu retry
+    `cancel_first=True` thi moi vong ta vua huy mat bao ve that (neu co) vua khong dat lai
+    duoc -> vi the TRAN. Do la ly do phai `cancel_first=False` o buoc doi soat dinh ky.
+    """
+
+    SYM = "DOGE/USDT:USDT"
+
+    def _setup(self, ex):
+        td._PROT_SEEN.clear()
+        td._PROT_TRY.clear()
+        td._PROT_FAIL.clear()
+        td._PROT_LOG.clear()
+        bot = TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0), exchange=ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 0.0944, 5111.0,
+                                                     0.092, 0.10)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 0.0944, 5111.0, 0.092, 0.10)
+        return bot
+
+    def test_retry_khong_huy_lenh_dang_co(self):
+        ex = FakeExchange()
+        bot = self._setup(ex)
+        td._rearm_missing(bot, logging.getLogger("test"), every_sec=0)
+        arms = ex.named("stop_tp_orders")
+        self.assertEqual(len(arms), 1)
+        self.assertFalse(arms[0][1]["cancel_first"],
+                         "buoc doi soat KHONG duoc huy lenh truoc khi arm")
+
+    def test_san_bao_ok_ma_khong_vao_thi_log_ERROR(self):
+        ex = FakeExchange()          # arm "thanh cong" nhung fetch_protection -> rong
+        bot = self._setup(ex)
+        log = logging.getLogger("test_rearm_an_toan")
+        with self.assertLogs("test_rearm_an_toan", level="ERROR") as cm:
+            td._rearm_missing(bot, log, every_sec=0)
+        self.assertTrue(any("KHONG thay lenh treo" in m for m in cm.output),
+                        "phai bao dong khi san nhan lenh ma khong thay lenh treo")
+        self.assertNotIn(self.SYM, td._PROT_SEEN, "chua xac nhan duoc thi khong duoc coi la OK")
+
+    def test_san_chan_lien_tuc_thi_gian_nhip_5_phut(self):
+        ex = FakeExchange(arm_boom=True)          # -4045 lien tuc
+        bot = self._setup(ex)
+        log = logging.getLogger("test")
+        for _ in range(3):
+            td._rearm_missing(bot, log, every_sec=0)       # loi 3 lan lien tiep
+        self.assertEqual(len(ex.named("stop_tp_orders")), 3)
+        self.assertEqual(td._rearm_missing(bot, log, every_sec=10), [],
+                         "sau 3 lan loi lien tiep phai gian nhip, khong spam san")
+        self.assertEqual(len(ex.named("stop_tp_orders")), 3)
+
+
+class TestMonitorOnly(unittest.TestCase):
+    """(02/10) Kill-switch ngung -> CHI quan ly vi the, KHONG mo lenh moi, khong thoat han.
+
+    Su that 01-02/10: trip luc khoi dong -> ban cu `return` ngay -> vi the con tren san bi
+    bo quen (demo chan -4045 nen khong co SL tren san, monitor mem cung khong chay).
+    """
+
+    SYM = "ADA/USDT:USDT"
+
+    def setUp(self):
+        # KHONG goi Telegram that trong test (thuc te 1 lan goi co the treo ~160s -> test
+        # tuong nhu "hang" va lam cham ca suite). Moi thu khac giu nguyen.
+        self._real_tg = td.tg
+        td.tg = lambda *a, **k: None
+
+    def tearDown(self):
+        td.tg = self._real_tg
+
+    def _cfg(self, tmp):
+        return cfg(dry_run=False, adopt_positions=False, poll_interval_sec=0,
+                   risk_state_path=os.path.join(tmp, "risk_state.json"),
+                   managed_state_path=os.path.join(tmp, "managed_state.json"))
+
+    def _bot(self, ex):
+        from unittest import mock
+        bot = TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0), exchange=ex)
+        # Sentiment la goi MANG that (15 feed RSS + GDELT + CryptoPanic) -> PHAI stub, neu
+        # khong 1 lan fetch co the treo ~160s (02/10: lam suite tuong nhu "hang"). Cung
+        # nguyen nhan nay da duoc vá trong sentiment.fetch_rss (SENTIMENT_BUDGET_SEC).
+        bot.sentiment.get = mock.Mock(return_value=mock.Mock(score=0.0))
+        bot.kill.trip("5 consecutive losses (test)")
+        # Gia fake = 100.0 -> dat entry=100/SL=95/TP=105 de KHONG co partial/BE/trail/close
+        # (neu de gia xa entry, TRAIL se keo SL len ~gia -> close -> agent call rat cham).
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     95.0, 105.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 95.0, 105.0)
+        return bot
+
+    def test_kill_cleared_doc_state(self):
+        tmp = tempfile.mkdtemp()
+        p = os.path.join(tmp, "rs.json")
+        self.assertTrue(td._kill_cleared(p), "chua co file = da --reset")
+        Path(p).write_text('{"tripped": true, "reason": "x"}', encoding="utf-8")
+        self.assertFalse(td._kill_cleared(p))
+        Path(p).write_text('{"tripped": false}', encoding="utf-8")
+        self.assertTrue(td._kill_cleared(p))
+        Path(p).write_text("{hong", encoding="utf-8")
+        self.assertFalse(td._kill_cleared(p), "state hong -> KHONG coi la da go (fail-closed)")
+
+    def test_monitor_only_khong_mo_lenh_va_luu_state(self):
+        tmp = tempfile.mkdtemp()
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        c = self._cfg(tmp)
+        ok = td.monitor_only_loop(bot, c, ex, logging.getLogger("test"), (self.SYM,),
+                                  sleep_sec=0, max_rounds=2)
+        self.assertFalse(ok, "kill-switch van ngung -> tra False khi het max_rounds")
+        self.assertEqual(ex.named("market_entry"), [], "MONITOR-ONLY khong duoc mo lenh moi")
+        self.assertIn(self.SYM, bot.portfolio.positions, "vi the van duoc giu")
+        self.assertTrue(os.path.exists(c.risk_state_path), "state phai duoc luu moi vong")
+        d = json.loads(Path(c.risk_state_path).read_text(encoding="utf-8"))
+        self.assertTrue(d["tripped"], "khong duoc tu xoa trang thai ngung")
+
+    def test_monitor_only_tu_quay_lai_khi_duoc_reset(self):
+        """Nguoi van hanh chay `risk.py --reset` trong luc monitor-only -> bot tu trade lai."""
+        tmp = tempfile.mkdtemp()
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        c = self._cfg(tmp)
+        real_hb = td.heartbeat
+        seen = {"done": False}
+
+        def fake_hb(extra=None):
+            # Xoa state NGAY SAU khi bot vua luu (giua save va kiem tra) = mo phong `--reset`
+            if not seen["done"] and (extra or {}).get("phase") == "monitor_only_end":
+                seen["done"] = True
+                try:
+                    os.remove(c.risk_state_path)
+                except OSError:
+                    pass
+            return real_hb(extra)
+
+        td.heartbeat = fake_hb
+        try:
+            ok = td.monitor_only_loop(bot, c, ex, logging.getLogger("test"), (self.SYM,),
+                                      sleep_sec=0, max_rounds=5)
+        finally:
+            td.heartbeat = real_hb
+        self.assertTrue(ok, "da --reset -> phai tra True de quay lai trade")
+        self.assertFalse(bot.kill.tripped)
+        self.assertEqual(ex.named("market_entry"), [])
+
+
+class TestSentimentBudget(unittest.TestCase):
+    """(02/10) `fetch_rss` KHONG duoc treo vo han: feedparser.parse khong co timeout rieng.
+
+    Thuc te 01-02/10: 1 lan fetch treo ~160s NGAY TRONG `bot._monitor` (duong bao ve
+    SL/TP) -> vong lap treo, watchdog co the kill bot dang giu vi the. Nay co ngan sach.
+    """
+
+    def test_het_ngan_sach_thi_bo_feed_con_lai(self):
+        import sentiment as sm
+        from unittest import mock
+
+        class SlowFeed:
+            calls = 0
+
+            def parse(self, url):
+                SlowFeed.calls += 1
+                time.sleep(0.25)
+                return type("P", (), {"entries": []})()
+
+        with mock.patch.object(sm, "feedparser", SlowFeed()):
+            t0 = time.time()
+            out = sm.fetch_rss(budget_sec=0.6)
+            elapsed = time.time() - t0
+        self.assertEqual(out, [])
+        self.assertLess(elapsed, 1.6, "phai dung theo ngan sach, khong chay het 15 feed")
+        self.assertLessEqual(SlowFeed.calls, 3, "het gio thi khong goi them feed")
+
+    def test_khong_co_ngan_sach_van_chay_het_feed(self):
+        import sentiment as sm
+        from unittest import mock
+
+        class SlowFeed:
+            calls = 0
+
+            def parse(self, url):
+                SlowFeed.calls += 1
+                return type("P", (), {"entries": []})()
+
+        with mock.patch.object(sm, "feedparser", SlowFeed()):
+            sm.fetch_rss(budget_sec=0)              # 0 = khong gioi han (hanh vi cu)
+        self.assertEqual(SlowFeed.calls, len(sm.DEFAULT_RSS))
+
+    def test_tra_lai_timeout_socket_nguyen_trang(self):
+        import socket
+        import sentiment as sm
+        from unittest import mock
+        before = socket.getdefaulttimeout()
+        fake = mock.Mock(parse=lambda u: type("P", (), {"entries": []})())
+        with mock.patch.object(sm, "feedparser", fake):
+            sm.fetch_rss(budget_sec=1)
+        self.assertEqual(socket.getdefaulttimeout(), before,
+                         "khong duoc de lech timeout socket cua toan tien trinh")
+
+    def test_feed_loi_thi_tra_rong_khong_nem(self):
+        import sentiment as sm
+        from unittest import mock
+
+        def boom(url):
+            raise RuntimeError("network down")
+
+        with mock.patch.object(sm, "feedparser", mock.Mock(parse=boom)):
+            self.assertEqual(sm.fetch_rss(budget_sec=2), [])
+
+
+class TestSettingsFields(unittest.TestCase):
+    """(02/10) Chong loi "xoa nham truong Settings" — bay thuc te vua xay ra.
+
+    Su that: sua `config.py` de THEM `kill_monitor_only` vo tinh XOA `reconcile_journal`
+    -> bot crash ngay khi khoi dong (`AttributeError: 'Settings' object has no attribute
+    'reconcile_journal'`) va chi phat hien khi chay lai that (test cu khong phu duong
+    reconcile). Test nay giu danh sach truong ma bot phu thuoc.
+    """
+
+    FIELDS = (
+        # duong bao ve / vong lap
+        "dry_run", "testnet", "poll_interval_sec", "round_timeout_sec",
+        "socket_timeout_sec", "kill_monitor_only", "adopt_positions",
+        # reconcile journal (duong khoi dong)
+        "reconcile_journal", "reconcile_days", "reconcile_min_interval_sec",
+        # risk / sizing
+        "risk_state_path", "managed_state_path", "max_daily_loss_pct", "max_atr_pct",
+        "max_consecutive_errors", "max_total_risk_pct", "risk_per_trade_pct",
+        "leverage", "max_positions", "min_notional_usdt", "balance_usdt",
+        # thi truong / vao lenh
+        "symbols", "extra_symbols", "timeframe", "ohlcv_limit", "sl_atr_mult",
+        "tp_atr_mult", "trail_atr_mult", "partial_at_r", "partial_pct", "be_at_r",
+        # LIVE gate + notify
+        "live_confirm", "tg_token", "tg_chat",
+    )
+
+    def test_du_truong_bat_buoc(self):
+        s = Settings()
+        missing = [f for f in self.FIELDS if not hasattr(s, f)]
+        self.assertEqual(missing, [], f"Settings thieu truong (xoa nham?): {missing}")
 
 
 class TestBotSafety(unittest.TestCase):

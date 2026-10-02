@@ -17,7 +17,7 @@ from __future__ import annotations
 from managed_state import load_trade
 from portfolio import Position
 from risk import atr_levels
-from trade_mgmt import new_trade
+from trade_mgmt import new_trade, record_protection
 
 
 def normalize(rows) -> list:
@@ -117,7 +117,8 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
             # src 'exchange' -> dang duoc bao ve, KHONG dung vao (tranh huy nham).
             if sl > 0 and tp > 0 and src in ("state", "atr"):
                 try:
-                    ex.stop_tp_orders(sym, d, qty, sl, tp, cid_prefix="adopt")
+                    res = ex.stop_tp_orders(sym, d, qty, sl, tp, cid_prefix="adopt")
+                    record_protection(mt, res)     # luu id -> doi soat moi vong sau nay
                     rep["armed"].append(sym)
                 except Exception as e:  # noqa: BLE001
                     # Thuc te gap: demo tra -4045 "Reach max stop order limit" cho MOI

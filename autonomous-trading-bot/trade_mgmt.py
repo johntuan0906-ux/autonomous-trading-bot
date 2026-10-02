@@ -35,6 +35,9 @@ class ManagedTrade:
     booked_pnl: float = 0.0   # PnL da chot tu partial (USDT)
     mfe_r: float = 0.0        # MFE lon nhat tinh bang R
     opened_ts: float = field(default_factory=time.time)
+    # (01/10) clientOrderId cua lenh bao ve dang TREO tren san: {"sl": "glow...", "tp": ...}
+    # Luu vao state de doi soat moi vong (phat hien SL/TP bi mat/huy) va de truy vet.
+    prot_ids: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.init_qty <= 0:
@@ -61,6 +64,27 @@ def _be_sl(trade: ManagedTrade, buffer_pct: float) -> float:
     """SL hoa von = entry +- buffer phi (khong bao gio lo sau khi BE)."""
     buf = trade.entry * max(buffer_pct, 0.0)
     return trade.entry + buf if trade.direction.upper() == "LONG" else trade.entry - buf
+
+
+def record_protection(mt, res) -> dict:
+    """Luu clientOrderId cua lenh bao ve vua dat vao `mt.prot_ids` -> doi soat sau nay.
+
+    Vi sao (hoi dong 14 model 01/10): state chi luu muc sl/tp, khong luu ID lenh treo,
+    nen khong the biet lenh bao ve co con tren san hay da bi huy/mat -> vi the co the
+    "mo coi" ma bot khong phat hien. Tra ve dict id hien co.
+    """
+    ids = dict(getattr(mt, "prot_ids", {}) or {})
+    for tag, key in (("sl", "sl_order"), ("tp", "tp_order")):
+        order = (res or {}).get(key) or {}
+        cid = order.get("clientOrderId") or order.get("id")
+        if cid:
+            ids[tag] = str(cid)
+    if ids and mt is not None:
+        try:
+            mt.prot_ids = ids
+        except Exception:  # noqa: BLE001  (mt la obj la -> bo qua, khong lam chet bot)
+            pass
+    return ids
 
 
 def manage(trade: ManagedTrade, price: float, atr: float = 0.0, *,

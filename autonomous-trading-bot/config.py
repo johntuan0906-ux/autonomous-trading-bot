@@ -124,6 +124,14 @@ class Settings:
     # (Duong dan journal KHONG cau hinh qua env: phai trung voi cho bot ghi.)
     reconcile_journal: bool = field(
         default_factory=lambda: _get_bool("RECONCILE_JOURNAL", True))
+
+    # (02/10) Kill-switch dang ngung -> CHI quan ly vi the dang mo (khong mo lenh moi) thay vi
+    # thoat han. Ly do: demo chan moi lenh stop (-4045) nen khi bot thoat, vi the con tren san
+    # khong co SL tren san VA cung khong co monitor mem = "vi the mo coi" (da xay ra 01/10).
+    # Dat KILL_MONITOR_ONLY=false de quay lai hanh vi cu (thoat + supervisor restart).
+    kill_monitor_only: bool = field(
+        default_factory=lambda: _get_bool("KILL_MONITOR_ONLY", True))
+
     reconcile_days: int = field(default_factory=lambda: _get_int("RECONCILE_DAYS", 7))
     # Tran tan suat goi API (supervisor spawn lai nhieu lan -> khong quet lien tuc).
     reconcile_min_interval_sec: int = field(

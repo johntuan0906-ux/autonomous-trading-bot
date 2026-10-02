@@ -33,6 +33,7 @@ from strategy import bump as strat_bump, classify_strategy, report as strat_repo
 from notify import fmt_close, fmt_kill, fmt_open, send as tg_send
 from managed_state import load as ms_load, load_into as ms_load_into
 from managed_state import save as ms_save
+from trade_mgmt import record_protection
 from portfolio import Position, can_add_risk, planned_risk_usd
 from position_sync import adopt as adopt_positions
 from ranking import Candidate, composite_alpha, sentiment_veto
@@ -72,9 +73,9 @@ _btc_cache: dict = {"ts": 0.0, "df": None}  # cache BTC 1h 60s de 4 cap dung chu
 # supervisor chi restart theo exit-code se khong bao gio phat hien. Nhip tim ra file
 # la kenh duy nhat de run_forever.py biet bot con thuc su chay.
 _HEARTBEAT = Path(__file__).resolve().parent / "logs" / "heartbeat.json"
-# P0-fix (01/10): demo tra -4045 theo kieu "han ngach" -> vi the co the mo ra ma
-# khong co SL/TP tren san. Thu dat lai moi PROTECT_RETRY_EVERY vong (~3-8 phut).
-PROTECT_RETRY_EVERY = int(os.getenv("PROTECT_RETRY_EVERY", "5") or 5)
+# P0-fix (01/10 -> 02/10): demo tra -4045 theo kieu "han ngach" -> vi the co the mo ra
+# ma khong co SL/TP tren san. Doi soat lai MOI VONG cho cap nao chua xac nhan du bao ve,
+# throttle qua PROTECT_CHECK_SEC (khong con dung PROTECT_RETRY_EVERY theo so vong).
 
 
 def heartbeat(extra: dict | None = None) -> None:
@@ -101,35 +102,91 @@ def atr_of(ex, cfg, sym: str) -> dict:
 
 
 
-def _rearm_missing(bot, log) -> list:
-    """Thu dat lai SL/TP TREN SAN cho cac vi the dang thieu bao ve.
+PROTECT_CHECK_SEC = int(os.getenv("PROTECT_CHECK_SEC", "60") or 60)
+# sym -> ts xac nhan gan nhat "co du SL+TP tren san" (tranh goi API lien tuc)
+_PROT_SEEN: dict = {}
+# sym -> ts lan THU gan nhat (ke ca that bai) -> throttle ca khi loi
+_PROT_TRY: dict = {}
+# sym -> so lan arm loi LIEN TIEP -> gian nhip khi san chan hang loat (vd demo -4045)
+_PROT_FAIL: dict = {}
+# sym -> ts log loi gan nhat (tranh spam log moi vong)
+_PROT_LOG: dict = {}
+PROTECT_BACKOFF_AFTER = 3          # so lan loi lien tiep truoc khi gian nhip
+PROTECT_BACKOFF_SEC = 300.0        # nhip gian khi san dang chan hang loat
+
+
+def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
+    """Doi soat bao ve SL/TP TREN SAN cho tung vi the va tu arm lai NGAY khi thieu.
 
     Vi sao can: demo Binance tra `-4045 Reach max stop order limit` theo kieu HAN
     NGACH (luc cho, luc chan) du so lenh treo = 0 -> vi the mo ra co the khong co
-    SL/TP tren san. Truoc day chi thu DUNG 1 LAN luc mo lenh, nen vi the bi "tran"
-    mai cho toi khi restart. Gio thu lai dinh ky (moi vai vong) de tu "lien se".
+    SL/TP tren san. Truoc day chi thu DUNG 1 LAN luc mo lenh, va ban sua 01/10 chi
+    kiem tra moi 5 vong. Nay: kiem tra MOI VONG cho cap nao chua xac nhan du bao ve,
+    voi throttle `every_sec` (mac dinh PROTECT_CHECK_SEC=60s/cap) de khong spam API.
+    Ghi `clientOrderId` cua lenh vua dat vao state (`prot_ids`) de truy vet/doi soat.
 
-    Tra danh sach symbol dat duoc. Moi loi chi log WARNING (khong nem ra ngoai).
+    AN TOAN (02/10, sau khi doc log that 01-02/10):
+    - arm voi `cancel_first=False`: o day lenh dang treo DA duoc xac dinh la THIEU,
+      nen huy truoc chi co hai (neu `fetch_protection` doc nham do API chap chon thi
+      ta vua huy mat bao ve THAT roi lai arm that bai -> vi the tran).
+    - sau khi arm thanh cong thi DOC LAI de xac nhan (san co the bao OK ma khong co lenh).
+    - san chan hang loat (>= PROTECT_BACKOFF_AFTER lan loi lien tiep) -> gian nhip con
+      PROTECT_BACKOFF_SEC de khong spam API.
+
+    Tra danh sach symbol dat duoc. Moi loi chi log WARNING (da throttle), khong nem ra.
     """
+    every = float(PROTECT_CHECK_SEC if every_sec is None else every_sec)
+    now = time.time()
     done: list = []
     for sym, pos in list(bot.portfolio.positions.items()):
         try:
+            fails = int(_PROT_FAIL.get(sym, 0))
+            gap = 0.0 if every <= 0 else (every if fails < PROTECT_BACKOFF_AFTER
+                                          else max(every, PROTECT_BACKOFF_SEC))
+            if gap > 0 and (now - float(_PROT_TRY.get(sym, 0.0))) < gap:
+                continue                      # vua kiem tra/thu gan day -> bo qua
             prot = (bot.exchange.fetch_protection(sym)
                     if hasattr(bot.exchange, "fetch_protection") else {}) or {}
             if prot.get("sl") and prot.get("tp"):
-                continue                      # da duoc bao ve tren san
+                _PROT_SEEN[sym] = now
+                _PROT_TRY[sym] = now
+                _PROT_FAIL.pop(sym, None)     # da du bao ve -> xoa dem loi
+                continue
             mt = bot.managed.get(sym)
+            ids_now = dict(getattr(mt, "prot_ids", {}) or {})
             sl = float(getattr(mt, "sl", 0) or pos.sl or 0)
             tp = float(getattr(mt, "tp", 0) or pos.tp or 0)
             if sl <= 0 or tp <= 0:
                 continue
-            bot.exchange.stop_tp_orders(sym, pos.direction, pos.qty, sl, tp,
-                                        cid_prefix="retry")
+            _PROT_TRY[sym] = now
+            res = bot.exchange.stop_tp_orders(sym, pos.direction, pos.qty, sl, tp,
+                                              cid_prefix="retry", cancel_first=False)
+            if mt is not None:
+                record_protection(mt, res)
             done.append(sym)
-            log.warning("RE-ARM: da dat lai SL/TP tren san cho %s (sl=%s tp=%s)",
-                        sym, sl, tp)
+            log.warning("RE-ARM: da dat lai SL/TP tren san cho %s (sl=%s tp=%s%s)", sym, sl, tp,
+                        f"; id cu={ids_now}" if ids_now else "")
+            # Xac nhan lai bang cach doc ve: san co the bao OK ma lenh khong ton tai.
+            try:
+                chk = bot.exchange.fetch_protection(sym) or {}
+            except Exception:  # noqa: BLE001
+                chk = {"sl": 1, "tp": 1}      # khong doc duoc -> coi nhu da dat
+            if chk.get("sl") and chk.get("tp"):
+                _PROT_SEEN[sym] = time.time()
+                _PROT_FAIL.pop(sym, None)
+            else:
+                _PROT_FAIL[sym] = fails + 1
+                log.error("RE-ARM %s: san bao dat thanh cong nhung KHONG thay lenh treo "
+                          "-> can kiem tra tay (vi the dang KHONG co SL/TP tren san)", sym)
         except Exception as e:  # noqa: BLE001
-            log.warning("RE-ARM %s that bai (se thu lai vong sau): %s", sym, str(e)[:120])
+            _PROT_TRY[sym] = time.time()
+            n = int(_PROT_FAIL.get(sym, 0)) + 1
+            _PROT_FAIL[sym] = n
+            if time.time() - float(_PROT_LOG.get(sym, 0.0)) >= PROTECT_BACKOFF_SEC:
+                _PROT_LOG[sym] = time.time()
+                log.warning("RE-ARM %s that bai lan %d (vi the KHONG co SL/TP tren san; "
+                            "monitor phan mem dang bao ve): %s",
+                            sym, n, str(e)[:120])
     return done
 
 
@@ -645,6 +702,9 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             # Bypass MAX_POSITIONS: ghi thang vao portfolio (van cam trung symbol)
             bot.portfolio.positions[sym] = Position(sym, direction, lv["entry"], qty,
                                                     lv["sl"], lv["tp"])
+            # (02/10) managed tao ngay tu luc mo -> co initial_sl/init_qty dung va ghi
+            # duoc clientOrderId cua lenh bao ve vao state (doi soat moi vong).
+            _mng = bot._managed_for(sym, bot.portfolio.positions[sym])
             _pending_feats[sym] = {"feats": feats, "direction": direction,
                                    "strategy": strat, "entry": lv["entry"],
                                    "sl": lv["sl"], "tp": lv["tp"]}
@@ -688,7 +748,8 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             # `_rearm_missing()` se thu lai o cac vong sau; monitor phan mem bao ve
             # trong luc chua co SL/TP tren san.
             try:
-                bot.exchange.stop_tp_orders(sym, direction, qty, lv["sl"], lv["tp"])
+                _res = bot.exchange.stop_tp_orders(sym, direction, qty, lv["sl"], lv["tp"])
+                record_protection(bot.managed.get(sym) or _mng, _res)   # luu id -> state
             except Exception as e:  # noqa: BLE001
                 log.warning("arm SL/TP %s that bai ngay sau khi mo (%s) — se thu lai "
                             "vong sau; vi the dang duoc monitor phan mem quan ly",
@@ -701,12 +762,14 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             if landed:
                 pos = Position(sym, direction, lv["entry"], landed, lv["sl"], lv["tp"])
                 bot.portfolio.positions[sym] = pos
-                bot._managed_for(sym, pos)
+                _mng = bot._managed_for(sym, pos)
                 _pending_feats[sym] = {"feats": feats, "direction": direction,
                                        "strategy": strat, "entry": lv["entry"],
                                        "sl": lv["sl"], "tp": lv["tp"]}
                 try:                       # arm loi KHONG duoc lam mat vi the
-                    bot.exchange.stop_tp_orders(sym, direction, landed, lv["sl"], lv["tp"])
+                    _res = bot.exchange.stop_tp_orders(sym, direction, landed,
+                                                       lv["sl"], lv["tp"])
+                    record_protection(_mng, _res)      # luu clientOrderId -> state
                 except Exception as e2:  # noqa: BLE001
                     log.warning("arm SL/TP (recovered) %s that bai: %s", sym, str(e2)[:120])
                 log.warning("TURBO OPEN %s %s bao loi nhung vi the DA mo qty=%s -> "
@@ -718,6 +781,191 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                 results.append({"symbol": sym, "status": "ORDER_FAILED",
                                 "reason": str(e)[:200]})
     return results
+
+
+def _kill_cleared(path: str) -> bool:
+    """True neu nguoi van hanh DA GO lenh ngung (02/10).
+
+    `python risk.py --reset` se xoa/ghi lai file state: file mat hoac `tripped=false` ->
+    coi nhu da go. File hong/khong doc duoc -> KHONG coi la da go (fail-closed, dung
+    nguyen tac voi `risk.load_state`).
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            d = json.load(f)
+    except FileNotFoundError:
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+    return not bool(d.get("tripped", False))
+
+
+def adopt_now(bot, cfg, ex, log, syms) -> dict:
+    """ADOPT vi the THAT tren san: nap state + arm lai SL/TP + dong bo equity.
+
+    Khong bao gio mo them lenh. Dung o luc khoi dong VA trong monitor-only (02/10) —
+    muc dich: vi the dang mo luon co nguoi quan ly, ke ca khi kill-switch dang ngung.
+    """
+    if not (cfg.adopt_positions and not cfg.dry_run):
+        return {}
+    try:
+        # P0-watchdog: ADOPT goi san nhieu lan (fetch positions + ATR + arm SL/TP)
+        # -> co the lau hon WATCHDOG_SEC. Nhip tim phai duoc ghi TRUOC/SAU buoc nay,
+        # neu khong supervisor se kill bot dang lam viec that (da xay ra 01/10).
+        heartbeat({"phase": "adopt"})
+        _ms = ms_load(cfg.managed_state_path)
+        n_state = ms_load_into(bot, _ms)
+        rep = adopt_positions(bot, ex.fetch_positions(list(syms)),
+                              atr_fn=lambda s: atr_of(ex, cfg, s),
+                              managed=_ms.get("trades"),
+                              alert=lambda t: tg(cfg, t))
+        heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
+        log.warning("ADOPT vi the san: adopted=%s armed=%s KHONG-arm-duoc-tren-san=%s "
+                    "chua-bao-ve=%s skipped=%s errors=%s (state nap=%s)",
+                    rep["adopted"], rep["armed"], rep["unarmed"],
+                    rep["unmanaged"], rep["skipped"], rep["errors"], n_state)
+        if rep["unarmed"]:
+            log.error("ADOPT: %d vi the KHONG dat duoc SL/TP TREN SAN (%s) — dang duoc "
+                      "bao ve bang MONITOR phan mem (bot tu dong khi gia cham SL/TP). "
+                      "Kiem tra bang: python arm_protection.py",
+                      len(rep["unarmed"]), rep["unarmed"])
+        if rep["adopted"] or rep["unmanaged"] or n_state:
+            tg(cfg, (f"[KHOI DONG LAI] adopt={rep['adopted']} armed={rep['armed']} "
+                     f"khong-SL-tren-san={rep['unarmed']} "
+                     f"chua-bao-ve={rep['unmanaged']} state-nap={n_state}"))
+        _eq = ex.fetch_balance_usdt()
+        if _eq and _eq > 0:
+            bot.equity = float(_eq)
+            bot.balance = min(cfg.balance_usdt, bot.equity)
+        bot.kill.note_equity(bot.equity or cfg.balance_usdt)
+        ms_save(cfg.managed_state_path, bot)
+        save_risk_state(cfg.risk_state_path, bot.kill)
+        return rep
+    except Exception as e:  # noqa: BLE001
+        log.exception("adopt vi the that bai: %s", e)
+        tg(cfg, f"[CANH BAO] Adopt vi the that bai: {str(e)[:200]} - kiem tra tay!")
+        return {}
+
+
+def manage_open_positions(bot, cfg, log) -> dict:
+    """Cham soc vi the dang mo: monitor, doi soat bao ve, ghi so khi dong, kiem kill-switch.
+
+    Tach ra (02/10) de dung chung cho CA vong trade binh thuong VA che do MONITOR-ONLY:
+    nho vay vi the dang mo luon duoc theo doi ke ca khi kill-switch dang ngung.
+    Tra {"mon": <ket qua _monitor>, "tripped": bool, "fatal": str|None}.
+    """
+    before = set(bot.portfolio.positions)
+    mon = bot._monitor()
+    # 01/10 -> 02/10: DOI SOAT BAO VE MOI VONG (throttle PROTECT_CHECK_SEC/cap). Truoc
+    # day chi kiem tra moi 5 vong -> neu SL tren san bi mat/huy thi toi ~5 vong moi phat
+    # hien. Nay: cap nao chua xac nhan du SL+TP thi thu arm lai ngay (khong doi).
+    if bot.portfolio.positions:
+        for _s in _rearm_missing(bot, log):
+            tg(cfg, f"🔒 da dat lai SL/TP tren san cho {_s}")
+    if isinstance(mon, dict) and "_error" in mon:
+        # P0-3: ban cu log warning roi VAN vao lenh moi ngay sau khi da flatten
+        return {"mon": mon, "tripped": True, "fatal": str(mon)}
+    for sym in before - set(bot.portfolio.positions):
+        _last_close[sym] = time.time()
+        pend = _pending_feats.pop(sym, None)
+        reason = (mon or {}).get(sym, "?")
+        won = reason == "TP"  # TP (ke ca partial-win/trail) = thang, SL/SENT = thua
+        exr = bot.last_exits.get(sym) or {}
+        r_real = float(exr.get("r") or 0.0)
+        # Thong ke rieng tung strategy (muc 15): A/B/C/D — phat hien nhom keo PF xuong
+        strat = str((pend or {}).get("strategy") or exr.get("strategy") or "NONE")
+        try:
+            srep = strat_bump(strat, bool(exr.get("won", won)), r_real)
+            log.info("STRAT %s n=%s WR=%.0f%% avgR=%s", strat, srep.get("n"),
+                     100.0 * float(srep.get("wins", 0)) / max(int(srep.get("n", 1)), 1),
+                     round(float(srep.get("sum_r", 0.0)) / max(int(srep.get("n", 1)), 1), 2))
+        except Exception as e:  # noqa: BLE001
+            log.warning("strat_bump fail: %s", e)
+        # Phase 1: agent CHI CO VAN — ghi "bai hoc" sau khi dong lenh (shadow).
+        agent_vote_review(cfg, sym,
+                          str((pend or {}).get("direction") or exr.get("direction") or "?"),
+                          r_real, bool(exr.get("won", won)), str(reason), strat,
+                          extra={"entry": (pend or {}).get("entry"),
+                                 "sl": (pend or {}).get("sl"),
+                                 "tp": (pend or {}).get("tp"),
+                                 "mfe_r": exr.get("mfe_r"),
+                                 "pnl": exr.get("pnl"),
+                                 "partial": exr.get("partial"),
+                                 "had_feats": bool(pend)})
+        if pend:
+            try:
+                upd = _learner.update(pend["feats"], pend["direction"], won)
+                log.info("LEARN %s %s (%s) R=%.2f n=%s w=%s", sym,
+                         "WIN" if won else "LOSS", reason, r_real, upd["n"], upd["w"])
+            except Exception as e:  # noqa: BLE001
+                log.warning("learner update fail: %s", e)
+        else:
+            log.info("close %s (%s) - khong co feats (vi the cu)", sym, reason)
+        tg(cfg, fmt_close(sym, f"{reason} R={r_real:+.2f}"))
+        # P0-2: nuoi kill-switch bang ket qua THUC (dem thua lien tiep + peak).
+        # Ban cu khong he goi register_close trong turbo -> "5 thua lien tiep"
+        # khong bao gio kich hoat.
+        if bot.kill.register_close(bool(exr.get("won", won)), bot.equity or bot.balance):
+            log.error("KILL-SWITCH (sau khi dong lenh): %s", bot.kill.reason)
+            tg(cfg, fmt_kill(bot.kill.reason))
+            bot._flatten("kill-switch")
+        log.info("cooldown %s %ss (vua dong)", sym, cfg.cooldown_sec)
+    return {"mon": mon, "tripped": bool(bot.kill.tripped), "fatal": None}
+
+
+def monitor_only_loop(bot, cfg, ex, log, syms, *, sleep_sec=None, max_rounds=None) -> bool:
+    """Che do CHI QUAN LY vi the khi kill-switch dang ngung (khong bao gio mo lenh moi).
+
+    Vi sao (02/10, tu thuc te 01-02/10): kill-switch trip luc khoi dong -> ban cu `return`
+    ngay, KHONG adopt -> vi the con tren san bi BO QUEN: demo chan moi lenh stop (-4045)
+    nen khong co SL tren san, va monitor mem cung khong chay = dung kieu "vi the mo coi"
+    da xay ra 01/10 (BTC short 0.0568). Nay: van adopt + monitor + thu arm lai, chi KHONG
+    mo lenh moi, va tu phat hien khi nguoi van hanh go lenh ngung.
+
+    Tra True neu kill-switch da duoc go (caller quay lai trade); False neu het `max_rounds`.
+    """
+    sleep_s = float(cfg.poll_interval_sec if sleep_sec is None else sleep_sec)
+    log.error("KILL-SWITCH dang NGUNG: %s | KHONG mo lenh moi — CHI quan ly vi the dang mo. "
+              "Go bang `python risk.py --reset` (hoac xoa %s).",
+              bot.kill.reason, cfg.risk_state_path)
+    tg(cfg, fmt_kill(f"{bot.kill.reason} — bot chi QUAN LY vi the dang mo, khong mo lenh moi"))
+    adopt_now(bot, cfg, ex, log, syms)          # vi the tren san phai duoc theo doi
+    n = 0
+    while True:
+        n += 1
+        heartbeat({"round": n, "phase": "monitor_only"})
+        try:
+            mng = manage_open_positions(bot, cfg, log)
+            if mng["fatal"]:
+                log.error("MONITOR-ONLY: monitor loi (%s) — dung de khong lam gi sai",
+                          mng["fatal"])
+                tg(cfg, fmt_kill(f"monitor-only dung: {mng['fatal']}"))
+                break
+            if n % 10 == 1:      # dinh ky -> nguoi van hanh biet bot con song
+                log.warning("MONITOR-ONLY: dang giu %d vi the (%s) — kill-switch van ngung",
+                            len(bot.portfolio.positions),
+                            ", ".join(sorted(bot.portfolio.positions)) or "khong co")
+        except Exception as e:  # noqa: BLE001
+            log.exception("monitor-only loi: %s", e)
+        save_risk_state(cfg.risk_state_path, bot.kill)
+        ms_save(cfg.managed_state_path, bot)
+        heartbeat({"phase": "monitor_only_end", "round": n,
+                   "positions": len(bot.portfolio.positions)})
+        if _kill_cleared(cfg.risk_state_path):
+            # ai do da chay `risk.py --reset` -> doc lai state (tripped/consec_losses)
+            load_risk_state(cfg.risk_state_path, bot.kill,
+                            warn=lambda m: log.warning("%s", m))
+            bot.kill.tripped = False        # truong hop file bi XOA -> load_state khong doi
+            bot.kill.reason = ""
+            log.warning("KILL-SWITCH da duoc go -> quay lai trade binh thuong")
+            tg(cfg, "✅ kill-switch da duoc go -> bot quay lai trade binh thuong")
+            return True
+        if max_rounds and n >= int(max_rounds):
+            return False
+        time.sleep(sleep_s)
+    save_risk_state(cfg.risk_state_path, bot.kill)   # monitor loi -> luu roi dung han
+    ms_save(cfg.managed_state_path, bot)
+    return False
 
 
 def main() -> None:
@@ -752,6 +1000,13 @@ def main() -> None:
                          f"-> da ghi bu tu fill san (n/PF se dung hon).")
         except Exception as e:  # noqa: BLE001
             log.warning("reconcile journal loi (bo qua, khong anh huong trade): %s", e)
+    if bot.kill.tripped and getattr(cfg, "kill_monitor_only", True):
+        # (02/10) Truoc day: `return` ngay -> vi the con tren san bi bo quen (khong SL tren
+        # san vi demo chan -4045, cung khong co monitor mem). Nay: CHI QUAN LY, khong mo moi.
+        log.info("TURBO QUET %d cap: %s (kill-switch dang ngung -> chi quan ly vi the)",
+                 len(syms0), list(syms0))
+        monitor_only_loop(bot, cfg, ex, log, syms0)
+        return
     if bot.kill.tripped:
         log.info("TURBO QUET %d cap: %s (dang ngung boi kill-switch -> khong trade)",
                  len(syms0), list(syms0))
@@ -760,42 +1015,7 @@ def main() -> None:
         tg(cfg, fmt_kill(f"{bot.kill.reason} - state da luu, bot KHONG trade"))
         return
     # P0-1: ADOPT vi the dang mo THAT tren san (ban cu chi log roi bo qua -> mo trung)
-    if cfg.adopt_positions and not cfg.dry_run:
-        try:
-            # P0-watchdog: ADOPT goi san nhieu lan (fetch positions + ATR + arm SL/TP)
-            # -> co the lau hon WATCHDOG_SEC. Nhip tim phai duoc ghi TRUOC/SAU buoc nay,
-            # neu khong supervisor se kill bot dang lam viec that (da xay ra 01/10).
-            heartbeat({"phase": "adopt"})
-            _ms = ms_load(cfg.managed_state_path)
-            n_state = ms_load_into(bot, _ms)
-            rep = adopt_positions(bot, ex.fetch_positions(list(syms0)),
-                                  atr_fn=lambda s: atr_of(ex, cfg, s),
-                                  managed=_ms.get("trades"),
-                                  alert=lambda t: tg(cfg, t))
-            heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
-            log.warning("ADOPT vi the san: adopted=%s armed=%s KHONG-arm-duoc-tren-san=%s "
-                        "chua-bao-ve=%s skipped=%s errors=%s (state nap=%s)",
-                        rep["adopted"], rep["armed"], rep["unarmed"],
-                        rep["unmanaged"], rep["skipped"], rep["errors"], n_state)
-            if rep["unarmed"]:
-                log.error("ADOPT: %d vi the KHONG dat duoc SL/TP TREN SAN (%s) — dang duoc "
-                          "bao ve bang MONITOR phan mem (bot tu dong khi gia cham SL/TP). "
-                          "Kiem tra bang: python arm_protection.py",
-                          len(rep["unarmed"]), rep["unarmed"])
-            if rep["adopted"] or rep["unmanaged"] or n_state:
-                tg(cfg, (f"[KHOI DONG LAI] adopt={rep['adopted']} armed={rep['armed']} "
-                         f"khong-SL-tren-san={rep['unarmed']} "
-                         f"chua-bao-ve={rep['unmanaged']} state-nap={n_state}"))
-            _eq = ex.fetch_balance_usdt()
-            if _eq and _eq > 0:
-                bot.equity = float(_eq)
-                bot.balance = min(cfg.balance_usdt, bot.equity)
-            bot.kill.note_equity(bot.equity or cfg.balance_usdt)
-            ms_save(cfg.managed_state_path, bot)
-            save_risk_state(cfg.risk_state_path, bot.kill)
-        except Exception as e:  # noqa: BLE001
-            log.exception("adopt vi the that bai: %s", e)
-            tg(cfg, f"[CANH BAO] Adopt vi the that bai: {str(e)[:200]} - kiem tra tay!")
+    adopt_now(bot, cfg, ex, log, syms0)
     rounds = int(sys.argv[sys.argv.index("--rounds") + 1]) if "--rounds" in sys.argv else 0
     i = 0
     log.info("TURBO DEMO start: %s (dry_run=%s)", syms0, cfg.dry_run)
@@ -805,10 +1025,15 @@ def main() -> None:
     while True:
         i += 1
         heartbeat({"round": i, "phase": "start"})
-        # P0-2: kiem tra kill-switch NGAY trong vong lap that (ban cu khong he goi)
+        # P0-2: kiem tra kill-switch NGAY trong vong lap that (ban cu khong he goi).
+        # (02/10) Mac dinh khong thoat han nua: chuyen sang MONITOR-ONLY (van quan ly vi the
+        # dang mo, khong mo lenh moi). Dat KILL_MONITOR_ONLY=false de quay lai hanh vi cu.
         if bot.kill.tripped:
-            log.error("KILL-SWITCH: %s -> flatten + dung", bot.kill.reason)
+            log.error("KILL-SWITCH: %s -> khong mo lenh moi", bot.kill.reason)
             tg(cfg, fmt_kill(bot.kill.reason))
+            if getattr(cfg, "kill_monitor_only", True):
+                if monitor_only_loop(bot, cfg, ex, log, syms0):
+                    continue          # da duoc go lenh ngung -> trade tiep
             bot._flatten("kill-switch")
             break
         # 0) P0-6: dong bo EQUITY THAT (moc DD) — TACH khoi `balance` (chi la tran size
@@ -820,73 +1045,17 @@ def main() -> None:
                 log.info("NGAY MOI (UTC %s): moc DD = %.2f USDT", bot.kill.day,
                          bot.kill.start_equity)
             bot.balance = min(cfg.balance_usdt, bot.equity)
-        # 1) monitor: cap nao vua dong -> cooldown + LEARN that/bai
-        before = set(bot.portfolio.positions)
-        mon = bot._monitor()
-        # P0-fix (01/10): san demo tra -4045 theo kieu han ngach -> vi the co the mo
-        # ra ma KHONG co SL/TP tren san. Thu lai dinh ky (moi PROTECT_RETRY_EVERY
-        # vong) de tu "lien se" thay vi phai restart bot.
-        if i % PROTECT_RETRY_EVERY == 1 and bot.portfolio.positions:
-            for _s in _rearm_missing(bot, log):
-                tg(cfg, f"🔒 da dat lai SL/TP tren san cho {_s}")
-        if isinstance(mon, dict) and "_error" in mon:
+        # 1) monitor + ghi so khi dong + kiem kill-switch (dung chung voi monitor-only)
+        mng = manage_open_positions(bot, cfg, log)
+        mon = mng["mon"]
+        if mng["fatal"]:
             # P0-3: ban cu log warning roi VAN vao lenh moi ngay sau khi da flatten
-            log.error("monitor loi -> flatten + dung: %s", mon)
-            tg(cfg, fmt_kill(str(mon)))
+            log.error("monitor loi -> flatten + dung: %s", mng["fatal"])
+            tg(cfg, fmt_kill(str(mng["fatal"])))
             bot._flatten("monitor error")
             break
-        for sym in before - set(bot.portfolio.positions):
-            _last_close[sym] = time.time()
-            pend = _pending_feats.pop(sym, None)
-            reason = (mon or {}).get(sym, "?")
-            won = reason == "TP"  # TP (ke ca partial-win/trail) = thang, SL/SENT = thua
-            # Luu y: KHONG dat ten bien la `ex` (no che khuat doi tuong exchange cua
-            # main() — loi cu: sau lan close dau tien `ex` bien thanh dict).
-            exr = bot.last_exits.get(sym) or {}
-            r_real = float(exr.get("r") or 0.0)
-            # Thong ke rieng tung strategy (muc 15): A/B/C/D — phat hien nhom keo PF xuong
-            strat = str((pend or {}).get("strategy") or exr.get("strategy") or "NONE")
-            try:
-                srep = strat_bump(strat, bool(exr.get("won", won)), r_real)
-                log.info("STRAT %s n=%s WR=%.0f%% avgR=%s", strat, srep.get("n"),
-                         100.0 * float(srep.get("wins", 0)) / max(int(srep.get("n", 1)), 1),
-                         round(float(srep.get("sum_r", 0.0)) / max(int(srep.get("n", 1)), 1), 2))
-            except Exception as e:  # noqa: BLE001
-                log.warning("strat_bump fail: %s", e)
-            # Phase 1: agent CHI CO VAN — ghi "bai hoc" sau khi dong lenh (shadow).
-            # 01/10: gui kem entry/sl/tp/mfe_r/pnl/partial -> agent moi co du lieu de
-            # "rut kinh nghiem" (truoc day thieu -> luon NO_OPINION, vo dung).
-            agent_vote_review(cfg, sym,
-                              str((pend or {}).get("direction") or exr.get("direction")
-                                  or "?"),
-                              r_real, bool(exr.get("won", won)), str(reason), strat,
-                              extra={"entry": (pend or {}).get("entry"),
-                                     "sl": (pend or {}).get("sl"),
-                                     "tp": (pend or {}).get("tp"),
-                                     "mfe_r": exr.get("mfe_r"),
-                                     "pnl": exr.get("pnl"),
-                                     "partial": exr.get("partial"),
-                                     "had_feats": bool(pend)})
-            if pend:
-                try:
-                    upd = _learner.update(pend["feats"], pend["direction"], won)
-                    log.info("LEARN %s %s (%s) R=%.2f n=%s w=%s", sym,
-                             "WIN" if won else "LOSS", reason, r_real, upd["n"], upd["w"])
-                except Exception as e:  # noqa: BLE001
-                    log.warning("learner update fail: %s", e)
-            else:
-                log.info("close %s (%s) - khong co feats (vi the cu)", sym, reason)
-            tg(cfg, fmt_close(sym, f"{reason} R={r_real:+.2f}"))
-            # P0-2: nuoi kill-switch bang ket qua THUC (dem thua lien tiep + peak).
-            # Ban cu khong he goi register_close trong turbo -> "5 thua lien tiep"
-            # khong bao gio kich hoat.
-            if bot.kill.register_close(bool(exr.get("won", won)), bot.equity or bot.balance):
-                log.error("KILL-SWITCH (sau khi dong lenh): %s", bot.kill.reason)
-                tg(cfg, fmt_kill(bot.kill.reason))
-                bot._flatten("kill-switch")
-            log.info("cooldown %s %ss (vua dong)", sym, cfg.cooldown_sec)
-        if bot.kill.tripped:
-            log.error("KILL-SWITCH truoc round -> dung han: %s", bot.kill.reason)
+        if mng["tripped"]:
+            log.error("KILL-SWITCH truoc round -> dung trade: %s", bot.kill.reason)
             tg(cfg, fmt_kill(bot.kill.reason))
             # P0-2 fix (01/10): PHAI luu state NGAY tai day. Ban cu break luon ->
             # file logs/risk_state.json giu ban CU (trupped=False, chua tinh lan thua
@@ -894,6 +1063,12 @@ def main() -> None:
             # "5 thua lien tiep". Thuc te gap luc 20:25 (trip roi van chay lai).
             save_risk_state(cfg.risk_state_path, bot.kill)
             ms_save(cfg.managed_state_path, bot)
+            if getattr(cfg, "kill_monitor_only", True):
+                # (02/10) Khong thoat han nua: chi ngung MO lenh moi, van quan ly vi the.
+                log.warning("KILL-SWITCH dang ngung -> chuyen sang MONITOR-ONLY "
+                            "(khong mo lenh moi; go bang `python risk.py --reset`)")
+                if monitor_only_loop(bot, cfg, ex, log, syms0):
+                    continue          # nguoi van hanh da go lenh ngung -> trade tiep
             break
         try:
             res = turbo_round(bot)

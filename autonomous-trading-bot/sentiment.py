@@ -5,7 +5,9 @@ AlJazeera + GoogleNews(world/crypto) + GDELT. Tin moi weight cao (half-life 6h).
 """
 from __future__ import annotations
 
+import os
 import re
+import socket
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -42,6 +44,12 @@ DEFAULT_RSS = [
     "https://news.google.com/rss/search?q=crypto%20OR%20bitcoin%20OR%20SEC&hl=en-US&gl=US&ceid=US:en",
     "https://news.google.com/rss/search?q=FOMC%20OR%20CPI%20OR%20NFP%20OR%20OPEC&hl=en-US&gl=US&ceid=US:en",
 ]
+
+# (02/10) Ngan sach thoi gian toi da cho CA danh sach feed RSS (xem `fetch_rss`).
+# Vi sao can: 15 feed x socket-timeout 20s = toi ~300s cho MOT lan fetch — vuot ca
+# WATCHDOG_SEC (360s) va treo duong BAO VE SL/TP trong `bot._monitor`. Dat 15s: du cho
+# vai feed tra loi nhanh, con lai bo qua; khong bao gio treo vong lap.
+DEFAULT_BUDGET_SEC = float(os.getenv("SENTIMENT_BUDGET_SEC", "15") or 15)
 
 _BULLISH = ["etf approval", "rate cut", "dovish", "bullish", "adoption",
     "stimulus", "breakthrough", "surge", "rally", "approv", "easing",
@@ -119,24 +127,47 @@ def _age_h(entry) -> float | None:
     return None
 
 
-def fetch_rss(feeds: list | None = None, per_feed: int = 8) -> list:
-    """Tra [(headline, weight)] — tin moi weight cao (half-life 6h)."""
+def fetch_rss(feeds: list | None = None, per_feed: int = 8,
+              budget_sec: float | None = None) -> list:
+    """Tra [(headline, weight)] — tin moi weight cao (half-life 6h).
+
+    NGAN SACH THOI GIAN (02/10): truoc day KHONG dat timeout cho tung feed —
+    `feedparser.parse` dung urllib nen chi dua vao socket default timeout. Thuc te
+    01-02/10: 1 lan fetch treo ~160s (DNS/TLS bi chan) va no nam TRONG `bot._monitor`
+    = duong BAO VE SL/TP -> vong lap treo, watchdog co nguy co kill bot dang giu vi the.
+
+    Nay: `budget_sec` = tong thoi gian toi da cho CA danh sach feed (mac dinh
+    `SENTIMENT_BUDGET_SEC`, 15s). Het ngan sach -> bo cac feed con lai. Timeout socket
+    duoc TRA VE nguyen trang sau khi xong (khong lam lech cau hinh cua bot).
+    """
     if feedparser is None:
         return []
+    budget = DEFAULT_BUDGET_SEC if budget_sec is None else float(budget_sec)
+    deadline = time.time() + max(0.0, budget)
     out: list = []
-    for url in feeds or DEFAULT_RSS:
-        try:
-            parsed = feedparser.parse(url)
-            for e in (parsed.entries or [])[:per_feed]:
-                title = getattr(e, "title", "") or ""
-                summary = re.sub(r"<[^>]+>", " ", getattr(e, "summary", "") or "")[:300]
-                if not title:
-                    continue
-                age = _age_h(e)
-                w = 0.5 ** (age / 6.0) if age is not None else 0.7
-                out.append((f"{title}. {summary}".strip(), round(max(w, 0.15), 3)))
-        except Exception:
-            continue
+    old_tmo = socket.getdefaulttimeout()
+    try:
+        for url in feeds or DEFAULT_RSS:
+            if budget > 0:
+                left = deadline - time.time()
+                if left <= 0.5:
+                    break                  # het ngan sach -> thoi (khong the treo tiep)
+                # ep timeout cho feedparser theo thoi gian CON LAI (khong dai hon mac dinh)
+                socket.setdefaulttimeout(max(1.0, min(left, old_tmo) if old_tmo else left))
+            try:
+                parsed = feedparser.parse(url)
+                for e in (parsed.entries or [])[:per_feed]:
+                    title = getattr(e, "title", "") or ""
+                    summary = re.sub(r"<[^>]+>", " ", getattr(e, "summary", "") or "")[:300]
+                    if not title:
+                        continue
+                    age = _age_h(e)
+                    w = 0.5 ** (age / 6.0) if age is not None else 0.7
+                    out.append((f"{title}. {summary}".strip(), round(max(w, 0.15), 3)))
+            except Exception:
+                continue
+    finally:
+        socket.setdefaulttimeout(old_tmo)
     return out
 
 

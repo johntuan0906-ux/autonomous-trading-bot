@@ -1,8 +1,14 @@
 """ATR-based SL/TP, position sizing, and kill-switch."""
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
+
+# (02/10) Nguong "lo khong dang ke" cho chuoi thua lien tiep (USDT).
+# Vi sao: thuc te 01/10, mot lenh dong do DUST voi pnl = -0.0011 USDT bi tinh la lan
+# thua thu 5 -> TRIP kill-switch va bot dung trade, du thuc chat lenh do khong lo.
+MIN_LOSS_USDT = float(os.getenv("MIN_LOSS_USDT", "0.5") or 0.5)
 
 
 def utc_day(ts: float | None = None) -> str:
@@ -66,15 +72,26 @@ class KillSwitch:
     def reset_errors(self) -> None:
         self.errors = 0
 
-    def register_close(self, won: bool, balance: float) -> bool:
-        """Ghi nhan close: dem loss lien tiep + cap nhat peak. Loss 5 lien tiep -> trip."""
+    def register_close(self, won: bool, balance: float, pnl: float | None = None,
+                       min_loss_usdt: float | None = None) -> bool:
+        """Ghi nhan close: dem loss lien tiep + cap nhat peak. Loss 5 lien tiep -> trip.
+
+        (02/10) Lo "KHONG DANG KE" (|pnl| < nguong) la TRUNG TINH: khong tang chuoi thua,
+        cung khong reset chuoi. Vi sao: 01/10 mot lenh dong do DUST voi pnl = -0.0011 USDT
+        bi tinh la lan thua thu 5 -> TRIP kill-switch, bot dung trade du lenh do khong lo.
+        Nguong: `min_loss_usdt` (mac dinh `MIN_LOSS_USDT`, 0.5 USDT). Truyen pnl=None thi
+        giu nguyen hanh vi cu (moi lenh khong thang = 1 lan thua).
+        """
         self.peak_balance = max(self.peak_balance or balance, balance)
         if won:
             self.consec_losses = 0
-        else:
-            self.consec_losses += 1
-            if self.consec_losses >= self.max_consec_losses:
-                return self.trip(f"{self.consec_losses} consecutive losses (muc 12)")
+            return False
+        thr = MIN_LOSS_USDT if min_loss_usdt is None else float(min_loss_usdt)
+        if pnl is not None and abs(float(pnl)) < thr:
+            return False                      # trung tinh: khong tinh la thua
+        self.consec_losses += 1
+        if self.consec_losses >= self.max_consec_losses:
+            return self.trip(f"{self.consec_losses} consecutive losses (muc 12)")
         return False
 
     def check(self, balance: float, atr_pct: float = 0.0) -> bool:

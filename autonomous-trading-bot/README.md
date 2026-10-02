@@ -603,6 +603,24 @@ timeout cho từng feed (`feedparser` dùng `urllib`, chỉ dựa vào socket de
 bảo vệ vị thế. Nay có **ngân sách thời gian** `SENTIMENT_BUDGET_SEC` (mặc định 15s): hết ngân sách thì
 bỏ các feed còn lại, và timeout socket được trả về nguyên trạng sau khi xong.
 
+### 8.3 Ba lỗ dữ liệu/an toàn khác (02/10)
+
+- **`_flatten` giờ ghi CLOSE vào journal.** Trước đây kill-switch flatten đóng vị thế mà
+  **không** ghi dòng CLOSE → OPEN "mồ côi" (thực tế: 5 lệnh XRP/SOL/ADA/DOGE/SOL mở
+  17:00–17:33 bị flatten 18:00, journal còn OPEN=90/CLOSE=85) → `n`/WR/PF và gate LIVE đọc
+  sai. Nay mỗi vị thế bị flatten có 1 dòng CLOSE (`reason=FLATTEN`), và lệnh làm trip cũng
+  được ghi (trước đây `register_close` trả `True` trước khi kịp ghi). Reconcile vốn đã
+  idempotent (chạy 2 lần → `can ghi bu=0`).
+- **Kill-switch bỏ qua "lỗ không đáng kể"** (`MIN_LOSS_USDT`, mặc định 0.5 USDT): một lệnh
+  đóng do DUST với `pnl=-0.0011 USDT` đã bị tính là trận thua thứ 5 → **trip oan** (01/10,
+  bot phải dừng trade). Nay `|pnl| < MIN_LOSS_USDT` là *trung tính* (không tăng cũng không
+  reset chuỗi thua). Các lệnh đóng trong vòng được xử lý theo **thứ tự thời gian** (trước
+  đây theo thứ tự `set()` tùy ý → chuỗi thua không lặp lại được).
+- **`KILL_MONITOR_ONLY` bắt buộc bật ở demo/testnet.** Demo trả `-4045` cho *mọi* lệnh stop
+  ngay cả khi số lệnh treo = 0 (đã kiểm chứng trực tiếp 02/10) → không thể có SL trên sàn →
+  monitor mềm là lớp bảo vệ duy nhất. `KILL_MONITOR_ONLY=false` chỉ có hiệu lực khi LIVE
+  (config tự ép bật lại ở demo kèm log ERROR).
+
 ## 9. Cleanup
 
 ```bash

@@ -34,6 +34,30 @@ def _get_bool(name: str, default: bool) -> bool:
     return v in ("1", "true", "yes", "y", "on")
 
 
+_KMO_WARNED = False
+
+
+def _kill_monitor_only() -> bool:
+    """(02/10) KILL_MONITOR_ONLY — BAT BUOC true o DEMO/testnet.
+
+    Vi sao: san demo chan MOI lenh stop (`-4045 Reach max stop order limit`, da kiem chung
+    02/10 ngay ca khi so lenh treo = 0) -> khong the co SL tren san, nen monitor mem la
+    lop bao ve DUY NHAT. Neu bot thoat han khi kill-switch trip thi vi the con lai tren
+    san bi bo quen (dung kieu "vi the mo coi" 01/10). Chi LIVE moi cho phep tat.
+    """
+    want = _get_bool("KILL_MONITOR_ONLY", True)
+    if want or not _get_bool("BINANCE_TESTNET", True):
+        return want
+    global _KMO_WARNED
+    if not _KMO_WARNED:
+        _KMO_WARNED = True
+        import logging
+        logging.getLogger("config").error(
+            "KILL_MONITOR_ONLY=false bi BO QUA o DEMO: san demo chan moi lenh stop (-4045) "
+            "nen monitor mem la lop bao ve DUY NHAT -> ep bat lai (chi LIVE moi cho phep tat).")
+    return True
+
+
 def _get_tuple(name: str, default: tuple) -> tuple:
     """Parse danh sach symbol cach nhau boi dau phay — dung cho SYMBOLS/EXTRA_SYMBOLS.
 
@@ -129,8 +153,7 @@ class Settings:
     # thoat han. Ly do: demo chan moi lenh stop (-4045) nen khi bot thoat, vi the con tren san
     # khong co SL tren san VA cung khong co monitor mem = "vi the mo coi" (da xay ra 01/10).
     # Dat KILL_MONITOR_ONLY=false de quay lai hanh vi cu (thoat + supervisor restart).
-    kill_monitor_only: bool = field(
-        default_factory=lambda: _get_bool("KILL_MONITOR_ONLY", True))
+    kill_monitor_only: bool = field(default_factory=_kill_monitor_only)
 
     reconcile_days: int = field(default_factory=lambda: _get_int("RECONCILE_DAYS", 7))
     # Tran tan suat goi API (supervisor spawn lai nhieu lan -> khong quet lien tuc).

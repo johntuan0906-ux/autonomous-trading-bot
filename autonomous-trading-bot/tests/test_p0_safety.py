@@ -1081,6 +1081,136 @@ class TestSettingsFields(unittest.TestCase):
         self.assertEqual(missing, [], f"Settings thieu truong (xoa nham?): {missing}")
 
 
+class TestFlattenGhiJournal(unittest.TestCase):
+    """(02/10) `_flatten` PHAI ghi CLOSE: thuc te de lai 5 OPEN "mo coi".
+
+    Su that: 5 lenh (XRP/SOL/ADA/DOGE/SOL mo 17:00-17:33) bi kill-switch flatten luc 18:00
+    ma khong co dong CLOSE nao -> journal OPEN=90/CLOSE=85, n/WR/PF sai (gate LIVE doc sai).
+    Dong thoi lenh lam TRIP cung khong duoc ghi (register_close return True truoc khi ghi).
+    """
+
+    SYM = "XRP/USDT:USDT"
+    SYM2 = "ADA/USDT:USDT"
+
+    def _bot(self, ex):
+        from unittest import mock
+        bot = TradingBot(cfg(dry_run=False), exchange=ex)
+        bot.sentiment.get = mock.Mock(return_value=mock.Mock(score=0.0))
+        return bot
+
+    def test_flatten_ghi_CLOSE_cho_MOI_vi_the(self):
+        from unittest import mock
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        for s in (self.SYM, self.SYM2):
+            bot.portfolio.positions[s] = Position(s, "SHORT", 1.48, 100.0, 1.50, 1.40)
+            bot.managed[s] = new_trade(s, "SHORT", 1.48, 100.0, 1.50, 1.40)
+        recs: list = []
+        with mock.patch.object(botmod, "log_trade", lambda **kw: recs.append(kw)):
+            bot._flatten("kill-switch")
+        self.assertEqual(len(recs), 2, "moi vi the bi flatten phai co 1 dong CLOSE")
+        self.assertTrue(all(r["event"] == "CLOSE" for r in recs))
+        self.assertTrue(all(r["reason"] == "FLATTEN" for r in recs))
+        self.assertTrue(all(r.get("direction") for r in recs))
+        self.assertEqual(bot.portfolio.positions, {}, "flatten phai dong het")
+        for s in (self.SYM, self.SYM2):
+            self.assertIn(s, bot.last_exits, "co ket qua trong last_exits de thong ke")
+
+    def test_flatten_khong_co_vi_the_thi_khong_ghi_gi(self):
+        from unittest import mock
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        recs: list = []
+        with mock.patch.object(botmod, "log_trade", lambda **kw: recs.append(kw)):
+            bot._flatten("kill-switch")
+        self.assertEqual(recs, [], "khong co vi the -> khong ghi CLOSE rong")
+
+
+class TestKillSwitchLoNho(unittest.TestCase):
+    """(02/10) Lenh lo ~0 (DUST pnl=-0.0011) KHONG duoc tinh la 1 lan thua.
+
+    Su that: 01/10 LINK dong do DUST pnl=-0.0011 USDT bi tinh la lan thua thu 5 -> TRIP
+    kill-switch -> bot dung trade (va roi sang monitor-only) trong khi thuc chat khong lo.
+    """
+
+    def _ks(self):
+        return KillSwitch(2.0, 0.02, 5, 1000.0)
+
+    def test_lo_nho_khong_tinh_la_thua(self):
+        ks = self._ks()
+        self.assertFalse(ks.register_close(False, 1000.0, pnl=-0.0011))
+        self.assertEqual(ks.consec_losses, 0)
+        self.assertFalse(ks.tripped)
+
+    def test_lo_that_van_tinh_va_trip_dung_lan_thu_5(self):
+        ks = self._ks()
+        for i in range(4):
+            self.assertFalse(ks.register_close(False, 1000.0, pnl=-5.0), f"lan {i + 1}")
+        self.assertEqual(ks.consec_losses, 4)
+        self.assertTrue(ks.register_close(False, 1000.0, pnl=-5.0))
+        self.assertTrue(ks.tripped)
+
+    def test_dust_khong_lam_day_chuoi_thua_that(self):
+        """Dung kich ban 01/10: 4 lan thua that + 1 lenh DUST -> KHONG trip."""
+        ks = self._ks()
+        for _ in range(4):
+            ks.register_close(False, 1000.0, pnl=-5.0)
+        self.assertFalse(ks.register_close(False, 1000.0, pnl=-0.0011))
+        self.assertFalse(ks.tripped, "DUST khong duoc thanh lan thua thu 5")
+        self.assertEqual(ks.consec_losses, 4)
+
+    def test_lai_thi_reset_chuoi(self):
+        ks = self._ks()
+        ks.register_close(False, 1000.0, pnl=-5.0)
+        ks.register_close(False, 1000.0, pnl=-5.0)
+        self.assertEqual(ks.consec_losses, 2)
+        ks.register_close(True, 1000.0, pnl=+3.0)
+        self.assertEqual(ks.consec_losses, 0)
+
+    def test_khong_truyen_pnl_thi_giu_hanh_vi_cu(self):
+        ks = self._ks()
+        ks.register_close(False, 1000.0)
+        self.assertEqual(ks.consec_losses, 1, "khong truyen pnl -> dem nhu truoc")
+
+    def test_nguong_cau_hinh_duoc(self):
+        ks = self._ks()
+        self.assertFalse(ks.register_close(False, 1000.0, pnl=-3.0, min_loss_usdt=5.0))
+        self.assertEqual(ks.consec_losses, 0)
+        self.assertFalse(ks.register_close(False, 1000.0, pnl=-6.0, min_loss_usdt=5.0))
+        self.assertEqual(ks.consec_losses, 1)
+
+
+class TestKillMonitorOnlyBatBuocDemo(unittest.TestCase):
+    """(02/10) O DEMO, KILL_MONITOR_ONLY luon bat: monitor mem la lop bao ve DUY NHAT.
+
+    Da kiem chung 02/10: demo tra -4045 cho MOI lenh stop du so lenh treo = 0 -> khong the
+    co SL tren san. Neu bot thoat han khi kill-switch trip thi vi the bi bo quen.
+    """
+
+    def test_demo_ep_bat_du_env_tat(self):
+        import config
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"BINANCE_TESTNET": "true",
+                                          "KILL_MONITOR_ONLY": "false"}):
+            self.assertTrue(config.Settings().kill_monitor_only,
+                            "DEMO khong duoc phep tat monitor-only")
+
+    def test_live_cho_phep_tat(self):
+        import config
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"BINANCE_TESTNET": "false",
+                                          "KILL_MONITOR_ONLY": "false"}):
+            self.assertFalse(config.Settings().kill_monitor_only,
+                             "LIVE cho phep quay lai hanh vi cu")
+
+    def test_demo_mac_dinh_bat(self):
+        import config
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"BINANCE_TESTNET": "true"}):
+            os.environ.pop("KILL_MONITOR_ONLY", None)
+            self.assertTrue(config.Settings().kill_monitor_only)
+
+
 class TestBotSafety(unittest.TestCase):
     """P0-4/P0-5 trong bot: cuu lenh khi loi mang + don lenh treo."""
 

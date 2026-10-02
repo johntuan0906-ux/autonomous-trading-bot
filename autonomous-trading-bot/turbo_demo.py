@@ -865,7 +865,11 @@ def manage_open_positions(bot, cfg, log) -> dict:
     if isinstance(mon, dict) and "_error" in mon:
         # P0-3: ban cu log warning roi VAN vao lenh moi ngay sau khi da flatten
         return {"mon": mon, "tripped": True, "fatal": str(mon)}
-    for sym in before - set(bot.portfolio.positions):
+    # (02/10) Xu ly theo THU TU THOI GIAN (cu -> moi): chuoi "thua lien tiep" phai dem dung
+    # thu tu; truoc day lap qua set() nen thu tu tuy y theo hash -> ket qua khong lap lai duoc.
+    closed_syms = sorted(before - set(bot.portfolio.positions),
+                         key=lambda s: float((bot.last_exits.get(s) or {}).get("ts") or 0.0))
+    for sym in closed_syms:
         _last_close[sym] = time.time()
         pend = _pending_feats.pop(sym, None)
         reason = (mon or {}).get(sym, "?")
@@ -905,7 +909,8 @@ def manage_open_positions(bot, cfg, log) -> dict:
         # P0-2: nuoi kill-switch bang ket qua THUC (dem thua lien tiep + peak).
         # Ban cu khong he goi register_close trong turbo -> "5 thua lien tiep"
         # khong bao gio kich hoat.
-        if bot.kill.register_close(bool(exr.get("won", won)), bot.equity or bot.balance):
+        if bot.kill.register_close(bool(exr.get("won", won)), bot.equity or bot.balance,
+                                   pnl=exr.get("pnl")):
             log.error("KILL-SWITCH (sau khi dong lenh): %s", bot.kill.reason)
             tg(cfg, fmt_kill(bot.kill.reason))
             bot._flatten("kill-switch")

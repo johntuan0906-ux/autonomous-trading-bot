@@ -114,8 +114,10 @@ class TradingBot:
                                             "won": res["won"], "pnl": res["pnl"],
                                             "partial": res.get("partial_done"),
                                             "mfe_r": res.get("mfe_r"),
-                                            "direction": mt.direction}
-                    if self.kill.register_close(bool(res["won"]), self.balance):
+                                            "direction": mt.direction,
+                                            "ts": time.time()}
+                    if self.kill.register_close(bool(res["won"]), self.balance,
+                                                pnl=res.get("pnl")):
                         self._flatten("kill-switch: thua lien tiep")
                         return {"_error": self.kill.reason}
                     self._close(sym, f"{reason} @ {price} pnl={res['pnl']} R={res['r']}")
@@ -132,7 +134,8 @@ class TradingBot:
                 if (pos.direction == "LONG" and s <= -SENT_REVERSAL) or \
                    (pos.direction == "SHORT" and s >= SENT_REVERSAL):
                     self.last_exits[sym] = {"reason": "SENT", "r": 0.0, "won": False,
-                                            "pnl": 0.0, "direction": pos.direction}
+                                            "pnl": 0.0, "direction": pos.direction,
+                                            "ts": time.time()}
                     self._close(sym, f"sentiment reversal {s}")
                     log_trade(event="CLOSE", pair=sym, direction=pos.direction,
                               timeframe=self.cfg.timeframe, entry=pos.entry,
@@ -179,7 +182,8 @@ class TradingBot:
         res = trade_result(mt, "PARTIAL", price)
         self.last_exits[sym] = {"reason": "DUST", "r": res["r"], "won": res["won"],
                                 "pnl": res["pnl"], "partial": res.get("partial_done"),
-                                "mfe_r": res.get("mfe_r"), "direction": mt.direction}
+                                "mfe_r": res.get("mfe_r"), "direction": mt.direction,
+                                "ts": time.time()}
         log_trade(event="CLOSE", pair=sym, direction=mt.direction,
                   timeframe=self.cfg.timeframe, entry=mt.entry, qty=mt.init_qty,
                   exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
@@ -305,8 +309,39 @@ class TradingBot:
             log.info("CLOSE %s %s", symbol, reason)
 
     def _flatten(self, reason: str) -> None:
+        """Dong HET vi the dang mo + GHI CLOSE vao journal.
+
+        (02/10) Truoc day `_flatten` chi goi `_close` (khong ghi CLOSE) -> journal co OPEN
+        "mo coi". Thuc te 01/10: 5 lenh (XRP/SOL/ADA/DOGE/SOL mo luc 17:00-17:33) bi
+        kill-switch flatten luc 18:00 ma KHONG co dong CLOSE nao -> n/WR/PF va gate LIVE
+        doc sai; va khi lenh thu 5 lam trip thi chinh no cung khong duoc ghi (vi
+        `register_close` return True truoc khi kip ghi). Nay ghi du cho ca 2 truong hop.
+        """
         for sym in list(self.portfolio.positions):
-            self._close(sym, reason)
+            pos = self.portfolio.positions.get(sym)
+            mt = self.managed.get(sym)
+            try:
+                price = float(self._price(sym))
+            except Exception:  # noqa: BLE001  (khong doc duoc gia -> dung gia vao)
+                price = float(getattr(pos, "entry", 0.0) or 0.0)
+            self._close(sym, reason)          # dong that tren san + don lenh treo
+            if pos is None:
+                continue
+            res = (trade_result(mt, "FLATTEN", price) if mt is not None else
+                   {"r": 0.0, "won": False, "pnl": 0.0, "mfe_r": 0.0, "partial_done": False})
+            direction = mt.direction if mt is not None else pos.direction
+            self.last_exits[sym] = {"reason": "FLATTEN", "r": res["r"], "won": res["won"],
+                                    "pnl": res["pnl"], "direction": direction,
+                                    "partial": res.get("partial_done"),
+                                    "mfe_r": res.get("mfe_r"), "ts": time.time()}
+            log_trade(event="CLOSE", pair=sym, direction=direction,
+                      timeframe=self.cfg.timeframe,
+                      entry=(mt.entry if mt is not None else pos.entry),
+                      qty=(mt.init_qty if mt is not None else pos.qty),
+                      exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
+                      reason="FLATTEN", partial=res.get("partial_done"),
+                      mfe_r=res.get("mfe_r"))
+            log.info("FLATTEN ghi CLOSE %s r=%s pnl=%s (%s)", sym, res["r"], res["pnl"], reason)
 
     def run_forever(self) -> None:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

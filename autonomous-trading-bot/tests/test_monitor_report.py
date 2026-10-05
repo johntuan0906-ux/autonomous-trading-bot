@@ -69,19 +69,25 @@ class TestJournalLoad(unittest.TestCase):
 
     def test_scan_logs_since_bo_lich_su_cu(self):
         import time
-        old = ("2026-09-20 10:00:00 INFO x [{'status': 'BLOCKED_LEARN'}]\n"
-               "garbage line without ts [{'status': 'BLOCKED_LEARN'}]\n")
-        new = ("2026-09-29 10:00:00 INFO y [{'status': 'OPENED'}]\n"
-               "{'status': 'KILLED', 'reason': 'daily loss 2%'}\n")
+        # (05/10) Dung ngay TUONG DOI voi dong ho that: ban cu hardcode 2026-09-20/09-29
+        # -> khi ngay that troi qua (05/10), cua so 3 ngay khong con chua dong "moi" ->
+        # test vo tinh FAIL (0 != 1). Test phai chay dung o BAT KY ngay nao.
+        old = (time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - 10 * 86400))
+               + " INFO x [{'status': 'BLOCKED_LEARN'}]\n"
+               + "garbage line without ts [{'status': 'BLOCKED_LEARN'}]\n")
+        new = (time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - 86400))
+               + " INFO y [{'status': 'OPENED'}]\n"
+               + "{'status': 'KILLED', 'reason': 'daily loss 2%'}\n")
         now = time.time()
         self.assertEqual(mr.scan_text_since(old + new, now - 3 * 86400)["BLOCKED_LEARN"], 1)
         self.assertEqual(mr.scan_text_since(old + new, now - 3 * 86400)["OPENED"], 1)
 
     def test_log_line_ts(self):
         import time
-        ts = mr.log_line_ts("2026-09-29 13:42:35,595 WARNING ADOPT ...")
+        fresh = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - 86400))
+        ts = mr.log_line_ts(fresh + ",000 WARNING ADOPT ...")
         self.assertIsNotNone(ts)
-        self.assertAlmostEqual(ts, time.time(), delta=30 * 86400)
+        self.assertAlmostEqual(ts, time.time() - 86400, delta=2 * 86400)
         self.assertIsNone(mr.log_line_ts("khong co timestamp o day"))
         self.assertIsNone(mr.log_line_ts(""))
 
@@ -146,9 +152,12 @@ class TestJournalLoad(unittest.TestCase):
 
     def test_scan_logs_tra_2_counter(self):
         import time
-        txt = ("2026-09-20 10:00:00 cu [{'status': 'BLOCKED_LEARN'}]\n"
-               "2026-09-29 10:00:00 moi [{'status': 'BLOCKED_LEARN'}]\n"
-               "{'status': 'KILLED', 'reason': 'daily loss 2%'}\n")
+        # (05/10) Ngay tuong doi thay vi hardcode: tran test "tu chet" khi ngay that troi qua.
+        old_ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - 10 * 86400))
+        new_ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - 86400))
+        txt = (old_ts + " cu [{'status': 'BLOCKED_LEARN'}]\n"
+               + new_ts + " moi [{'status': 'BLOCKED_LEARN'}]\n"
+               + "{'status': 'KILLED', 'reason': 'daily loss 2%'}\n")
         with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False,
                                          encoding="utf-8") as f:
             f.write(txt)
@@ -157,7 +166,7 @@ class TestJournalLoad(unittest.TestCase):
             full, recent, kills, files = mr.scan_logs(
                 [path], recent_ts=time.time() - 3 * 86400.0)
             self.assertEqual(full["BLOCKED_LEARN"], 2)   # toan bo lich su
-            self.assertEqual(recent["BLOCKED_LEARN"], 1)  # dong 2026-09-20 bi loai
+            self.assertEqual(recent["BLOCKED_LEARN"], 1)  # dong cu (10 ngay) bi loai
             self.assertEqual(recent["OPENED"], 0)
             self.assertTrue(files)
             # KILL LUON quet toan bo — khong do vao cua so

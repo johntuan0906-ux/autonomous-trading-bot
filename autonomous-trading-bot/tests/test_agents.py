@@ -1297,6 +1297,42 @@ def cfg_auto():
     return Settings()
 
 
+class TestTierDifficulty(unittest.TestCase):
+    """(05/10) Do kho + tier motel: de -> lite, kho -> pro/max, nang tier khi chia re."""
+
+    def setUp(self):
+        import agents as A2
+        self.A = A2
+        self.A._PROVIDER_BLOCKED.clear()
+
+    def tearDown(self):
+        self.A._PROVIDER_BLOCKED.clear()
+
+    def test_lite_flash(self):
+        self.assertEqual(self.A.model_tier("cline-pass/mimo-v2.6-flash"), "lite")
+        self.assertEqual(self.A.model_tier("claude-haiku-4.5"), "lite")
+
+    def test_hard_pro_max(self):
+        self.assertEqual(self.A.model_tier("cline-pass/deepseek-v4-pro"), "hard")
+        self.assertEqual(self.A.model_tier("cline-pass/qwen3.8-max"), "hard")
+        self.assertEqual(self.A.model_tier("claude-sonnet-5.5"), "hard")
+
+    def test_core_con_lai(self):
+        self.assertEqual(self.A.model_tier("cline-pass/glm-5.3"), "core")
+
+    def test_do_kho_de(self):
+        s, _ = self.A.council_difficulty({"rsi": 55, "atr_pct": 0.01,
+                                          "news_score": 0.1, "alpha": 0.2})
+        self.assertLess(s, 0.34, "thong so la -> de")
+        self.assertEqual(self.A._tier_for(s), "lite")
+
+    def test_do_kho_cao(self):
+        s, _ = self.A.council_difficulty({"rsi": 78, "atr_pct": 0.06,
+                                          "news_score": -0.5, "urgent_bearish": 15})
+        self.assertGreater(s, 0.66, "bien dong + tin xau + khan cap -> kho")
+        self.assertEqual(self.A._tier_for(s), "hard")
+
+
 class TestCouncilProviderFallback(unittest.TestCase):
     """(05/10) Hoi dong het quota 1 ben -> ben con lai tu lam 100%, khong treo."""
 

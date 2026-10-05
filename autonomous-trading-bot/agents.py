@@ -1440,6 +1440,92 @@ def _mark_provider_exhausted(decisions: dict, log=None) -> None:
                             len(models), len(models), tag, tag)
 
 
+# ---- (05/10) TIER MOTEL + DO KHO: de -> model rẻ/nhanh, kho -> model thong minh ----
+
+_MODEL_TIER_HARD = ("pro", "r1", "max", "ultra", "reasoning", "sonnet-5.5", "sonnet-5",
+                    "terra", "k3", "plus")
+_MODEL_TIER_LITE = ("flash", "lite", "mini", "haiku", "tiny", "smol", "nano", "m2")
+
+
+def model_tier(name: str) -> str:
+    """Phan loai model theo ten -> 'lite' / 'core' / 'hard'.
+
+    - lite: flash/lite/mini/haiku... (re, nhanh, cho van de de)
+    - hard: pro/max/ultra/plus/sonnet... (thong minh, cho van de kho)
+    - core: con lai (can bang)
+    """
+    n = str(name or "").lower()
+    if any(k in n for k in _MODEL_TIER_LITE):
+        return "lite"
+    if any(k in n for k in _MODEL_TIER_HARD):
+        return "hard"
+    return "core"
+
+
+def council_difficulty(payload: dict) -> tuple:
+    """Cham do kho cua 1 van de can hoi dong (0..1) + ly do.
+
+    Kho khi: RSI cuc doan, ATR cao, tin tieu cuc manh, khan cap vi mo, alpha mong
+    (signal yeu), hoac bien dong thanh khoan bat thuong. De khi nguoc lai.
+    Tra (score, reasons).
+    """
+    feats = dict(payload or {})
+    score, reasons = 0.0, []
+    rsi = _f(feats.get("rsi"), 50.0)
+    atr = _f(feats.get("atr_pct"), 0.0)
+    news = _f(feats.get("news_score"), 0.0)
+    alpha = _f(feats.get("alpha"), 0.0)
+    urg = _i(feats.get("urgent_bearish"), 0)
+    vr = _f(feats.get("vol_ratio"), 1.0)
+
+    if 20 <= rsi <= 80:
+        pass
+    elif rsi < 20 or rsi > 80:
+        score += 0.30; reasons.append(f"RSI cuc doan {rsi:.0f}")
+    else:
+        score += 0.15; reasons.append(f"RSI lech {rsi:.0f}")
+    if atr >= 0.05:
+        score += 0.25; reasons.append(f"ATR {atr:.1%} bien dong lon")
+    if news <= -0.4:
+        score += 0.25; reasons.append(f"tin tieu cuc {news:+.2f}")
+    if urg >= 10:
+        score += 0.20; reasons.append(f"{urg} tin khan cap")
+    if abs(alpha) < 0.06:
+        score += 0.15; reasons.append(f"alpha {alpha:+.3f} mong (tin hieu yeu)")
+    if vr < 0.5 or vr > 3.0:
+        score += 0.10; reasons.append(f"vol_ratio {vr:.2f} bat thuong")
+    return round(min(1.0, score), 2), reasons
+
+
+def _tier_for(score: float) -> str:
+    """0..0.33 -> lite; 0.34..0.66 -> core; >0.66 -> hard."""
+    return "lite" if score < 0.34 else ("core" if score < 0.67 else "hard")
+
+
+def _council_models_by_tier(cfg, tier: str) -> list:
+    """Chon model theo do kho.
+
+    - tier 'hard'  -> tat ca model (lite + core + hard): van de kho can nhieu nhat tri tue
+    - tier 'core'  -> lite + core (bo qua hard): tiet kiem ngay sach ma van du kha nang
+    - tier 'lite'  -> chi model lite (flash/mini...): van de de, xu ly nhanh + re
+    Tra danh sach model; rong -> toi uu nhat co the (khong bao gio treo).
+    """
+    all_models = _council_models(cfg)
+    if tier == "hard":
+        return all_models
+    tiers = {m: model_tier(m) for m in all_models}
+    if tier == "core":
+        picked = [m for m, t in tiers.items() if t in ("lite", "core")]
+    else:  # lite
+        picked = [m for m, t in tiers.items() if t == "lite"]
+    # fallback: neu tier do qua it model -> mo rong dan len (tranh hoi dong rong/treo)
+    if not picked:
+        picked = [m for m, t in tiers.items() if t in ("lite", "core")]
+    if not picked:
+        picked = all_models
+    return picked
+
+
 class _CfgOverride:
     """Nhin xuyen qua 1 cfg goc, ghi de vai thuoc tinh — KHONG sua cfg that (Settings
     thuong la frozen dataclass). Dung de "tang ngan sach" chi cho 1 lan goi lai."""
@@ -1462,11 +1548,28 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     cua nhau (peer tally + top reasons) -> vote lai. Chi chay vong 2 khi co y nghia:
     (a) hoa phieu, hoac (b) chia re (cach biet VETO-ALLOW <=2 phieu). COUNCIL_ROUNDS
     trong .env (mac dinh 2). Dat 1 de tat.
+
+    (05/10) TIER MOTEL LENH THEO DO KHO: de -> nang so token bang model lite (flash/
+    mini...); kho -> dung model PRO/max de xu ly. Khoi dau bang tier theo
+    `council_difficulty()` (RSI/ATR/news/urgent/alpha/vol). Van de de chi dung model
+    re de tiet kiem; van de kho dung toan bo model thong minh nhat. Neu vong dau
+    chia re/hoa -> tu NANG CAP tier (lite->core->hard) roi vote lai voi nhieu model hon.
     """
     if not bool(getattr(cfg, "agents_enabled", False)):
         return {"votes": {}, "abstained": [], "action": "NO_OPINION",
                "confidence": 0.0, "why": "agents_enabled=false"}
-    names = list(models) if models else _council_models(cfg)
+    # (05/10) Cham do kho -> chon tier motel phu hop (chi khi caller khong truyen `models`)
+    diff_score, diff_reasons = (0.0, [])
+    if models is None:
+        diff_score, diff_reasons = council_difficulty(payload)
+        start_tier = _tier_for(diff_score)
+    else:
+        start_tier = "hard"
+    names = list(models) if models else _council_models_by_tier(cfg, start_tier)
+    names = names or _council_models(cfg)             # fallback: khong bao gio rong
+    if log and start_tier != "hard" and models is None:
+        log.info("COUNCIL: do kho %.2f (%s) -> tier '%s' (%d model).",
+                 diff_score, "; ".join(diff_reasons) or "de", start_tier, len(names))
     bin_path = str(getattr(cfg, "agent_copilot_bin", "copilot") or "copilot")
     args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
     make_provider = provider_factory or (
@@ -1524,8 +1627,9 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         decisions.update(retry)
         abstained, votes, n_allow, n_veto, action = _tally(decisions)
 
-    # (05/10) DEBATE VONG 2: hoi lai voi peer context khi hoa phieu/chia re
+    # (05/10) DEBATE VONG 2 + NANG TIER: hoi lai voi peer context + them model thong minh hon
     is_split = (n_allow and n_veto and abs(n_allow - n_veto) <= 2)
+    tier_upgraded = False
     if max_rounds >= 2 and abstained and (action == "NO_OPINION" or is_split):
         peer_lines = []
         for d in list(votes.values())[:8]:
@@ -1537,14 +1641,29 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
                 + ". ".join(peer_lines[:15]))[:2000]
         r2 = dict(payload or {}); r2["peer_votes"] = peer; r2["role"] = role
         debated = True
+        # (05/10) Nang cap tier khi can: hoi THEM nhung model o tier cao hon chua duoc hoi
+        upgrade: list = []
+        if start_tier in ("lite", "core"):
+            next_tier = "core" if start_tier == "lite" else "hard"
+            all_m = _council_models(cfg)
+            upgraded_names = _council_models_by_tier(cfg, next_tier)
+            already = set(names) | set(decisions.keys())
+            upgrade = [m for m in upgraded_names if m not in already]
+            if upgrade:
+                tier_upgraded = True
+        ask2 = sorted(set(abstained) | set(upgrade))
+        if tier_upgraded and log:
+            log.info("COUNCIL nang tier %s->%s: them %d model thong minh hon",
+                     start_tier, next_tier, len(upgrade))
         if log:
             log.info("COUNCIL debate v2: %dA/%dV (hoa=%d) -> hoi lai %d model",
-                     n_allow, n_veto, len(abstained), len(abstained))
-        r2d = _run_round(abstained, cfg, budget, r2)
+                     n_allow, n_veto, len(abstained), len(ask2))
+        r2d = _run_round(ask2, cfg, budget, r2)
         decisions.update(r2d)
         abstained, votes, n_allow, n_veto, action = _tally(decisions)
 
-    stage = (" [ngan sach]" if escalated else "") + (" [2 vong]" if debated else "")
+    stage = (" [ngan sach]" if escalated else "") + (" [2 vong]" if debated else "") \
+        + (" [tier-up]" if tier_upgraded else "")
     why = (f"hoi dong {len(names)} model: {n_allow}A / {n_veto}V "
            f"(hoa {len(abstained)}: {', '.join(abstained) or '-'})"
            + stage)
@@ -1553,7 +1672,9 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         log.info("MULTI-MODEL COUNCIL role=%s -> %s (%.2f) [%s]", role, action, conf, why)
     return {"votes": {m: d.to_dict() for m, d in votes.items()},
            "abstained": abstained, "action": action, "confidence": round(conf, 2),
-           "why": why, "escalated": escalated, "debated": debated}
+           "why": why, "escalated": escalated, "debated": debated,
+           "difficulty": diff_score, "start_tier": start_tier,
+           "tier_upgraded": tier_upgraded}
 
 
 def veto_decision(cfg, layer, payload: dict) -> dict:

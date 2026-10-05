@@ -794,6 +794,8 @@ class OpenAICompatProvider:
 
 CLINE_ENDPOINT = "https://api.cline.bot/api/v1/chat/completions"
 CLINE_PREFIX = "cline-pass/"
+MUSE_ENDPOINT = "https://api.meta.ai/v1/chat/completions"
+MUSE_PREFIX = "muse/"
 
 
 class ClineProvider:
@@ -829,7 +831,42 @@ class ClineProvider:
                 "tokens_out": _i(usage.get("completion_tokens"), approx_tokens(txt))}
 
 
+class MuseProvider:
+    """Model `muse/...` qua Meta Model API (MUSE_API_KEY), OpenAI-compatible.
+
+    Lay key tai https://dev.meta.ai -> API Keys. Dinh dang giong OpenAI:
+    POST /chat/completions voi Bearer token.
+    """
+
+    name = "muse"
+
+    def __init__(self, model: str = "", api_key: str = "", url: str = MUSE_ENDPOINT):
+        self.model = model
+        self.api_key = (api_key or os.getenv("MUSE_API_KEY", "")).strip()
+        self.url = url
+
+    def complete(self, system: str, user: str, *, timeout: float = 8.0) -> dict:
+        if not self.api_key:
+            raise RuntimeError("thieu MUSE_API_KEY")
+        import requests
+        r = requests.post(self.url, timeout=timeout,
+                          headers={"Authorization": "Bearer " + self.api_key,
+                                   "Content-Type": "application/json"},
+                          json={"model": self.model, "temperature": 0.0,
+                                "max_tokens": 160,
+                                "messages": [{"role": "system", "content": system},
+                                             {"role": "user", "content": user}]})
+        r.raise_for_status()
+        js = r.json()
+        usage = js.get("usage") or {}
+        txt = str((js.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
+        return {"text": txt,
+                "tokens_in": _i(usage.get("prompt_tokens"), approx_tokens(system + user)),
+                "tokens_out": _i(usage.get("completion_tokens"), approx_tokens(txt))}
+
+
 _PROVIDERS = {"stub": StubProvider, "openai": OpenAIProvider, "cline": ClineProvider,
+              "muse": MuseProvider,
               "anthropic": AnthropicProvider, "copilot_cli": CopilotCliProvider,
               "vscode_lm": VscodeLmProvider, "openai_compatible": OpenAICompatProvider}
 
@@ -871,6 +908,18 @@ def build_provider(cfg=None, log=None):
         except Exception as e:  # noqa: BLE001
             if log:
                 log.warning("agents: openai_compatible loi (%s) -> stub", e)
+            return StubProvider()
+    if name == "muse":
+        try:
+            p = MuseProvider(model=model or "muse-spark-1.3")
+            if not p.api_key:
+                if log:
+                    log.warning("agents: muse thieu MUSE_API_KEY -> stub")
+                return StubProvider()
+            return p
+        except Exception as e:  # noqa: BLE001
+            if log:
+                log.warning("agents: muse loi (%s) -> stub", e)
             return StubProvider()
     cls = _PROVIDERS.get(name)
     if cls is None or cls is StubProvider:
@@ -1355,6 +1404,8 @@ def _provider_blocked(provider: str, cfg=None) -> str:
         until = str(getattr(cfg, "agent_council_copilot_until", "") or "").strip()
     elif cfg is not None and provider == "cline":
         until = str(getattr(cfg, "agent_council_cline_until", "") or "").strip()
+    elif cfg is not None and provider == "muse":
+        until = str(getattr(cfg, "agent_council_muse_until", "") or "").strip()
     else:
         until = ""
     if until:
@@ -1371,6 +1422,10 @@ def _is_cline_model(m: str) -> bool:
     return str(m).startswith(CLINE_PREFIX)
 
 
+def _is_muse_model(m: str) -> bool:
+    return str(m).startswith(MUSE_PREFIX)
+
+
 def _council_models(cfg) -> list:
     """Danh sach model hoi dong, tu loai bo provider het quota.
 
@@ -1380,13 +1435,17 @@ def _council_models(cfg) -> list:
     raw = str(getattr(cfg, "agent_council_models", "") or "")
     copilot_models = [m.strip() for m in raw.split(",") if m.strip()] or list(COUNCIL_MULTI_MODELS)
     cline_models = _cline_council_models(cfg)
+    muse_models = _muse_council_models(cfg)
     copilot_blocked = _provider_blocked("copilot", cfg)
     cline_blocked = _provider_blocked("cline", cfg)
+    muse_blocked = _provider_blocked("muse", cfg)
     out: list = []
     if not copilot_blocked:
         out.extend(copilot_models)
     if not cline_blocked:
         out.extend(cline_models)
+    if not muse_blocked:
+        out.extend(muse_models)
     if not out:
         import logging
         logging.getLogger("agents").warning(
@@ -1421,11 +1480,23 @@ def _cline_council_models(cfg) -> list:
             for m in names if m not in skip]
 
 
+def _muse_council_models(cfg) -> list:
+    """Model Muse (Meta Model API) tham gia hoi dong."""
+    raw = str(getattr(cfg, "agent_council_muse", "") or "").strip()
+    if not raw or not os.getenv("MUSE_API_KEY", "").strip():
+        return []
+    names = [m.strip() for m in raw.split(",") if m.strip()]
+    skip = {m.strip() for m in os.getenv("MUSE_SKIP_MODELS", "").split(",") if m.strip()}
+    return [m if m.startswith(MUSE_PREFIX) else MUSE_PREFIX + m
+            for m in names if m not in skip]
+
+
 def _mark_provider_exhausted(decisions: dict, log=None) -> None:
     """(05/10) Toan bo model CUNG provider deu abstain -> danh dau provider 'exhausted'."""
     cp = [m for m in decisions if _is_cline_model(m)]
-    co = [m for m in decisions if not _is_cline_model(m)]
-    for models, tag in ((cp, "cline"), (co, "copilot")):
+    co = [m for m in decisions if not _is_cline_model(m) and not _is_muse_model(m)]
+    mu = [m for m in decisions if _is_muse_model(m)]
+    for models, tag in ((cp, "cline"), (co, "copilot"), (mu, "muse")):
         if len(models) < 2:
             continue
         if _PROVIDER_BLOCKED.get(tag):
@@ -1443,7 +1514,7 @@ def _mark_provider_exhausted(decisions: dict, log=None) -> None:
 # ---- (05/10) TIER MOTEL + DO KHO: de -> model rẻ/nhanh, kho -> model thong minh ----
 
 _MODEL_TIER_HARD = ("pro", "r1", "max", "ultra", "reasoning", "sonnet-5.5", "sonnet-5",
-                    "terra", "k3", "plus")
+                    "terra", "k3", "plus", "spark")
 _MODEL_TIER_LITE = ("flash", "lite", "mini", "haiku", "tiny", "smol", "nano", "m2")
 
 
@@ -1574,6 +1645,7 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
     make_provider = provider_factory or (
         lambda m: ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
+        else MuseProvider(model=m) if m.startswith(MUSE_PREFIX)
         else CopilotCliProvider(model=m, bin_path=bin_path, args=args))
     state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)
     max_rounds = max(1, int(getattr(cfg, "council_rounds", 2) or 2))

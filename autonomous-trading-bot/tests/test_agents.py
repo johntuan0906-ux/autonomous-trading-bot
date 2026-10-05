@@ -1332,6 +1332,66 @@ class TestTierDifficulty(unittest.TestCase):
         self.assertGreater(s, 0.66, "bien dong + tin xau + khan cap -> kho")
         self.assertEqual(self.A._tier_for(s), "hard")
 
+    def test_muse_spark_hard(self):
+        """muse-spark-* duoc xep hard vi la frontier model."""
+        self.assertEqual(self.A.model_tier("muse/muse-spark-1.3"), "hard")
+        self.assertEqual(self.A.model_tier("muse/muse-spark-1.3-contributor"), "hard")
+        self.assertEqual(self.A.model_tier("muse-spark-1.2"), "hard")
+
+    def test_muse_glimmer_core(self):
+        self.assertEqual(self.A.model_tier("muse/muse-glimmer-30b"), "core")
+
+    def test_is_muse_model(self):
+        self.assertTrue(self.A._is_muse_model("muse/muse-spark-1.3"))
+        self.assertTrue(self.A._is_muse_model("muse/muse-glimmer-30b"))
+        self.assertFalse(self.A._is_muse_model("cline-pass/deepseek-v4-pro"))
+        self.assertFalse(self.A._is_muse_model("claude-sonnet-5.5"))
+
+
+class TestMuseProvider(unittest.TestCase):
+    """(05/10) Muse: Meta Model API - OpenAI-compatible, MUSE_API_KEY."""
+
+    def setUp(self):
+        import agents as A2
+        self.A = A2
+        self.A._PROVIDER_BLOCKED.clear()
+
+    def tearDown(self):
+        self.A._PROVIDER_BLOCKED.clear()
+
+    def test_muse_endpoint_default(self):
+        self.assertIn("api.meta.ai", self.A.MUSE_ENDPOINT)
+
+    def test_muse_prefix(self):
+        self.assertEqual(self.A.MUSE_PREFIX, "muse/")
+
+    def test_no_key_returns_empty_council(self):
+        import os as _os
+        from unittest.mock import patch
+        with patch.dict(_os.environ, {"MUSE_API_KEY": ""}):
+            models = self.A._muse_council_models(_FakeCfg(agent_council_muse="muse-spark-1.3"))
+            self.assertEqual(models, [], "khong co key -> rong")
+
+    def test_has_key_returns_prefixed_models(self):
+        import os as _os
+        from unittest.mock import patch
+        with patch.dict(_os.environ, {"MUSE_API_KEY": "sk-test", "MUSE_SKIP_MODELS": ""}):
+            models = self.A._muse_council_models(_FakeCfg(agent_council_muse="muse-spark-1.3,muse-spark-1.2"))
+            self.assertEqual(models, ["muse/muse-spark-1.3", "muse/muse-spark-1.2"])
+
+    def test_skip_models_respected(self):
+        import os as _os
+        from unittest.mock import patch
+        with patch.dict(_os.environ, {"MUSE_API_KEY": "sk-test",
+                                       "MUSE_SKIP_MODELS": "muse-spark-1.2"}):
+            models = self.A._muse_council_models(_FakeCfg(agent_council_muse="muse-spark-1.3,muse-spark-1.2"))
+            self.assertEqual(models, ["muse/muse-spark-1.3"])
+
+
+class _FakeCfg:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
 
 class TestCouncilProviderFallback(unittest.TestCase):
     """(05/10) Hoi dong het quota 1 ben -> ben con lai tu lam 100%, khong treo."""

@@ -1268,3 +1268,25 @@ def cfg_auto():
     from config import Settings
     return Settings()
 
+
+class TestRunnerAnCuaSo(unittest.TestCase):
+    """(05/10) Bot chay duoi pythonw -> moi lan goi CLI (node/copilot) phai chay NGAM.
+
+    Khong co CREATE_NO_WINDOW: Windows tu mo 1 cua so console cho con -> nguoi dung
+    thay "pop-up node" khong noi dung nhay len moi lan co vote hoi dong / review.
+    """
+
+    def test_windows_thi_phai_co_creationflags(self):
+        from unittest import mock
+        import subprocess
+        with mock.patch.object(subprocess, "run") as m:
+            m.return_value = mock.Mock(returncode=0, stdout="ok", stderr="")
+            A._subprocess_runner(["cmd"], 10)
+        kw = m.call_args.kwargs
+        if sys.platform == "win32":
+            self.assertEqual(kw.get("creationflags"), subprocess.CREATE_NO_WINDOW,
+                             "phai an cua so console cua CLI con")
+        else:
+            self.assertNotIn("creationflags", kw, "flag nay chi co tren Windows")
+
+

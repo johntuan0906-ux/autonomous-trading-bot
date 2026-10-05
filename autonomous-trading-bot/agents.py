@@ -502,11 +502,20 @@ def _subprocess_runner(cmd: list, timeout: float, cwd=None, env=None) -> tuple:
     encoding='utf-8' + errors='replace': CLI (Copilot) tra van ban UTF-8 (tieng
     Viet, emoji...); mac dinh cua Windows la cp1252 -> tung gay UnicodeDecodeError
     lam hong ca luot vote (da gap that 01/10/2026).
+
+    (05/10) creationflags=CREATE_NO_WINDOW tren Windows: bot chay duoi pythonw
+    (KHONG co console) nen khi spawn con (node/copilot CLI), Windows tu mo 1 cua so
+    console cho con -> nguoi dung thay "pop-up node" nhay len roi bien mat moi lan
+    co vote. Flag nay cho con chay ngam, khong con cua so nao.
     """
     import subprocess
+    import sys
+    kwargs: dict = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                        cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                       encoding="utf-8", errors="replace")
+                       encoding="utf-8", errors="replace", **kwargs)
     return p.returncode, p.stdout or "", p.stderr or ""
 
 

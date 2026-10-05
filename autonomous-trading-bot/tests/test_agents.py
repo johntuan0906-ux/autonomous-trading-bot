@@ -1297,6 +1297,82 @@ def cfg_auto():
     return Settings()
 
 
+class TestCouncilProviderFallback(unittest.TestCase):
+    """(05/10) Hoi dong het quota 1 ben -> ben con lai tu lam 100%, khong treo."""
+
+    def setUp(self):
+        import agents as A2
+        self.A = A2
+        self.A._PROVIDER_BLOCKED.clear()
+
+    def tearDown(self):
+        self.A._PROVIDER_BLOCKED.clear()
+
+    def _cfg(self, **kw):
+        from config import Settings
+        c = Settings()
+        for k, v in kw.items():
+            object.__setattr__(c, k, v)
+        return c
+
+    def test_date_block_copilot_chi_con_cline(self):
+        cfg = self._cfg(agent_council_copilot_until="2999-01-01",
+                        agent_council_cline_until="")
+        models = self.A._council_models(cfg)
+        self.assertTrue(models, "clines van con")
+        self.assertTrue(all(m.startswith(self.A.CLINE_PREFIX) for m in models),
+                        "Copilot bi chan -> chi con model cline")
+
+    def test_date_block_cline_chi_con_copilot(self):
+        cfg = self._cfg(agent_council_cline_until="2999-01-01",
+                        agent_council_copilot_until="")
+        models = self.A._council_models(cfg)
+        self.assertTrue(models)
+        self.assertTrue(all(not m.startswith(self.A.CLINE_PREFIX) for m in models),
+                        "Cline bi chan -> chi con model copilot")
+
+    def test_ca_hai_deu_chan_van_khong_crash(self):
+        cfg = self._cfg(agent_council_copilot_until="2999-01-01",
+                        agent_council_cline_until="2999-01-01")
+        models = self.A._council_models(cfg)
+        self.assertTrue(models, "ca 2 chan van tra danh sach de khong crash")
+
+    def test_session_block_khi_toan_bo_model_cung_provider_abstain(self):
+        cfg = self._cfg(agent_council_models="m1,m2,m3")
+        decs = {
+            "m1": self.A.Decision(role="critic", agent="m1", action="NO_OPINION",
+                                   provider="copilot_cli"),
+            "m2": self.A.Decision(role="critic", agent="m2", action="NO_OPINION",
+                                   provider="copilot_cli"),
+            "m3": self.A.Decision(role="critic", agent="m3", action="NO_OPINION",
+                                   provider="copilot_cli"),
+        }
+        self.A._mark_provider_exhausted(decs)
+        self.assertIn("copilot", self.A._PROVIDER_BLOCKED,
+                      "toan bo copilot abstain -> phai danh dau")
+        # sau do _council_models phai bo copilot (session block)
+        models = self.A._council_models(self._cfg(agent_council_models="m1,m2,m3",
+                                                   agent_council_cline="all"))
+        self.assertTrue(all(m.startswith(self.A.CLINE_PREFIX) for m in models))
+
+    def test_khong_block_khi_van_con_model_hoạt_dong(self):
+        decs = {
+            "m1": self.A.Decision(role="critic", agent="m1", action="NO_OPINION"),
+            "m2": self.A.Decision(role="critic", agent="m2", action="VETO"),
+        }
+        self.A._mark_provider_exhausted(decs)
+        self.assertNotIn("copilot", self.A._PROVIDER_BLOCKED)
+
+    def test_khong_block_khi_chi_1_model(self):
+        decs = {
+            "m1": self.A.Decision(role="critic", agent="m1", action="NO_OPINION"),
+        }
+        self.A._mark_provider_exhausted(decs)
+        self.assertNotIn("copilot", self.A._PROVIDER_BLOCKED,
+                         "1 model abstain la false positive, khong block")
+
+
+
 class TestRunnerAnCuaSo(unittest.TestCase):
     """(05/10) Bot chay duoi pythonw -> moi lan goi CLI (node/copilot) phai chay NGAM.
 

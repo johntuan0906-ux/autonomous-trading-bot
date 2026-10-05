@@ -30,6 +30,7 @@ import os
 import shutil
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 
 # Tu nap .env (giong config.py): neu khong, chay `python agents.py ...` hoac import
 # rieng module se KHONG thay COPILOT_GITHUB_TOKEN/OPENAI_API_KEY -> provider that
@@ -54,6 +55,9 @@ COUNCIL_MULTI_MODELS = ("claude-sonnet-5.5", "claude-sonnet-5", "claude-haiku-4.
                        "gemini-3.8-flash", "grok-4.6", "kimi-k3", "gpt-5.6-terra")
 STATE_PATH = "logs/agent_state.json"
 JOURNAL_PATH = "logs/journal.jsonl"
+# (05/10) Session-level: provider nao bi "het" (ALL model abstain) -> cam den khi restart.
+# Bo sung date-based: AGENT_COUNCIL_COPILOT_UNTIL / AGENT_COUNCIL_CLINE_UNTIL trong .env.
+_PROVIDER_BLOCKED: dict = {}  # name -> ts block or "date:YYYY-MM-DD"
 PROPOSALS_PATH = "logs/agent_proposals.jsonl"
 # Phase 3: chi cho phep de xuat trong PHAM VI nay — moi thu khac bi tu choi.
 PROPOSAL_TYPES = ("block_strategy", "unblock_strategy", "watch_strategy", "none")
@@ -1317,19 +1321,63 @@ def council_summary_text(symbol: str, direction: str, res: dict) -> str:
     return "\n".join([head] + [x for x in (_line(r) for r in COUNCIL_ROLES) if x])
 
 
+def _provider_blocked(provider: str, cfg=None) -> str:
+    """Tra '' neu provider hoat dong; tra ly do neu bi chan."""
+    blk = _PROVIDER_BLOCKED.get(provider)
+    if blk is True:
+        return "session-blocked (all models from this provider abstained)"
+    if cfg is not None and provider == "copilot":
+        until = str(getattr(cfg, "agent_council_copilot_until", "") or "").strip()
+    elif cfg is not None and provider == "cline":
+        until = str(getattr(cfg, "agent_council_cline_until", "") or "").strip()
+    else:
+        until = ""
+    if until:
+        try:
+            deadline = datetime.strptime(until[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) < deadline:
+                return f"date-blocked until {until[:10]}"
+        except ValueError:
+            pass
+    return ""
+
+
+def _is_cline_model(m: str) -> bool:
+    return str(m).startswith(CLINE_PREFIX)
+
+
 def _council_models(cfg) -> list:
+    """Danh sach model hoi dong, tu loai bo provider het quota.
+
+    (05/10) Copilot het -> Cline lam 100%; Cline het -> Copilot lam 100%.
+    Ca 2 deu chan -> council rong, log canh bao.
+    """
     raw = str(getattr(cfg, "agent_council_models", "") or "")
-    models = [m.strip() for m in raw.split(",") if m.strip()]
-    models = models or list(COUNCIL_MULTI_MODELS)
-    for m in _cline_council_models(cfg):
-        if m not in models:
-            models.append(m)
-    return models
+    copilot_models = [m.strip() for m in raw.split(",") if m.strip()] or list(COUNCIL_MULTI_MODELS)
+    cline_models = _cline_council_models(cfg)
+    copilot_blocked = _provider_blocked("copilot", cfg)
+    cline_blocked = _provider_blocked("cline", cfg)
+    out: list = []
+    if not copilot_blocked:
+        out.extend(copilot_models)
+    if not cline_blocked:
+        out.extend(cline_models)
+    if not out:
+        import logging
+        logging.getLogger("agents").warning(
+            "COUNCIL: CA HAI provider deu bi chan -> hoi dong TAM DUNG.")
+        out = copilot_models
+    elif copilot_blocked or cline_blocked:
+        import logging
+        who = ("Copilot" if copilot_blocked else "") + ("+Cline" if copilot_blocked and cline_blocked else "Cline" if cline_blocked else "")
+        logging.getLogger("agents").warning(
+            "COUNCIL: %s bi chan -> provider con lai lam 100%% (%d model).",
+            who, len(out))
+    return out
 
 
 def _cline_council_models(cfg) -> list:
-    """Model Cline tham gia hoi dong: AGENT_COUNCIL_CLINE = 'all' (catalog 14 model,
-    tru CLINE_SKIP_MODELS) | csv model | rong (tat). Thieu CLINE_API_KEY -> bo qua."""
+    """Model Cline tham gia hoi dong."""
     raw = str(getattr(cfg, "agent_council_cline", "") or "").strip()
     if not raw or not os.getenv("CLINE_API_KEY", "").strip():
         return []
@@ -1339,13 +1387,32 @@ def _cline_council_models(cfg) -> list:
         try:
             with open(cat, encoding="utf-8-sig") as f:
                 names = [str(a.get("model")) for a in json.load(f).get("agents") or []]
-        except Exception:  # noqa: BLE001
+        except Exception:
             return []
     else:
         names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("CLINE_SKIP_MODELS", "").split(",") if m.strip()}
     return [m if m.startswith(CLINE_PREFIX) else CLINE_PREFIX + m
             for m in names if m not in skip]
+
+
+def _mark_provider_exhausted(decisions: dict, log=None) -> None:
+    """(05/10) Toan bo model CUNG provider deu abstain -> danh dau provider 'exhausted'."""
+    cp = [m for m in decisions if _is_cline_model(m)]
+    co = [m for m in decisions if not _is_cline_model(m)]
+    for models, tag in ((cp, "cline"), (co, "copilot")):
+        if len(models) < 2:
+            continue
+        if _PROVIDER_BLOCKED.get(tag):
+            continue
+        all_abst = all(
+            str(getattr(decisions.get(m), "action", "?")) not in ("ALLOW", "VETO")
+            for m in models)
+        if all_abst:
+            _PROVIDER_BLOCKED[tag] = True
+            if log:
+                log.warning("COUNCIL: %d/%d model %s deu abstain -> provider '%s' bi chan.",
+                            len(models), len(models), tag, tag)
 
 
 class _CfgOverride:
@@ -1412,6 +1479,7 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         daily_budget_usd=_f(getattr(cfg, "agent_daily_budget_usd", 1.0), 1.0),
         max_errors=_i(getattr(cfg, "agent_max_errors", 5)))
     decisions = _run_round(names, cfg, budget)
+    _mark_provider_exhausted(decisions, log)          # (05/10) provider het -> cam session
 
     def _tally(decs: dict) -> tuple:
         abst = sorted(m for m, d in decs.items() if d.action not in ("ALLOW", "VETO"))

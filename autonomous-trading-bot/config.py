@@ -214,6 +214,13 @@ class Settings:
     # 14 model (tru CLINE_SKIP_MODELS) | csv | rong = tat. Can CLINE_API_KEY.
     agent_council_cline: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_CLINE", ""))
+    # (05/10) Tam nghi 1 bo hoi dong theo ngay (ISO YYYY-MM-DD): bo QuaProvider do den
+    # het ngay nay (vd Copilot het quota hang thang -> AGENT_COUNCIL_COPILOT_UNTIL=2026-11-01).
+    # Rong = khong chan. Provider con lai tu lam 100% (khong treo, khong ngat viec).
+    agent_council_copilot_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_COPILOT_UNTIL", ""))
+    agent_council_cline_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_CLINE_UNTIL", ""))
     # Ngan sach LINH HOAT theo do kho: van de de (hau het model dong thuan, it phieu
     # trang) -> dung ngan sach thuong (AGENT_TIMEOUT_SEC/AGENT_DAILY_CALLS/BUDGET o
     # tren), KHONG ton them. Van de kho (hoa phieu HOAC >= AGENT_HARD_ABSTAIN_RATIO

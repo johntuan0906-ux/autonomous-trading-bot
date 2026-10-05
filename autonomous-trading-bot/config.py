@@ -238,6 +238,10 @@ class Settings:
         default_factory=lambda: _get_float("AGENT_DAILY_BUDGET_USD_HARD", 1000.0))
     # Gui tom tat phien hop hoi dong len Telegram (mac dinh TAT de khong spam).
     agent_tg_votes: bool = field(default_factory=lambda: _get_bool("AGENT_TG_VOTES", False))
+    # Hoi dong 2 VONG phan bien (05/10): vong 1 vote mu -> tong hop -> vong 2 moi agent
+    # thay y kien cua nhau (peer votes) -> vote lai. Tang chat luong khi hoa phieu/chia re.
+    # Dat >=2 de bat; =1 hoac 0 = tat (hanh vi cu: 1 vong duy nhat).
+    council_rounds: int = field(default_factory=lambda: _get_int("COUNCIL_ROUNDS", 2))
     # Nguon bang chung de cap quyen veto: "SETUP" (macro/critic) hoac "COUNCIL" (arbiter).
     agent_veto_source: str = field(
         default_factory=lambda: _get("AGENT_VETO_SOURCE", "SETUP").strip().upper() or "SETUP")

@@ -531,7 +531,7 @@ class TestMultiModelCouncil(unittest.TestCase):
         self.assertTrue(res["escalated"], "vong 1 hoa phieu -> phai tu hoi lai model treo")
         self.assertEqual(res["action"], "ALLOW", "model-c tra loi o lan hoi lai -> het hoa phieu")
         self.assertNotIn("model-c", res["abstained"])
-        self.assertIn("da tang ngan sach", res["why"])
+        self.assertIn("ngan sach", res["why"])
         self.assertEqual(attempts["model-c"], 2, "model treo phai duoc hoi LAI, khong bi bo luon")
 
     def test_tat_adaptive_thi_khong_tu_hoi_lai(self):

@@ -231,6 +231,31 @@ class StubProvider:
             why.append(f"{urg} tin khan cap vi mo")
             flags.append("urgent_macro")
         if role == "critic":
+            # (05/10) EMA crossover + trend analysis (StubProvider nang cao)
+            ema_diff = _f(feats.get("ema_diff"), 0.0)
+            vol_ratio = _f(feats.get("vol_ratio"), 1.0)
+            pattern = str(feats.get("pattern") or "")
+            if direction == "LONG":
+                if ema_diff < -0.005:
+                    action, conf = "VETO", max(conf, 0.55)
+                    why.append(f"LONG nhung EMA crossover giam (ema_diff={ema_diff:.4f})")
+                    flags.append("ema_bearish")
+                if pattern and "double_top" in pattern:
+                    action, conf = "VETO", max(conf, 0.6)
+                    why.append("LONG gap double_top - kha nang dao chieu cao")
+                    flags.append("bearish_pattern")
+            if direction == "SHORT":
+                if ema_diff > 0.005:
+                    action, conf = "VETO", max(conf, 0.55)
+                    why.append(f"SHORT nhung EMA crossover tang (ema_diff={ema_diff:.4f})")
+                    flags.append("ema_bullish")
+                if pattern and "double_bottom" in pattern:
+                    action, conf = "VETO", max(conf, 0.6)
+                    why.append("SHORT gap double_bottom - kha nang dao chieu cao")
+                    flags.append("bullish_pattern")
+            if vol_ratio < 0.5:
+                why.append(f"vol_ratio {vol_ratio:.2f} thap - thanh khoan yeu")
+                flags.append("low_volume")
             if direction == "LONG" and rsi >= 75:
                 action, conf = "VETO", max(conf, 0.5)
                 why.append(f"LONG nhung RSI {rsi:.0f} qua mua")
@@ -1431,21 +1456,12 @@ class _CfgOverride:
 
 def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
                         models: list | None = None, provider_factory=None) -> dict:
-    """HOI DONG NHIEU MODEL THAT chay SONG SONG — khong chon 1 model "hop ly nhat".
+    """HOI DONG NHIEU MODEL THAT chay SONG SONG + DEBATE 2 VONG (05/10).
 
-    Moi model trong `models` (mac dinh COUNCIL_MULTI_MODELS) duoc hoi CUNG 1 cau hoi
-    qua 1 AgentLayer/provider rieng, chay dong thoi (ThreadPoolExecutor). Model nao
-    treo/loi -> AgentLayer.vote() da tu fail-open ve NO_OPINION sau agent_timeout_sec;
-    o day coi do la PHIEU TRANG (bi loai khoi quorum), KHONG phai "khong duoc chon" —
-    khong co buoc nao chon ra 1 cau tra loi dai dien ca nhom. Ket qua CUOI la quorum
-    ALLOW/VETO cua CAC PHIEU THAT con lai (hoa phieu hoac khong ai tra loi -> NO_OPINION,
-    tuc KHONG chan lenh — giu nguyen triet ly fail-open cua ca module).
-
-    Ngan sach LINH HOAT (agent_budget_adaptive, mac dinh BAT): van de DE (da dong
-    thuan, it phieu trang) -> dung nguyen ngan sach/timeout thuong, KHONG ton them.
-    Van de KHO (hoa phieu HOAC >= agent_hard_abstain_ratio model bi treo) -> tu dong
-    hoi LAI CAC MODEL TREO voi timeout/ngan sach "hard" (AGENT_*_HARD trong .env,
-    mac dinh rat cao — co y bo qua chi phi de co cau tra loi dut khoat hon).
+    (05/10) DEBATE 2 VONG: vong 1 vote mu -> tong hop -> vong 2 moi agent thay y kien
+    cua nhau (peer tally + top reasons) -> vote lai. Chi chay vong 2 khi co y nghia:
+    (a) hoa phieu, hoac (b) chia re (cach biet VETO-ALLOW <=2 phieu). COUNCIL_ROUNDS
+    trong .env (mac dinh 2). Dat 1 de tat.
     """
     if not bool(getattr(cfg, "agents_enabled", False)):
         return {"votes": {}, "abstained": [], "action": "NO_OPINION",
@@ -1457,11 +1473,14 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         lambda m: ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
         else CopilotCliProvider(model=m, bin_path=bin_path, args=args))
     state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)
+    max_rounds = max(1, int(getattr(cfg, "council_rounds", 2) or 2))
+    escalated = False
+    debated = False
 
-    def _run_round(ask: list, round_cfg, budget) -> dict:
+    def _run_round(ask: list, round_cfg, budget, round_payload=None) -> dict:
         def _one(name: str) -> Decision:
             member = AgentLayer(round_cfg, provider=make_provider(name), budget=budget, log=log)
-            return member.vote(role, payload)
+            return member.vote(role, round_payload or payload)
         out: dict = {}
         with _fut.ThreadPoolExecutor(max_workers=max(1, len(ask))) as pool:
             futs = {pool.submit(_one, name): name for name in ask}
@@ -1504,15 +1523,37 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         retry = _run_round(abstained, hard_cfg, hard_budget)
         decisions.update(retry)
         abstained, votes, n_allow, n_veto, action = _tally(decisions)
-    why = (f"hoi dong {len(names)} model that: {n_allow} ALLOW / {n_veto} VETO "
-          f"(bo qua {len(abstained)} phieu trang: {', '.join(abstained) or '-'})"
-          + (" [da tang ngan sach/thoi gian cho vi vong dau kho/chia re]" if escalated else ""))
+
+    # (05/10) DEBATE VONG 2: hoi lai voi peer context khi hoa phieu/chia re
+    is_split = (n_allow and n_veto and abs(n_allow - n_veto) <= 2)
+    if max_rounds >= 2 and abstained and (action == "NO_OPINION" or is_split):
+        peer_lines = []
+        for d in list(votes.values())[:8]:
+            a = str(d.action); n = str(getattr(d, "agent", "?"))[:22]
+            rs = [str(r)[:70] for r in list(getattr(d, "reasons", []) or [])[:1] if r]
+            if rs:
+                peer_lines.append(f"[{a}] {n}: {rs[0]}")
+        peer = (f"Vong 1: {n_allow}A / {n_veto}V (hoa={len(abstained)}). "
+                + ". ".join(peer_lines[:15]))[:2000]
+        r2 = dict(payload or {}); r2["peer_votes"] = peer; r2["role"] = role
+        debated = True
+        if log:
+            log.info("COUNCIL debate v2: %dA/%dV (hoa=%d) -> hoi lai %d model",
+                     n_allow, n_veto, len(abstained), len(abstained))
+        r2d = _run_round(abstained, cfg, budget, r2)
+        decisions.update(r2d)
+        abstained, votes, n_allow, n_veto, action = _tally(decisions)
+
+    stage = (" [ngan sach]" if escalated else "") + (" [2 vong]" if debated else "")
+    why = (f"hoi dong {len(names)} model: {n_allow}A / {n_veto}V "
+           f"(hoa {len(abstained)}: {', '.join(abstained) or '-'})"
+           + stage)
     conf = (sum(float(d.confidence or 0.0) for d in votes.values()) / len(votes)) if votes else 0.0
     if log:
         log.info("MULTI-MODEL COUNCIL role=%s -> %s (%.2f) [%s]", role, action, conf, why)
     return {"votes": {m: d.to_dict() for m, d in votes.items()},
            "abstained": abstained, "action": action, "confidence": round(conf, 2),
-           "why": why, "escalated": escalated}
+           "why": why, "escalated": escalated, "debated": debated}
 
 
 def veto_decision(cfg, layer, payload: dict) -> dict:

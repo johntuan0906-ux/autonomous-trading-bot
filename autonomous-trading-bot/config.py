@@ -210,6 +210,10 @@ class Settings:
         default_factory=lambda: _get_bool("AGENTS_COUNCIL_MULTI_MODEL", False))
     agent_council_models: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_MODELS", ""))
+    # Model Cline (cline-pass/...) ngoi chung hoi dong voi Copilot CLI: "all" = catalog
+    # 14 model (tru CLINE_SKIP_MODELS) | csv | rong = tat. Can CLINE_API_KEY.
+    agent_council_cline: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_CLINE", ""))
     # Ngan sach LINH HOAT theo do kho: van de de (hau het model dong thuan, it phieu
     # trang) -> dung ngan sach thuong (AGENT_TIMEOUT_SEC/AGENT_DAILY_CALLS/BUDGET o
     # tren), KHONG ton them. Van de kho (hoa phieu HOAC >= AGENT_HARD_ABSTAIN_RATIO

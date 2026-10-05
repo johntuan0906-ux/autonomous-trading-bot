@@ -549,6 +549,34 @@ class TestMultiModelCouncil(unittest.TestCase):
         self.assertEqual(res["action"], "NO_OPINION")
         self.assertIn("model-c", res["abstained"])
 
+    def test_cline_models_ngoi_chung_hoi_dong_voi_copilot(self):
+        import unittest.mock as _mock
+        cfg = self._cfg_mm(tempfile.mkdtemp())
+        cfg.agent_council_cline = "all"
+        with _mock.patch.dict(os.environ, {"CLINE_API_KEY": "k", "CLINE_SKIP_MODELS":
+                                           "cline-pass/glm-5.3-flash"}):
+            names = A._council_models(cfg)
+        cline = [m for m in names if m.startswith("cline-pass/")]
+        self.assertEqual(len(cline), 13, "14 model tru 1 model bi skip")
+        self.assertTrue(set(A.COUNCIL_MULTI_MODELS) <= set(names))
+        with _mock.patch.dict(os.environ, {"CLINE_API_KEY": ""}):
+            self.assertEqual(A._cline_council_models(cfg), [], "thieu key -> bo qua Cline")
+
+    def test_provider_dinh_tuyen_theo_tien_to_model(self):
+        import unittest.mock as _mock
+        cfg = self._cfg_mm(tempfile.mkdtemp())
+        seen = {}
+
+        def fake_complete(self, system, user, *, timeout=8.0):
+            seen[self.name] = self.model
+            return {"text": '{"action":"ALLOW","confidence":0.7}', "tokens_in": 1, "tokens_out": 1}
+        with _mock.patch.object(A.ClineProvider, "complete", fake_complete), \
+             _mock.patch.object(A.CopilotCliProvider, "complete", fake_complete):
+            res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT"}, role="critic",
+                                        models=["cline-pass/kimi-k3", "kimi-k3"])
+        self.assertEqual(seen, {"cline": "cline-pass/kimi-k3", "copilot_cli": "kimi-k3"})
+        self.assertEqual(set(res["votes"]), {"cline-pass/kimi-k3", "kimi-k3"})
+
     def test_agents_enabled_false_thi_khong_goi_model_nao(self):
         tmp = tempfile.mkdtemp()
         cfg = self._cfg_mm(tmp)

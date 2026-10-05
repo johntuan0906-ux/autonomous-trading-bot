@@ -19,7 +19,8 @@ from pathlib import Path
 
 from bot import TradingBot
 from agents import (COUNCIL_ROLES, AgentLayer, council_decision,               # noqa: E402
-                    council_summary_text, review_payload, setup_payload)
+                    council_summary_text, Decision, multi_model_council,
+                     review_payload, setup_payload)
 from config import Settings
 from derivatives import derivatives_guard, fetch_liquidations, fetch_oi_funding
 from exchange import BinanceFutures
@@ -340,7 +341,46 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
         except Exception:  # noqa: BLE001
             pass
 
-    if use_council:
+    if use_council and bool(getattr(cfg, "agents_council_multi_model", False)):
+        # (05/10) HOI DONG NHIEU MODEL THAT (Copilot + Cline) chay SONG SONG — thay
+        # cho council_decision 1 model 3 vai. Model treo/loi = phieu trang (fail-open).
+        # Ket qua ghi vao journal voi status="COUNCIL" de tich luy bang chung cap
+        # quyen veto. Van la SHADOW (agents_shadow=true, khong chan lenh).
+        def _job_multi():
+            res = multi_model_council(cfg, pay, role="critic", log=log)
+            hit = False
+            for mname, dec in (res.get("votes") or {}).items():
+                if dec is None:
+                    continue
+                hit = hit or bool(getattr(dec, "cache_hit", False))
+                provider = "cline" if str(mname).startswith("cline-pass/") else "copilot"
+                layer.log_decision(dec, extra={
+                    "symbol": sym, "direction": direction,
+                    "status": "COUNCIL", "model": mname, "provider": provider,
+                    "final_action": res.get("action")})
+            # Log ca model treo (abstained) de co so lieu day du
+            for mname in (res.get("abstained") or []):
+                pdv = "cline" if str(mname).startswith("cline-pass/") else "copilot"
+                d = Decision(role="critic", agent=mname, action="NO_OPINION",
+                              note="treo/loi/het gio", ts=time.time())
+                layer.log_decision(d, extra={
+                    "symbol": sym, "direction": direction,
+                    "status": "COUNCIL", "model": mname, "provider": pdv,
+                    "abstained": True, "final_action": res.get("action")})
+            action = str(res.get("action") or "NO_OPINION").upper()
+            conf = float(res.get("confidence") or 0)
+            why = str(res.get("why") or "")
+            n_votes = len(res.get("votes") or {})
+            if action == "VETO":
+                log.warning("MULTI-COUNCIL VETO %s %s (conf=%.2f, %d/%d model) [shadow]",
+                            direction, sym, conf, n_votes,
+                            n_votes + len(res.get("abstained") or []))
+            if not hit:
+                _tg_once(f"🧠 MULTI-COUNCIL {sym.split('/')[0]} {direction.upper()} -> "
+                         f"{action} (conf={conf:.2f}, {n_votes} model: {why})")
+        _agent_submit(_job_multi)
+        return
+    elif use_council:
         def _job_council():
             res = council_decision(layer, pay, log=log)
             hit = False

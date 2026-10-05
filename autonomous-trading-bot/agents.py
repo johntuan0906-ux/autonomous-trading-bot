@@ -763,7 +763,44 @@ class OpenAICompatProvider:
 
 
 
-_PROVIDERS = {"stub": StubProvider, "openai": OpenAIProvider,
+CLINE_ENDPOINT = "https://api.cline.bot/api/v1/chat/completions"
+CLINE_PREFIX = "cline-pass/"
+
+
+class ClineProvider:
+    """Model `cline-pass/...` qua gateway Cline (CLINE_API_KEY), chi tra van ban."""
+
+    name = "cline"
+
+    def __init__(self, model: str = "", api_key: str = "", url: str = CLINE_ENDPOINT):
+        self.model = model
+        self.api_key = (api_key or os.getenv("CLINE_API_KEY", "")).strip()
+        self.url = url
+
+    def complete(self, system: str, user: str, *, timeout: float = 8.0) -> dict:
+        if not self.api_key:
+            raise RuntimeError("thieu CLINE_API_KEY")
+        import requests
+        r = requests.post(self.url, timeout=timeout,
+                          headers={"Authorization": "Bearer " + self.api_key,
+                                   "Content-Type": "application/json"},
+                          json={"model": self.model, "stream": False,
+                                "messages": [{"role": "system", "content": system},
+                                             {"role": "user", "content": user}]})
+        r.raise_for_status()
+        js = r.json()
+        if isinstance(js, dict) and isinstance(js.get("data"), dict) and "choices" in js["data"]:
+            js = js["data"]  # gateway boc ket qua trong {"data": ...}
+        txt = str((js.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
+        if not txt:
+            raise RuntimeError("Cline tra rong")
+        usage = js.get("usage") or {}
+        return {"text": txt,
+                "tokens_in": _i(usage.get("prompt_tokens"), approx_tokens(system + user)),
+                "tokens_out": _i(usage.get("completion_tokens"), approx_tokens(txt))}
+
+
+_PROVIDERS = {"stub": StubProvider, "openai": OpenAIProvider, "cline": ClineProvider,
               "anthropic": AnthropicProvider, "copilot_cli": CopilotCliProvider,
               "vscode_lm": VscodeLmProvider, "openai_compatible": OpenAICompatProvider}
 
@@ -1283,7 +1320,32 @@ def council_summary_text(symbol: str, direction: str, res: dict) -> str:
 def _council_models(cfg) -> list:
     raw = str(getattr(cfg, "agent_council_models", "") or "")
     models = [m.strip() for m in raw.split(",") if m.strip()]
-    return models or list(COUNCIL_MULTI_MODELS)
+    models = models or list(COUNCIL_MULTI_MODELS)
+    for m in _cline_council_models(cfg):
+        if m not in models:
+            models.append(m)
+    return models
+
+
+def _cline_council_models(cfg) -> list:
+    """Model Cline tham gia hoi dong: AGENT_COUNCIL_CLINE = 'all' (catalog 14 model,
+    tru CLINE_SKIP_MODELS) | csv model | rong (tat). Thieu CLINE_API_KEY -> bo qua."""
+    raw = str(getattr(cfg, "agent_council_cline", "") or "").strip()
+    if not raw or not os.getenv("CLINE_API_KEY", "").strip():
+        return []
+    if raw.lower() == "all":
+        cat = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "Multi_AI_Agent", "models.clinepass.json")
+        try:
+            with open(cat, encoding="utf-8-sig") as f:
+                names = [str(a.get("model")) for a in json.load(f).get("agents") or []]
+        except Exception:  # noqa: BLE001
+            return []
+    else:
+        names = [m.strip() for m in raw.split(",") if m.strip()]
+    skip = {m.strip() for m in os.getenv("CLINE_SKIP_MODELS", "").split(",") if m.strip()}
+    return [m if m.startswith(CLINE_PREFIX) else CLINE_PREFIX + m
+            for m in names if m not in skip]
 
 
 class _CfgOverride:
@@ -1325,7 +1387,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     bin_path = str(getattr(cfg, "agent_copilot_bin", "copilot") or "copilot")
     args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
     make_provider = provider_factory or (
-        lambda m: CopilotCliProvider(model=m, bin_path=bin_path, args=args))
+        lambda m: ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
+        else CopilotCliProvider(model=m, bin_path=bin_path, args=args))
     state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)
 
     def _run_round(ask: list, round_cfg, budget) -> dict:

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 03:35:04 · commit `?`
+- **Cập nhật**: 09/10/2026 04:05:05 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `21904` · round `25` · nhịp tim cách đây 24.1s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 4579.55 USDT
+- **Bot**: pid `21904` · round `67` · nhịp tim cách đây 8.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 4578.26 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 325 lệnh đóng, WR 65.85%, E(R) 0.0946, PnL 225.84$)
@@ -28,13 +28,15 @@
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
 - Learner: 146 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
-## Vị thế đang quản lý (3)
+## Vị thế đang quản lý (5)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ADA/USDT:USDT | SHORT | 2503.0 | 0.2336 | 0.237594 | 0.223615 | False | False | 0.025 |
 | AVAX/USDT:USDT | SHORT | 62.0 | 10.153 | 10.312188 | 9.75503 | False | False | 0.057 |
-| BTC/USDT:USDT | SHORT | 0.0216 | 81745.1 | 82206.443894 | 80591.740265 | False | False | 0.098 |
+| BTC/USDT:USDT | SHORT | 0.0216 | 81745.1 | 82206.443894 | 80591.740265 | False | False | 0.163 |
+| LINK/USDT:USDT | SHORT | 63.09 | 12.623 | 12.781496 | 12.22676 | False | False | 0.0 |
+| SOL/USDT:USDT | SHORT | 7.3 | 109.79 | 111.15823 | 106.369425 | False | False | 0.153 |
 
 ---
 

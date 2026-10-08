@@ -706,28 +706,48 @@ Câu hỏi: "Muse có kết nối GitHub qua repository/SSH được không?" �
 | Git identity | `Your Name <your_email@example.com>` (placeholder) | Nên đặt lại trước khi push |
 | Credential helper | **không có** (không cài Git Credential Manager) | Vì vậy nên đi đường **SSH**, không phải HTTPS |
 
-### 12.1 Bốn bước nối repo với GitHub (việc cần bạn làm)
+### 12.1 Nối repo với GitHub (tài khoản `johntuan0906-ux`)
 
-1. Lấy public key: `type %USERPROFILE%\.ssh\id_ed25519.pub` → dán vào <https://github.com/settings/ssh/new> (Title: `trading-bot-pc`, Key type: **Authentication**).
-2. Kiểm tra: `ssh -T git@github.com` → phải in `Hi <username>! You've successfully authenticated...`
-3. Đặt identity + remote:
+Tra GitHub API ngày 08/10: tài khoản `johntuan0906-ux` **id `336409958`**, tạo 01/10/2026, **`public_repos = 0`** → chưa có repo nào, cần tạo mới. **Tên repo do bạn đặt khi tạo** (đề xuất trùng tên thư mục: `autonomous-trading-bot`).
+
+Đã làm sẵn trên máy này (không cần bạn làm lại):
+
+- SSH key `~/.ssh/id_ed25519` (ED25519) — chỉ còn thiếu bước dán public key lên GitHub.
+- Git identity: `user.name=johntuan0906-ux`, `user.email=336409958+johntuan0906-ux@users.noreply.github.com` (email noreply ⇒ commit vẫn gắn đúng tài khoản mà không lộ email thật).
+- Remote: `origin = git@github.com:johntuan0906-ux/autonomous-trading-bot.git`
+
+Còn lại 3 bước:
+
+1. **Dán public key** (`type %USERPROFILE%\.ssh\id_ed25519.pub`) vào <https://github.com/settings/ssh/new> → Title `trading-bot-pc`, Key type **Authentication**. Kiểm tra: `ssh -T git@github.com` phải in `Hi johntuan0906-ux! You've successfully authenticated...`
+2. **Tạo repo**: <https://github.com/new> → Repository name: `autonomous-trading-bot` → **Private** (khuyến nghị: repo có `.env`/chiến lược) → **KHÔNG** tick "Add README/.gitignore/license" (để push sạch, không bị conflict). Nếu bạn đặt tên khác, sửa 1 dòng:
    ```bash
-   git config --global user.name "Ten Ban"
-   git config --global user.email "ban@email.com"
-   git remote add origin git@github.com:<username>/<repo>.git
+   git remote set-url origin git@github.com:johntuan0906-ux/<ten-repo>.git
    ```
-4. Push: `git push -u origin test-ai-agents`
+3. **Push**: `git push -u origin test-ai-agents` — hoặc dùng `tools\git-sync.cmd` (mục 12.3). Nhánh hiện tại là `test-ai-agents`; muốn dùng `main` thì `git branch -M main` trước khi push.
 
-### 12.2 Muse Code chạy trong sandbox thì sao? (2 điểm dễ vấp)
+### 12.2 Hai điểm dễ vấp khi cho Muse dùng git — **đã có script giải quyết**
 
 Theo `dev.meta.ai/docs/muse-code/permissions`:
 
-| Vấn đề | Hành vi thật | Cách xử lý |
+| Điểm vấp | Hành vi thật của Muse Code | Đã giải quyết bằng |
 |---|---|---|
-| Network của shell agent | `--sandbox-network` mặc định **`proxy-only`**: *"Muse Code approves outbound connections per destination. The first connection to a new host, port, or protocol stops for review"* → lần đầu tới `github.com:22` sẽ **dừng xin phê duyệt** | Giữ mặc định (an toàn: chỉ approve 1 lần) hoặc `--sandbox-network enabled` (full network) |
-| Ghi vào `.git` | Trong workspace, **`.git`, `.muse`, `.agents` là read-only** với agent → `git commit`/`git push` **thất bại** (chống agent sửa history của chính nó) | Muốn Muse tự commit/push: `--disable-sandbox` (kèm full network) hoặc `--yolo` — **chỉ nên dùng trong VM/CI dùng một lần** |
-| Sandbox trên Windows | `muse sandbox windows check` → `status=setup_required` (`sandbox_users_ready=false`, `wfp_ready=false`), lần đầu cần UAC | `muse sandbox windows setup` (1 lần, cần admin) |
+| **#1 Network**: mặc định `--sandbox-network proxy-only` → *"the first connection to a new host, port, or protocol stops for review"*, nên lần đầu tới `github.com:22` bị **dừng xin phê duyệt** | Muốn mạng đầy đủ mà **vẫn giữ sandbox + approval** | **`tools\muse.cmd`** — chạy Muse với `--sandbox-network enabled` (thay cho `muse` trần) |
+| **#2 `.git` read-only**: trong workspace, `.git`/`.muse`/`.agents` **read-only** với agent → `git commit`/`push`/`fetch` **thất bại** | Không có flag nào mở riêng `.git` mà giữ phần còn lại ⇒ phải chọn 1 trong 3 | (a) **`tools\git-sync.cmd "msg"`** — an toàn nhất: Muse sửa file, *bạn* commit/push ngoài sandbox; (b) **`tools\muse-nosandbox.cmd`** — bỏ sandbox (`.git` ghi được + full network) khi bạn tin workspace; (c) để Muse `git clone` ra thư mục tạm rồi làm việc ở đó (ngoài workspace nên `.git` không bị read-only) |
+| **#3 Sandbox Windows chưa setup**: `muse sandbox windows check` → `status=setup_required` (`sandbox_users_ready=false`, `wfp_ready=false`) | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | Chạy 1 lần: **`muse sandbox windows setup`** (cần UAC/admin) rồi kiểm tra lại bằng `muse sandbox windows check` |
 | Vote trong hội đồng (bot) | `AGENT_MUSE_CLI_ARGS=exec {prompt} --max-model-steps 2 --disable-approval` → **cố ý không cần network** | Giữ nguyên: vote chỉ cần model API, không cần git |
+
+### 12.3 Ba script tiện ích (`tools/`)
+
+| Script | Việc nó làm | Khi nào dùng |
+|---|---|---|
+| `tools\muse.cmd` | Chạy Muse với `--sandbox-network enabled` (giữ sandbox + approval), tự tìm binary `muse-bin-*.exe` mới nhất | Cần mạng trong sandbox: `git ls-remote`, tải tài liệu, `pip install` |
+| `tools\muse-nosandbox.cmd` | Chạy Muse với `--disable-sandbox` (đếm ngược 5s cảnh báo) | Khi muốn **chính Muse** commit/push và bạn tin workspace |
+| `tools\git-sync.cmd "msg"` | `git status` → `git add -A` → commit → `git push -u origin HEAD` (chạy **ngoài** sandbox) | Sau khi Muse sửa file xong — cách an toàn nhất để đưa thay đổi lên GitHub |
+
+`AGENTS.md` (do `muse init` sinh, đã bổ sung) nói rõ cho agent: lệnh test chuẩn, remote SSH, `.git` read-only trong sandbox ⇒ phải nhờ người dùng chạy `tools\git-sync.cmd`, và các ranh giới an toàn (không nới kill-switch, không sửa `risk.py`, không in API key).
+
+**Gotcha đã kiểm chứng (08/10)**: cờ của Muse phải đặt **SAU** subcommand. `muse exec "..." --sandbox-network enabled` chạy đúng, còn `muse --sandbox-network enabled exec "..."` bị hiểu thành TUI mode và báo `invalid TUI options: error: unexpected argument '--max-model-steps' found`. Vì vậy `tools\muse.cmd` / `tools\muse-nosandbox.cmd` tự thêm cờ vào **cuối** lệnh (bạn chỉ cần viết phần sau `muse`, ví dụ `tools\muse.cmd exec "kiem tra git remote" --max-model-steps 4`).
+
 
 Lưu ý: Muse Code **không có "tích hợp GitHub" riêng** — nó dùng đúng `git` + credential trên máy (SSH key hoặc token), nên mục 12.1 là điều kiện cần cho cả người lẫn agent. Muse chỉ chạy được sau khi có Meta API key (xem 10.1).
 

@@ -691,3 +691,43 @@ Chọn theo **latency · parallelism · cost · scale** — giống chọn CPU/G
 - **LONG CONTEXT ($, LOW)** → payload ~1.2K token: cố ý **không** xây RAG cho council.
 - **FINE-TUNING ($$$$, HIGH)** → thay bằng **JSON repair 1 lần** (`AGENT_JSON_REPAIR=true`) + `parse_decision` fail-open; schema mẫu `schemas/agent_decision.json` (dùng được với `muse exec --output-schema` khi đã đăng nhập; `qwen --json-schema` **không** hoạt động qua gateway hiện tại — đã kiểm chứng thực tế).
 - **"Take actions / use tools?"** → **KHÔNG**: agent chỉ cố vấn, quyền quyết định tiền vẫn ở hàm tất định.
+
+## 12. (08/10) Muse Code ↔ GitHub qua SSH — đã kiểm tra thực tế
+
+Câu hỏi: "Muse có kết nối GitHub qua repository/SSH được không?" → **Đường mạng: CÓ. Đường xác thực: chưa (thiếu key).** Số đo trên chính máy này:
+
+| Hạng mục | Kết quả đo | Ý nghĩa |
+|---|---|---|
+| `Test-NetConnection github.com -Port 22` | ✅ TCP mở (20.205.243.x:22) | Firewall cho SSH ra ngoài (panel "SSH đi" = BẬT) là đủ, không cần mở thêm gì |
+| `ssh -T git@github.com` | `Permission denied (publickey)` | Bắt tay SSH + trao đổi thuật toán OK → **chỉ thiếu key hợp lệ**, không phải lỗi mạng |
+| `ssh -T -p 443 git@ssh.github.com` | `Permission denied (publickey)` | Đường dự phòng qua 443 cũng thông (dùng khi mạng chặn port 22) |
+| `~/.ssh` | Trước đó **không tồn tại** → đã tạo `id_ed25519` (ED25519, không passphrase) | `ssh -v` xác nhận `Offering public key: ... ED25519 SHA256:8y1hGF...`, không có cảnh báo `UNPROTECTED PRIVATE KEY FILE` |
+| Remote của repo | **không có** (`git remote -v` trống), nhánh `test-ai-agents` không có upstream | Repo hiện là **local-only**, chưa từng nối GitHub |
+| Git identity | `Your Name <your_email@example.com>` (placeholder) | Nên đặt lại trước khi push |
+| Credential helper | **không có** (không cài Git Credential Manager) | Vì vậy nên đi đường **SSH**, không phải HTTPS |
+
+### 12.1 Bốn bước nối repo với GitHub (việc cần bạn làm)
+
+1. Lấy public key: `type %USERPROFILE%\.ssh\id_ed25519.pub` → dán vào <https://github.com/settings/ssh/new> (Title: `trading-bot-pc`, Key type: **Authentication**).
+2. Kiểm tra: `ssh -T git@github.com` → phải in `Hi <username>! You've successfully authenticated...`
+3. Đặt identity + remote:
+   ```bash
+   git config --global user.name "Ten Ban"
+   git config --global user.email "ban@email.com"
+   git remote add origin git@github.com:<username>/<repo>.git
+   ```
+4. Push: `git push -u origin test-ai-agents`
+
+### 12.2 Muse Code chạy trong sandbox thì sao? (2 điểm dễ vấp)
+
+Theo `dev.meta.ai/docs/muse-code/permissions`:
+
+| Vấn đề | Hành vi thật | Cách xử lý |
+|---|---|---|
+| Network của shell agent | `--sandbox-network` mặc định **`proxy-only`**: *"Muse Code approves outbound connections per destination. The first connection to a new host, port, or protocol stops for review"* → lần đầu tới `github.com:22` sẽ **dừng xin phê duyệt** | Giữ mặc định (an toàn: chỉ approve 1 lần) hoặc `--sandbox-network enabled` (full network) |
+| Ghi vào `.git` | Trong workspace, **`.git`, `.muse`, `.agents` là read-only** với agent → `git commit`/`git push` **thất bại** (chống agent sửa history của chính nó) | Muốn Muse tự commit/push: `--disable-sandbox` (kèm full network) hoặc `--yolo` — **chỉ nên dùng trong VM/CI dùng một lần** |
+| Sandbox trên Windows | `muse sandbox windows check` → `status=setup_required` (`sandbox_users_ready=false`, `wfp_ready=false`), lần đầu cần UAC | `muse sandbox windows setup` (1 lần, cần admin) |
+| Vote trong hội đồng (bot) | `AGENT_MUSE_CLI_ARGS=exec {prompt} --max-model-steps 2 --disable-approval` → **cố ý không cần network** | Giữ nguyên: vote chỉ cần model API, không cần git |
+
+Lưu ý: Muse Code **không có "tích hợp GitHub" riêng** — nó dùng đúng `git` + credential trên máy (SSH key hoặc token), nên mục 12.1 là điều kiện cần cho cả người lẫn agent. Muse chỉ chạy được sau khi có Meta API key (xem 10.1).
+

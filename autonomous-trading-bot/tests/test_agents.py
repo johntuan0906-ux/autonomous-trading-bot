@@ -1420,9 +1420,10 @@ class TestCouncilProviderFallback(unittest.TestCase):
     def _cfg(self, **kw):
         from config import Settings
         c = Settings()
-        # (08/10) Pin muse/qwen = "" de cac test nay chi kiem tra Copilot vs Cline
-        # (truoc day .env chua co muse nen khong can; nay muse thuc su co trong council).
+        # (08/10) Pin muse/muse_cli/qwen = "" de cac test nay chi kiem tra Copilot vs Cline
+        # (truoc day .env chua co muse nen khong can; nay muse/qwen thuc su co trong council).
         object.__setattr__(c, "agent_council_muse", "")
+        object.__setattr__(c, "agent_council_muse_cli", "")
         object.__setattr__(c, "agent_council_qwen", "")
         for k, v in kw.items():
             object.__setattr__(c, k, v)
@@ -1676,7 +1677,9 @@ class TestQwenProvider(unittest.TestCase):
     def test_build_cmd_co_model_flag(self):
         p = A.QwenCliProvider(model="qwen3-coder-plus", args=["-p", "{prompt}"])
         cmd = p._build_cmd("xin chao")
-        self.assertEqual(cmd[:2], ["qwen", "-p"])
+        # (08/10) bin co the resolve thanh duong dan qwen.cmd (npm) hoac exe -> kiem tra ten
+        self.assertIn("qwen", os.path.basename(cmd[0]).lower())
+        self.assertEqual(cmd[1], "-p")
         self.assertIn("xin chao", cmd)
         self.assertIn("--model", cmd)
         self.assertIn("qwen3-coder-plus", cmd)
@@ -1720,6 +1723,68 @@ class TestQwenProvider(unittest.TestCase):
         p = A.build_provider(cfg)
         self.assertEqual(p.name, "qwen_cli")
         self.assertEqual(p.model, "qwen3-coder-plus")
+
+
+class TestMuseCliProvider(unittest.TestCase):
+    """(08/10) Muse Code CLI headless (muse exec) - cach dung APP Muse trong hoi dong."""
+
+    def test_prefix_muse_cli(self):
+        self.assertEqual(A.MUSE_CLI_PREFIX, "muse-cli/")
+
+    def test_strip_prefix_khi_tao_provider(self):
+        p = A.MuseCliProvider(model="muse-cli/muse-spark-1.2")
+        self.assertEqual(p.model, "muse-spark-1.2")
+
+    def test_build_cmd_co_model_flag(self):
+        p = A.MuseCliProvider(model="muse-spark-1.2",
+                              args=["exec", "{prompt}", "--disable-approval"])
+        cmd = p._build_cmd("xin chao")
+        # (08/10) bin co the resolve thanh muse.CMD (shim) hoac exe -> kiem tra ten
+        self.assertIn("muse", os.path.basename(cmd[0]).lower())
+        self.assertEqual(cmd[1], "exec")
+        self.assertIn("xin chao", cmd)
+        self.assertIn("--model", cmd)
+        self.assertIn("muse-spark-1.2", cmd)
+
+    def test_complete_doi_runner(self):
+        def runner(cmd, timeout, cwd=None, env=None):
+            return 0, '{"action":"ALLOW","confidence":0.6}', ""
+        p = A.MuseCliProvider(runner=runner)
+        res = p.complete("sys", "user")
+        self.assertIn("ALLOW", res["text"])
+
+    def test_chua_dang_nhap_thi_loi_ro_rang(self):
+        def runner(cmd, timeout, cwd=None, env=None):
+            return 1, "", "missing meta credentials: run `muse login` or set META_API_KEY"
+        p = A.MuseCliProvider(runner=runner)
+        with self.assertRaises(RuntimeError) as ctx:
+            p.complete("sys", "user")
+        self.assertIn("muse login", str(ctx.exception))
+
+    def test_muse_cli_council_models(self):
+        import unittest.mock as _mock
+        with _mock.patch.dict(os.environ, {"MUSE_CLI_SKIP_MODELS": ""}):
+            models = A._muse_cli_council_models(_FakeCfg(agent_council_muse_cli="muse-spark-1.2"))
+        self.assertEqual(models, ["muse-cli/muse-spark-1.2"])
+
+    def test_is_muse_cli_model(self):
+        self.assertTrue(A._is_muse_cli_model("muse-cli/muse-spark-1.2"))
+        self.assertFalse(A._is_muse_cli_model("muse/muse-spark-1.2"))
+
+    def test_muse_cli_co_mat_trong_providers(self):
+        self.assertIn("muse_cli", A._PROVIDERS)
+
+    def test_build_provider_muse_cli(self):
+        cfg = _cfg(agent_provider="muse_cli", agent_model="muse-cli/muse-spark-1.2",
+                   agent_muse_cli_bin="muse", agent_muse_cli_args="exec {prompt}")
+        p = A.build_provider(cfg)
+        self.assertEqual(p.name, "muse_cli")
+        self.assertEqual(p.model, "muse-spark-1.2")
+
+    def test_muse_rest_strip_prefix(self):
+        """(08/10) Fix: MuseProvider REST phai goi API voi ten model KHONG tien to."""
+        p = A.MuseProvider(model="muse/muse-spark-1.3", api_key="k")
+        self.assertEqual(p.model, "muse-spark-1.3")
 
 
 class TestRunnerAnCuaSo(unittest.TestCase):

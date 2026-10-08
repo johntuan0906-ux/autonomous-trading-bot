@@ -758,8 +758,8 @@ class QwenCliProvider:
     """Qwen Code (QwenLM/qwen-code) o che do HEADLESS: `qwen -p <prompt>`.
 
     (08/10) Provider thu 4 cua hoi dong (sau Copilot CLI / Cline / Muse): khong can
-    API key rieng, dung model Qwen (qwen3-coder-plus...) hoac moi provider
-    OpenAI-compatible da cau hinh trong qwen-code. Giong CopilotCliProvider:
+    API key rieng, dung model Qwen hoac moi provider OpenAI-compatible da cau hinh
+    trong qwen-code (auth o ~/.qwen/.env + `--auth-type`). Giong CopilotCliProvider:
     shell-out + timeout + cwd tam (khong quet repo) + stdin dong.
     """
 
@@ -768,6 +768,9 @@ class QwenCliProvider:
     def __init__(self, model: str = "", bin_path: str = "qwen",
                  args: list | None = None, runner=None, cwd: str | None = None,
                  env: dict | None = None):
+        # Strip tien to 'qwen/' (chi dung cho dinh tuyen council) truoc khi dua vao CLI.
+        if str(model or "").startswith(QWEN_PREFIX):
+            model = str(model)[len(QWEN_PREFIX):]
         self.model = model or ""
         self._base = _split_cmd(bin_path) or ["qwen"]
         self._base[0] = _resolve_exe(self._base[0])
@@ -804,6 +807,70 @@ class QwenCliProvider:
         text = _extract_text(out)
         if not text:
             raise RuntimeError(f"qwen CLI khong tra van ban (rc={rc}): "
+                               f"{str(err).strip()[:160]}")
+        return {"text": text, "tokens_in": approx_tokens(prompt),
+                "tokens_out": approx_tokens(text)}
+
+
+class MuseCliProvider:
+    """Muse Code (Meta) o che do HEADLESS: `muse exec "<prompt>"`.
+
+    (08/10) Cach dung APP Muse trong hoi dong: Muse Code la coding agent cua Meta
+    (dev.meta.ai/docs/muse-code), cung 1 binary chay interactive HOAC headless.
+    Can 1 lan xac thuc: `muse login` (browser) HOAC dat META_API_KEY (API key Meta).
+    Truoc khi co credential -> fail-open NO_OPINION (bot van chay binh thuong).
+
+    An toan: `--disable-approval` (giu sandbox) + `--max-model-steps 2` de CLI
+    khong chay tool/lap vo han trong phien vote.
+    """
+
+    name = "muse_cli"
+
+    def __init__(self, model: str = "", bin_path: str = "muse",
+                 args: list | None = None, runner=None, cwd: str | None = None,
+                 env: dict | None = None):
+        if str(model or "").startswith(MUSE_CLI_PREFIX):
+            model = str(model)[len(MUSE_CLI_PREFIX):]
+        self.model = model or ""
+        self._base = _split_cmd(bin_path) or ["muse"]
+        self._base[0] = _resolve_exe(self._base[0])
+        self.bin = self._base[0]
+        self.args = list(args or ["exec", "{prompt}"])
+        self._runner = runner or _subprocess_runner
+        self.cwd = cwd
+        self.env = env
+
+    def _build_cmd(self, prompt: str) -> list:
+        out: list = []
+        has_model_flag = False
+        for a in self.args:
+            a = str(a)
+            if "{prompt}" in a:
+                out.append(a.replace("{prompt}", prompt))
+            elif "{model}" in a:
+                out.append(a.replace("{model}", self.model))
+                has_model_flag = True
+            else:
+                if a in ("--model", "-m"):
+                    has_model_flag = True
+                out.append(a)
+        if self.model and not has_model_flag:
+            out += ["--model", self.model]
+        return list(self._base) + out
+
+    def complete(self, system: str, user: str, *, timeout: float = 60.0) -> dict:
+        prompt = f"{system}\n\n{user}"
+        cmd = self._build_cmd(prompt)
+        rc, out, err = self._runner(cmd, timeout, cwd=self.cwd, env=self.env)
+        blob = f"{out}\n{err}"
+        if "missing meta credentials" in blob.lower() or "run `muse login`" in blob:
+            raise RuntimeError("muse CLI chua dang nhap: chay `muse login` 1 lan "
+                               "hoac dat META_API_KEY")
+        if rc != 0 and not str(out).strip():
+            raise RuntimeError(f"muse CLI rc={rc}: {str(err).strip()[:200]}")
+        text = _extract_text(out)
+        if not text:
+            raise RuntimeError(f"muse CLI khong tra van ban (rc={rc}): "
                                f"{str(err).strip()[:160]}")
         return {"text": text, "tokens_in": approx_tokens(prompt),
                 "tokens_out": approx_tokens(text)}
@@ -897,6 +964,7 @@ CLINE_PREFIX = "cline-pass/"
 MUSE_ENDPOINT = "https://api.meta.ai/v1/chat/completions"
 MUSE_PREFIX = "muse/"
 QWEN_PREFIX = "qwen/"
+MUSE_CLI_PREFIX = "muse-cli/"
 
 
 class ClineProvider:
@@ -942,6 +1010,10 @@ class MuseProvider:
     name = "muse"
 
     def __init__(self, model: str = "", api_key: str = "", url: str = MUSE_ENDPOINT):
+        # (08/10) Strip tien to 'muse/' (chi dung cho dinh tuyen council): API Meta
+        # nhan ten model THUONG (muse-spark-1.3), khong co tien to.
+        if str(model or "").startswith(MUSE_PREFIX):
+            model = str(model)[len(MUSE_PREFIX):]
         self.model = model
         self.api_key = (api_key or os.getenv("MUSE_API_KEY", "")).strip()
         self.url = url
@@ -967,7 +1039,8 @@ class MuseProvider:
 
 
 _PROVIDERS = {"stub": StubProvider, "openai": OpenAIProvider, "cline": ClineProvider,
-              "muse": MuseProvider, "qwen_cli": QwenCliProvider,
+              "muse": MuseProvider, "muse_cli": MuseCliProvider,
+              "qwen_cli": QwenCliProvider,
               "anthropic": AnthropicProvider, "copilot_cli": CopilotCliProvider,
               "vscode_lm": VscodeLmProvider, "openai_compatible": OpenAICompatProvider}
 
@@ -981,7 +1054,7 @@ def build_provider(cfg=None, log=None):
     """
     name = str(getattr(cfg, "agent_provider", "stub") or "stub").lower()
     model = str(getattr(cfg, "agent_model", "") or "")
-    if name in ("copilot_cli", "vscode_lm", "qwen_cli"):
+    if name in ("copilot_cli", "vscode_lm", "qwen_cli", "muse_cli"):
         try:
             if name == "copilot_cli":
                 args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
@@ -994,6 +1067,12 @@ def build_provider(cfg=None, log=None):
                 return QwenCliProvider(
                     model=model, bin_path=str(getattr(cfg, "agent_qwen_bin",
                                                       "qwen") or "qwen"),
+                    args=args)
+            if name == "muse_cli":
+                args = _split_cmd(getattr(cfg, "agent_muse_cli_args", "")) or None
+                return MuseCliProvider(
+                    model=model, bin_path=str(getattr(cfg, "agent_muse_cli_bin",
+                                                      "muse") or "muse"),
                     args=args)
             return VscodeLmProvider(
                 url=str(getattr(cfg, "agent_vscode_lm_url",
@@ -1603,6 +1682,8 @@ def _provider_blocked(provider: str, cfg=None) -> str:
         until = str(getattr(cfg, "agent_council_cline_until", "") or "").strip()
     elif cfg is not None and provider == "muse":
         until = str(getattr(cfg, "agent_council_muse_until", "") or "").strip()
+    elif cfg is not None and provider == "muse_cli":
+        until = str(getattr(cfg, "agent_council_muse_cli_until", "") or "").strip()
     elif cfg is not None and provider == "qwen":
         until = str(getattr(cfg, "agent_council_qwen_until", "") or "").strip()
     else:
@@ -1623,6 +1704,10 @@ def _is_cline_model(m: str) -> bool:
 
 def _is_muse_model(m: str) -> bool:
     return str(m).startswith(MUSE_PREFIX)
+
+
+def _is_muse_cli_model(m: str) -> bool:
+    return str(m).startswith(MUSE_CLI_PREFIX)
 
 
 def _is_qwen_model(m: str) -> bool:
@@ -1685,6 +1770,8 @@ def _fallback_chains(models: list, cfg=None) -> dict:
             g = "cline"
         elif m.startswith(MUSE_PREFIX):
             g = "muse"
+        elif m.startswith(MUSE_CLI_PREFIX):
+            g = "muse_cli"
         elif m.startswith(QWEN_PREFIX):
             g = "qwen"
         else:
@@ -1708,10 +1795,12 @@ def _council_models(cfg) -> list:
     copilot_models = [m.strip() for m in raw.split(",") if m.strip()] or list(COUNCIL_MULTI_MODELS)
     cline_models = _cline_council_models(cfg)
     muse_models = _muse_council_models(cfg)
+    muse_cli_models = _muse_cli_council_models(cfg)
     qwen_models = _qwen_council_models(cfg)
     copilot_blocked = _provider_blocked("copilot", cfg)
     cline_blocked = _provider_blocked("cline", cfg)
     muse_blocked = _provider_blocked("muse", cfg)
+    muse_cli_blocked = _provider_blocked("muse_cli", cfg)
     qwen_blocked = _provider_blocked("qwen", cfg)
     out: list = []
     if not copilot_blocked:
@@ -1720,6 +1809,8 @@ def _council_models(cfg) -> list:
         out.extend(cline_models)
     if not muse_blocked:
         out.extend(muse_models)
+    if not muse_cli_blocked:
+        out.extend(muse_cli_models)
     if not qwen_blocked:
         out.extend(qwen_models)
     if not out:
@@ -1778,14 +1869,30 @@ def _qwen_council_models(cfg) -> list:
             for m in names if m not in skip]
 
 
+def _muse_cli_council_models(cfg) -> list:
+    """Model Muse Code CLI (headless `muse exec`) tham gia hoi dong (08/10).
+
+    Can 1 lan `muse login` hoac META_API_KEY; chua co credential -> vote fail-open.
+    """
+    raw = str(getattr(cfg, "agent_council_muse_cli", "") or "").strip()
+    if not raw:
+        return []
+    names = [m.strip() for m in raw.split(",") if m.strip()]
+    skip = {m.strip() for m in os.getenv("MUSE_CLI_SKIP_MODELS", "").split(",")
+            if m.strip()}
+    return [m if m.startswith(MUSE_CLI_PREFIX) else MUSE_CLI_PREFIX + m
+            for m in names if m not in skip]
+
+
 def _provider_groups(decisions: dict) -> tuple:
     """Nhom model theo provider: ((models, tag), ...) — dung chung cho exhaust/recover."""
     cp = [m for m in decisions if _is_cline_model(m)]
     mu = [m for m in decisions if _is_muse_model(m)]
+    mc = [m for m in decisions if _is_muse_cli_model(m)]
     qu = [m for m in decisions if _is_qwen_model(m)]
-    co = [m for m in decisions if not _is_cline_model(m)
-          and not _is_muse_model(m) and not _is_qwen_model(m)]
-    return ((cp, "cline"), (mu, "muse"), (qu, "qwen"), (co, "copilot"))
+    co = [m for m in decisions if not _is_cline_model(m) and not _is_muse_model(m)
+          and not _is_muse_cli_model(m) and not _is_qwen_model(m)]
+    return ((cp, "cline"), (mu, "muse"), (mc, "muse_cli"), (qu, "qwen"), (co, "copilot"))
 
 
 def _mark_provider_exhausted(decisions: dict, log=None, cfg=None) -> None:
@@ -1988,9 +2095,13 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
     qw_bin = str(getattr(cfg, "agent_qwen_bin", "qwen") or "qwen")
     qw_args = _split_cmd(getattr(cfg, "agent_qwen_args", "")) or None
+    mc_bin = str(getattr(cfg, "agent_muse_cli_bin", "muse") or "muse")
+    mc_args = _split_cmd(getattr(cfg, "agent_muse_cli_args", "")) or None
     make_provider = provider_factory or (
         lambda m: (ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
                    else MuseProvider(model=m) if m.startswith(MUSE_PREFIX)
+                   else MuseCliProvider(model=m, bin_path=mc_bin, args=mc_args)
+                   if m.startswith(MUSE_CLI_PREFIX)
                    else QwenCliProvider(model=m, bin_path=qw_bin, args=qw_args)
                    if m.startswith(QWEN_PREFIX)
                    else CopilotCliProvider(model=m, bin_path=bin_path, args=args)))

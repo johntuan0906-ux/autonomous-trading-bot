@@ -628,13 +628,14 @@ bỏ các feed còn lại, và timeout socket được trả về nguyên trạn
 Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 ```
 
-## 10. (08/10) Hội đồng 4 provider + chống treo/quota + shadow A/B
+## 10. (08/10) Hội đồng 5 provider + chống treo/quota + shadow A/B
 
 Áp dụng từ khảo sát 22 repo (AutoResearch, OmniRoute, Qwen Code, harness, overmind...):
 
 | Tính năng | Cấu hình | Mặc định |
 |---|---|---|
 | **Provider thứ 4: Qwen Code** (headless `qwen -p`, không cần key) | `AGENT_COUNCIL_QWEN`, `AGENT_QWEN_BIN`, `AGENT_QWEN_ARGS`, `QWEN_SKIP_MODELS` | tắt |
+| **Provider thứ 5: Muse Code CLI** (app Muse, headless `muse exec`; cần `muse login` 1 lần hoặc `META_API_KEY`) | `AGENT_COUNCIL_MUSE_CLI`, `AGENT_MUSE_CLI_BIN`, `AGENT_MUSE_CLI_ARGS`, `MUSE_CLI_SKIP_MODELS` | tắt |
 | **Retry lỗi tạm thời** 429/5xx/timeout trước khi NO_OPINION (401/400 fail ngay) | `AGENT_RETRY_ATTEMPTS` | 2 |
 | **Pause thay vì block-đến-restart**: provider exhausted lần 1 → pause `N` giây rồi tự mở lại; lần 2 cùng session → block hẳn | `AGENT_PROVIDER_PAUSE_SEC` | 1800 |
 | **Trần chi phí theo vòng council** (chỉ hỏi model rẻ nhất trong cap) | `AGENT_ROUND_BUDGET_USD` | 0 (tắt) |

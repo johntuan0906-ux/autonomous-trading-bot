@@ -227,6 +227,17 @@ class Settings:
         default_factory=lambda: _get("AGENT_COUNCIL_MUSE", ""))
     agent_council_muse_until: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_MUSE_UNTIL", ""))
+    # (08/10) Muse Code CLI (muse exec headless) — dung APP Muse trong hoi dong.
+    # Can 1 lan `muse login` hoac META_API_KEY; bin = duong dan binary muse.
+    agent_council_muse_cli: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_MUSE_CLI", ""))
+    agent_council_muse_cli_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_MUSE_CLI_UNTIL", ""))
+    agent_muse_cli_bin: str = field(
+        default_factory=lambda: _get("AGENT_MUSE_CLI_BIN", "muse"))
+    agent_muse_cli_args: str = field(
+        default_factory=lambda: _get("AGENT_MUSE_CLI_ARGS",
+                                     "exec {prompt} --max-model-steps 2 --disable-approval"))
     # Ngan sach LINH HOAT theo do kho: van de de (hau het model dong thuan, it phieu
     # trang) -> dung ngan sach thuong (AGENT_TIMEOUT_SEC/AGENT_DAILY_CALLS/BUDGET o
     # tren), KHONG ton them. Van de kho (hoa phieu HOAC >= AGENT_HARD_ABSTAIN_RATIO

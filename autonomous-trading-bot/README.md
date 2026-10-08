@@ -644,6 +644,31 @@ Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Fo
 | **Shadow A/B + eval dataset** từ journal | `python agents.py --ab-report`, `--eval-dataset PATH` | — |
 | **Prompt vai trò nâng cấp** persona→process→deliverables→evidence (giữ nguyên JSON schema) | — | luôn bật |
 
+### 10.1 (08/10) Muse Code CLI — trạng thái đăng nhập (đã điều tra xong)
+
+Đăng nhập browser (`muse login`) **không dùng được với tài khoản Meta hiện tại**:
+
+| Bước | Kết quả |
+|---|---|
+| `muse login` → approve code trên browser | ✅ approve được nhận, CLI in `Logged in. Credential saved to ~/.config/muse/auth.json` |
+| CLI mint token để gọi model | ❌ `event="credential.login" provider="meta" outcome="mint_failed"` → CLI tự xoá credential (`logged out: removed the stored Meta credential`) |
+| Số lần thử | **4/4 `mint_failed`** (14:45, 14:46, 14:49, 14:52) → lỗi xác định, không phải lỗi tạm thời |
+| Log chẩn đoán | `~/.local/share/muse/local-tracing/bootstrap/cli-*.log` (có cả khi chạy headless, không cần TTY) |
+| Nguyên nhân | `dev.meta.ai/docs/muse-code/auth`: tài khoản **MMA (Business & Enterprise) không dùng được browser sign-in** — bắt buộc API key |
+
+**Cách khắc phục (cần API key):** tạo key tại `dev.meta.ai → Model API → API keys` (cần payment method; chỉ team admin tạo được), rồi chọn 1 trong 2:
+
+- `muse auth set` → dán key (lưu vào `~/.config/muse/auth.json`) — **không cần restart bot**;
+- hoặc thêm `META_API_KEY=<key>` vào `.env` rồi restart bot (CLI kế thừa env của tiến trình bot).
+
+`META_API_KEY` luôn ưu tiên hơn browser session. Kiểm tra nhanh sau khi có key:
+
+```bash
+python -c "import agents; print(agents.MuseCliProvider(model='muse-spark-1.2', bin_path=r'C:\\Users\\User\\AppData\\Local\\Programs\\muse\\muse-bin-1.4.3-R5018.1.exe', args=['exec','{prompt}','--max-model-steps','2','--disable-approval']).complete('sys','reply OK', timeout=30))"
+```
+
+**Hành vi khi chưa có credential (đã đo):** provider **fail-fast sau 1.2 s** với thông báo `muse CLI chua dang nhap: chay muse login 1 lan hoac dat META_API_KEY` → vote = NO_OPINION, hội đồng chạy bình thường (fail-open) và **không bị treo** hết timeout 90 s.
+
 ## 11. (08/10) Bảng định tuyến "loại compute" (từ sơ đồ chip + cây kiến trúc AI)
 
 Chọn theo **latency · parallelism · cost · scale** — giống chọn CPU/GPU/TPU/NPU/LPU/DPU:

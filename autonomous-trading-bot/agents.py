@@ -1529,7 +1529,7 @@ def review_payload(symbol: str, direction: str, r_multiple: float, won: bool,
 
 
 def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
-                    min_gap: float = 0.15, horizon_h: float = 48.0,
+                    min_n_allow: int = 10, min_gap: float = 0.15, horizon_h: float = 48.0,
                     status: str = "SETUP") -> dict:
     """Phase 4: co du bang chung SHADOW de cap quyen VETO that cho agent khong?
 
@@ -1583,12 +1583,20 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
     nv, av = _stat(cohorts["VETO"])
     na, aa = _stat(cohorts["ALLOW"])
     gap = round(aa - av, 4)
-    granted = bool(nv >= min_n and av <= aa - min_gap)
-    reason = ("du bang chung: VETO te hon ALLOW %.3fR (n_veto=%d)" % (gap, nv)
-              if granted else
-              f"chua du bang chung (n_veto={nv}/{min_n}, gap={gap:+.3f}R/{min_gap})")
+    # (08/10) PHAI du ca 2 nhom. Truoc day chi doi n_veto >= min_n nen chi can 1 lenh
+    # ALLOW la du de "chung minh VETO te hon" -> cap quyen veto tren mau vo nghia
+    # (thuc te 08/10: nguon COUNCIL granted=True voi n_allow=1). Doi them
+    # n_allow >= min_n_allow de so sanh 2 nhom moi co y nghia thong ke.
+    granted = bool(nv >= min_n and na >= min_n_allow and av <= aa - min_gap)
+    if granted:
+        reason = ("du bang chung: VETO te hon ALLOW %.3fR (n_veto=%d, n_allow=%d)"
+                  % (gap, nv, na))
+    else:
+        reason = (f"chua du bang chung (n_veto={nv}/{min_n}, n_allow={na}/{min_n_allow},"
+                  f" gap={gap:+.3f}R/{min_gap})")
     return {"granted": granted, "reason": reason, "veto_n": nv, "veto_avg_r": av,
-            "allow_n": na, "allow_avg_r": aa, "gap": gap, "status": str(status)}
+            "allow_n": na, "allow_avg_r": aa, "gap": gap, "status": str(status),
+            "min_n": min_n, "min_n_allow": min_n_allow}
 
 
 # ---- HOI DONG (council): 2 vong + chu toa ------------------------------------
@@ -2621,6 +2629,7 @@ def main(argv: list | None = None) -> int:
         for src in ("SETUP", "COUNCIL"):
             auth = agent_authority(args.journal, status=src,
                                    min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
+                                   min_n_allow=int(getattr(cfg, "agent_veto_min_allow", 10) or 10),
                                    min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15))
             tag = "  (dang dung de cap quyen)" if src == getattr(
                 cfg, "agent_veto_source", "SETUP") else ""
@@ -2628,14 +2637,19 @@ def main(argv: list | None = None) -> int:
             print("  granted = %s | %s" % (auth.get("granted"), auth.get("reason")))
             print("  nhom VETO : n=%s avgR=%+.4f" % (auth.get("veto_n"), auth.get("veto_avg_r") or 0))
             print("  nhom ALLOW: n=%s avgR=%+.4f" % (auth.get("allow_n"), auth.get("allow_avg_r") or 0))
-            print("  gap (ALLOW-VETO) = %+.4f  (can >= %s va n_veto >= %s)"
+            print("  gap (ALLOW-VETO) = %+.4f  (can >= %s, n_veto >= %s, n_allow >= %s)"
                   % (auth.get("gap") or 0, getattr(cfg, "agent_veto_min_gap", 0.15),
-                 getattr(cfg, "agent_veto_min_n", 10)))
+                     getattr(cfg, "agent_veto_min_n", 10),
+                     getattr(cfg, "agent_veto_min_allow", 10)))
         print("  AGENTS_VETO_ENABLED trong .env = %s"
               % getattr(cfg, "agents_veto_enabled", False))
         print("  AGENT_VETO_SOURCE = %s (doi sang COUNCIL neu muon hoi dong lam nguon "
               "bang chung)" % getattr(cfg, "agent_veto_source", "SETUP"))
-        _any = any(agent_authority(args.journal, status=s).get("granted")
+        _any = any(agent_authority(args.journal, status=s,
+                                   min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
+                                   min_n_allow=int(getattr(cfg, "agent_veto_min_allow", 10) or 10),
+                                   min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15)
+                                   ).get("granted")
                    for s in ("SETUP", "COUNCIL"))
         if not _any:
             print("  -> CHUA cap quyen: bot KHONG bi chan lenh nao boi agent.")

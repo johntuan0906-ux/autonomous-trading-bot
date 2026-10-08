@@ -1211,6 +1211,23 @@ class TestPhase4Authority(unittest.TestCase):
                                 "ts": t0 + 72 * 3600}) + "\n")   # 72h > horizon 48h
         self.assertEqual(A.agent_authority(jp, min_n=1, min_gap=0.1)["veto_n"], 0)
 
+    def test_khong_cap_quyen_khi_thieu_mau_ALLOW(self):
+        """(08/10) n_allow=1 (du gap, du n_veto) VAN khong duoc cap quyen.
+
+        Truoc day chi doi n_veto >= min_n nen 1 lenh ALLOW la du de "chung minh" ->
+        cap quyen veto tren mau vo nghia. Kiem tra ca tham so moi co tac dung.
+        """
+        jp = self._journal(tempfile.mkdtemp(), n_veto=33, n_allow=1,
+                           r_veto=0.075, r_allow=0.25)
+        auth = A.agent_authority(jp, min_n=10, min_gap=0.15)
+        self.assertFalse(auth["granted"], auth)
+        self.assertEqual(auth["allow_n"], 1)
+        self.assertEqual(auth["min_n_allow"], 10)
+        self.assertIn("n_allow=1/10", auth["reason"])
+        # ha nguong n_allow xuong 1 -> duoc cap quyen (chung minh tham so co tac dung)
+        lax = A.agent_authority(jp, min_n=10, min_n_allow=1, min_gap=0.15)
+        self.assertTrue(lax["granted"], lax)
+
     def test_journal_khong_ton_tai_khong_crash(self):
         auth = A.agent_authority(os.path.join(tempfile.mkdtemp(), "khong-co.jsonl"))
 

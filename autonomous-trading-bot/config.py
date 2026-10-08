@@ -272,6 +272,11 @@ class Settings:
     agent_veto_min_conf: float = field(
         default_factory=lambda: _get_float("AGENT_VETO_MIN_CONF", 0.7))
     agent_veto_min_n: int = field(default_factory=lambda: _get_int("AGENT_VETO_MIN_N", 10))
+    # (08/10) PHAI du ca 2 nhom: chi doi n_veto >= min_n thi CHI CAN 1 lenh ALLOW la
+    # du de "chung minh" -> cap quyen veto tren mau vo nghia (thuc te 08/10:
+    # COUNCIL granted=True voi n_allow=1). Doi them n_allow >= AGENT_VETO_MIN_ALLOW.
+    agent_veto_min_allow: int = field(
+        default_factory=lambda: _get_int("AGENT_VETO_MIN_ALLOW", 10))
     agent_veto_min_gap: float = field(
         default_factory=lambda: _get_float("AGENT_VETO_MIN_GAP", 0.15))
     # Tu dong ap dung de xuat block/unblock (sau gate tat dinh). MAC DINH TAT.

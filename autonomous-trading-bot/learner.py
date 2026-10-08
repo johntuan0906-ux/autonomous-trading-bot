@@ -1,4 +1,8 @@
-"""Online adaptive learner: tu hoc tu ket qua that (deep-learning dang nhe).
+"""Online adaptive learner: hoc online tu ket qua that (logistic TUYEN TINH).
+
+KHONG phai deep learning: khong co mang no-ron, khong backprop. Chi la 1 mo hinh
+logistic tren 20 feature thu cong (learner.FEATURES), cap nhat trong so theo tung
+ket qua (thang -> tang w, thua -> giam w) va luu JSON (logs/learner.json).
 
 Bo kien thuc Futures v2 (theo tai lieu user):
 - NEWS -> MACRO -> BTC REGIME -> ALT REGIME -> STRUCTURE -> CANDLE -> VOLUME

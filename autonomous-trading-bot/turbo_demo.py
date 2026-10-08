@@ -433,6 +433,7 @@ def agent_authority_cached(cfg, ttl_sec: float = 3600.0) -> dict:
         from agents import agent_authority as _auth
         res = _auth(str(getattr(cfg, "agent_journal_path", "logs/journal.jsonl")),
                     min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
+                    min_n_allow=int(getattr(cfg, "agent_veto_min_allow", 10) or 10),
                     min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15),
                     status=str(getattr(cfg, "agent_veto_source", "SETUP") or "SETUP"))
     except Exception as e:  # noqa: BLE001

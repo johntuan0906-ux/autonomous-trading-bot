@@ -31,6 +31,13 @@ Muse Code reads this file as project rules when it runs in this directory.
 - Không tự bật `BINANCE_TESTNET=false`, không tắt/nới kill-switch, không sửa `risk.py` để tăng rủi ro.
 - Không in API key/secret ra log, chat hay commit.
 
+## Kiểm chứng & giới hạn (đọc trước khi kết luận)
+
+- Hội đồng AI (LLM) **chỉ cố vấn**: `BLOCKED_VETO = 0` trong toàn bộ log, quyết định ghi `[shadow]`. Kiểm tra quyền veto: `python agents.py --authority` — cần đủ **cả hai nhóm** (`n_veto >= AGENT_VETO_MIN_N` VÀ `n_allow >= AGENT_VETO_MIN_ALLOW`).
+- Số liệu hiện có là **demo** (`BINANCE_TESTNET=true`); backtest dài hạn chỉ PF ~1.15 ⇒ **edge chưa ổn định**. Đừng kết luận "có lãi" từ PF của testnet.
+- `learner.py` là **logistic tuyến tính** trên 20 feature — KHÔNG phải deep learning.
+- Lệnh tự kiểm chứng + toán sizing/vốn tối thiểu: xem `README.md` mục 14.
+
 ## Project Layout
 
 - `tests/`: Tests.

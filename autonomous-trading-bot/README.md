@@ -821,4 +821,35 @@ VERDICT: CHUA HOAN THANH
 
 ⇒ **Chưa sang LIVE**: 7 ngày gần nhất tốt (PF(R) 1.380) nhưng cửa sổ 14 ngày chỉ 1.171 và PF($) ~1.0–1.17 (phí ăn gần hết edge). Điều kiện "hoàn thành": 14/30 ngày ≥ 1.2 (sau khi các lệnh yếu 25/09–01/10 rơi khỏi cửa sổ), PF($) ≥ 1.1, n ≥ 300. Quy trình sang LIVE: `python live_ready.py` → khi `HOAN THANH` thì đặt `BINANCE_TESTNET=false` + `LIVE_CONFIRM=true` (live_guard.py kiểm tra lại lần cuối trước khi vào lệnh thật).
 
+## 14. (08/10) Kiểm chứng & giới hạn — đọc trước khi tin bất kỳ con số nào
+
+Ghi lại **những gì đã kiểm chứng bằng lệnh thật** (để lần sau người/AI không phải suy đoán lại) và **giới hạn** của hệ thống.
+
+### 14.1 Tự kiểm chứng trong 6 lệnh
+
+| Muốn biết | Lệnh | Kỳ vọng |
+|---|---|---|
+| Code có hỏng? | `python -m unittest discover -s tests` | `Ran 555 tests ... OK` |
+| Edge hiện tại? | `python live_ready.py` | bảng PF(R)/PF($) theo cửa sổ 7/14/30 ngày |
+| Số lệnh + PF thật? | `python monitor_report.py --days 7` | đọc trực tiếp `logs/journal.jsonl` |
+| Bot có lệnh thật trên sàn? | `python positions.py` | khớp với sàn (đối chiếu được) |
+| Hội đồng AI có quyền chặn lệnh? | `python agents.py --authority` | bảng bằng chứng VETO vs ALLOW |
+| Bot "học" gì? | `python status.py` | ví, vị thế, `LEARNER w={...}` |
+
+### 14.2 Điều đã kiểm chứng (không phải suy đoán)
+
+- **Hội đồng AI (LLM) KHÔNG chặn lệnh nào**: đếm trong toàn bộ `logs/turbo_err.log` → `BLOCKED_VETO = 0`; quyết định của hội đồng chỉ ghi `[shadow]`. Cổng chặn lệnh thật đều **tất định**: `BLOCKED_STRAT=1651`, `BLOCKED_LEARN=782`, `BLOCKED_URGENT=16`.
+- **Đã vá lỗ hổng cấp quyền veto (08/10)**: `agent_authority()` trước đây chỉ đòi `n_veto >= 10` ⇒ chỉ cần **1 lệnh ALLOW** là đủ để "chứng minh VETO tệ hơn", nên `[COUNCIL]` từng báo `granted=True` với `n_allow=1` (vô nghĩa thống kê). Nay đòi **cả hai nhóm** (`n_allow >= AGENT_VETO_MIN_ALLOW`, mặc định 10). Sau khi sửa: `[COUNCIL] granted=False (n_veto=33/10, n_allow=1/10)` và kết luận `CHUA cap quyen: bot KHONG bi chan lenh nao boi agent` — khớp thực tế `BLOCKED_VETO=0`. Test: `TestPhase4Authority::test_khong_cap_quyen_khi_thieu_mau_ALLOW`.
+- **`learner.py` KHÔNG phải deep learning**: chỉ là logistic tuyến tính trên 20 feature, cập nhật trọng số theo kết quả, lưu `logs/learner.json` (docstring cũ ghi "deep-learning dạng nhẹ" — đã sửa).
+- **Notional tối thiểu thật của sàn** (tra qua ccxt, USDT-M): BTC **50$**, LINK **20$**, SOL/XRP/DOGE/ADA/AVAX **5$**.
+- **Toán sizing thật** (đo từ 100 lệnh gần nhất: SL trung vị **0.84%**, TP 2.11%, R:R 2.5) với `RISK_PER_TRADE_PCT=1%`: notional ≈ **1.19× vốn/lệnh**, margin 8x ≈ **14.8% vốn/vị thế**, 4 vị thế ≈ **59% vốn làm margin** ⇒ cần đệm margin, không dùng 100% vốn.
+
+### 14.3 Giới hạn (nói thẳng)
+
+- Số liệu hiện có là **tài khoản demo** (`BINANCE_TESTNET=true`) → khớp lệnh lý tưởng; tiền thật sẽ xấu hơn (slippage, phí, thanh khoản).
+- Backtest dài hạn (sweep 01/10) chỉ **PF 1.148**, 14 ngày **0.954** ⇒ edge **chưa ổn định**; PF ~1.5 hiện tại là của demo + cửa sổ ngắn.
+- Bot tự `flatten + dung` khi monitor lỗi API (đã xảy ra 2 lần tối 08/10) — an toàn, nhưng trên LIVE sẽ tốn phí/slippage thật.
+- **Không ai đảm bảo lợi nhuận.** Chỉ vào LIVE khi `python live_ready.py` = `HOAN THANH`, và 20–30 lệnh đầu nên hạ `RISK_PER_TRADE_PCT` xuống 0.25–0.5%.
+
+
 

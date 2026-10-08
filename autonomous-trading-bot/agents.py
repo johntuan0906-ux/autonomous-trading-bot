@@ -1743,6 +1743,17 @@ def _is_local_model(m: str) -> bool:
     return str(m).startswith(LOCAL_PREFIX)
 
 
+def _timeout_for_model(cfg, model: str) -> float:
+    """(08/10) Model LOCAL chay CPU rat cham (3B ~ 10-30s/cau) -> timeout rieng.
+
+    API (Cline/Qwen/Muse) tra trong vai giay nen giu AGENT_TIMEOUT_SEC (6s); local
+    can AGENT_LOCAL_TIMEOUT_SEC (mac dinh 180s) neu khong moi vote deu timeout -> NO_OPINION.
+    """
+    if _is_local_model(model):
+        return _f(getattr(cfg, "agent_local_timeout_sec", 180.0), 180.0)
+    return _f(getattr(cfg, "agent_timeout_sec", 6.0), 6.0)
+
+
 def _is_qwen_model(m: str) -> bool:
     return str(m).startswith(QWEN_PREFIX)
 
@@ -2198,7 +2209,10 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
 
     def _run_round(ask: list, round_cfg, budget, round_payload=None) -> dict:
         def _one(name: str) -> Decision:
-            member = AgentLayer(round_cfg, provider=make_provider(name), budget=budget, log=log)
+            # (08/10) Timeout theo loai model: local (CPU) cham -> AGENT_LOCAL_TIMEOUT_SEC.
+            m_cfg = _CfgOverride(round_cfg,
+                                 agent_timeout_sec=_timeout_for_model(round_cfg, name))
+            member = AgentLayer(m_cfg, provider=make_provider(name), budget=budget, log=log)
             dec = member.vote(role, round_payload or payload)
             if dec.action in ("ALLOW", "VETO"):
                 return dec

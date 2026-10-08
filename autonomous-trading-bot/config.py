@@ -332,6 +332,9 @@ class Settings:
         default_factory=lambda: _get("AGENT_LOCAL_BASE_URL", ""))
     agent_local_api_key: str = field(
         default_factory=lambda: _get("AGENT_LOCAL_API_KEY", "local"))
+    # (08/10) Timeout rieng cho model LOCAL (CPU cham): 3B ~ 10-30s/cau.
+    agent_local_timeout_sec: float = field(
+        default_factory=lambda: _get_float("AGENT_LOCAL_TIMEOUT_SEC", 180.0))
 
 
     # Sentiment

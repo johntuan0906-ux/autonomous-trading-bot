@@ -1420,11 +1420,12 @@ class TestCouncilProviderFallback(unittest.TestCase):
     def _cfg(self, **kw):
         from config import Settings
         c = Settings()
-        # (08/10) Pin muse/muse_cli/qwen = "" de cac test nay chi kiem tra Copilot vs Cline
-        # (truoc day .env chua co muse nen khong can; nay muse/qwen thuc su co trong council).
+        # (08/10) Pin muse/muse_cli/qwen/local = "" de cac test nay chi kiem tra Copilot vs
+        # Cline (truoc day .env chua co cac provider nay nen khong can).
         object.__setattr__(c, "agent_council_muse", "")
         object.__setattr__(c, "agent_council_muse_cli", "")
         object.__setattr__(c, "agent_council_qwen", "")
+        object.__setattr__(c, "agent_council_local", "")
         for k, v in kw.items():
             object.__setattr__(c, k, v)
         return c
@@ -1947,6 +1948,17 @@ class TestLocalProvider(unittest.TestCase):
         self.assertEqual(made["model"], "llama3.2:3b", "phai strip tien to local/")
         self.assertEqual(made["base_url"], "http://127.0.0.1:11434/v1")
         self.assertEqual(set(res["votes"]), {"local/llama3.2:3b"})
+
+    def test_timeout_rieng_cho_model_local(self):
+        """(08/10) Local chay CPU ~10-30s/cau -> phai dung AGENT_LOCAL_TIMEOUT_SEC."""
+        cfg = SimpleNamespace(agent_timeout_sec=6, agent_local_timeout_sec=180)
+        self.assertEqual(A._timeout_for_model(cfg, "local/llama3.2:3b"), 180)
+        self.assertEqual(A._timeout_for_model(cfg, "cline-pass/kimi-k3"), 6)
+
+    def test_timeout_mac_dinh_khi_thieu_cau_hinh(self):
+        cfg = SimpleNamespace()
+        self.assertEqual(A._timeout_for_model(cfg, "local/x"), 180.0)
+        self.assertEqual(A._timeout_for_model(cfg, "model-a"), 6.0)
 
 
 class TestRunnerAnCuaSo(unittest.TestCase):

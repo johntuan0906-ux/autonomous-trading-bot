@@ -734,7 +734,7 @@ Theo `dev.meta.ai/docs/muse-code/permissions`:
 |---|---|---|
 | **#1 Network**: mặc định `--sandbox-network proxy-only` → *"the first connection to a new host, port, or protocol stops for review"*, nên lần đầu tới `github.com:22` bị **dừng xin phê duyệt** | Muốn mạng đầy đủ mà **vẫn giữ sandbox + approval** | **`tools\muse.cmd`** — chạy Muse với `--sandbox-network enabled` (thay cho `muse` trần) |
 | **#2 `.git` read-only**: trong workspace, `.git`/`.muse`/`.agents` **read-only** với agent → `git commit`/`push`/`fetch` **thất bại** | Không có flag nào mở riêng `.git` mà giữ phần còn lại ⇒ phải chọn 1 trong 3 | (a) **`tools\git-sync.cmd "msg"`** — an toàn nhất: Muse sửa file, *bạn* commit/push ngoài sandbox; (b) **`tools\muse-nosandbox.cmd`** — bỏ sandbox (`.git` ghi được + full network) khi bạn tin workspace; (c) để Muse `git clone` ra thư mục tạm rồi làm việc ở đó (ngoài workspace nên `.git` không bị read-only) |
-| **#3 Sandbox Windows chưa setup**: `muse sandbox windows check` → `status=setup_required` (`sandbox_users_ready=false`, `wfp_ready=false`) | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | Đã thử: chạy `muse sandbox windows setup` **bằng quyền admin (UAC đã chấp nhận)** → tạo được user `muse-sbx-r1`/`muse-sbx-u1` và `C:\ProgramData\muse`, nhưng `check` (chạy thường) vẫn báo `setup_credentials_unavailable: ... Access is denied. (os error 5)` ⇒ **vẫn `setup_required`**. Tạm dùng **`tools\muse-nosandbox.cmd`** cho tới khi xử lý xong (thử chạy `muse` từ terminal admin, hoặc kiểm tra AV/Controlled Folder Access chặn `C:\ProgramData\muse`) |
+| **#3 Sandbox Windows**: `muse sandbox windows check` → `status=setup_required` | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | **Đã xử lý phần lớn (08/10)**: dọn user/folder cũ → chạy `muse sandbox windows setup` bằng admin ⇒ **`status=ready`** (`sandbox_users_ready=true`, `wfp_ready=true`, user `muse-sbx-r1`/`muse-sbx-u1` + WFP đã tạo); cấp quyền đọc `C:\ProgramData\muse` cho `CDS-TUANNA\User` ⇒ **đọc được** `setup_marker.json`/`secrets` (trước đó `Access is denied`). Còn 1 lỗi cuối khi chạy **không-elevated**: `setup DACL has an invalid runtime-user read entry` — vì UAC trên máy này elevate sang tài khoản **`CDS-TUANNA\Administrator`** (khác user đang đăng nhập `cds-tuanna\user`), nên setup ghi DACL cho runtime-user mà CLI thường không xác thực được. Chọn 1 trong 3: (a) chạy Muse từ **terminal admin** (khi đó `check` báo `ready`); (b) dùng **`tools\muse-nosandbox.cmd`**; (c) fix triệt để: cho `User` vào nhóm Administrators để UAC elevate **cùng tài khoản**, rồi chạy lại `muse sandbox windows setup` |
 | Vote trong hội đồng (bot) | `AGENT_MUSE_CLI_ARGS=exec {prompt} --max-model-steps 2 --disable-approval` → **cố ý không cần network** | Giữ nguyên: vote chỉ cần model API, không cần git |
 
 ### 12.3 Ba script tiện ích (`tools/`)
@@ -748,6 +748,30 @@ Theo `dev.meta.ai/docs/muse-code/permissions`:
 `AGENTS.md` (do `muse init` sinh, đã bổ sung) nói rõ cho agent: lệnh test chuẩn, remote SSH, `.git` read-only trong sandbox ⇒ phải nhờ người dùng chạy `tools\git-sync.cmd`, và các ranh giới an toàn (không nới kill-switch, không sửa `risk.py`, không in API key).
 
 **Gotcha đã kiểm chứng (08/10)**: cờ của Muse phải đặt **SAU** subcommand. `muse exec "..." --sandbox-network enabled` chạy đúng, còn `muse --sandbox-network enabled exec "..."` bị hiểu thành TUI mode và báo `invalid TUI options: error: unexpected argument '--max-model-steps' found`. Vì vậy `tools\muse.cmd` / `tools\muse-nosandbox.cmd` tự thêm cờ vào **cuối** lệnh (bạn chỉ cần viết phần sau `muse`, ví dụ `tools\muse.cmd exec "kiem tra git remote" --max-model-steps 4`).
+
+### 12.4 `muse.ai` (trợ lý Muse) ≠ `Muse Code CLI` — vì sao không "lấy phiên từ Chrome" được
+
+Hai sản phẩm khác nhau của Meta, khác dịch vụ và khác quyền:
+
+| | **muse.ai** (cái bạn dùng trên Chrome) | **Muse Code CLI** (`dev.meta.ai`, đã cài trong máy) |
+|---|---|---|
+| Bản chất | Trợ lý cá nhân của Meta (email, đặt lịch, mua sắm…) + **Muse Secure VM** (máy Linux trên cloud, có browser) | Coding agent headless (`muse exec`) dùng **Meta Model API** |
+| Đăng nhập | Web/app/WhatsApp bằng tài khoản Meta | `muse login` (browser) **hoặc** `META_API_KEY` |
+| Panel quyền trong ảnh bạn gửi (SSH/SMTP/DB/FTP/DNS/TCP/UDP) | Là **quyền mạng của Muse Secure VM** trên cloud | Không liên quan — CLI dùng `--sandbox-network` |
+| Credential cấp cho CLI | ❌ không cấp được (Connector Platform là để **bạn** đưa credential **cho** Meta, không phải ngược lại) | ✅ cần API key từ `dev.meta.ai` (có billing/credit) |
+
+**Đã kiểm chứng: "lấy phiên từ Chrome" không khả thi và cũng không giải quyết được gì**
+
+1. Chrome đang mở ⇒ file cookie bị **khoá độc quyền**: byte-copy trả `[Errno 13] Permission denied`, `sqlite3 immutable` cũng `unable to open database file` (script `logs/chrome_probe.py`).
+2. Kể cả đọc được, cookie phiên web **không phải** credential của Model API — CLI cần API key `LLM|...` (hoặc OAuth device-flow mà Model API chấp nhận).
+3. Chặn thật nằm ở **phía server**: `credential.login outcome="mint_failed"` do tài khoản chưa có credit/entitlement. Credential copy từ browser không vượt qua được quyết định của server.
+
+**Cách dùng GitHub "qua muse.ai" cho đúng**: dùng **GitHub làm cầu**, không phải phiên Chrome —
+
+- Repo đã nằm trên GitHub (12.1) và máy này push/pull được bằng SSH.
+- Muốn **Muse trên muse.ai** làm việc với repo: trong app Muse → **Settings → Connectors** xem có GitHub (danh sách connector do Meta duyệt, đổi hàng tuần), hoặc để Muse dùng **Secure VM** (đã bật SSH ra ngoài theo ảnh) tự `git clone git@github.com:johntuan0906-ux/autonomous-trading-bot.git` bằng deploy key/PAT.
+- Muốn kéo code từ cloud về máy này: chỉ cần `git clone` / `git pull` từ GitHub.
+- Muốn **Muse Code CLI** chạy được: nạp credit/billing ở `dev.meta.ai` → tạo API key → `muse auth set` (xem 10.1).
 
 
 Lưu ý: Muse Code **không có "tích hợp GitHub" riêng** — nó dùng đúng `git` + credential trên máy (SSH key hoặc token), nên mục 12.1 là điều kiện cần cho cả người lẫn agent. Muse chỉ chạy được sau khi có Meta API key (xem 10.1).

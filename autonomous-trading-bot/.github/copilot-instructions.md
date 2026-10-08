@@ -1,9 +1,12 @@
 # GitHub Copilot Custom Instructions — Autonomous Trading Bot
+> 📌 **Đọc `CONTEXT.md` trước** — ngữ cảnh hiện tại của dự án (trạng thái, số liệu, cổng LIVE, bài học đã kiểm chứng). Phần "Core Project Architecture" bên dưới có vài chỗ **cũ** (đã ghi chú lại); tin theo `CONTEXT.md` + code thực tế.
+
+
 
 ## Core Project Architecture & Stack
 - **Project Domain**: Autonomous 100% USDT-M Binance Futures Trading Bot & AI Memory System (`memory-graph` / `openbrain`).
-- **Target Pairs**: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT.
-- **Strategy & Execution**: Single Best Setup via Composite Alpha Score (Technical Momentum 65% + Macro Sentiment 35%), R:R = 1:2 (SL 1.5×ATR, TP 3×ATR), Risk per trade = 1%, Kill-switch protection.
+- **Target Pairs (thực tế 08/10)**: `SYMBOLS` = BTC/SOL/XRP + `EXTRA_SYMBOLS` = ADA/DOGE/LINK/AVAX → **7 cặp** (ETH đã bỏ 01/10).
+- **Strategy & Execution (thực tế 08/10)**: điểm tín hiệu từ 20 feature (kỹ thuật + phái sinh OI/funding/liquidation + tin tức RSS + trọng số learner học online), SL `2.0×ATR` / TP `5.0×ATR`, partial 0.3 @1R, BE 1.0R, trail 1.0; risk **1%/lệnh** (trần tổng 2%), `MAX_POSITIONS=4`, `LEVERAGE=8`, kill-switch tự ngắt (lỗ ngày ≥2%). Test: `python -m unittest discover -s tests` (555 test).
 - **Python Runtime**: Windows PowerShell environment. Use explicit Python path when running scripts: `C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe`.
 
 ## Code Analysis & Knowledge Graph First

@@ -2,6 +2,13 @@
 # Mục tiêu: GIẢM token, TĂNG độ chính xác & tốc độ khi giải bài toán code phức tạp.
 # Áp dụng mọi mode (plan/act/yolo). Vi phạm rule = sửa trước khi tiếp tục.
 
+## 0. BỘ NHỚ DỰ ÁN — đọc trước khi khám phá
+- **`CONTEXT.md`** = ngữ cảnh HIỆN TẠI của dự án (trạng thái bot, số liệu mới nhất, cổng LIVE, bài học đã kiểm chứng, việc đang mở). **Đọc file này ĐẦU TIÊN** trong mỗi phiên — thay vì tự suy đoán lại.
+- Sau đó: `AGENTS.md` (luật agent) → `README.md` mục 13–14 (kiểm chứng & giới hạn).
+- **Cập nhật `CONTEXT.md` trong cùng commit** khi có thay đổi đáng nhớ (nhất là §2 trạng thái, §5 bài học, §8 việc mở).
+- Số liệu hiệu suất thay đổi mỗi ngày → chạy lại `python live_ready.py` / `python monitor_report.py --days 7` trước khi kết luận, đừng chép số cũ.
+
+
 ## 1. CONTEXT — đọc đúng, đọc ít
 - KHÔNG đọc lại file đã biết nội dung trong cùng session (dùng state đã ghi).
 - Đọc theo RANGE (`start_line/end_line`); file >300 dòng thì đọc hàm cần thôi.

@@ -1,9 +1,13 @@
 ﻿# Autonomous Binance Futures Trading Bot (USDT-M)
 
-Bot tự trị 100%: quét 4 cặp `BTC/ETH/SOL/XRP-USDT`, chấm **Composite Alpha Score**
-(Technical Momentum 80% + Macro Sentiment 20%), mở tới **4 vị thế**
-(MAX_POSITIONS=4, hedge 2 chiều), SL `2.0×ATR` / TP `5.0×ATR`
-(sweep tốt nhất: PF 1.314), kill-switch tự ngắt (lỗ ngày ≥2%).
+> 📌 **Đọc [`CONTEXT.md`](CONTEXT.md) TRƯỚC** — đó là file ngữ cảnh hiện tại (trạng thái bot, số liệu, cổng LIVE, bài học đã kiểm chứng) để phiên làm việc mới (người hoặc AI) nhớ lại ngay. README này là tài liệu đầy đủ theo mục 1→14.
+
+Bot tự trị: vòng lặp `turbo_demo.py` quét **7 cặp** (`SYMBOLS` = BTC/SOL/XRP + `EXTRA_SYMBOLS` = ADA/DOGE/LINK/AVAX; ETH đã bỏ 01/10),
+chấm điểm tín hiệu (kỹ thuật + phái sinh + tin tức + learner 20 feature), mở tối đa
+**4 vị thế** (`MAX_POSITIONS=4`), SL `2.0×ATR` / TP `5.0×ATR` + partial 0.3 @1R, BE 1.0R, trail 1.0,
+risk **1%/lệnh** (trần tổng 2%), kill-switch tự ngắt (lỗ ngày ≥2%).
+Số liệu hiệu suất hiện tại và giới hạn: xem `CONTEXT.md` §3/§5.
+
 
 ## 1. Cài đặt
 

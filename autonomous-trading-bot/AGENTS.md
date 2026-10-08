@@ -1,6 +1,9 @@
 # AGENTS.md
 
+> 📌 **Đọc `CONTEXT.md` trước khi làm bất cứ gì** — ngữ cảnh hiện tại của dự án: trạng thái bot, số liệu hiệu suất, cổng LIVE, bài học đã kiểm chứng. Cập nhật `CONTEXT.md` trong cùng commit khi có thay đổi đáng nhớ.
+
 Muse Code reads this file as project rules when it runs in this directory.
+
 
 ## Project
 

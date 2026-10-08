@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 00:35:02 · commit `?`
+- **Cập nhật**: 09/10/2026 01:05:03 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `107972` · round `13` · nhịp tim cách đây 9.0s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `107972` · round `58` · nhịp tim cách đây 25.2s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -13,7 +13,7 @@
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 226 | 69.03 | 2.169 | 2.077 | 0.168 | 324.89 |
+| 7 ngày | 225 | 69.33 | 2.194 | 2.077 | 0.1704 | 324.89 |
 | 14 ngày | 287 | 67.6 | 1.645 | 1.51 | 0.1175 | 255.7 |
 | 30 ngày | 310 | 68.06 | 1.682 | 1.561 | 0.1266 | 310.8 |
 
@@ -33,12 +33,12 @@
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ADA/USDT:USDT | SHORT | 1805.0 | 0.2243 | 0.229838 | 0.210455 | False | False | 0.018 |
-| AVAX/USDT:USDT | SHORT | 42.0 | 9.801 | 10.033778 | 9.219055 | False | False | 0.013 |
-| BTC/USDT:USDT | SHORT | 0.0146 | 80623.6 | 81307.193336 | 78914.61666 | False | False | 0.054 |
-| DOGE/USDT:USDT | SHORT | 7042.0 | 0.08125 | 0.08267 | 0.0777 | False | False | 0.0 |
+| AVAX/USDT:USDT | SHORT | 42.0 | 9.801 | 10.033778 | 9.219055 | False | False | 0.064 |
+| BTC/USDT:USDT | SHORT | 0.0146 | 80623.6 | 81307.193336 | 78914.61666 | False | False | 0.107 |
+| DOGE/USDT:USDT | SHORT | 7042.0 | 0.08125 | 0.08267 | 0.0777 | False | False | 0.014 |
 | LINK/USDT:USDT | SHORT | 43.04 | 12.115 | 12.34729 | 11.534275 | False | False | 0.0 |
-| SOL/USDT:USDT | SHORT | 4.36 | 106.14 | 108.43174 | 100.41065 | False | False | 0.096 |
-| XRP/USDT:USDT | SHORT | 445.6 | 1.3271 | 1.34954 | 1.271 | False | False | 0.0 |
+| SOL/USDT:USDT | SHORT | 4.36 | 106.14 | 108.43174 | 100.41065 | False | False | 0.1 |
+| XRP/USDT:USDT | SHORT | 445.6 | 1.3271 | 1.34954 | 1.271 | False | False | 0.245 |
 
 ---
 

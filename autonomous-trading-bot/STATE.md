@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 02:35:04 · commit `?`
+- **Cập nhật**: 09/10/2026 03:05:04 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `81208` · round `96` · nhịp tim cách đây 18.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 4594.33 USDT
+- **Bot**: pid `81208` · round `137` · nhịp tim cách đây 22.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 4590.14 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 322 lệnh đóng, WR 66.46%, E(R) 0.1021, PnL 247.19$)
@@ -28,12 +28,13 @@
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
 - Learner: 146 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
-## Vị thế đang quản lý (2)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ADA/USDT:USDT | SHORT | 1917.0 | 0.2286 | 0.233814 | 0.215565 | False | False | 0.038 |
 | LINK/USDT:USDT | SHORT | 46.11 | 12.378 | 12.594856 | 11.83586 | False | False | 0.042 |
+| SOL/USDT:USDT | SHORT | 6.22 | 109.11 | 110.71701 | 105.092475 | False | False | 0.012 |
 
 ---
 

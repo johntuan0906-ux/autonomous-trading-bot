@@ -635,7 +635,7 @@ Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Fo
 | Tính năng | Cấu hình | Mặc định |
 |---|---|---|
 | **Provider thứ 4: Qwen Code** (headless `qwen -p`, không cần key) | `AGENT_COUNCIL_QWEN`, `AGENT_QWEN_BIN`, `AGENT_QWEN_ARGS`, `QWEN_SKIP_MODELS` | tắt |
-| **Provider thứ 5: Muse Code CLI** (app Muse, headless `muse exec`; cần `muse login` 1 lần hoặc `META_API_KEY`) | `AGENT_COUNCIL_MUSE_CLI`, `AGENT_MUSE_CLI_BIN`, `AGENT_MUSE_CLI_ARGS`, `MUSE_CLI_SKIP_MODELS` | tắt |
+| **Provider thứ 5: Muse Code CLI** (app Muse, headless `muse exec`; cần `muse login` 1 lần hoặc `META_API_KEY`) | `AGENT_COUNCIL_MUSE_CLI`, `AGENT_MUSE_CLI_BIN`, `AGENT_MUSE_CLI_ARGS`, `MUSE_CLI_SKIP_MODELS` | **tắt (08/10)** |
 | **Retry lỗi tạm thời** 429/5xx/timeout trước khi NO_OPINION (401/400 fail ngay) | `AGENT_RETRY_ATTEMPTS` | 2 |
 | **Pause thay vì block-đến-restart**: provider exhausted lần 1 → pause `N` giây rồi tự mở lại; lần 2 cùng session → block hẳn | `AGENT_PROVIDER_PAUSE_SEC` | 1800 |
 | **Trần chi phí theo vòng council** (chỉ hỏi model rẻ nhất trong cap) | `AGENT_ROUND_BUDGET_USD` | 0 (tắt) |
@@ -644,9 +644,17 @@ Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Fo
 | **Shadow A/B + eval dataset** từ journal | `python agents.py --ab-report`, `--eval-dataset PATH` | — |
 | **Prompt vai trò nâng cấp** persona→process→deliverables→evidence (giữ nguyên JSON schema) | — | luôn bật |
 
-### 10.1 (08/10) Muse Code CLI — trạng thái đăng nhập (đã điều tra xong)
+### 10.1 (08/10) Muse Code CLI — đã điều tra xong và **ĐÃ TẮT KHỎI HỘI ĐỒNG**
 
-Đăng nhập browser (`muse login`) **không dùng được với tài khoản Meta hiện tại**:
+**Trạng thái hiện tại: hội đồng KHÔNG còn Muse.** `AGENT_COUNCIL_MUSE_CLI=` (rỗng) và thêm `muse-spark-1.3-contributor` vào `CLINE_SKIP_MODELS` ⇒ hội đồng còn **15 model** (12 Cline + 2 Qwen + 1 Local; Copilot bị chặn tới 01/11):
+
+```
+COUNCIL: Copilot bi chan -> provider con lai lam 100% (15 model).
+```
+
+Muốn bật lại Muse: nạp credit ở `dev.meta.ai` → tạo API key → `muse auth set`, rồi điền lại model vào `AGENT_COUNCIL_MUSE_CLI` (và xoá tên model khỏi `CLINE_SKIP_MODELS` nếu muốn dùng cả model Muse qua gateway Cline). Code `MuseCliProvider` vẫn còn nguyên + có test riêng.
+
+Lý do tắt — đăng nhập browser (`muse login`) **không dùng được với tài khoản Meta hiện tại**:
 
 | Bước | Kết quả |
 |---|---|
@@ -734,8 +742,8 @@ Theo `dev.meta.ai/docs/muse-code/permissions`:
 |---|---|---|
 | **#1 Network**: mặc định `--sandbox-network proxy-only` → *"the first connection to a new host, port, or protocol stops for review"*, nên lần đầu tới `github.com:22` bị **dừng xin phê duyệt** | Muốn mạng đầy đủ mà **vẫn giữ sandbox + approval** | **`tools\muse.cmd`** — chạy Muse với `--sandbox-network enabled` (thay cho `muse` trần) |
 | **#2 `.git` read-only**: trong workspace, `.git`/`.muse`/`.agents` **read-only** với agent → `git commit`/`push`/`fetch` **thất bại** | Không có flag nào mở riêng `.git` mà giữ phần còn lại ⇒ phải chọn 1 trong 3 | (a) **`tools\git-sync.cmd "msg"`** — an toàn nhất: Muse sửa file, *bạn* commit/push ngoài sandbox; (b) **`tools\muse-nosandbox.cmd`** — bỏ sandbox (`.git` ghi được + full network) khi bạn tin workspace; (c) để Muse `git clone` ra thư mục tạm rồi làm việc ở đó (ngoài workspace nên `.git` không bị read-only) |
-| **#3 Sandbox Windows**: `muse sandbox windows check` → `status=setup_required` | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | **Đã xử lý phần lớn (08/10)**: dọn user/folder cũ → chạy `muse sandbox windows setup` bằng admin ⇒ **`status=ready`** (`sandbox_users_ready=true`, `wfp_ready=true`, user `muse-sbx-r1`/`muse-sbx-u1` + WFP đã tạo); cấp quyền đọc `C:\ProgramData\muse` cho `CDS-TUANNA\User` ⇒ **đọc được** `setup_marker.json`/`secrets` (trước đó `Access is denied`). Còn 1 lỗi cuối khi chạy **không-elevated**: `setup DACL has an invalid runtime-user read entry` — vì UAC trên máy này elevate sang tài khoản **`CDS-TUANNA\Administrator`** (khác user đang đăng nhập `cds-tuanna\user`), nên setup ghi DACL cho runtime-user mà CLI thường không xác thực được. Chọn 1 trong 3: (a) chạy Muse từ **terminal admin** (khi đó `check` báo `ready`); (b) dùng **`tools\muse-nosandbox.cmd`**; (c) fix triệt để: cho `User` vào nhóm Administrators để UAC elevate **cùng tài khoản**, rồi chạy lại `muse sandbox windows setup` |
-| Vote trong hội đồng (bot) | `AGENT_MUSE_CLI_ARGS=exec {prompt} --max-model-steps 2 --disable-approval` → **cố ý không cần network** | Giữ nguyên: vote chỉ cần model API, không cần git |
+| **#3 Sandbox Windows**: `muse sandbox windows check` → `status=setup_required` | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | **Trạng thái cuối 08/10**: (1) xoá user/folder cũ + `muse sandbox windows setup` bằng admin ⇒ `status=ready` (`sandbox_users_ready=true`, `wfp_ready=true`, user `muse-sbx-r1`/`muse-sbx-u1` + WFP đã tạo); (2) `User` **đã được thêm vào nhóm Administrators**; (3) **còn 1 bước của bạn**: **đăng xuất/đăng nhập lại** (để token của `User` có quyền Administrators) rồi chạy `muse sandbox windows setup` (UAC hiện **Yes/No**, không hỏi mật khẩu Administrator) + `muse sandbox windows check` ⇒ phải ra `status=ready`. Nếu chưa muốn logoff: dùng **`tools\muse-nosandbox.cmd`**. Lưu ý: `C:\ProgramData\muse` **chỉ** truy cập được khi process chạy elevated (ACL của setup chỉ cấp cho SYSTEM/Administrators) — đó là lý do check thường vẫn báo `Access is denied` |
+| Vote trong hội đồng (bot) | ~~`AGENT_MUSE_CLI_ARGS=exec {prompt} --max-model-steps 2 --disable-approval`~~ | **Không còn áp dụng**: Muse **đã tắt khỏi hội đồng** (xem 10.1) nên không còn vote Muse. Nếu bật lại thì args này cố ý **không cần network** (vote chỉ cần model API) |
 
 ### 12.3 Ba script tiện ích (`tools/`)
 

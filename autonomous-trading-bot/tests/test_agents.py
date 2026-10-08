@@ -1387,6 +1387,19 @@ class TestMuseProvider(unittest.TestCase):
             models = self.A._muse_council_models(_FakeCfg(agent_council_muse="muse-spark-1.3,muse-spark-1.2"))
             self.assertEqual(models, ["muse/muse-spark-1.3"])
 
+    def test_settings_co_truong_muse(self):
+        """(08/10) Regression: config.py PHAI co truong Muse, neu khong council that
+        se khong bao gio co model muse (chi test FakeCfg moi chay)."""
+        from config import Settings
+        s = Settings()
+        self.assertTrue(hasattr(s, "agent_council_muse"))
+        self.assertTrue(hasattr(s, "agent_council_muse_until"))
+        self.assertTrue(hasattr(s, "agent_council_qwen"))
+        self.assertTrue(hasattr(s, "agent_retry_attempts"))
+        self.assertTrue(hasattr(s, "agent_round_budget_usd"))
+        self.assertTrue(hasattr(s, "agent_provider_pause_sec"))
+        self.assertTrue(hasattr(s, "agent_council_fallbacks"))
+
 
 class _FakeCfg:
     def __init__(self, **kw):
@@ -1407,6 +1420,10 @@ class TestCouncilProviderFallback(unittest.TestCase):
     def _cfg(self, **kw):
         from config import Settings
         c = Settings()
+        # (08/10) Pin muse/qwen = "" de cac test nay chi kiem tra Copilot vs Cline
+        # (truoc day .env chua co muse nen khong can; nay muse thuc su co trong council).
+        object.__setattr__(c, "agent_council_muse", "")
+        object.__setattr__(c, "agent_council_qwen", "")
         for k, v in kw.items():
             object.__setattr__(c, k, v)
         return c
@@ -1467,6 +1484,242 @@ class TestCouncilProviderFallback(unittest.TestCase):
         self.assertNotIn("copilot", self.A._PROVIDER_BLOCKED,
                          "1 model abstain la false positive, khong block")
 
+
+
+class TestRetryTransient(unittest.TestCase):
+    """(08/10) Retry loi tam thoi 429/5xx/timeout truoc khi NO_OPINION."""
+
+    class _FlakyProvider:
+        name = "flaky"
+
+        def __init__(self, fail_times=1, msg="HTTP 429 Too Many Requests", model="flaky-1"):
+            self.fail_times = fail_times
+            self.msg = msg
+            self.model = model
+            self.calls = 0
+
+        def complete(self, system, user, *, timeout=5.0):
+            self.calls += 1
+            if self.calls <= self.fail_times:
+                raise RuntimeError(self.msg)
+            return {"text": '{"action":"ALLOW","confidence":0.7}',
+                    "tokens_in": 10, "tokens_out": 5}
+
+    def test_429_duoc_thu_lai_va_thanh_cong(self):
+        p = self._FlakyProvider(fail_times=1)
+        d = _layer(p, agent_retry_attempts=2).vote("critic", {"role": "critic", "alpha": 0.2})
+        self.assertEqual(d.action, "ALLOW")
+        self.assertEqual(p.calls, 2, "429 la loi tam thoi -> phai thu lai 1 lan")
+        self.assertIn("retry x1", d.note)
+
+    def test_het_lan_thu_lai_thi_no_opinion(self):
+        p = self._FlakyProvider(fail_times=9, msg="HTTP 503 Service Unavailable")
+        d = _layer(p, agent_retry_attempts=3).vote("critic", {"role": "critic", "alpha": 0.2})
+        self.assertEqual(d.action, "NO_OPINION")
+        self.assertEqual(p.calls, 3, "toi da attempts lan tong cong")
+
+    def test_401_khong_thu_lai_fail_ngay(self):
+        p = self._FlakyProvider(fail_times=9, msg="401 invalid_api_key")
+        d = _layer(p, agent_retry_attempts=3).vote("critic", {"role": "critic", "alpha": 0.2})
+        self.assertEqual(d.action, "NO_OPINION")
+        self.assertEqual(p.calls, 1, "401 la loi vinh vien, khong duoc dot them cuoc goi")
+
+    def test_phan_loai_loi_tam_thoi(self):
+        self.assertTrue(A._is_transient_error(RuntimeError("HTTP 429 Too Many Requests")))
+        self.assertTrue(A._is_transient_error(RuntimeError("timeout xay ra")))
+        self.assertTrue(A._is_transient_error(RuntimeError("connection reset")))
+        self.assertFalse(A._is_transient_error(RuntimeError("401 invalid_api_key")))
+        self.assertFalse(A._is_transient_error(RuntimeError("400 bad request")))
+
+
+class TestProviderPause(unittest.TestCase):
+    """(08/10) Provider exhausted lan 1 -> PAUSE co thoi han; lan 2 -> block han."""
+
+    def setUp(self):
+        A._PROVIDER_BLOCKED.clear()
+        A._PROVIDER_PAUSED_BEFORE.clear()
+
+    def tearDown(self):
+        A._PROVIDER_BLOCKED.clear()
+        A._PROVIDER_PAUSED_BEFORE.clear()
+
+    def _decs(self):
+        return {"m1": A.Decision(role="critic", agent="m1", action="NO_OPINION",
+                                 provider="copilot_cli"),
+                "m2": A.Decision(role="critic", agent="m2", action="NO_OPINION",
+                                 provider="copilot_cli")}
+
+    def test_lan_dau_pause_thay_vi_block_han(self):
+        A._mark_provider_exhausted(self._decs(),
+                                   cfg=SimpleNamespace(agent_provider_pause_sec=3600.0))
+        self.assertNotEqual(A._PROVIDER_BLOCKED.get("copilot"), True)
+        self.assertTrue(str(A._PROVIDER_BLOCKED.get("copilot")).startswith("pause:"))
+        self.assertNotEqual(A._provider_blocked("copilot"), "", "dang pause -> van bi chan")
+
+    def test_pause_het_han_tu_mo_lai(self):
+        A._PROVIDER_BLOCKED["copilot"] = "pause:%f" % (time.time() - 5)
+        self.assertEqual(A._provider_blocked("copilot"), "")
+        self.assertNotIn("copilot", A._PROVIDER_BLOCKED)
+
+    def test_lan_hai_trong_session_block_han(self):
+        A._mark_provider_exhausted(self._decs(),
+                                   cfg=SimpleNamespace(agent_provider_pause_sec=60.0))
+        A._PROVIDER_BLOCKED["copilot"] = "pause:%f" % (time.time() - 5)  # da het han
+        A._provider_blocked("copilot")
+        A._mark_provider_exhausted(self._decs(),
+                                   cfg=SimpleNamespace(agent_provider_pause_sec=60.0))
+        self.assertIs(A._PROVIDER_BLOCKED["copilot"], True)
+
+    def test_recovering_xoa_dau_pause(self):
+        A._PROVIDER_PAUSED_BEFORE["copilot"] = True
+        decs = {"m1": A.Decision(role="critic", agent="m1", action="ALLOW",
+                                 provider="copilot_cli")}
+        A._provider_recovering(decs)
+        self.assertNotIn("copilot", A._PROVIDER_PAUSED_BEFORE)
+
+
+class TestDedupAlias(unittest.TestCase):
+    """(08/10) Dedup alias model - 2 ten cung 1 model that chi tinh 1 phieu."""
+
+    def setUp(self):
+        self._old = os.environ.get("AGENT_COUNCIL_ALIASES")
+
+    def tearDown(self):
+        if self._old is None:
+            os.environ.pop("AGENT_COUNCIL_ALIASES", None)
+        else:
+            os.environ["AGENT_COUNCIL_ALIASES"] = self._old
+
+    def test_dedup_khong_phan_biet_hoa_thuong(self):
+        self.assertEqual(A._dedup_models(["claude-sonnet-5.5", "Claude-Sonnet-5.5",
+                                          "claude-sonnet-5"]),
+                         ["claude-sonnet-5.5", "claude-sonnet-5"])
+
+    def test_dedup_alias_env(self):
+        os.environ["AGENT_COUNCIL_ALIASES"] = "muse-spark-1.3=muse/muse-spark-1.3"
+        self.assertEqual(A._dedup_models(["muse-spark-1.3", "muse/muse-spark-1.3"]),
+                         ["muse-spark-1.3"])
+
+    def test_giu_thu_tu_xuat_hien(self):
+        self.assertEqual(A._dedup_models(["b", "a", "b", "c", "a"]), ["b", "a", "c"])
+
+
+class TestRoundBudget(unittest.TestCase):
+    """(08/10) Tran chi phi theo vong council: cap USD > 0 -> chi hoi model re nhat."""
+
+    def test_cap_nho_chi_hoi_subset(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "state.json"),
+                   agent_round_budget_usd=0.0001)
+        models = ["gpt-4o-mini", "claude-3-5-sonnet"]  # mini re hon sonnet
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT"}, role="critic",
+                                    models=models,
+                                    provider_factory=lambda m: _FixedModelProvider(
+                                        m, response={"action": "ALLOW", "confidence": 0.6}))
+        self.assertTrue(res["round_budget"]["trimmed"])
+        self.assertEqual(set(res["votes"]), {"gpt-4o-mini"})
+        self.assertGreater(res["round_budget"]["cap_usd"], 0)
+
+    def test_cap_0_thi_giu_nguyen_hanh_vi(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "state.json"))
+        models = ["model-a", "model-b"]
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT"}, role="critic",
+                                    models=models,
+                                    provider_factory=lambda m: _FixedModelProvider(
+                                        m, response={"action": "ALLOW", "confidence": 0.6}))
+        self.assertFalse(res["round_budget"]["trimmed"])
+        self.assertEqual(set(res["votes"]), {"model-a", "model-b"})
+
+
+class TestFallbackChain(unittest.TestCase):
+    """(08/10) Per-role fallback: model chinh abstain/loi -> model ke tiep cung provider."""
+
+    def test_muse_spark_abstain_thi_glimmer_tra_loi(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "state.json"),
+                   agent_retry_attempts=1)
+        def make(model):
+            if model.endswith("muse-spark-1.3"):
+                return _FixedModelProvider(model,
+                                           response={"action": "NO_OPINION", "confidence": 0.0})
+            return _FixedModelProvider(model, response={"action": "ALLOW", "confidence": 0.7})
+        models = ["muse/muse-spark-1.3", "muse/muse-glimmer-30b"]
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT"}, role="critic",
+                                    models=models, provider_factory=make)
+        d = res["votes"]["muse/muse-spark-1.3"]
+        self.assertEqual(d["action"], "ALLOW", "spark abstain -> glimmer tra loi")
+        self.assertIn("fallback", d["note"])
+        self.assertEqual(res["fallback_chains"]["muse/muse-spark-1.3"],
+                         ["muse/muse-glimmer-30b"])
+
+    def test_env_fallback_ghi_de(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "state.json"),
+                   agent_council_fallbacks="cline-pass/a>cline-pass/c")
+        models = ["cline-pass/a", "cline-pass/b", "cline-pass/c"]
+        chains = A._fallback_chains(models, cfg)
+        self.assertIn("cline-pass/c", chains["cline-pass/a"])
+        self.assertIn("cline-pass/b", chains["cline-pass/a"], "chain tu dong van duoc gop")
+
+    def test_model_khong_tien_to_khong_tu_dong_co_chain(self):
+        chains = A._fallback_chains(["model-a", "model-b"])
+        self.assertEqual(chains, {})
+
+
+class TestQwenProvider(unittest.TestCase):
+    """(08/10) Qwen Code CLI headless - provider thu 4 cua hoi dong (khong can API key)."""
+
+    def test_qwen_prefix(self):
+        self.assertEqual(A.QWEN_PREFIX, "qwen/")
+
+    def test_build_cmd_co_model_flag(self):
+        p = A.QwenCliProvider(model="qwen3-coder-plus", args=["-p", "{prompt}"])
+        cmd = p._build_cmd("xin chao")
+        self.assertEqual(cmd[:2], ["qwen", "-p"])
+        self.assertIn("xin chao", cmd)
+        self.assertIn("--model", cmd)
+        self.assertIn("qwen3-coder-plus", cmd)
+
+    def test_complete_doi_runner(self):
+        def runner(cmd, timeout, cwd=None, env=None):
+            return 0, '{"action":"ALLOW","confidence":0.6}', ""
+        p = A.QwenCliProvider(runner=runner)
+        res = p.complete("sys", "user")
+        self.assertIn("ALLOW", res["text"])
+        self.assertGreater(res["tokens_in"], 0)
+
+    def test_complete_rc_khac_0_va_khong_co_out_thi_loi(self):
+        def runner(cmd, timeout, cwd=None, env=None):
+            return 1, "", "loi cli"
+        p = A.QwenCliProvider(runner=runner)
+        with self.assertRaises(RuntimeError):
+            p.complete("sys", "user")
+
+    def test_qwen_council_models(self):
+        import unittest.mock as _mock
+        with _mock.patch.dict(os.environ, {"QWEN_SKIP_MODELS": ""}):
+            models = A._qwen_council_models(_FakeCfg(agent_council_qwen="qwen3-coder-plus,qwen3-coder-flash"))
+        self.assertEqual(models, ["qwen/qwen3-coder-plus", "qwen/qwen3-coder-flash"])
+
+    def test_is_qwen_model(self):
+        self.assertTrue(A._is_qwen_model("qwen/qwen3-coder-plus"))
+        self.assertFalse(A._is_qwen_model("cline-pass/kimi-k3"))
+
+    def test_tier_qwen(self):
+        self.assertEqual(A.model_tier("qwen/qwen3-coder-plus"), "hard")   # 'plus'
+        self.assertEqual(A.model_tier("qwen/qwen3-coder-flash"), "lite")  # 'flash'
+        self.assertEqual(A.model_tier("qwen/qwen3-coder"), "core")
+
+    def test_qwen_co_mat_trong_providers(self):
+        self.assertIn("qwen_cli", A._PROVIDERS)
+
+    def test_build_provider_qwen_cli(self):
+        cfg = _cfg(agent_provider="qwen_cli", agent_model="qwen3-coder-plus",
+                   agent_qwen_bin="qwen", agent_qwen_args="-p {prompt}")
+        p = A.build_provider(cfg)
+        self.assertEqual(p.name, "qwen_cli")
+        self.assertEqual(p.model, "qwen3-coder-plus")
 
 
 class TestRunnerAnCuaSo(unittest.TestCase):

@@ -57,7 +57,9 @@ STATE_PATH = "logs/agent_state.json"
 JOURNAL_PATH = "logs/journal.jsonl"
 # (05/10) Session-level: provider nao bi "het" (ALL model abstain) -> cam den khi restart.
 # Bo sung date-based: AGENT_COUNCIL_COPILOT_UNTIL / AGENT_COUNCIL_CLINE_UNTIL trong .env.
-_PROVIDER_BLOCKED: dict = {}  # name -> ts block or "date:YYYY-MM-DD"
+_PROVIDER_BLOCKED: dict = {}  # name -> True (session block) | "pause:<ts>" | "date:YYYY-MM-DD"
+# (08/10) Provider da PAUSE 1 lan trong session nay chua (lan 2 exhausted -> block han).
+_PROVIDER_PAUSED_BEFORE: dict = {}  # tag -> True
 PROPOSALS_PATH = "logs/agent_proposals.jsonl"
 # Phase 3: chi cho phep de xuat trong PHAM VI nay — moi thu khac bi tu choi.
 PROPOSAL_TYPES = ("block_strategy", "unblock_strategy", "watch_strategy", "none")
@@ -114,6 +116,49 @@ def _i(v, default: int = 0) -> int:
 def _cache_key(role: str, model: str, payload: dict) -> str:
     raw = json.dumps([role, model, payload], sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:20]
+
+
+# ---- (08/10) RETRY loi tam thoi (429/5xx/timeout) truoc khi NO_OPINION --------------
+# Hoc tu AutoResearch ("up to three attempts for temporary network errors, 429, 5xx")
+# va OmniRoute (quota-aware auto-fallback): 429/5xx thuong la quota/treo TAM THOI,
+# thu lai 1-2 lan se co phieu thay vi mat phieu vo co. Loi vinh vien (401 invalid key,
+# 400 bad request) -> fail NGAY de khong dot them nguyen sach (dung vu Muse 401).
+_TRANSIENT_MARKS = ("429", "500", "502", "503", "504", "timeout", "timed out",
+                    "connection", "too many requests", "rate limit", "temporar")
+_RETRY_SLEEP_SEC = 0.3
+
+
+def _is_transient_error(e: BaseException) -> bool:
+    try:  # pragma: no cover - phu thuoc requests
+        import requests
+        if isinstance(e, requests.exceptions.Timeout):
+            return True
+        if isinstance(e, requests.exceptions.ConnectionError):
+            return True
+        if isinstance(e, requests.exceptions.HTTPError):
+            code = int(getattr(getattr(e, "response", None), "status_code", 0) or 0)
+            return code == 429 or code >= 500
+    except Exception:  # noqa: BLE001
+        pass
+    return any(m in str(e).lower() for m in _TRANSIENT_MARKS)
+
+
+def _complete_with_retry(provider, system: str, user: str, *, timeout: float = 8.0,
+                         attempts: int = 2, sleep_sec: float = _RETRY_SLEEP_SEC):
+    """Goi provider.complete; loi tam thoi -> thu lai (toi da `attempts` lan TONG cong).
+
+    Tra (result_dict, so_lan_da_dung). Loi vinh vien -> nem ngay tu lan dau.
+    """
+    last: BaseException | None = None
+    for i in range(max(1, int(attempts))):
+        try:
+            return provider.complete(system, user, timeout=timeout), i + 1
+        except Exception as e:  # noqa: BLE001
+            last = e
+            if i + 1 >= attempts or not _is_transient_error(e):
+                raise
+            time.sleep(max(0.0, float(sleep_sec)))
+    raise last  # pragma: no cover
 
 
 def parse_decision(text: str, *, role: str = "", agent: str = "") -> dict:
@@ -709,6 +754,61 @@ class CopilotCliProvider:
                 "tokens_out": approx_tokens(text)}
 
 
+class QwenCliProvider:
+    """Qwen Code (QwenLM/qwen-code) o che do HEADLESS: `qwen -p <prompt>`.
+
+    (08/10) Provider thu 4 cua hoi dong (sau Copilot CLI / Cline / Muse): khong can
+    API key rieng, dung model Qwen (qwen3-coder-plus...) hoac moi provider
+    OpenAI-compatible da cau hinh trong qwen-code. Giong CopilotCliProvider:
+    shell-out + timeout + cwd tam (khong quet repo) + stdin dong.
+    """
+
+    name = "qwen_cli"
+
+    def __init__(self, model: str = "", bin_path: str = "qwen",
+                 args: list | None = None, runner=None, cwd: str | None = None,
+                 env: dict | None = None):
+        self.model = model or ""
+        self._base = _split_cmd(bin_path) or ["qwen"]
+        self._base[0] = _resolve_exe(self._base[0])
+        self.bin = self._base[0]
+        self.args = list(args or ["-p", "{prompt}"])
+        self._runner = runner or _subprocess_runner
+        self.cwd = cwd
+        self.env = env
+
+    def _build_cmd(self, prompt: str) -> list:
+        out: list = []
+        has_model_flag = False
+        for a in self.args:
+            a = str(a)
+            if "{prompt}" in a:
+                out.append(a.replace("{prompt}", prompt))
+            elif "{model}" in a:
+                out.append(a.replace("{model}", self.model))
+                has_model_flag = True
+            else:
+                if a in ("--model", "-m"):
+                    has_model_flag = True
+                out.append(a)
+        if self.model and not has_model_flag:
+            out += ["--model", self.model]
+        return list(self._base) + out
+
+    def complete(self, system: str, user: str, *, timeout: float = 20.0) -> dict:
+        prompt = f"{system}\n\n{user}"
+        cmd = self._build_cmd(prompt)
+        rc, out, err = self._runner(cmd, timeout, cwd=self.cwd, env=self.env)
+        if rc != 0 and not str(out).strip():
+            raise RuntimeError(f"qwen CLI rc={rc}: {str(err).strip()[:200]}")
+        text = _extract_text(out)
+        if not text:
+            raise RuntimeError(f"qwen CLI khong tra van ban (rc={rc}): "
+                               f"{str(err).strip()[:160]}")
+        return {"text": text, "tokens_in": approx_tokens(prompt),
+                "tokens_out": approx_tokens(text)}
+
+
 class VscodeLmProvider:
     """Cau noi toi VS Code Language Model API (`vscode.lm`) qua bridge localhost.
 
@@ -796,6 +896,7 @@ CLINE_ENDPOINT = "https://api.cline.bot/api/v1/chat/completions"
 CLINE_PREFIX = "cline-pass/"
 MUSE_ENDPOINT = "https://api.meta.ai/v1/chat/completions"
 MUSE_PREFIX = "muse/"
+QWEN_PREFIX = "qwen/"
 
 
 class ClineProvider:
@@ -866,7 +967,7 @@ class MuseProvider:
 
 
 _PROVIDERS = {"stub": StubProvider, "openai": OpenAIProvider, "cline": ClineProvider,
-              "muse": MuseProvider,
+              "muse": MuseProvider, "qwen_cli": QwenCliProvider,
               "anthropic": AnthropicProvider, "copilot_cli": CopilotCliProvider,
               "vscode_lm": VscodeLmProvider, "openai_compatible": OpenAICompatProvider}
 
@@ -880,13 +981,19 @@ def build_provider(cfg=None, log=None):
     """
     name = str(getattr(cfg, "agent_provider", "stub") or "stub").lower()
     model = str(getattr(cfg, "agent_model", "") or "")
-    if name in ("copilot_cli", "vscode_lm"):
+    if name in ("copilot_cli", "vscode_lm", "qwen_cli"):
         try:
             if name == "copilot_cli":
                 args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
                 return CopilotCliProvider(
                     model=model, bin_path=str(getattr(cfg, "agent_copilot_bin",
                                                       "copilot") or "copilot"),
+                    args=args)
+            if name == "qwen_cli":
+                args = _split_cmd(getattr(cfg, "agent_qwen_args", "")) or None
+                return QwenCliProvider(
+                    model=model, bin_path=str(getattr(cfg, "agent_qwen_bin",
+                                                      "qwen") or "qwen"),
                     args=args)
             return VscodeLmProvider(
                 url=str(getattr(cfg, "agent_vscode_lm_url",
@@ -1076,9 +1183,84 @@ _SYSTEM = {
 }
 
 
+# (08/10) _SYSTEM_V2: nang cap prompt vai tro theo format PERSONA -> PROCESS ->
+# DELIVERABLES -> EVIDENCE (hoc tu agency-agents/mattpocock/addyosmani agent-skills).
+# GIU NGUYEN JSON schema cua _SYSTEM cu de parse_decision/StubProvider khong doi.
+_SYSTEM_V2 = {
+    "macro": (
+        "NHAN DANG: Chuyen gia VI MO crypto futures - ghe MACRO cua hoi dong giao dich.\n"
+        "QUY TRINH:\n"
+        " 1) Doc tin tuc + chi so vi mo (news_score, urgent_bearish, regime) trong payload.\n"
+        " 2) Ket luan che do thi truong: RISK-ON / RISK-OFF / NEUTRAL.\n"
+        " 3) Ra quyet dinh theo che do do.\n"
+        "SAN PHAM - TRA VE DUY NHAT 1 JSON (khong giai thich them):\n"
+        ' {"action":"ALLOW|VETO|NO_OPINION","confidence":0..1,"reasons":["..."],'
+        '"risk_flags":["..."]}\n'
+        "BANG CHUNG: chi VETO khi co LY DO VI MO ro rang (tin khan cap / chi so xau / "
+        "che do rui ro); moi risk_flag phai tuong ung 1 du lieu trong payload. "
+        "Khong bia so lieu."
+    ),
+    "critic": (
+        "NHAN DANG: Nguoi PHAN BIEN setup giao dich - ghe CRITIC cua hoi dong.\n"
+        "QUY TRINH:\n"
+        " 1) Doc du lieu nen/dong luong (rsi, atr_pct, ema_diff, vol_ratio, pattern...).\n"
+        " 2) Tim 1-3 ly do lenh nay CO THE THUA (khong tim duoc -> ALLOW).\n"
+        " 3) Neu payload co 'peer' (y kien agent khac): noi RO DONG Y hay PHAN DOI va vi sao.\n"
+        "SAN PHAM - TRA VE DUY NHAT 1 JSON:\n"
+        ' {"action":"ALLOW|VETO|NO_OPINION","confidence":0..1,"reasons":["..."],'
+        '"risk_flags":["..."]}\n'
+        "BANG CHUNG: moi VETO phai kem it nhat 1 risk_flag CU THE (vd RSI qua mua, EMA "
+        "nguoc huong, thanh khoan yeu). Khong bia so lieu."
+    ),
+    "arbiter": (
+        "NHAN DANG: CHU TOA hoi dong - quyet dinh CUOI CUNG cho lenh dang xet.\n"
+        "QUY TRINH:\n"
+        " 1) Doc y kien macro + critic trong payload['council'].\n"
+        " 2) Danh gia muc do dong thuan; neu chia phieu thi trong tai theo bang chung.\n"
+        " 3) Uu tien BAO TOAN VON: co ly do rui ro ro rang -> VETO.\n"
+        "SAN PHAM - TRA VE DUY NHAT 1 JSON:\n"
+        ' {"action":"ALLOW|VETO|NO_OPINION","confidence":0..1,"reasons":["..."],'
+        '"risk_flags":["..."]}\n'
+        "BANG CHUNG: ghi ro y kien nao (macro/critic) duoc uu tien va vi sao. "
+        "Khong bia so lieu."
+    ),
+    "review": (
+        "NHAN DANG: Chuyen gia RUT KINH NGHIEM sau khi 1 lenh dong.\n"
+        "QUY TRINH: doc ket qua lenh (r_multiple, won, exit_reason, strategy) -> rut bai hoc.\n"
+        "SAN PHAM - TRA VE DUY NHAT 1 JSON:\n"
+        ' {"action":"ALLOW|VETO|NO_OPINION","confidence":0..1,"reasons":["..."],'
+        '"risk_flags":["..."]}\n'
+        "BANG CHUNG: reasons phai la bai hoc CU THE, hanh dong duoc "
+        "(vi du 'setup A nen tranh khi RSI>70')."
+    ),
+    "reflect": (
+        "NHAN DANG: Kiem toan vien HIEU SUAT giao dich - doc bang thong ke theo strategy.\n"
+        "QUY TRINH: doc digest (n/wr/avg_r tung strategy) -> de xuat toi da 2 thay doi "
+        "TRONG PHAM VI: block_strategy / unblock_strategy / watch_strategy / none cho cac "
+        "target A_TREND_PULLBACK, B_BREAKOUT_RETEST, C_LIQ_SWEEP_RECLAIM, D_RANGE_REVERSAL.\n"
+        "SAN PHAM - TRA VE DUY NHAT 1 JSON:\n"
+        ' {"proposals":[{"type":"...","target":"...","reason":"...",'
+        '"evidence":{"n":..,"avg_r":..}}],"confidence":0..1,"reasons":["..."]}\n'
+        "BANG CHUNG: moi proposal phai co evidence n>=20 va avg_r am; khong du -> "
+        "proposals rong. TUYET DOI khong de xuat cham vao risk/size/SL/TP/leverage/kill-switch."
+    ),
+}
+
+
+def _system_prompt(role: str) -> str:
+    """Prompt vai tro nang cap (08/10): persona -> process -> deliverables -> evidence.
+
+    Giu NGUYEN JSON schema cua _SYSTEM cu de parse_decision/StubProvider khong doi.
+    """
+    v2 = _SYSTEM_V2.get(str(role))
+    if v2:
+        return v2
+    return _SYSTEM.get(str(role), _SYSTEM["critic"])
+
+
 def build_prompt(role: str, payload: dict, max_tokens: int = 1200) -> tuple:
     """(system, user) — payload JSON bi cat theo ngan sach token."""
-    system = _SYSTEM.get(str(role), _SYSTEM["critic"])
+    system = _system_prompt(str(role))
     body = json.dumps({"role": role, **(payload or {})}, ensure_ascii=False,
                       sort_keys=True, default=str)
     limit = max(200, int(max_tokens) * 4)
@@ -1162,7 +1344,9 @@ class AgentLayer:
             return base
         t0 = self._now()
         try:
-            res = self.provider.complete(system, user, timeout=self.timeout)
+            attempts = max(1, _i(getattr(self.cfg, "agent_retry_attempts", 2)))
+            res, used_attempts = _complete_with_retry(
+                self.provider, system, user, timeout=self.timeout, attempts=attempts)
             parsed = parse_decision(res.get("text", ""), role=role, agent=base.agent)
             base.action = parsed["action"]
             base.confidence = parsed["confidence"]
@@ -1172,6 +1356,8 @@ class AgentLayer:
             base.tokens_out = _i(res.get("tokens_out"))
             base.cost_usd = cost_usd(self.model, base.tokens_in, base.tokens_out)
             base.note = "parse=" + str(parsed.get("parse"))
+            if used_attempts > 1:
+                base.note += f" (retry x{used_attempts - 1})"
             base.raw_text = str(res.get("text") or "")[:4000]
             self.budget.note(cost=base.cost_usd, ok=True)
         except Exception as e:  # noqa: BLE001  (fail-open tuyet doi)
@@ -1400,12 +1586,25 @@ def _provider_blocked(provider: str, cfg=None) -> str:
     blk = _PROVIDER_BLOCKED.get(provider)
     if blk is True:
         return "session-blocked (all models from this provider abstained)"
+    if isinstance(blk, str) and blk.startswith("pause:"):
+        # (08/10) pause co thoi han (provider exhausted lan 1): het han -> tu mo lai.
+        try:
+            until_t = float(blk.split(":", 1)[1])
+        except (ValueError, IndexError):
+            _PROVIDER_BLOCKED.pop(provider, None)
+            return ""
+        if time.time() < until_t:
+            return "paused until " + time.strftime("%H:%M:%S", time.localtime(until_t))
+        _PROVIDER_BLOCKED.pop(provider, None)
+        return ""
     if cfg is not None and provider == "copilot":
         until = str(getattr(cfg, "agent_council_copilot_until", "") or "").strip()
     elif cfg is not None and provider == "cline":
         until = str(getattr(cfg, "agent_council_cline_until", "") or "").strip()
     elif cfg is not None and provider == "muse":
         until = str(getattr(cfg, "agent_council_muse_until", "") or "").strip()
+    elif cfg is not None and provider == "qwen":
+        until = str(getattr(cfg, "agent_council_qwen_until", "") or "").strip()
     else:
         until = ""
     if until:
@@ -1426,6 +1625,79 @@ def _is_muse_model(m: str) -> bool:
     return str(m).startswith(MUSE_PREFIX)
 
 
+def _is_qwen_model(m: str) -> bool:
+    return str(m).startswith(QWEN_PREFIX)
+
+
+def _alias_map() -> dict:
+    """(08/10) AGENT_COUNCIL_ALIASES: 'alias=canonical,alias2=canonical2'.
+
+    Hai ten cung resolve ve 1 model that (vd alias cua gateway) -> chi tinh 1 phieu,
+    tranh "thoi phong" so phieu (hoc tu AutoResearch: distinct models only).
+    """
+    out: dict = {}
+    for part in os.getenv("AGENT_COUNCIL_ALIASES", "").split(","):
+        if "=" in part:
+            a, c = part.split("=", 1)
+            a, c = a.strip().lower(), c.strip().lower()
+            if a and c and a != c:
+                out[a] = c
+    return out
+
+
+def _dedup_models(models: list) -> list:
+    """Loai model trung lap (alias -> canonical, khong phan biet hoa thuong), giu thu tu."""
+    aliases = _alias_map()
+    seen: set = set()
+    out: list = []
+    for m in models:
+        canon = str(m).strip().lower()
+        canon = aliases.get(canon, canon)
+        if canon in seen:
+            continue
+        seen.add(canon)
+        out.append(m)
+    return out
+
+
+def _fallback_chains(models: list, cfg=None) -> dict:
+    """(08/10) Per-role fallback chain: model chinh abstain/loi -> model ke tiep cung provider.
+
+    - Tu dong: trong tung nhom cline/muse/qwen, model SAU la fallback cua model TRUOC
+      (vd muse-spark-1.3 -> muse-glimmer-30b khi spark abstain).
+    - Ghi de/mo rong bang AGENT_COUNCIL_FALLBACKS: 'primary>f1,f2|primary2>g1'.
+    - Model copilot (khong tien to) khong tu dong co chain de tranh nhieu loan phieu.
+    """
+    chains: dict = {}
+    raw = str(getattr(cfg, "agent_council_fallbacks", "")
+              or os.getenv("AGENT_COUNCIL_FALLBACKS", ""))
+    for part in raw.split("|"):
+        if ">" not in part:
+            continue
+        p, fs = part.split(">", 1)
+        p = p.strip()
+        fs = [f.strip() for f in fs.split(",") if f.strip()]
+        if p and fs:
+            chains[p] = fs
+    groups: dict = {}
+    for m in models:
+        if m.startswith(CLINE_PREFIX):
+            g = "cline"
+        elif m.startswith(MUSE_PREFIX):
+            g = "muse"
+        elif m.startswith(QWEN_PREFIX):
+            g = "qwen"
+        else:
+            continue
+        groups.setdefault(g, []).append(m)
+    for ms in groups.values():
+        for i, m in enumerate(ms[:-1]):
+            for f in ms[i + 1:]:
+                if f not in chains.get(m, []):
+                    chains.setdefault(m, []).append(f)
+    return chains
+
+
 def _council_models(cfg) -> list:
     """Danh sach model hoi dong, tu loai bo provider het quota.
 
@@ -1436,9 +1708,11 @@ def _council_models(cfg) -> list:
     copilot_models = [m.strip() for m in raw.split(",") if m.strip()] or list(COUNCIL_MULTI_MODELS)
     cline_models = _cline_council_models(cfg)
     muse_models = _muse_council_models(cfg)
+    qwen_models = _qwen_council_models(cfg)
     copilot_blocked = _provider_blocked("copilot", cfg)
     cline_blocked = _provider_blocked("cline", cfg)
     muse_blocked = _provider_blocked("muse", cfg)
+    qwen_blocked = _provider_blocked("qwen", cfg)
     out: list = []
     if not copilot_blocked:
         out.extend(copilot_models)
@@ -1446,6 +1720,8 @@ def _council_models(cfg) -> list:
         out.extend(cline_models)
     if not muse_blocked:
         out.extend(muse_models)
+    if not qwen_blocked:
+        out.extend(qwen_models)
     if not out:
         import logging
         logging.getLogger("agents").warning(
@@ -1491,12 +1767,35 @@ def _muse_council_models(cfg) -> list:
             for m in names if m not in skip]
 
 
-def _mark_provider_exhausted(decisions: dict, log=None) -> None:
-    """(05/10) Toan bo model CUNG provider deu abstain -> danh dau provider 'exhausted'."""
+def _qwen_council_models(cfg) -> list:
+    """Model Qwen Code CLI (headless `qwen -p`) tham gia hoi dong (08/10)."""
+    raw = str(getattr(cfg, "agent_council_qwen", "") or "").strip()
+    if not raw:
+        return []
+    names = [m.strip() for m in raw.split(",") if m.strip()]
+    skip = {m.strip() for m in os.getenv("QWEN_SKIP_MODELS", "").split(",") if m.strip()}
+    return [m if m.startswith(QWEN_PREFIX) else QWEN_PREFIX + m
+            for m in names if m not in skip]
+
+
+def _provider_groups(decisions: dict) -> tuple:
+    """Nhom model theo provider: ((models, tag), ...) — dung chung cho exhaust/recover."""
     cp = [m for m in decisions if _is_cline_model(m)]
-    co = [m for m in decisions if not _is_cline_model(m) and not _is_muse_model(m)]
     mu = [m for m in decisions if _is_muse_model(m)]
-    for models, tag in ((cp, "cline"), (co, "copilot"), (mu, "muse")):
+    qu = [m for m in decisions if _is_qwen_model(m)]
+    co = [m for m in decisions if not _is_cline_model(m)
+          and not _is_muse_model(m) and not _is_qwen_model(m)]
+    return ((cp, "cline"), (mu, "muse"), (qu, "qwen"), (co, "copilot"))
+
+
+def _mark_provider_exhausted(decisions: dict, log=None, cfg=None) -> None:
+    """(05/10) Toan bo model CUNG provider deu abstain -> danh dau provider 'exhausted'.
+
+    (08/10) Thay vi block HAN den khi restart: lan dau chi PAUSE `agent_provider_pause_sec`
+    (mac dinh 30 phut) roi tu mo lai; neu exhausted lai TRONG CUNG session -> block han.
+    """
+    pause_sec = _f(getattr(cfg, "agent_provider_pause_sec", 1800.0), 1800.0)
+    for models, tag in _provider_groups(decisions):
         if len(models) < 2:
             continue
         if _PROVIDER_BLOCKED.get(tag):
@@ -1505,10 +1804,24 @@ def _mark_provider_exhausted(decisions: dict, log=None) -> None:
             str(getattr(decisions.get(m), "action", "?")) not in ("ALLOW", "VETO")
             for m in models)
         if all_abst:
-            _PROVIDER_BLOCKED[tag] = True
+            if _PROVIDER_PAUSED_BEFORE.get(tag):
+                _PROVIDER_BLOCKED[tag] = True
+                _PROVIDER_PAUSED_BEFORE.pop(tag, None)
+            else:
+                _PROVIDER_BLOCKED[tag] = f"pause:{time.time() + max(0.0, pause_sec)}"
+                _PROVIDER_PAUSED_BEFORE[tag] = True
             if log:
-                log.warning("COUNCIL: %d/%d model %s deu abstain -> provider '%s' bi chan.",
-                            len(models), len(models), tag, tag)
+                log.warning("COUNCIL: %d/%d model %s deu abstain -> provider '%s' bi chan (%s).",
+                            len(models), len(models), tag, tag,
+                            "session" if _PROVIDER_BLOCKED[tag] is True else "pause")
+
+
+def _provider_recovering(decisions: dict) -> None:
+    """(08/10) Provider co it nhat 1 phieu hop le -> xoa dau pause truoc do."""
+    for models, tag in _provider_groups(decisions):
+        if any(str(getattr(decisions.get(m), "action", "")) in ("ALLOW", "VETO")
+               for m in models):
+            _PROVIDER_PAUSED_BEFORE.pop(tag, None)
 
 
 # ---- (05/10) TIER MOTEL + DO KHO: de -> model rẻ/nhanh, kho -> model thong minh ----
@@ -1641,12 +1954,46 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     if log and start_tier != "hard" and models is None:
         log.info("COUNCIL: do kho %.2f (%s) -> tier '%s' (%d model).",
                  diff_score, "; ".join(diff_reasons) or "de", start_tier, len(names))
+    # (08/10) DEDUP ALIAS + TRAN CHI PHI THEO VONG + FALLBACK CHAIN -------------------
+    names = _dedup_models(names)
+    est_tokens = max(200, _i(getattr(cfg, "agent_max_prompt_tokens", 1200)))
+    est_out = 160
+
+    def _est_cost(m: str) -> float:
+        return cost_usd(m, est_tokens, est_out)
+
+    round_cap = _f(getattr(cfg, "agent_round_budget_usd", 0.0), 0.0)
+    round_est = round(sum(_est_cost(m) for m in names), 6)
+    rb_info = {"cap_usd": round_cap, "est_usd": round_est, "trimmed": False}
+    if round_cap > 0 and round_est > round_cap:
+        # Tran theo vong: chi hoi nhung model RE NHAT nam trong cap (luon >= 1 model).
+        ordered = sorted(names, key=_est_cost)
+        keep: list = []
+        acc = 0.0
+        for m in ordered:
+            c = _est_cost(m)
+            if keep and acc + c > round_cap:
+                break
+            keep.append(m)
+            acc += c
+        if keep:
+            rb_info["trimmed"] = len(keep) < len(ordered)
+            names = keep
+            rb_info["est_usd"] = round(acc, 6)
+        if rb_info["trimmed"] and log:
+            log.info("COUNCIL: tran $%.4f/vong -> chi hoi %d/%d model (est $%.4f).",
+                     round_cap, len(keep), len(ordered), acc)
+    chains = _fallback_chains(names, cfg)
     bin_path = str(getattr(cfg, "agent_copilot_bin", "copilot") or "copilot")
     args = _split_cmd(getattr(cfg, "agent_copilot_args", "")) or None
+    qw_bin = str(getattr(cfg, "agent_qwen_bin", "qwen") or "qwen")
+    qw_args = _split_cmd(getattr(cfg, "agent_qwen_args", "")) or None
     make_provider = provider_factory or (
-        lambda m: ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
-        else MuseProvider(model=m) if m.startswith(MUSE_PREFIX)
-        else CopilotCliProvider(model=m, bin_path=bin_path, args=args))
+        lambda m: (ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
+                   else MuseProvider(model=m) if m.startswith(MUSE_PREFIX)
+                   else QwenCliProvider(model=m, bin_path=qw_bin, args=qw_args)
+                   if m.startswith(QWEN_PREFIX)
+                   else CopilotCliProvider(model=m, bin_path=bin_path, args=args)))
     state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)
     max_rounds = max(1, int(getattr(cfg, "council_rounds", 2) or 2))
     escalated = False
@@ -1655,7 +2002,18 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     def _run_round(ask: list, round_cfg, budget, round_payload=None) -> dict:
         def _one(name: str) -> Decision:
             member = AgentLayer(round_cfg, provider=make_provider(name), budget=budget, log=log)
-            return member.vote(role, round_payload or payload)
+            dec = member.vote(role, round_payload or payload)
+            if dec.action in ("ALLOW", "VETO"):
+                return dec
+            # (08/10) fallback chain: model chinh abstain/loi -> thu model ke tiep cung provider
+            for fb in chains.get(name, []):
+                fb_member = AgentLayer(round_cfg, provider=make_provider(fb), budget=budget, log=log)
+                d2 = fb_member.vote(role, round_payload or payload)
+                if d2.action in ("ALLOW", "VETO"):
+                    d2.note = str(d2.note or "") + f" (fallback {name}->{fb})"
+                    return d2
+                dec = d2
+            return dec
         out: dict = {}
         with _fut.ThreadPoolExecutor(max_workers=max(1, len(ask))) as pool:
             futs = {pool.submit(_one, name): name for name in ask}
@@ -1673,7 +2031,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         daily_budget_usd=_f(getattr(cfg, "agent_daily_budget_usd", 1.0), 1.0),
         max_errors=_i(getattr(cfg, "agent_max_errors", 5)))
     decisions = _run_round(names, cfg, budget)
-    _mark_provider_exhausted(decisions, log)          # (05/10) provider het -> cam session
+    _mark_provider_exhausted(decisions, log, cfg)     # (05/10) provider het -> pause/block
+    _provider_recovering(decisions)                   # (08/10) hoat dong lai -> xoa dau pause
 
     def _tally(decs: dict) -> tuple:
         abst = sorted(m for m, d in decs.items() if d.action not in ("ALLOW", "VETO"))
@@ -1746,7 +2105,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
            "abstained": abstained, "action": action, "confidence": round(conf, 2),
            "why": why, "escalated": escalated, "debated": debated,
            "difficulty": diff_score, "start_tier": start_tier,
-           "tier_upgraded": tier_upgraded}
+           "tier_upgraded": tier_upgraded,
+           "round_budget": rb_info, "fallback_chains": chains}
 
 
 def veto_decision(cfg, layer, payload: dict) -> dict:
@@ -2028,7 +2388,11 @@ def main(argv: list | None = None) -> int:
                          "(can AGENT_AUTO_APPLY=true)")
     ap.add_argument("--journal", default=JOURNAL_PATH)
     ap.add_argument("--state", default=STATE_PATH)
-    ap.add_argument("--provider", default="", help="stub|openai|anthropic|copilot_cli|vscode_lm|openai_compatible")
+    ap.add_argument("--provider", default="", help="stub|openai|anthropic|copilot_cli|vscode_lm|openai_compatible|qwen_cli")
+    ap.add_argument("--ab-report", action="store_true",
+                    help="(08/10) bao cao shadow A/B cua hoi dong tu journal (VETO vs ALLOW)")
+    ap.add_argument("--eval-dataset", metavar="PATH", default="",
+                    help="(08/10) xuat bo du lieu eval tu journal (case + outcome) ra JSONL")
     args = ap.parse_args(argv)
 
     from config import Settings
@@ -2229,6 +2593,16 @@ def main(argv: list | None = None) -> int:
         b.enable()
         print("da mo lai agent (truoc do: %s)" % (was or "khong bi tat"))
         print("stats:", json.dumps(b.snapshot(), ensure_ascii=False))
+        return 0
+    if args.ab_report or args.eval_dataset:
+        from council_evals import build_eval_dataset, council_ab_report
+        if args.ab_report:
+            rep = council_ab_report(args.journal)
+            print("SHADOW A/B (hoi dong tu journal):")
+            print(json.dumps(rep, ensure_ascii=False, indent=1))
+        if args.eval_dataset:
+            n = build_eval_dataset(args.journal, args.eval_dataset)
+            print("eval dataset: %d case -> %s" % (n, args.eval_dataset))
         return 0
     layer = AgentLayer(cfg, journal=args.journal, state_path=args.state)
     print("provider=%s model=%s shadow=%s enabled=%s"

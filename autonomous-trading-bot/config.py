@@ -221,6 +221,12 @@ class Settings:
         default_factory=lambda: _get("AGENT_COUNCIL_COPILOT_UNTIL", ""))
     agent_council_cline_until: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_CLINE_UNTIL", ""))
+    # Model Muse (Meta Model API, muse/...) tham gia hoi dong (06/10): csv | rong = tat.
+    # Can MUSE_API_KEY tai https://dev.meta.ai. Tam nghi theo ngay: AGENT_COUNCIL_MUSE_UNTIL.
+    agent_council_muse: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_MUSE", ""))
+    agent_council_muse_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_MUSE_UNTIL", ""))
     # Ngan sach LINH HOAT theo do kho: van de de (hau het model dong thuan, it phieu
     # trang) -> dung ngan sach thuong (AGENT_TIMEOUT_SEC/AGENT_DAILY_CALLS/BUDGET o
     # tren), KHONG ton them. Van de kho (hoa phieu HOAC >= AGENT_HARD_ABSTAIN_RATIO
@@ -271,6 +277,27 @@ class Settings:
         default_factory=lambda: _get("AGENT_VSCODE_LM_URL", "http://127.0.0.1:8765/complete"))
     agent_vscode_lm_token: str = field(
         default_factory=lambda: _get("AGENT_VSCODE_LM_TOKEN", ""))
+    # (08/10) Provider thu 4: Qwen Code (QwenLM/qwen-code) headless `qwen -p <prompt>`.
+    # Tuong tu AGENT_COPILOT_BIN/ARGS; khong can API key (dung cau hinh qwen-code).
+    agent_qwen_bin: str = field(default_factory=lambda: _get("AGENT_QWEN_BIN", "qwen"))
+    agent_qwen_args: str = field(
+        default_factory=lambda: _get("AGENT_QWEN_ARGS", "-p {prompt}"))
+    agent_council_qwen: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_QWEN", ""))
+    agent_council_qwen_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_QWEN_UNTIL", ""))
+    # (08/10) Retry loi tam thoi (429/5xx/timeout) truoc khi NO_OPINION (tong so lan goi).
+    agent_retry_attempts: int = field(
+        default_factory=lambda: _get_int("AGENT_RETRY_ATTEMPTS", 2))
+    # Tran chi phi THEO VONG council (USD, 0 = tat - chi tinh chi phi/ngay nhu cu).
+    agent_round_budget_usd: float = field(
+        default_factory=lambda: _get_float("AGENT_ROUND_BUDGET_USD", 0.0))
+    # Provider exhausted lan 1 -> PAUSE so giay nay roi tu mo lai (lan 2 -> block han).
+    agent_provider_pause_sec: float = field(
+        default_factory=lambda: _get_float("AGENT_PROVIDER_PAUSE_SEC", 1800.0))
+    # Fallback chain theo model: 'primary>f1,f2|primary2>g1' (tu dong trong nhom co tien to).
+    agent_council_fallbacks: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_FALLBACKS", ""))
 
 
     # Sentiment

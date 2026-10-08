@@ -627,3 +627,18 @@ bỏ các feed còn lại, và timeout socket được trả về nguyên trạn
 # dọn cache bytecode giữa các lần chạy test
 Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 ```
+
+## 10. (08/10) Hội đồng 4 provider + chống treo/quota + shadow A/B
+
+Áp dụng từ khảo sát 22 repo (AutoResearch, OmniRoute, Qwen Code, harness, overmind...):
+
+| Tính năng | Cấu hình | Mặc định |
+|---|---|---|
+| **Provider thứ 4: Qwen Code** (headless `qwen -p`, không cần key) | `AGENT_COUNCIL_QWEN`, `AGENT_QWEN_BIN`, `AGENT_QWEN_ARGS`, `QWEN_SKIP_MODELS` | tắt |
+| **Retry lỗi tạm thời** 429/5xx/timeout trước khi NO_OPINION (401/400 fail ngay) | `AGENT_RETRY_ATTEMPTS` | 2 |
+| **Pause thay vì block-đến-restart**: provider exhausted lần 1 → pause `N` giây rồi tự mở lại; lần 2 cùng session → block hẳn | `AGENT_PROVIDER_PAUSE_SEC` | 1800 |
+| **Trần chi phí theo vòng council** (chỉ hỏi model rẻ nhất trong cap) | `AGENT_ROUND_BUDGET_USD` | 0 (tắt) |
+| **Fallback chain theo model** (muse-spark-1.3 abstain → muse-glimmer-30b tự trả lời; ghi đè bằng env) | `AGENT_COUNCIL_FALLBACKS` | tự động trong nhóm cline/muse/qwen |
+| **Dedup alias model** (2 tên cùng 1 model thật → 1 phiếu) | `AGENT_COUNCIL_ALIASES` | tự động theo tên |
+| **Shadow A/B + eval dataset** từ journal | `python agents.py --ab-report`, `--eval-dataset PATH` | — |
+| **Prompt vai trò nâng cấp** persona→process→deliverables→evidence (giữ nguyên JSON schema) | — | luôn bật |

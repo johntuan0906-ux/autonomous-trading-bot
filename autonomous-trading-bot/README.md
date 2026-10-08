@@ -706,24 +706,25 @@ Câu hỏi: "Muse có kết nối GitHub qua repository/SSH được không?" �
 | Git identity | `Your Name <your_email@example.com>` (placeholder) | Nên đặt lại trước khi push |
 | Credential helper | **không có** (không cài Git Credential Manager) | Vì vậy nên đi đường **SSH**, không phải HTTPS |
 
-### 12.1 Nối repo với GitHub (tài khoản `johntuan0906-ux`)
+### 12.1 Nối repo với GitHub (tài khoản `johntuan0906-ux`) — ✅ ĐÃ XONG 08/10
 
-Tra GitHub API ngày 08/10: tài khoản `johntuan0906-ux` **id `336409958`**, tạo 01/10/2026, **`public_repos = 0`** → chưa có repo nào, cần tạo mới. **Tên repo do bạn đặt khi tạo** (đề xuất trùng tên thư mục: `autonomous-trading-bot`).
+**Tên repo là gì?** Tên repo do **bạn tự đặt** ở ô "Repository name" khi bấm <https://github.com/new> — nó không phải thứ gì cần "tra cứu"; URL luôn có dạng `git@github.com:johntuan0906-ux/<ten-ban-dat>.git`. Bạn đã đặt **`autonomous-trading-bot`** (trùng tên thư mục) → khớp với remote tôi cấu hình sẵn, nên push chạy được ngay.
 
-Đã làm sẵn trên máy này (không cần bạn làm lại):
+Trạng thái đã kiểm chứng bằng lệnh thật:
 
-- SSH key `~/.ssh/id_ed25519` (ED25519) — chỉ còn thiếu bước dán public key lên GitHub.
-- Git identity: `user.name=johntuan0906-ux`, `user.email=336409958+johntuan0906-ux@users.noreply.github.com` (email noreply ⇒ commit vẫn gắn đúng tài khoản mà không lộ email thật).
-- Remote: `origin = git@github.com:johntuan0906-ux/autonomous-trading-bot.git`
+| Hạng mục | Kết quả |
+|---|---|
+| `ssh -T git@github.com` | ✅ `Hi johntuan0906-ux! You've successfully authenticated, but GitHub does not provide shell access.` |
+| `origin` | `git@github.com:johntuan0906-ux/autonomous-trading-bot.git` |
+| Nhánh trên GitHub | `main` = `30c4f3b` (đã gộp "Initial commit" rỗng của GitHub), `test-ai-agents` = `07ef8f7` |
+| Git identity | `user.name=johntuan0906-ux`, `user.email=336409958+johntuan0906-ux@users.noreply.github.com` |
+| Cách đẩy | `tools\git-sync.cmd "msg"` — chính script này đã dùng để đẩy lên |
+| Kiểm tra secret | ✅ **Không** có `.env`, `memory.db`, `auth.json`, `*.key/*.pem` nào bị đẩy (đã lọc bằng `git ls-files`) |
 
-Còn lại 3 bước:
+Cấu trúc repo trên GitHub: gốc repo là workspace `c:\Users\User\.vscode\Projects` nên code nằm trong thư mục con **`autonomous-trading-bot/`** (259 file được theo dõi), gốc chỉ có `.clineignore`, `README.md`, `hyperopt.py`. Muốn code nằm ngay gốc repo thì phải tách repo riêng (`git subtree split`) — chưa làm để tránh rủi ro history.
 
-1. **Dán public key** (`type %USERPROFILE%\.ssh\id_ed25519.pub`) vào <https://github.com/settings/ssh/new> → Title `trading-bot-pc`, Key type **Authentication**. Kiểm tra: `ssh -T git@github.com` phải in `Hi johntuan0906-ux! You've successfully authenticated...`
-2. **Tạo repo**: <https://github.com/new> → Repository name: `autonomous-trading-bot` → **Private** (khuyến nghị: repo có `.env`/chiến lược) → **KHÔNG** tick "Add README/.gitignore/license" (để push sạch, không bị conflict). Nếu bạn đặt tên khác, sửa 1 dòng:
-   ```bash
-   git remote set-url origin git@github.com:johntuan0906-ux/<ten-repo>.git
-   ```
-3. **Push**: `git push -u origin test-ai-agents` — hoặc dùng `tools\git-sync.cmd` (mục 12.3). Nhánh hiện tại là `test-ai-agents`; muốn dùng `main` thì `git branch -M main` trước khi push.
+Nếu muốn làm việc trên `main` ở máy: `git switch -c main --track origin/main` (hoặc `git branch -M main` rồi push).
+
 
 ### 12.2 Hai điểm dễ vấp khi cho Muse dùng git — **đã có script giải quyết**
 
@@ -733,7 +734,7 @@ Theo `dev.meta.ai/docs/muse-code/permissions`:
 |---|---|---|
 | **#1 Network**: mặc định `--sandbox-network proxy-only` → *"the first connection to a new host, port, or protocol stops for review"*, nên lần đầu tới `github.com:22` bị **dừng xin phê duyệt** | Muốn mạng đầy đủ mà **vẫn giữ sandbox + approval** | **`tools\muse.cmd`** — chạy Muse với `--sandbox-network enabled` (thay cho `muse` trần) |
 | **#2 `.git` read-only**: trong workspace, `.git`/`.muse`/`.agents` **read-only** với agent → `git commit`/`push`/`fetch` **thất bại** | Không có flag nào mở riêng `.git` mà giữ phần còn lại ⇒ phải chọn 1 trong 3 | (a) **`tools\git-sync.cmd "msg"`** — an toàn nhất: Muse sửa file, *bạn* commit/push ngoài sandbox; (b) **`tools\muse-nosandbox.cmd`** — bỏ sandbox (`.git` ghi được + full network) khi bạn tin workspace; (c) để Muse `git clone` ra thư mục tạm rồi làm việc ở đó (ngoài workspace nên `.git` không bị read-only) |
-| **#3 Sandbox Windows chưa setup**: `muse sandbox windows check` → `status=setup_required` (`sandbox_users_ready=false`, `wfp_ready=false`) | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | Chạy 1 lần: **`muse sandbox windows setup`** (cần UAC/admin) rồi kiểm tra lại bằng `muse sandbox windows check` |
+| **#3 Sandbox Windows chưa setup**: `muse sandbox windows check` → `status=setup_required` (`sandbox_users_ready=false`, `wfp_ready=false`) | Docs: Muse **từ chối chạy lệnh shell khi không xác nhận được sandbox đang bật** | Đã thử: chạy `muse sandbox windows setup` **bằng quyền admin (UAC đã chấp nhận)** → tạo được user `muse-sbx-r1`/`muse-sbx-u1` và `C:\ProgramData\muse`, nhưng `check` (chạy thường) vẫn báo `setup_credentials_unavailable: ... Access is denied. (os error 5)` ⇒ **vẫn `setup_required`**. Tạm dùng **`tools\muse-nosandbox.cmd`** cho tới khi xử lý xong (thử chạy `muse` từ terminal admin, hoặc kiểm tra AV/Controlled Folder Access chặn `C:\ProgramData\muse`) |
 | Vote trong hội đồng (bot) | `AGENT_MUSE_CLI_ARGS=exec {prompt} --max-model-steps 2 --disable-approval` → **cố ý không cần network** | Giữ nguyên: vote chỉ cần model API, không cần git |
 
 ### 12.3 Ba script tiện ích (`tools/`)

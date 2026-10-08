@@ -126,6 +126,12 @@ def _cache_key(role: str, model: str, payload: dict) -> str:
 _TRANSIENT_MARKS = ("429", "500", "502", "503", "504", "timeout", "timed out",
                     "connection", "too many requests", "rate limit", "temporar")
 _RETRY_SLEEP_SEC = 0.3
+# (08/10) Chi dan CUC CHAT cho lan "sua JSON" (xem AgentLayer.vote): model tra van ban
+# thay vi JSON -> hoi lai 1 lan voi rang buoc nay (re hon fine-tune, hoat dong moi provider).
+_STRICT_SUFFIX = (
+    "\n\nQUAN TRONG: TRA VE DUY NHAT 1 JSON, khong van ban, khong markdown, dung schema: "
+    '{"action":"ALLOW|VETO|NO_OPINION","confidence":0..1,"reasons":["..."],'
+    '"risk_flags":["..."]}')
 
 
 def _is_transient_error(e: BaseException) -> bool:
@@ -965,6 +971,7 @@ MUSE_ENDPOINT = "https://api.meta.ai/v1/chat/completions"
 MUSE_PREFIX = "muse/"
 QWEN_PREFIX = "qwen/"
 MUSE_CLI_PREFIX = "muse-cli/"
+LOCAL_PREFIX = "local/"
 
 
 class ClineProvider:
@@ -1427,6 +1434,24 @@ class AgentLayer:
             res, used_attempts = _complete_with_retry(
                 self.provider, system, user, timeout=self.timeout, attempts=attempts)
             parsed = parse_decision(res.get("text", ""), role=role, agent=base.agent)
+            repairs = 0
+            # (08/10) JSON REPAIR: model tra van ban/markdown thay vi JSON -> hoi lai 1 lan
+            # voi chi dan cuc chat. Giai nhanh "consistent style or format" bang PROMPT
+            # thay vi fine-tune ($$$$) hay structured-output (khong phai provider nao cung ho tro).
+            if (parsed.get("parse") != "ok"
+                    and bool(getattr(self.cfg, "agent_json_repair", True))):
+                ok_r, _why_r = self.budget.can_spend(est_cost=est)
+                if ok_r:
+                    res2, used2 = _complete_with_retry(
+                        self.provider, system, user + _STRICT_SUFFIX,
+                        timeout=self.timeout, attempts=1)
+                    used_attempts += used2
+                    repairs = 1
+                    parsed2 = parse_decision(res2.get("text", ""), role=role,
+                                             agent=base.agent)
+                    res = res2
+                    if parsed2.get("parse") == "ok":
+                        parsed = parsed2
             base.action = parsed["action"]
             base.confidence = parsed["confidence"]
             base.reasons = parsed["reasons"]
@@ -1435,6 +1460,8 @@ class AgentLayer:
             base.tokens_out = _i(res.get("tokens_out"))
             base.cost_usd = cost_usd(self.model, base.tokens_in, base.tokens_out)
             base.note = "parse=" + str(parsed.get("parse"))
+            if repairs:
+                base.note += f" (repair x{repairs})"
             if used_attempts > 1:
                 base.note += f" (retry x{used_attempts - 1})"
             base.raw_text = str(res.get("text") or "")[:4000]
@@ -1686,6 +1713,8 @@ def _provider_blocked(provider: str, cfg=None) -> str:
         until = str(getattr(cfg, "agent_council_muse_cli_until", "") or "").strip()
     elif cfg is not None and provider == "qwen":
         until = str(getattr(cfg, "agent_council_qwen_until", "") or "").strip()
+    elif cfg is not None and provider == "local":
+        until = str(getattr(cfg, "agent_council_local_until", "") or "").strip()
     else:
         until = ""
     if until:
@@ -1708,6 +1737,10 @@ def _is_muse_model(m: str) -> bool:
 
 def _is_muse_cli_model(m: str) -> bool:
     return str(m).startswith(MUSE_CLI_PREFIX)
+
+
+def _is_local_model(m: str) -> bool:
+    return str(m).startswith(LOCAL_PREFIX)
 
 
 def _is_qwen_model(m: str) -> bool:
@@ -1774,6 +1807,8 @@ def _fallback_chains(models: list, cfg=None) -> dict:
             g = "muse_cli"
         elif m.startswith(QWEN_PREFIX):
             g = "qwen"
+        elif m.startswith(LOCAL_PREFIX):
+            g = "local"
         else:
             continue
         groups.setdefault(g, []).append(m)
@@ -1797,11 +1832,13 @@ def _council_models(cfg) -> list:
     muse_models = _muse_council_models(cfg)
     muse_cli_models = _muse_cli_council_models(cfg)
     qwen_models = _qwen_council_models(cfg)
+    local_models = _local_council_models(cfg)
     copilot_blocked = _provider_blocked("copilot", cfg)
     cline_blocked = _provider_blocked("cline", cfg)
     muse_blocked = _provider_blocked("muse", cfg)
     muse_cli_blocked = _provider_blocked("muse_cli", cfg)
     qwen_blocked = _provider_blocked("qwen", cfg)
+    local_blocked = _provider_blocked("local", cfg)
     out: list = []
     if not copilot_blocked:
         out.extend(copilot_models)
@@ -1813,6 +1850,8 @@ def _council_models(cfg) -> list:
         out.extend(muse_cli_models)
     if not qwen_blocked:
         out.extend(qwen_models)
+    if not local_blocked:
+        out.extend(local_models)
     if not out:
         import logging
         logging.getLogger("agents").warning(
@@ -1884,15 +1923,33 @@ def _muse_cli_council_models(cfg) -> list:
             for m in names if m not in skip]
 
 
+def _local_council_models(cfg) -> list:
+    """(08/10) Model LOCAL mien phi (Ollama/vLLM/llama.cpp) — kieu "NPU: $0, private".
+
+    Dung lai OpenAICompatProvider co san: chi can AGENT_LOCAL_BASE_URL tro toi server
+    local (vd Ollama http://127.0.0.1:11434/v1). Khong co base_url -> tat (an toan).
+    """
+    raw = str(getattr(cfg, "agent_council_local", "") or "").strip()
+    base = str(getattr(cfg, "agent_local_base_url", "") or "").strip()
+    if not raw or not base:
+        return []
+    names = [m.strip() for m in raw.split(",") if m.strip()]
+    skip = {m.strip() for m in os.getenv("LOCAL_SKIP_MODELS", "").split(",") if m.strip()}
+    return [m if m.startswith(LOCAL_PREFIX) else LOCAL_PREFIX + m
+            for m in names if m not in skip]
+
+
 def _provider_groups(decisions: dict) -> tuple:
     """Nhom model theo provider: ((models, tag), ...) — dung chung cho exhaust/recover."""
     cp = [m for m in decisions if _is_cline_model(m)]
     mu = [m for m in decisions if _is_muse_model(m)]
     mc = [m for m in decisions if _is_muse_cli_model(m)]
     qu = [m for m in decisions if _is_qwen_model(m)]
+    lo = [m for m in decisions if _is_local_model(m)]
     co = [m for m in decisions if not _is_cline_model(m) and not _is_muse_model(m)
-          and not _is_muse_cli_model(m) and not _is_qwen_model(m)]
-    return ((cp, "cline"), (mu, "muse"), (mc, "muse_cli"), (qu, "qwen"), (co, "copilot"))
+          and not _is_muse_cli_model(m) and not _is_qwen_model(m) and not _is_local_model(m)]
+    return ((cp, "cline"), (mu, "muse"), (mc, "muse_cli"), (qu, "qwen"),
+            (lo, "local"), (co, "copilot"))
 
 
 def _mark_provider_exhausted(decisions: dict, log=None, cfg=None) -> None:
@@ -2058,6 +2115,30 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
         start_tier = "hard"
     names = list(models) if models else _council_models_by_tier(cfg, start_tier)
     names = names or _council_models(cfg)             # fallback: khong bao gio rong
+    # (08/10) ROUTING theo bang quyet dinh "latency/cost/scale" (hoc tu anh kien truc):
+    #  - URGENT (tin khan cap >= AGENT_URGENT_MIN): dung AGENT_COUNCIL_URGENT (model do
+    #    tre thap, kieu LPU) de quyet nhanh.
+    #  - SINGLE (do kho <= AGENT_COUNCIL_SINGLE_BELOW): chi hoi 1 model (kieu
+    #    "SINGLE LLM CALL: $ LOW") thay vi ca hoi dong -> tiet kiem quota.
+    if models is None:
+        urgent_models = [m.strip() for m in
+                         str(getattr(cfg, "agent_council_urgent", "") or "").split(",")
+                         if m.strip()]
+        urgent_min = _i(getattr(cfg, "agent_urgent_min", 10))
+        if urgent_models and _i((payload or {}).get("urgent_bearish")) >= urgent_min:
+            start_tier = "urgent"
+            names = urgent_models
+            if log:
+                log.info("COUNCIL URGENT: %s tin khan cap >= %d -> dung %d model do tre thap.",
+                         (payload or {}).get("urgent_bearish"), urgent_min, len(names))
+        else:
+            single_below = _f(getattr(cfg, "agent_council_single_below", 0.0), 0.0)
+            if single_below > 0 and diff_score <= single_below and len(names) > 1:
+                start_tier = "single"
+                names = names[:1]
+                if log:
+                    log.info("COUNCIL SINGLE: do kho %.2f <= %.2f -> chi hoi 1 model (%s).",
+                             diff_score, single_below, names[0])
     if log and start_tier != "hard" and models is None:
         log.info("COUNCIL: do kho %.2f (%s) -> tier '%s' (%d model).",
                  diff_score, "; ".join(diff_reasons) or "de", start_tier, len(names))
@@ -2097,6 +2178,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     qw_args = _split_cmd(getattr(cfg, "agent_qwen_args", "")) or None
     mc_bin = str(getattr(cfg, "agent_muse_cli_bin", "muse") or "muse")
     mc_args = _split_cmd(getattr(cfg, "agent_muse_cli_args", "")) or None
+    lo_base = str(getattr(cfg, "agent_local_base_url", "") or "")
+    lo_key = str(getattr(cfg, "agent_local_api_key", "") or "local")
     make_provider = provider_factory or (
         lambda m: (ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
                    else MuseProvider(model=m) if m.startswith(MUSE_PREFIX)
@@ -2104,6 +2187,9 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
                    if m.startswith(MUSE_CLI_PREFIX)
                    else QwenCliProvider(model=m, bin_path=qw_bin, args=qw_args)
                    if m.startswith(QWEN_PREFIX)
+                   else OpenAICompatProvider(model=m[len(LOCAL_PREFIX):],
+                                             base_url=lo_base, api_key=lo_key)
+                   if m.startswith(LOCAL_PREFIX)
                    else CopilotCliProvider(model=m, bin_path=bin_path, args=args)))
     state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)
     max_rounds = max(1, int(getattr(cfg, "council_rounds", 2) or 2))
@@ -2172,7 +2258,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     # (05/10) DEBATE VONG 2 + NANG TIER: hoi lai voi peer context + them model thong minh hon
     is_split = (n_allow and n_veto and abs(n_allow - n_veto) <= 2)
     tier_upgraded = False
-    if max_rounds >= 2 and abstained and (action == "NO_OPINION" or is_split):
+    if max_rounds >= 2 and abstained and start_tier != "single" \
+            and (action == "NO_OPINION" or is_split):
         peer_lines = []
         for d in list(votes.values())[:8]:
             a = str(d.action); n = str(getattr(d, "agent", "?"))[:22]

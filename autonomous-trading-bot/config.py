@@ -309,6 +309,29 @@ class Settings:
     # Fallback chain theo model: 'primary>f1,f2|primary2>g1' (tu dong trong nhom co tien to).
     agent_council_fallbacks: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_FALLBACKS", ""))
+    # (08/10) JSON repair: model tra van ban thay vi JSON -> hoi lai 1 lan voi chi dan
+    # cuc chat (thay cho fine-tune/structured-output khong phai noi nao cung ho tro).
+    agent_json_repair: bool = field(
+        default_factory=lambda: _get_bool("AGENT_JSON_REPAIR", True))
+    # (08/10) Routing theo bang quyet dinh: viec QUA DE -> chi 1 model (kieu SINGLE LLM
+    # CALL $ LOW). 0 = tat (luon dung tier lite/core/hard nhu cu).
+    agent_council_single_below: float = field(
+        default_factory=lambda: _get_float("AGENT_COUNCIL_SINGLE_BELOW", 0.0))
+    # (08/10) Routing URGENT (kieu LPU - do tre thap): tin khan cap >= AGENT_URGENT_MIN
+    # -> dung AGENT_COUNCIL_URGENT (csv) thay vi tier thuong. Rong = tat.
+    agent_council_urgent: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_URGENT", ""))
+    agent_urgent_min: int = field(default_factory=lambda: _get_int("AGENT_URGENT_MIN", 10))
+    # (08/10) Model LOCAL mien phi (kieu NPU: $0, private, do tre thap) qua server
+    # OpenAI-compatible chay tai may (Ollama/vLLM/llama.cpp). Can AGENT_LOCAL_BASE_URL.
+    agent_council_local: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_LOCAL", ""))
+    agent_council_local_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_LOCAL_UNTIL", ""))
+    agent_local_base_url: str = field(
+        default_factory=lambda: _get("AGENT_LOCAL_BASE_URL", ""))
+    agent_local_api_key: str = field(
+        default_factory=lambda: _get("AGENT_LOCAL_API_KEY", "local"))
 
 
     # Sentiment

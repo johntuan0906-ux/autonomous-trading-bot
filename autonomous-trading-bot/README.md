@@ -643,3 +643,26 @@ Get-ChildItem -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Fo
 | **Dedup alias model** (2 tên cùng 1 model thật → 1 phiếu) | `AGENT_COUNCIL_ALIASES` | tự động theo tên |
 | **Shadow A/B + eval dataset** từ journal | `python agents.py --ab-report`, `--eval-dataset PATH` | — |
 | **Prompt vai trò nâng cấp** persona→process→deliverables→evidence (giữ nguyên JSON schema) | — | luôn bật |
+
+## 11. (08/10) Bảng định tuyến "loại compute" (từ sơ đồ chip + cây kiến trúc AI)
+
+Chọn theo **latency · parallelism · cost · scale** — giống chọn CPU/GPU/TPU/NPU/LPU/DPU:
+
+| Loại việc | "Chip" tương ứng | Cấu hình trong bot | Chi phí |
+|---|---|---|---|
+| Điều phối vòng lặp + luật tất định (risk/size/SL/TP/kill-switch) | **CPU** (orchestration) | Python + ccxt, `risk.py`/`portfolio.py` | $0 |
+| Việc rất dễ (độ khó ≤ `AGENT_COUNCIL_SINGLE_BELOW`) | **SINGLE LLM CALL** ($ LOW) | chỉ 1 model lite duy nhất | $ |
+| Việc thường → khó | Fan-out nhiều model (lite→core→hard) | `council_difficulty()` + `_tier_for()` | $$ |
+| Tin khẩn cấp (≥ `AGENT_URGENT_MIN`) | **LPU** (real-time serving) | `AGENT_COUNCIL_URGENT` (model độ trễ thấp, vd Groq) | $ |
+| Vote giá rẻ / private / offline | **NPU** (on-device, $0) | `AGENT_COUNCIL_LOCAL` + `AGENT_LOCAL_BASE_URL` (Ollama) | $0 |
+| Backtest/hyperopt/sweep nặng (offline) | **GPU** (training/throughput) | `backtest.py`, `hyperopt.py`, `sweep.py` | — |
+| Tensor quy mô Google Cloud | **TPU** | ❌ không dùng (không có workload này) | — |
+| I/O sàn · Telegram · journal | **DPU** (offload) | cache + ngân sách thời gian (`SENTIMENT_BUDGET_SEC`); offload async là việc tiếp theo | — |
+
+Ánh xạ cây **AI Architecture** (ảnh 2):
+
+- **MULTI-AGENT SYSTEM ($$$$, HIGH)** → council macro/critic/arbiter + 2 vòng debate: **chỉ dùng cho việc KHÓ**.
+- **SINGLE LLM CALL ($, LOW)** → tier `single` (bảng trên).
+- **LONG CONTEXT ($, LOW)** → payload ~1.2K token: cố ý **không** xây RAG cho council.
+- **FINE-TUNING ($$$$, HIGH)** → thay bằng **JSON repair 1 lần** (`AGENT_JSON_REPAIR=true`) + `parse_decision` fail-open; schema mẫu `schemas/agent_decision.json` (dùng được với `muse exec --output-schema` khi đã đăng nhập; `qwen --json-schema` **không** hoạt động qua gateway hiện tại — đã kiểm chứng thực tế).
+- **"Take actions / use tools?"** → **KHÔNG**: agent chỉ cố vấn, quyền quyết định tiền vẫn ở hàm tất định.

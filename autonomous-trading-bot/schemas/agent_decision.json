@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["ALLOW", "VETO", "NO_OPINION"],
+      "description": "Quyet dinh cua agent cho lenh dang xet"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Do tin cay 0..1"
+    },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Ly do CU THE dua tren du lieu trong payload (khong bia so lieu)"
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Co rui ro ngan (vd rsi_overbought, ema_bearish)"
+    },
+    "proposals": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Chi dung cho role reflect (de xuat block/unblock strategy)"
+    }
+  },
+  "required": ["action", "confidence"],
+  "additionalProperties": false
+}

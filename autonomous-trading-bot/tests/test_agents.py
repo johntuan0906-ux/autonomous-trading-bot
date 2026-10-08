@@ -1787,6 +1787,168 @@ class TestMuseCliProvider(unittest.TestCase):
         self.assertEqual(p.model, "muse-spark-1.3")
 
 
+class TestJsonRepair(unittest.TestCase):
+    """(08/10) JSON repair: model tra van ban -> hoi lai 1 lan voi chi dan cuc chat."""
+
+    class _TextThenJson:
+        name = "text_then_json"
+
+        def __init__(self, model="tr-1"):
+            self.model = model
+            self.calls = 0
+
+        def complete(self, system, user, *, timeout=5.0):
+            self.calls += 1
+            if self.calls == 1:
+                return {"text": "Toi nghi nen ALLOW lenh nay vi RSI trung tinh.",
+                        "tokens_in": 10, "tokens_out": 8}
+            return {"text": '{"action":"ALLOW","confidence":0.6,'
+                            '"reasons":["rsi trung tinh"],"risk_flags":[]}',
+                    "tokens_in": 12, "tokens_out": 9}
+
+    def test_repair_lan_hai_thanh_cong(self):
+        p = self._TextThenJson()
+        d = _layer(p, agent_json_repair=True).vote("critic",
+                                                   {"role": "critic", "alpha": 0.2})
+        self.assertEqual(d.action, "ALLOW")
+        self.assertEqual(p.calls, 2, "phai hoi lai 1 lan voi chi dan JSON")
+        self.assertIn("repair x1", d.note)
+
+    def test_tat_repair_thi_chi_goi_1_lan(self):
+        p = self._TextThenJson()
+        d = _layer(p, agent_json_repair=False).vote("critic",
+                                                    {"role": "critic", "alpha": 0.2})
+        self.assertEqual(d.action, "NO_OPINION")
+        self.assertEqual(p.calls, 1)
+
+    def test_repair_van_fail_thi_no_opinion(self):
+        class _AlwaysText:
+            name = "always_text"
+            model = "at-1"
+
+            def __init__(self):
+                self.calls = 0
+
+            def complete(self, system, user, *, timeout=5.0):
+                self.calls += 1
+                return {"text": "khong phai json", "tokens_in": 5, "tokens_out": 5}
+
+        p = _AlwaysText()
+        d = _layer(p, agent_json_repair=True).vote("critic", {"role": "critic"})
+        self.assertEqual(d.action, "NO_OPINION")
+        self.assertEqual(p.calls, 2)
+        self.assertIn("repair x1", d.note)
+
+
+class TestRoutingSingleUrgent(unittest.TestCase):
+    """(08/10) Bang quyet dinh: viec de -> 1 model; tin khan -> model do tre thap."""
+
+    def _factory(self, seen):
+        def make(model):
+            seen.append(model)
+            return _FixedModelProvider(model,
+                                       response={"action": "ALLOW", "confidence": 0.6})
+        return make
+
+    def test_viec_de_chi_hoi_1_model(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "s.json"),
+                   agent_council_single_below=1.0)
+        seen = []
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT", "rsi": 55,
+                                          "atr_pct": 0.01, "news_score": 0.1,
+                                          "alpha": 0.3},
+                                    role="critic", provider_factory=self._factory(seen))
+        self.assertEqual(res["start_tier"], "single")
+        self.assertEqual(len(seen), 1, "viec de -> chi hoi 1 model")
+        self.assertEqual(len(res["votes"]), 1)
+
+    def test_tin_khan_cap_dung_model_urgent(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "s.json"),
+                   agent_council_urgent="model-urgent-1,model-urgent-2",
+                   agent_urgent_min=10)
+        seen = []
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT", "rsi": 55,
+                                          "urgent_bearish": 15},
+                                    role="critic", provider_factory=self._factory(seen))
+        self.assertEqual(res["start_tier"], "urgent")
+        self.assertEqual(set(res["votes"]), {"model-urgent-1", "model-urgent-2"})
+
+    def test_duoi_nguong_urgent_thi_khong_dung(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "s.json"),
+                   agent_council_urgent="model-urgent-1", agent_urgent_min=10)
+        seen = []
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT", "rsi": 55,
+                                          "urgent_bearish": 3},
+                                    role="critic", provider_factory=self._factory(seen))
+        self.assertNotEqual(res["start_tier"], "urgent")
+
+    def test_mac_dinh_tat_thi_giu_hanh_vi_cu(self):
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "s.json"))
+        seen = []
+        res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT", "rsi": 55,
+                                          "atr_pct": 0.01, "news_score": 0.1,
+                                          "alpha": 0.3},
+                                    role="critic", provider_factory=self._factory(seen))
+        self.assertNotIn(res["start_tier"], ("single", "urgent"))
+        self.assertGreater(len(seen), 1)
+
+
+class TestLocalProvider(unittest.TestCase):
+    """(08/10) Model LOCAL mien phi (kieu NPU: $0, private) qua OpenAICompatProvider san co."""
+
+    def test_prefix_local(self):
+        self.assertEqual(A.LOCAL_PREFIX, "local/")
+
+    def test_is_local_model(self):
+        self.assertTrue(A._is_local_model("local/llama3.2:3b"))
+        self.assertFalse(A._is_local_model("qwen/llama3"))
+
+    def test_can_base_url_moi_bat(self):
+        cfg = _FakeCfg(agent_council_local="llama3.2:3b", agent_local_base_url="")
+        self.assertEqual(A._local_council_models(cfg), [],
+                         "khong co base_url -> tat (an toan)")
+        cfg2 = _FakeCfg(agent_council_local="llama3.2:3b",
+                        agent_local_base_url="http://127.0.0.1:11434/v1")
+        self.assertEqual(A._local_council_models(cfg2), ["local/llama3.2:3b"])
+
+    def test_skip_models(self):
+        import unittest.mock as _mock
+        with _mock.patch.dict(os.environ, {"LOCAL_SKIP_MODELS": "llama3.2:3b"}):
+            cfg = _FakeCfg(agent_council_local="llama3.2:3b,phi3:mini",
+                           agent_local_base_url="http://127.0.0.1:11434/v1")
+            self.assertEqual(A._local_council_models(cfg), ["local/phi3:mini"])
+
+    def test_dinh_tuyen_local_sang_openai_compat(self):
+        import unittest.mock as _mock
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "s.json"),
+                   agent_local_base_url="http://127.0.0.1:11434/v1")
+        made: dict = {}
+
+        class _FakeCompat:
+            name = "openai_compatible"
+
+            def __init__(self, model="", api_key="", base_url=""):
+                made["model"] = model
+                made["base_url"] = base_url
+                self.model = model
+
+            def complete(self, system, user, *, timeout=8.0):
+                return {"text": '{"action":"ALLOW","confidence":0.5}',
+                        "tokens_in": 1, "tokens_out": 1}
+
+        with _mock.patch.object(A, "OpenAICompatProvider", _FakeCompat):
+            res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT"}, role="critic",
+                                        models=["local/llama3.2:3b"])
+        self.assertEqual(made["model"], "llama3.2:3b", "phai strip tien to local/")
+        self.assertEqual(made["base_url"], "http://127.0.0.1:11434/v1")
+        self.assertEqual(set(res["votes"]), {"local/llama3.2:3b"})
+
+
 class TestRunnerAnCuaSo(unittest.TestCase):
     """(05/10) Bot chay duoi pythonw -> moi lan goi CLI (node/copilot) phai chay NGAM.
 

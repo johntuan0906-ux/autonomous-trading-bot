@@ -784,3 +784,41 @@ Hai sản phẩm khác nhau của Meta, khác dịch vụ và khác quyền:
 
 Lưu ý: Muse Code **không có "tích hợp GitHub" riêng** — nó dùng đúng `git` + credential trên máy (SSH key hoặc token), nên mục 12.1 là điều kiện cần cho cả người lẫn agent. Muse chỉ chạy được sau khi có Meta API key (xem 10.1).
 
+## 13. (08/10) Cổng "HOÀN THÀNH TESTNET → LIVE" (`live_ready.py`)
+
+`live_guard.py` chỉ xét **toàn bộ** journal (n≥50, PF≥1.2) nên không phát hiện được kiểu "tổng đẹp nhưng cửa sổ gần đây xấu". `live_ready.py` thêm cổng chặt hơn, chạy lại được mỗi ngày (tất định, chỉ ĐỌC journal/.env/risk_state):
+
+```bash
+python live_ready.py                      # bảng + verdict (exit 0 = đạt, 2 = chưa đạt)
+python live_ready.py --windows 7,14,30    # cửa sổ mặc định
+python live_ready.py --json logs/live_ready.json
+```
+
+| Cổng | Ngưỡng | Vì sao |
+|---|---|---|
+| PF(R) ở **mỗi** cửa sổ 7/14/30 ngày | ≥ 1.2 | edge phải ổn định ở mọi cửa sổ, không chỉ trung bình |
+| PF($) ở mỗi cửa sổ | ≥ 1.1 | PF($) tính cả phí ⇒ sát tiền thật hơn PF(R) |
+| n lệnh đóng (toàn bộ) | ≥ 300 (`LIVE_MIN_TRADES`) | 232 lệnh chưa đủ mẫu để tin PF |
+| Kill-switch | sạch | phải `python risk.py --reset` trước |
+| `MAX_TOTAL_RISK_PCT` / `LEVERAGE` | ≤ 2.0% / ≤ 8 khi PF<1.5 | chưa chứng minh edge thì không tăng đòn |
+| Chiến lược có n≥`STRAT_MIN_N` và avgR ≤ −`STRAT_AVG_R` | phải nằm trong `STRATEGY_BLOCK` | không được trade bằng chiến lược đã âm |
+| Mẫu mỗi hướng LONG/SHORT | ≥ 5 lệnh | tránh "chỉ thắng 1 chiều" do thiếu mẫu |
+
+**Kết quả chạy 08/10 trên journal thật (bot đang chạy testnet):**
+
+```
+CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=232/300 | PF(R)=1.214 | PF($)=1.063
+  CUA SO      n     WR%   PF(R)   PF($)     E(R)      PnL$
+  7 ngay    186    64.5   1.380   1.171   +0.0742   +58.37
+  14 ngay   221    63.8   1.171   1.008   +0.0386    +3.89
+  30 ngay   232    63.8   1.214   1.063   +0.0489   +31.89
+VERDICT: CHUA HOAN THANH
+   [CHAN] PF(R) cua so 14 ngay = 1.171 < 1.2
+   [CHAN] PF($) cua so 14 ngay = 1.008 < 1.1
+   [CHAN] PF($) cua so 30 ngay = 1.063 < 1.1
+   [CHAN] n lenh dong toan bo = 232 < 300
+```
+
+⇒ **Chưa sang LIVE**: 7 ngày gần nhất tốt (PF(R) 1.380) nhưng cửa sổ 14 ngày chỉ 1.171 và PF($) ~1.0–1.17 (phí ăn gần hết edge). Điều kiện "hoàn thành": 14/30 ngày ≥ 1.2 (sau khi các lệnh yếu 25/09–01/10 rơi khỏi cửa sổ), PF($) ≥ 1.1, n ≥ 300. Quy trình sang LIVE: `python live_ready.py` → khi `HOAN THANH` thì đặt `BINANCE_TESTNET=false` + `LIVE_CONFIRM=true` (live_guard.py kiểm tra lại lần cuối trước khi vào lệnh thật).
+
+

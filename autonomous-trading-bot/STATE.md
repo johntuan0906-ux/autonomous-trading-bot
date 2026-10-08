@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 03:05:04 · commit `?`
+- **Cập nhật**: 09/10/2026 03:35:04 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `81208` · round `137` · nhịp tim cách đây 22.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 4590.14 USDT
+- **Bot**: pid `21904` · round `25` · nhịp tim cách đây 24.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 4579.55 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 322 lệnh đóng, WR 66.46%, E(R) 0.1021, PnL 247.19$)
+## Hiệu suất (journal: 325 lệnh đóng, WR 65.85%, E(R) 0.0946, PnL 225.84$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 237 | 67.09 | 1.801 | 1.689 | 0.1348 | 261.27 |
-| 14 ngày | 299 | 65.89 | 1.456 | 1.332 | 0.0915 | 192.08 |
-| 30 ngày | 322 | 66.46 | 1.504 | 1.392 | 0.1021 | 247.19 |
+| 7 ngày | 240 | 66.25 | 1.71 | 1.599 | 0.1242 | 239.93 |
+| 14 ngày | 302 | 65.23 | 1.406 | 1.285 | 0.0835 | 170.74 |
+| 30 ngày | 325 | 65.85 | 1.456 | 1.346 | 0.0946 | 225.84 |
 
 ## Cổng sang LIVE
 
@@ -32,9 +32,9 @@
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ADA/USDT:USDT | SHORT | 1917.0 | 0.2286 | 0.233814 | 0.215565 | False | False | 0.038 |
-| LINK/USDT:USDT | SHORT | 46.11 | 12.378 | 12.594856 | 11.83586 | False | False | 0.042 |
-| SOL/USDT:USDT | SHORT | 6.22 | 109.11 | 110.71701 | 105.092475 | False | False | 0.012 |
+| ADA/USDT:USDT | SHORT | 2503.0 | 0.2336 | 0.237594 | 0.223615 | False | False | 0.025 |
+| AVAX/USDT:USDT | SHORT | 62.0 | 10.153 | 10.312188 | 9.75503 | False | False | 0.057 |
+| BTC/USDT:USDT | SHORT | 0.0216 | 81745.1 | 82206.443894 | 80591.740265 | False | False | 0.098 |
 
 ---
 

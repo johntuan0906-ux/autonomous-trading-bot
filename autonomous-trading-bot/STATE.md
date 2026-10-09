@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 10/10/2026 04:47:46 · commit `?`
+- **Cập nhật**: 10/10/2026 05:17:46 · commit `?`
 - **Chế độ**: **LIVE (TIỀN THẬT)** · `DRY_RUN=False` · `LIVE_CONFIRM=True`
-- **Bot**: pid `42952` · round `167` · nhịp tim cách đây 18.3s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `42952` · round `210` · nhịp tim cách đây 7.2s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -39,12 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (3)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| AVAX/USDT:USDT | SHORT | 1.0 | 10.281 | 10.375782 | 10.044045 | False | False | 0.158 |
-| DOGE/USDT:USDT | SHORT | 178.0 | 0.08507 | 0.0857 | 0.083495 | False | False | 0.016 |
+| ADA/USDT:USDT | SHORT | 42.0 | 0.2395 | 0.242158 | 0.232855 | False | False | 0.0 |
+| AVAX/USDT:USDT | SHORT | 1.0 | 10.281 | 10.375782 | 10.044045 | False | False | 0.253 |
+| DOGE/USDT:USDT | SHORT | 178.0 | 0.08507 | 0.0857 | 0.083495 | False | False | 0.048 |
 | SOL/USDT:USDT | SHORT | 0.12 | 108.53 | 109.440312 | 106.25422 | False | False | 0.121 |
 
 ---

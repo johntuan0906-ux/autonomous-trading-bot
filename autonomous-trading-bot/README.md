@@ -596,6 +596,8 @@ Nay `KILL_MONITOR_ONLY=true` (mặc định):
 | Đối soát + arm lại SL/TP trên sàn | **CÓ** (throttle `PROTECT_CHECK_SEC`) |
 | Quay lại trade | **Tự động** khi bạn chạy `python risk.py --reset` |
 
+> ⚠️ **Gotcha (09/10)**: `risk.py --reset` **chỉ có tác dụng khi bot đã DỪNG**. Bot đang chạy sẽ ghi lại state cũ (`tripped=true`) sau vài giây ⇒ reset trơ, bot vẫn bị chặn (đã gặp thật: reset lúc 10:41 nhưng 10:41:21 bot lại tự flatten + thoát với `daily loss 2.23%`). Quy trình đúng: **dừng bot → `python risk.py --reset` → chạy lại `pythonw run_forever.py`**; khi đó `start_equity` mới = equity hiện tại ⇒ ngân sách lỗ ngày 2% được cấp lại.
+
 Log có dòng `MONITOR-ONLY: dang giu N vi the (...)`. Đặt `KILL_MONITOR_ONLY=false` để quay lại hành vi
 cũ (thoát hẳn + để supervisor restart).
 

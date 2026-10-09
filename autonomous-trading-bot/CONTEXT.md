@@ -96,6 +96,15 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 
 ⚠️ Khi sàn đang chặn SL/TP (`-4045`): **đừng tắt bot** — tắt là mất luôn lớp monitor mềm.
 
+⚠️ **Gotcha kill-switch (09/10)**: `python risk.py --reset` **chỉ có tác dụng khi bot đã DỪNG** — bot đang chạy sẽ **ghi lại state cũ** (tripped=true) ngay sau đó vài giây ⇒ reset trơ, bot vẫn bị chặn. Quy trình đúng:
+
+```bash
+# 1) dung bot (kill supervisor + tien trinh con)
+# 2) python risk.py --reset        -> "reset: True", logs/risk_state.json bi xoa
+# 3) chay lai: pythonw run_forever.py
+# => start_equity moi = equity hien tai -> ngan sach lo ngay 2% duoc cap lai
+```
+
 ---
 
 ## 7. Bản đồ file quan trọng

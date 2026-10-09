@@ -121,14 +121,26 @@ class TestLiveReady(unittest.TestCase):
         self.assertIn("MAX_TOTAL_RISK_PCT = 3.00%", _blockers(rep))
 
     # ---------- chiến lược âm ----------
-    def test_chien_luoc_am_chua_block_thi_chan(self):
+    def test_chien_luoc_am_gate_bat_chi_canh_bao(self):
+        """(09/10) runtime TU dong chan tap nay khi STRATEGY_GATE=true -> chi canh bao."""
         _mk(self.jp, 200, 100, direction="LONG")
         _mk(self.jp, 15, 5, direction="SHORT")
         _mk(self.jp, 0, 12, direction="LONG", strategy="D_RANGE_REVERSAL")
         rep = LR.check(_cfg(), journal_path=self.jp)
+        self.assertTrue(rep["ok"], rep["blockers"])
+        self.assertNotIn("D_RANGE_REVERSAL", _blockers(rep))
+        self.assertTrue(any("D_RANGE_REVERSAL" in w and "TU dong chan" in w
+                            for w in rep["warnings"]))
+
+    def test_chien_luoc_am_gate_tat_thi_chan(self):
+        _mk(self.jp, 200, 100, direction="LONG")
+        _mk(self.jp, 15, 5, direction="SHORT")
+        _mk(self.jp, 0, 12, direction="LONG", strategy="D_RANGE_REVERSAL")
+        with mock.patch.dict(os.environ, {"STRATEGY_GATE": "false"}):
+            rep = LR.check(_cfg(), journal_path=self.jp)
         self.assertFalse(rep["ok"])
         self.assertIn("D_RANGE_REVERSAL", _blockers(rep))
-        self.assertIn("CHUA nam trong STRATEGY_BLOCK", _blockers(rep))
+        self.assertIn("KHONG bi chan", _blockers(rep))
 
     def test_chien_luoc_am_da_block_thi_khong_chan(self):
         _mk(self.jp, 200, 100, direction="LONG")

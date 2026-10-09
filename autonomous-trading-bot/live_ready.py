@@ -128,14 +128,19 @@ def check(cfg, journal_path: str = "logs/journal.jsonl",
             continue
         if int(g.get("n", 0)) >= min_n and float(g.get("avg_r", 0.0)) <= -avg_r_thr:
             weak[code] = g
-    if gate:
-        for code, g in weak.items():
-            if code not in block:
-                blockers.append(
-                    f"chien luoc {code} (n={g['n']} avgR={g['avg_r']:+.2f}) dang am nhung "
-                    f"CHUA nam trong STRATEGY_BLOCK")
-            else:
-                warnings.append(f"chien luoc {code} am (n={g['n']}) — da bi STRATEGY_BLOCK chan")
+    for code, g in weak.items():
+        if code in block:
+            warnings.append(f"chien luoc {code} am (n={g['n']}) — da bi STRATEGY_BLOCK chan")
+        elif gate:
+            # (09/10) SUA: runtime TU dong chan chinh xac tap nay (strategy.gate_check:
+            # n >= STRAT_MIN_N VA avgR <= -STRAT_AVG_R) khi STRATEGY_GATE=true
+            # => chi la CANH BAO, khong duoc coi la chan (truoc day chan oan).
+            warnings.append(f"chien luoc {code} am (n={g['n']}, avgR={g['avg_r']:+.2f}) — "
+                            f"runtime TU dong chan (STRATEGY_GATE=true)")
+        else:
+            blockers.append(
+                f"chien luoc {code} (n={g['n']} avgR={g['avg_r']:+.2f}) dang am nhung "
+                f"KHONG bi chan: STRATEGY_BLOCK khong co ten nay VA STRATEGY_GATE dang TAT")
     for d in DIRECTIONS_REQUIRED:
         g = (st_all.get("by_direction") or {}).get(d) or {}
         if int(g.get("n", 0)) < MIN_DIRECTION_TRADES:

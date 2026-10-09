@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 10/10/2026 03:47:46 · commit `?`
+- **Cập nhật**: 10/10/2026 04:17:46 · commit `?`
 - **Chế độ**: **LIVE (TIỀN THẬT)** · `DRY_RUN=False` · `LIVE_CONFIRM=True`
-- **Bot**: pid `42952` · round `83` · nhịp tim cách đây 3.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `42952` · round `125` · nhịp tim cách đây 0.7s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 425 lệnh đóng, WR 61.88%, E(R) 0.0589, PnL 123.31$)
+## Hiệu suất (journal: 428 lệnh đóng, WR 61.45%, E(R) 0.0514, PnL 122.97$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 287 | 59.58 | 1.374 | 1.217 | 0.0751 | 105.83 |
-| 14 ngày | 394 | 61.42 | 1.276 | 1.136 | 0.0572 | 98.26 |
-| 30 ngày | 425 | 61.88 | 1.274 | 1.151 | 0.0589 | 123.31 |
+| 7 ngày | 290 | 58.97 | 1.305 | 1.216 | 0.0637 | 105.49 |
+| 14 ngày | 397 | 60.96 | 1.23 | 1.136 | 0.0491 | 97.93 |
+| 30 ngày | 428 | 61.45 | 1.233 | 1.15 | 0.0514 | 122.97 |
 
 ## Cổng sang LIVE
 
@@ -26,7 +26,7 @@
 ## Cấu hình rủi ro
 
 - risk/lệnh `0.5%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `2` · trần size `1000.0` USDT
-- Learner: 198 lần cập nhật trọng số · Hội đồng AI: **15 model**
+- Learner: 201 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ADA/USDT:USDT | SHORT | 42.0 | 0.2355 | 0.238168 | 0.22883 | False | False | 0.112 |
-| AVAX/USDT:USDT | SHORT | 1.0 | 10.121 | 10.22318 | 9.86555 | False | False | 0.069 |
+| ADA/USDT:USDT | SHORT | 44.0 | 0.2382 | 0.240744 | 0.23184 | False | False | 0.0 |
+| AVAX/USDT:USDT | SHORT | 1.0 | 10.281 | 10.375782 | 10.044045 | False | False | 0.0 |
+| DOGE/USDT:USDT | SHORT | 178.0 | 0.08507 | 0.0857 | 0.083495 | False | False | 0.016 |
 | SOL/USDT:USDT | SHORT | 0.12 | 108.53 | 109.440312 | 106.25422 | False | False | 0.121 |
-| XRP/USDT:USDT | SHORT | 11.0 | 1.3812 | 1.391586 | 1.355235 | False | False | 0.087 |
 
 ---
 

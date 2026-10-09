@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 
 
 def mask(s: str) -> str:
@@ -34,6 +35,63 @@ def public_ip() -> str:
         return urllib.request.urlopen("https://api.ipify.org", timeout=8).read().decode().strip()
     except Exception:  # noqa: BLE001
         return "?"
+
+
+def ip_diag(cfg, tries: int = 6, sleep_s: float = 0.6) -> dict:
+    """Đọc ví vài lần, gom kết quả theo **IP công khai của từng lần**.
+
+    Trả `{"by_ip": {ip: (so_lan_ok, tong_lan)}, "rejected": {ip_binance: so_lan}}`.
+
+    Vì sao: máy có nhiều đường ra Internet (2 WAN/cân bằng tải) ⇒ mỗi request có thể ra
+    bằng IP khác nhau. Nếu key bật *"Restrict access to trusted IPs only"* mà whitelist
+    thiếu 1 IP thì lỗi `-2015` **ngắt quãng**. `rejected` lấy IP từ chính message `-2015`
+    của Binance (IP mà Binance thực sự thấy bị chặn) — chính xác hơn IP do ipify báo,
+    vì máy có thể đổi đường ra giữa 2 lần gọi.
+    """
+    import state_sync as SS
+    from exchange import request_ip_from_error
+    by_ip: dict = {}
+    rejected: dict = {}
+    for _ in range(max(1, int(tries))):
+        ip = public_ip()
+        ok = equity_ok_once(cfg)
+        o, n = by_ip.get(ip, (0, 0))
+        by_ip[ip] = (o + (1 if ok else 0), n + 1)
+        if not ok:
+            ipb = request_ip_from_error(SS.last_live_error())
+            if ipb:
+                rejected[ipb] = rejected.get(ipb, 0) + 1
+        if sleep_s:
+            time.sleep(float(sleep_s))
+    return {"by_ip": by_ip, "rejected": rejected}
+
+
+def equity_ok_once(cfg) -> bool:
+    """Đọc được số dư ví THẬT lần này? (bọc `state_sync.real_equity_usdt` để test được)."""
+    import state_sync as SS
+    return SS.real_equity_usdt(cfg) is not None
+
+
+def print_ip_table(table: dict) -> None:
+    """In bảng `IP : x/y lần OK` + **IP mà Binance TỪ CHỐI** + cách sửa."""
+    by_ip = (table or {}).get("by_ip") or {}
+    rejected = (table or {}).get("rejected") or {}
+    if not by_ip and not rejected:
+        return
+    if by_ip:
+        print("  Doc theo tung IP ra Internet (IP ipify bao cho tung lan):")
+        for ip, (o, n) in sorted(by_ip.items(), key=lambda kv: (-kv[1][0], kv[0])):
+            print("    %-16s : %d/%d lan OK" % (ip, o, n))
+    if rejected:
+        print("  IP ma Binance TU CHOI (doc tu chinh message -2015):")
+        for ip, n in sorted(rejected.items()):
+            print("    %-16s : %d lan bi chan  <-- KHONG nam trong whitelist cua key" % (ip, n))
+        print("    ⇒ Sua: Binance > API Management > key > Edit restrictions >")
+        print("      TAT 'Restrict access to trusted IPs only' (chac chan nhat: may co nhieu IP ra),")
+        print("      hoac them (cac) IP tren vao whitelist.")
+    if by_ip and len(by_ip) > 1 and all(o == 0 for o, _ in by_ip.values()):
+        print("    ⚠️ Moi IP deu 0/x: may co the DOI duong ra giua luc goi ipify va luc goi")
+        print("      Binance (can bang tai 2 WAN) ⇒ bang chi de tham khao; TAT gioi han IP la chac chan.")
 
 
 def ip_change_note(cur: str) -> str:
@@ -106,6 +164,11 @@ def main(argv: list | None = None) -> int:
           % (tier["name"], tier["label"], tier["risk_pct"], tier["max_positions"]))
     print("  Cap se giao dich          : %s" % (tier["symbols"] + " + " + tier["extra_symbols"]
                                                 if tier["feasible_any"] else "(khong co)"))
+    ip_table = None
+    if not stable:
+        # (09/10) Key khong on dinh: do tiep theo TUNG IP ra Internet de biet IP nao bi chan.
+        ip_table = ip_diag(cfg, tries=min(6, max(2, tries)), sleep_s=0.6)
+        print_ip_table(ip_table)
     if eq is None:
         from exchange import request_ip_from_error
         ip_bin = request_ip_from_error(err)
@@ -143,6 +206,8 @@ def main(argv: list | None = None) -> int:
         print(json.dumps({"source": src, "equity": eq, "min_equity": min_eq,
                           "tier": tier["name"], "ok": bool(ok_eq and stable),
                           "tries": used, "ok_n": ok_n, "stable": stable,
+                          "by_ip": {k: list(v) for k, v in (ip_table or {}).get("by_ip", {}).items()},
+                          "rejected": (ip_table or {}).get("rejected", {}),
                           "error": err}, ensure_ascii=False))
     return 0 if (ok_eq and stable) else 2
 

@@ -927,25 +927,31 @@ BINANCE_LIVE_API_SECRET=
 
 ### 16.3 Lỗi `-2015` — đã gặp thật ngày 09/10 (máy này có NHIỀU IP ra Internet)
 
-Triệu chứng: key đúng, nhưng `check_live_key.py` **lúc đọc được lúc không** (đo thực tế **2/8 lần** thành công), Binance trả:
+Triệu chứng: key đúng, nhưng `check_live_key.py` **lúc đọc được lúc không** (đo thực tế **2/6 · 3/5 · 1/5** thành công), Binance trả:
 
 ```
 {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action, request ip: 222.253.53.82"}
 ```
 
-Nguyên nhân (đã đo): máy có **nhiều đường ra Internet** — `api.ipify.org` báo `171.244.236.148` trong khi **cùng lúc Binance thấy `222.253.53.82`**. Nếu key bật *"Restrict access to trusted IPs only"* thì ~phần lớn request bị từ chối ⇒ key "đúng" vẫn lỗi ngẫu nhiên.
+**Bằng chứng quyết định** (cùng key, cùng thời điểm): request đi ra bằng IP `171.244.236.148` → **OK**; request đi ra bằng `222.253.53.82` → **-2015**. ⇒ **key/secret/quyền đúng**, chỉ **IP** bị chặn: whitelist của key thiếu `222.253.53.82`.
 
-**Vì sao nguy hiểm cho LIVE**: bot có thể **không đặt được SL / không đóng được vị thế** ở đúng lúc cần ⇒ rủi ro mất tiền thật.
+Vì sao ngẫu nhiên: máy có **2 đường ra Internet** (2 WAN/cân bằng tải) ⇒ mỗi request có thể đi 1 trong 2 IP. Ngoài ra máy có thể **đổi đường ra giữa 2 lần gọi** (ipify báo 1 IP, Binance thấy IP khác) nên đừng tin tuyệt đối IP do ipify báo.
+
+**Vì sao nguy hiểm cho LIVE**: bot có thể **không đặt được SL / không đóng được vị thế** ở đúng lúc cần ⇒ rủi ro mất tiền thật. Vì vậy đã thêm **chốt 4b**: chỉ sang LIVE khi key đọc **ổn định ≥4/5** (xem dưới).
 
 **Cách sửa (theo thứ tự)**:
 1. Binance → **API Management** → key → **Edit restrictions** → **TẮT** *"Restrict access to trusted IPs only"* (với máy này nên tắt hẳn) → **Lưu** → đợi 1–2 phút → chạy lại `python check_live_key.py`.
-2. Kiểm tra đã tick **cả** *Enable Reading* **và** *Enable Futures* (thiếu 1 trong 2 cũng ra `-2015`).
-3. Nếu vừa **Regenerate secret** → dán secret **mới** vào `.env`.
-4. Muốn vẫn giới hạn IP thì phải **có IP tĩnh** (VPN/static IP) — với mạng nhiều đường ra thì whitelist sẽ lỗi ngẫu nhiên.
+2. Nếu muốn **giữ** giới hạn IP: phải thêm **TẤT CẢ** IP trong bảng "IP ma Binance TU CHOI" (hiện là `222.253.53.82`) — nhưng IP có thể đổi nữa ⇒ chỉ chắc chắn khi có **IP tĩnh** (VPN/static IP).
+3. Kiểm tra đã tick **cả** *Enable Reading* **và** *Enable Futures* (thiếu 1 trong 2 cũng ra `-2015`).
+4. Nếu vừa **Regenerate secret** → dán secret **mới** vào `.env`.
 
 Công cụ tự chẩn đoán (không cần đoán):
-- `python check_live_key.py --retry 8` — thử 8 lần, in **mã lỗi thật**, **số lần đọc được** (`x/y`), **IP Binance thấy** vs **IP ipify**, và cảnh báo nếu **IP đã đổi**.
-- **Chốt 4b (mới, 09/10)**: cổng auto-live đọc ví **5 lần** và **chỉ cho sang LIVE khi đọc ổn định ≥4/5 (80%)** — đọc được 1 lần KHÔNG đủ, vì key lỗi 75% sẽ làm bot LIVE **không đặt được SL / không đóng được vị thế**. Đo thực tế lúc này: **3/5 ⇒ chặn** (bot vẫn chạy testnet).
+- `python check_live_key.py` — đọc ví **5 lần** (in `x/y lần thành công`), in **mã lỗi thật**, và khi key không ổn định thì in thêm:
+  - `Doc theo tung IP ra Internet` — mỗi IP ipify báo `x/y lần OK`;
+  - `IP ma Binance TU CHOI` — IP lấy từ chính message `-2015` + số lần bị chặn (đây là **IP thiếu trong whitelist**);
+  - cảnh báo **IP đã đổi** so với lần kiểm tra trước (`logs/.last_public_ip`).
+- `--retry N` (mặc định 5) — số lần thử; `--json` — kèm `by_ip`/`rejected` để máy đọc.
+- **Chốt 4b**: cổng auto-live chỉ cho sang LIVE khi đọc ổn định **≥4/5 (80%)** — đọc được 1 lần KHÔNG đủ (key lỗi 75% ⇒ LIVE không đặt được SL). Đo thực tế: **1/5 ⇒ chặn** (bot vẫn chạy testnet).
 - Mã lỗi thật được **ghi vào `logs/state_sync.log`** (trước đây chỉ ghi "khong doc duoc").
 
 

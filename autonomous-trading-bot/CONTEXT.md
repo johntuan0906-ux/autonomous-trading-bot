@@ -8,7 +8,7 @@
 
 ## 0. Khôi phục ngữ cảnh trong 60 giây (dành cho phiên AI mới)
 
-Đọc theo thứ tự: **CONTEXT.md (file này) → AGENTS.md → README.md mục 13–14**. Sau đó chạy:
+Đọc theo thứ tự: **CONTEXT.md (file này) → `STATE.md` (số liệu tự động) → AGENTS.md → README.md mục 13–15**. Sau đó chạy:
 
 ```bash
 python live_ready.py                 # còn thiếu cổng nào để sang LIVE
@@ -26,27 +26,29 @@ Hiện đang chạy **testnet (tiền demo)** — KHÔNG phải tiền thật. B
 
 Bot giao dịch **USDT-M Futures (Binance)** tự động trên Windows: vòng lặp `turbo_demo.py` quét 7 cặp → tính điểm tín hiệu (kỹ thuật + phái sinh + tin tức + learner) → đi qua các cổng an toàn **tất định** (risk, strategy block, learner score, urgent) → mở lệnh kèm SL/TP → `bot._monitor()` bảo vệ mỗi vòng. Ngoài ra có **hội đồng AI (LLM)** để *cố vấn* (chưa có quyền chặn lệnh) và **learner** học online trọng số từ kết quả thật.
 
-## 2. Trạng thái hiện tại (08/10/2026 ~23:40)
+## 2. Trạng thái hiện tại (09/10/2026 ~00:10 — số tự động xem `STATE.md`)
 
 | Hạng mục | Giá trị | Ghi chú |
 |---|---|---|
 | Chế độ | `BINANCE_TESTNET=true`, `DRY_RUN=false` | lệnh thật trên **tài khoản demo** |
-| Bot | supervisor PID `58068` + `turbo_demo` (tiến trình con) | tự restart khi crash; lock `logs/.supervisor.lock` |
-| Ví demo | **4631.8 USDT** | uPnL −12.82 tại thời điểm ghi |
+| Bot | supervisor PID `82912` + `turbo_demo` (tiến trình con) | tự restart khi crash; lock `logs/.supervisor.lock` |
+| Ví demo | ~4630 USDT | số mới nhất do `state_sync.py` ghi vào `STATE.md` |
 | Vị thế đang mở | **7**: DOGE, BTC, LINK, AVAX, ADA, XRP, SOL (toàn SHORT) | SL/TP trên sàn **bị chặn `-4045`** → monitor mềm bảo vệ |
 | Hội đồng AI | **15 model** (12 Cline + 2 Qwen CLI + 1 Local Ollama) | Copilot bị chặn tới 01/11; **Muse đã tắt hoàn toàn** |
 | Quyền veto của AI | **CHƯA cấp** (`granted=False` cho cả SETUP và COUNCIL) | hội đồng chỉ ghi `[shadow]`; `BLOCKED_VETO=0` |
 | Tham số rủi ro | risk 1%/lệnh, trần tổng 2%, `LEVERAGE=8`, `MAX_POSITIONS=4` | `BALANCE_USDT=1000` = trần size (`size_base = min(trần, equity thật)`) |
 | Kill-switch | bình thường (đã `python risk.py --reset` ngày 08/10) | |
+| **Cổng LIVE** | ✅ **`live_ready.py` = HOAN THANH** (n=301 · PF(R) 1.616 · PF($) 1.492) | chi tiết §3/§4 |
+| **Tự động hoá** | `STATE_SYNC_SEC=1800` + `AUTO_LIVE_ARMED=true` | `state_sync.py` chạy mỗi 30 phút: ghi `STATE.md` + push GitHub + kiểm tra cổng LIVE (§11) |
 
-## 3. Hiệu suất hiện tại (đọc từ `logs/journal.jsonl`, ngày 08/10)
+## 3. Hiệu suất hiện tại (đọc từ `logs/journal.jsonl`, ngày 09/10 ~00:10)
 
 ```
-CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=291/300 | PF(R)=1.548 | PF($)=1.421
-  7 ngay    217  67.7%  PF(R)=1.865  PF($)=1.759  E(R)=+0.1398  PnL=+248.50$
-  14 ngay   268  66.0%  PF(R)=1.497  PF($)=1.355  E(R)=+0.0969  PnL=+178.24$
-  30 ngay   291  66.7%  PF(R)=1.548  PF($)=1.421  E(R)=+0.1082  PnL=+233.34$
-VERDICT: CHUA HOAN THANH  ->  [CHAN] n lenh dong toan bo = 291 < 300 (chi con 9 lenh!)
+CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=301/300 | PF(R)=1.616 | PF($)=1.492
+  7 ngay    223  67.7%  PF(R)=1.935  PF($)=1.834  E(R)=+0.1471  PnL=+273.21$
+  14 ngay   278  66.6%  PF(R)=1.573  PF($)=1.434  E(R)=+0.1076  PnL=+217.67$
+  30 ngay   301  67.1%  PF(R)=1.616  PF($)=1.492  E(R)=+0.1178  PnL=+272.77$
+VERDICT: HOAN THANH  (khong con cong nao bi chan)
 ```
 
 ⚠️ **Đây là số của tài khoản DEMO** — đừng kết luận "có lãi thật" từ bảng này (xem §5).
@@ -114,13 +116,16 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 | `AGENTS.md` / `.clinerules` / `.github/copilot-instructions.md` | luật cho AI agent trong workspace |
 | `README.md` | tài liệu đầy đủ theo mục 1→14 (mục 14 = kiểm chứng & giới hạn) |
 | `CONTEXT.md` | **file này** — trạng thái hiện tại, đọc đầu tiên |
+| `STATE.md` | **tự động sinh** bởi `state_sync.py` (số liệu mỗi 30 phút; ĐỪNG sửa tay) |
+| `state_sync.py` | đồng bộ `STATE.md` + push GitHub + tự động sang LIVE (§11) |
 
 ---
 
 ## 8. Việc đang mở / tiếp theo
 
-- [ ] **Chờ đủ n=300** (hiện 291) → chạy `python live_ready.py`; chỉ khi `HOAN THANH` mới bàn chuyện sang LIVE (§4).
-- [ ] Theo dõi lỗi `api errors` (nguồn của 2 lần flatten tối 08/10) trước khi nghĩ tới LIVE.
+- [x] **Đủ n≥300** (n=301) → `live_ready.py` = `HOAN THANH` (09/10 00:07).
+- [ ] **Chờ điều kiện tiền thật để tự sang LIVE**: `state_sync.py --auto-live` đã chạy mỗi 30 phút nhưng **KHÔNG đổi** vì chưa đọc được ví THẬT (API key hiện là key demo). Cần: **API key live + số dư ≥ `AUTO_LIVE_MIN_EQUITY` (100 USDT)** → khi đó tự đổi, không hỏi lại (§11).
+- [ ] Theo dõi lỗi `api errors` (đã gây 2 lần `flatten + dung` tối 08/10) trước khi tin tưởng LIVE.
 - [ ] (tuỳ chọn) Bật veto thật cho hội đồng khi có đủ bằng chứng **cả 2 nhóm** (`python agents.py --authority` phải `granted=True`), rồi `AGENT_VETO_SOURCE=COUNCIL`.
 - [ ] (tuỳ chọn) Muse: nạp credit → tạo API key → `muse auth set` → điền lại `AGENT_COUNCIL_MUSE_CLI`.
 - [ ] (tuỳ chọn) I/O offload: ghi journal async, cache OHLCV, Telegram ở thread riêng.
@@ -145,5 +150,20 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 - **Sửa gì đáng nhớ → cập nhật CONTEXT.md trong cùng commit đó** (nhất là §2 trạng thái, §5 bài học, §8 việc mở).
 - Số liệu hiệu suất: **đừng chép số mới vào đây mỗi ngày** — chỉ cần ngày + lệnh làm mới; số cũ để nguyên làm mốc lịch sử.
 - Nếu thấy điều gì **trái với file này** ⇒ tin **bằng chứng chạy được**, rồi **sửa file này**.
+
+---
+
+## 11. (09/10) Tự động hoá: bộ nhớ dự án + tự sang LIVE
+
+| Việc | Cơ chế |
+|---|---|
+| **Bộ nhớ tự cập nhật** | `run_forever.py` gọi `state_sync.py --git --auto-live` mỗi `STATE_SYNC_SEC` (mặc định 1800s = 30 phút). Mỗi lần: sinh `STATE.md` (+ `logs/state_snapshot.json`) → `git add STATE.md` → commit → push nhánh hiện tại |
+| **Tự sang LIVE** | 5 chốt: `AUTO_LIVE_ARMED=true` · `live_ready` OK · `live_guard` OK · **ví THẬT ≥ `AUTO_LIVE_MIN_EQUITY`** · chưa đổi lần nào (marker `logs/.live_flipped`) |
+| **Khi đổi** | `.env`: `BINANCE_TESTNET=false`, `LIVE_CONFIRM=true`, `RISK_PER_TRADE_PCT=0.5`, `MAX_POSITIONS=3` (khởi đầu an toàn) + backup `.env.bak-live` + Telegram + ghi `STATE.md` → kill tiến trình con để supervisor restart với config mới |
+| **Chạy tay** | `python state_sync.py` · `python state_sync.py --git` · `python state_sync.py --git --auto-live` |
+| **Tắt tự động** | `.env`: `STATE_SYNC_SEC=0` (tắt sync) · `AUTO_LIVE_ARMED=false` (tắt tự sang LIVE) |
+
+**Bug thật đã gặp & đã sửa (09/10 00:05)**: process do supervisor spawn (pythonw) **không chạy được** `subprocess.run(["git", ...])` → `[WinError 2]` dù `shutil.which("git")` tìm thấy ⇒ nay dùng **đường dẫn tuyệt đối** (`state_sync._git_bin()`, có test).
+
 
 

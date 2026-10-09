@@ -855,5 +855,32 @@ Ghi lại **những gì đã kiểm chứng bằng lệnh thật** (để lần 
 - Bot tự `flatten + dung` khi monitor lỗi API (đã xảy ra 2 lần tối 08/10) — an toàn, nhưng trên LIVE sẽ tốn phí/slippage thật.
 - **Không ai đảm bảo lợi nhuận.** Chỉ vào LIVE khi `python live_ready.py` = `HOAN THANH`, và 20–30 lệnh đầu nên hạ `RISK_PER_TRADE_PCT` xuống 0.25–0.5%.
 
+## 15. (09/10) Tự động hoá: bộ nhớ dự án (`STATE.md`) + tự sang LIVE
+
+Hai việc chạy tự động, do **supervisor** (`run_forever.py`) gọi mỗi `STATE_SYNC_SEC` (mặc định **1800s = 30 phút**):
+
+```bash
+python state_sync.py                    # ghi STATE.md + logs/state_snapshot.json
+python state_sync.py --git              # + commit/push STATE.md lên GitHub
+python state_sync.py --git --auto-live  # + kiểm tra cổng, tự sang LIVE nếu đủ điều kiện
+```
+
+**1) Bộ nhớ dự án tự cập nhật** — mỗi 30 phút sinh `STATE.md` (bot/ví/vị thế, PF theo cửa sổ, cổng LIVE, kill-switch, learner, hội đồng) rồi commit + push. `CONTEXT.md` (kiến thức dài hạn) vẫn do người/AI viết tay; **`STATE.md` tự động — đừng sửa tay**.
+
+**2) Tự sang LIVE — 5 chốt an toàn** (không tắt được chốt nào):
+
+| # | Chốt | Ghi chú |
+|---|---|---|
+| 1 | `AUTO_LIVE_ARMED=true` | bật 1 lần trong `.env` |
+| 2 | `live_ready.py` = OK | PF(R)≥1.2 & PF($)≥1.1 ở **mọi** cửa sổ 7/14/30, n≥300, chiến lược âm phải bị block |
+| 3 | `live_guard.py` = OK | n≥50, PF≥1.2, risk≤2%, lev≤10, kill-switch sạch |
+| 4 | **ví THẬT ≥ `AUTO_LIVE_MIN_EQUITY`** (mặc định 100 USDT) | đọc bằng endpoint LIVE; **không đọc được ⇒ KHÔNG đổi** (fail-safe) |
+| 5 | chưa đổi lần nào | marker `logs/.live_flipped` — chỉ tự đổi **1 lần** |
+
+Khi đủ 5 chốt: `.env` → `BINANCE_TESTNET=false` + `LIVE_CONFIRM=true` + `RISK_PER_TRADE_PCT=0.5` + `MAX_POSITIONS=3` (khởi đầu an toàn), backup `.env.bak-live`, gửi Telegram, ghi `STATE.md`, rồi kết thúc tiến trình con để supervisor restart với config mới.
+
+**Trạng thái 09/10**: chốt 2 và 3 **đã đạt** (n=301, PF(R) 1.616, PF($) 1.492) nhưng chốt 4 **chưa đạt** (API key hiện là key **demo** → không đọc được ví thật) ⇒ **chưa tự đổi**. Muốn tắt: `AUTO_LIVE_ARMED=false`; muốn tắt cả sync: `STATE_SYNC_SEC=0`.
+
+
 
 

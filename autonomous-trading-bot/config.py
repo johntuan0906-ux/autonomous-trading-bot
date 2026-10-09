@@ -282,6 +282,17 @@ class Settings:
     # Tu dong ap dung de xuat block/unblock (sau gate tat dinh). MAC DINH TAT.
     agent_auto_apply: bool = field(
         default_factory=lambda: _get_bool("AGENT_AUTO_APPLY", False))
+
+    # ---- (08/10) Dong bo "bo nho du an" (state_sync.py) + TU DONG SANG LIVE ----
+    # STATE_SYNC_SEC: supervisor goi `state_sync.py --git --auto-live` moi N giay
+    # (0 = tat). Moi lan chay: ghi STATE.md + commit/push len GitHub.
+    state_sync_sec: int = field(default_factory=lambda: _get_int("STATE_SYNC_SEC", 1800))
+    # AUTO_LIVE_ARMED=true: cho phep state_sync TU doi BINANCE_TESTNET=false khi du
+    # CA 5 chot: armed + live_ready OK + live_guard OK + vi THAT >= AUTO_LIVE_MIN_EQUITY
+    # + chua doi lan nao (marker logs/.live_flipped). Mac dinh false = khong bao gio tu doi.
+    auto_live_armed: bool = field(default_factory=lambda: _get_bool("AUTO_LIVE_ARMED", False))
+    auto_live_min_equity: float = field(
+        default_factory=lambda: _get_float("AUTO_LIVE_MIN_EQUITY", 100.0))
     # Phase 2 — duong KHONG can API key (dung subscription Copilot):
     #   AGENT_PROVIDER=copilot_cli  -> shell ra `copilot -p <prompt>` (can cai that)
     #   AGENT_PROVIDER=vscode_lm    -> POST toi bridge extension dang chay

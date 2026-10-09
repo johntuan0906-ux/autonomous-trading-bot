@@ -24,6 +24,10 @@ except Exception:  # noqa: BLE001
     pass
 ERR = ROOT / "logs" / "turbo_err.log"
 OUT = ROOT / "logs" / "turbo_out.log"
+SYNC_OUT = ROOT / "logs" / "state_sync.log"
+# (08/10) Dong bo bo nho du an + tu dong sang LIVE: supervisor goi state_sync.py
+# moi STATE_SYNC_SEC giay (0 = tat). Xem state_sync.py (5 chot an toan truoc khi doi).
+STATE_SYNC_SEC = int(os.getenv("STATE_SYNC_SEC", "1800"))
 LOCK = ROOT / "logs" / ".supervisor.lock"
 HEARTBEAT = ROOT / "logs" / "heartbeat.json"
 RESTART_DELAY_SEC = 15
@@ -193,6 +197,9 @@ def main() -> int:
     _mark(f"=== supervisor start pid={os.getpid()} ===")
     n = 0
     delay = RESTART_DELAY_SEC
+    # (08/10) Dong bo STATE.md + auto-live: chay lan dau sau 30s, sau do moi STATE_SYNC_SEC.
+    sync_proc = None
+    next_sync = time.time() + 30.0 if STATE_SYNC_SEC > 0 else 0.0
     try:
         while True:
             n += 1
@@ -220,6 +227,17 @@ def main() -> int:
                         except Exception:  # noqa: BLE001
                             rc = -9
                         break
+                    # (08/10) Dong bo bo nho du an + auto-live (khong chan vong lap).
+                    if next_sync and time.time() >= next_sync and (
+                            sync_proc is None or sync_proc.poll() is not None):
+                        next_sync = time.time() + STATE_SYNC_SEC
+                        try:
+                            with open(SYNC_OUT, "a", encoding="utf-8") as so:
+                                sync_proc = subprocess.Popen(
+                                    [PY, str(ROOT / "state_sync.py"), "--git", "--auto-live"],
+                                    cwd=str(ROOT), stdout=so, stderr=so)
+                        except Exception as e:  # noqa: BLE001
+                            _mark(f"state_sync khong chay duoc: {e}")
                     time.sleep(POLL_SEC)
             run_sec = time.time() - t0
             kill_blocked = tail_has(ERR, KILL_BLOCKED)

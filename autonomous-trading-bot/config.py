@@ -76,6 +76,11 @@ class Settings:
     # Binance
     api_key: str = field(default_factory=lambda: _get("BINANCE_API_KEY"))
     api_secret: str = field(default_factory=lambda: _get("BINANCE_API_SECRET"))
+    # (09/10) KEY LIVE rieng — de san trong .env de KHONG dung den key demo dang chay
+    # testnet. state_sync.py dung cap nay de doc VI THAT; khi tu sang LIVE se ghi cap
+    # nay vao BINANCE_API_KEY/SECRET. Rong = chua co key live (=> khong the sang LIVE).
+    live_api_key: str = field(default_factory=lambda: _get("BINANCE_LIVE_API_KEY"))
+    live_api_secret: str = field(default_factory=lambda: _get("BINANCE_LIVE_API_SECRET"))
     testnet: bool = field(default_factory=lambda: _get_bool("BINANCE_TESTNET", True))
     # Phase 5: interlock LIVE — phai bat tay xac nhan moi cho phep chay tien that
     # (xem live_guard.py: con phai dat n>=50, PF>=1.2, risk<=2%, lev<=10, khong tripped).

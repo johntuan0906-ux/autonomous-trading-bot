@@ -255,12 +255,16 @@ def render_md(snap: dict) -> str:
 # ---- Tự động sang LIVE: quyết định (hàm thuần) + thực thi --------------------
 
 def decide_go_live(rep_ready: dict, rep_guard: dict, real_equity, armed: bool,
-                   already_flipped: bool, min_equity: float = DEFAULT_EQUITY_MIN) -> tuple:
+                   already_flipped: bool, min_equity: float = DEFAULT_EQUITY_MIN,
+                   live_keys: bool = True) -> tuple:
     """Có tự sang LIVE không? Trả (bool, lý do). HÀM THUẦN — test được."""
     if already_flipped:
         return False, "da doi 1 lan truoc do (marker logs/.live_flipped)"
     if not armed:
         return False, "AUTO_LIVE_ARMED=false (chua bat)"
+    if not live_keys:
+        return False, ("chua co BINANCE_LIVE_API_KEY/BINANCE_LIVE_API_SECRET trong .env "
+                       "(dien key LIVE truoc: xem `python check_live_key.py`)")
     if not rep_ready.get("ok"):
         return False, "live_ready CHUA dat: " + "; ".join(rep_ready.get("blockers") or [])
     if not rep_guard.get("ok"):
@@ -274,17 +278,39 @@ def decide_go_live(rep_ready: dict, rep_guard: dict, real_equity, armed: bool,
                   % float(real_equity))
 
 
+def key_pair(cfg) -> tuple:
+    """(api_key, api_secret, nguon) — ưu tiên cặp LIVE riêng nếu đã điền.
+
+    Vì sao: testnet đang chạy bằng key demo (`BINANCE_API_KEY`). Muốn kiểm tra/sang
+    LIVE mà không đụng testnet ⇒ điền `BINANCE_LIVE_API_KEY`/`_SECRET`; khi đó mọi
+    thao tác "ví thật" dùng cặp này, còn bot vẫn chạy demo bằng cặp cũ.
+    """
+    lk = str(getattr(cfg, "live_api_key", "") or "").strip()
+    ls = str(getattr(cfg, "live_api_secret", "") or "").strip()
+    if lk and ls:
+        return lk, ls, "live"
+    return (str(getattr(cfg, "api_key", "") or ""),
+            str(getattr(cfg, "api_secret", "") or ""), "api")
+
+
+def has_live_keys(cfg) -> bool:
+    """Đã có cặp key LIVE riêng chưa (điều kiện để có thể sang LIVE)."""
+    return key_pair(cfg)[2] == "live"
+
+
 def real_equity_usdt(cfg) -> float | None:
     """Đọc số dư USDT của ví THẬT (endpoint live, CHỈ ĐỌC). None nếu không đọc được."""
+    key, secret, src = key_pair(cfg)
     try:
         from exchange import BinanceFutures
-        ex = BinanceFutures(api_key=str(getattr(cfg, "api_key", "") or ""),
-                            api_secret=str(getattr(cfg, "api_secret", "") or ""),
-                            testnet=False, dry_run=False)
+        ex = BinanceFutures(api_key=key, api_secret=secret, testnet=False, dry_run=False)
         bal = ex.fetch_balance_usdt()
-        return float(bal) if bal is not None else None
+        if bal is None:
+            log("real_equity: khong doc duoc (nguon key=%s)" % src)
+            return None
+        return float(bal)
     except Exception as e:  # noqa: BLE001
-        log("real_equity: loi %s" % str(e)[:120])
+        log("real_equity: loi %s (nguon key=%s)" % (str(e)[:120], src))
         return None
 
 
@@ -303,6 +329,12 @@ def go_live(cfg, reason: str, env_path=None, tier: dict | None = None) -> dict:
         return {"ok": False, "err": "khong doc duoc .env: %s" % e}
     upd = {"BINANCE_TESTNET": "false", "LIVE_CONFIRM": "true"}
     upd.update(risk_tier.env_updates(tier))
+    # (09/10) Dua cap KEY LIVE vao BINANCE_API_KEY/SECRET de bot dung key that sau khi
+    # restart (key demo cu duoc giu nguyen trong .env.bak-live).
+    key, secret, src = key_pair(cfg)
+    if src == "live":
+        upd["BINANCE_API_KEY"] = key
+        upd["BINANCE_API_SECRET"] = secret
     new = set_env_values(text, upd)
     backup = path.with_name(path.name + ".bak-live")
     try:
@@ -421,9 +453,10 @@ def main(argv: list | None = None) -> int:
     tier = risk_tier.tier_for(eq)
     ok, why = decide_go_live(snap["live_ready"], snap["live_guard"], eq,
                              snap["auto_live"]["armed"], snap["auto_live"]["flipped"],
-                             snap["auto_live"]["min_equity"])
-    log("auto-live: %s | %s | vi that=%s | muc=%s (risk %s%%, %s vi the)"
-        % ("DOI SANG LIVE" if ok else "KHONG DOI", why, eq, tier["name"],
+                             snap["auto_live"]["min_equity"],
+                             live_keys=has_live_keys(cfg))
+    log("auto-live: %s | %s | vi that=%s | nguon key=%s | muc=%s (risk %s%%, %s vi the)"
+        % ("DOI SANG LIVE" if ok else "KHONG DOI", why, eq, key_pair(cfg)[2], tier["name"],
            tier["risk_pct"], tier["max_positions"]))
     if not ok:
         return 0

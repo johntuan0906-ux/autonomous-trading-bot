@@ -127,6 +127,8 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 | `CONTEXT.md` | **file này** — trạng thái hiện tại, đọc đầu tiên |
 | `STATE.md` | **tự động sinh** bởi `state_sync.py` (số liệu mỗi 30 phút; ĐỪNG sửa tay) |
 | `state_sync.py` | đồng bộ `STATE.md` + push GitHub + tự động sang LIVE (§11) |
+| `check_live_key.py` | kiểm tra cặp key LIVE trong `.env` (đọc số dư THẬT, chỉ đọc) — §16 |
+| `loss_report.py` | phân tích lỗ theo 7 chiều + đề xuất cụ thể — §17 |
 
 ---
 
@@ -190,6 +192,25 @@ Khi sang LIVE, `state_sync.py` **áp mức theo số dư thật** và **tự l�
 - Ngưỡng tự sang LIVE: **`AUTO_LIVE_MIN_EQUITY=10`** (từ 10$ đã vào được lệnh alt với 1 vị thế).
 - Xem trước: `python risk_tier.py 15` (giảm lệnh) · `python risk_tier.py 70` (có BTC) · `python risk_tier.py 150` (an toàn).
 - Số liệu gốc: `logs/money_probe.py` (min notional ccxt + SL trung vị 1.24% + `risk.position_size` thật).
+
+---
+
+## 12. (09/10) Bài học từ phân tích lỗ — các việc cần quyết
+
+Chạy `python loss_report.py` (chi tiết: README §17). Kết quả trên n=360 lệnh (tổng R +23.49 · tổng R âm 78.52):
+
+| Phát hiện | Số liệu | Trạng thái |
+|---|---|---|
+| **BTC** = nguồn lỗ lớn nhất | n=68 · avgR −0.064 · **28% tổng lỗ** | ⏳ **chờ bạn quyết**: bỏ khỏi `SYMBOLS` (như đã bỏ ETH 01/10) |
+| **D_RANGE_REVERSAL** âm rõ | n=24 · avgR **−0.190** | ✅ runtime auto-gate đã chặn (`STRATEGY_GATE=true`) |
+| **FLATTEN** (đóng vị thế cưỡng bức do lỗi API) | n=81 · **25–38% tổng lỗ** | ⏳ xem tần suất `api errors` (nguồn: sàn demo chập chờn) |
+| **Giữ lệnh > 8 giờ** | n=52 · avgR −0.076 · 19% lỗ | ⏳ cân nhắc max-hold (cần thêm code) |
+| **SL** chiếm 64% số lần thoát | avgR +0.022 (gồm chốt lãi sau dời SL) | ⏳ cân nhắc nới SL (ATR) |
+| **B_BREAKOUT_RETEST** tốt nhất | n=85 · WR 76.5% · avgR **+0.239** | 💡 nên ưu tiên |
+| **COMPRESSION** chiếm 60% số lệnh | avgR +0.016 nhưng **67.8% tổng lỗ** | ⏳ cân nhắc siết ngưỡng vào lệnh |
+
+**Nguyên tắc**: bot **KHÔNG** tự sửa config — đề xuất chỉ để bạn quyết; mọi thay đổi đi qua `.env` + restart bot.
+
 
 
 

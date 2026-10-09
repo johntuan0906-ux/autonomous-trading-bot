@@ -901,6 +901,56 @@ Khi sang LIVE, `state_sync.py` **không dùng một con số cứng** mà áp m�
 - Cơ sở số liệu: `logs/money_probe.py` — min notional thật (ccxt), SL trung vị **1.24%**, tính bằng chính `risk.position_size()` của bot.
 - Chọn cách A (giữ testnet cho bot tự học) thì **không đổi gì ở testnet** — learner vẫn học, cổng LIVE vẫn tích luỹ; mức 4 bậc chỉ **áp lúc sang LIVE**.
 
+## 16. (09/10) Chuẩn bị KEY LIVE — "khe" đã sẵn, bạn chỉ việc dán vào
+
+Testnet đang chạy bằng key demo (`BINANCE_API_KEY`). Muốn sang LIVE mà **không đụng testnet**, `.env` đã có sẵn 2 dòng:
+
+```ini
+BINANCE_LIVE_API_KEY=
+BINANCE_LIVE_API_SECRET=
+```
+
+### 16.1 Tạo key (làm 1 lần)
+1. Đăng nhập **binance.com** (tài khoản thật) → mở **Futures (USDT-M)** một lần cho ví futures được kích hoạt.
+2. **API Management → Create API** (chọn "System generated").
+3. Bật **Enable Futures** · **TẮT Enable Withdrawals** · nên bật **Restrict access to trusted IPs only** (IP máy này).
+4. Copy **API Key** + **Secret Key** → dán vào 2 dòng trên trong `.env` → lưu.
+5. Nạp USDT vào **ví Futures** (≥ `AUTO_LIVE_MIN_EQUITY`, mặc định 10).
+6. Kiểm tra: `python check_live_key.py` → phải in ra **số dư thật** (không phải `?`) và mức rủi ro sẽ áp dụng.
+
+### 16.2 Sau khi có key LIVE
+- `state_sync.py` (mỗi 30 phút) **đọc được ví thật** ⇒ chốt 4 qua.
+- Đủ cả 5 chốt ⇒ **tự sang LIVE**: `BINANCE_TESTNET=false`, `LIVE_CONFIRM=true`, áp mức rủi ro theo ví thật (§15.1), **ghi cặp key LIVE vào `BINANCE_API_KEY/SECRET`**, backup `.env` → `.env.bak-live`, gửi Telegram, restart bot.
+- Dừng tự động: `AUTO_LIVE_ARMED=false`.
+
+⚠️ Không commit `.env` (đã có trong `.gitignore`); key chỉ hiện dạng che (`o7qmWz…lvmb`) trong log.
+
+## 17. (09/10) Phân tích LỖ để giảm lỗ (`loss_report.py`)
+
+```bash
+python loss_report.py                 # toan bo journal
+python loss_report.py --days 7        # 7 ngay gan nhat
+python loss_report.py --min-n 15 --json logs/loss_report.json
+```
+
+Gom nhóm theo **cặp · hướng · chiến lược · regime · lý do thoát · giờ UTC · thời gian giữ**, in `n · WR · avgR · tổng R · % đóng góp vào tổng lỗ`, rồi in **ĐỀ XUẤT tất định** (chỉ để xem xét — **không** tự đổi config). Tất định 100%, chỉ đọc journal.
+
+**Kết quả chạy 09/10 (n=360, tổng R +23.49, tổng R âm 78.52):**
+
+| Phát hiện | Số liệu | Đề xuất |
+|---|---|---|
+| **BTC** là nguồn lỗ lớn nhất | n=68, avgR −0.064, tổng **−4.33R (28% tổng lỗ)** | bỏ khỏi `SYMBOLS` (giống cách đã bỏ ETH) |
+| **D_RANGE_REVERSAL** âm rõ | n=24, avgR **−0.190** (12.8% lỗ) | thêm vào `STRATEGY_BLOCK`, hoặc tin runtime auto-gate |
+| **FLATTEN** (đóng vị thế CƯỠNG BỨC do lỗi API/kill-switch) | n=81, **25–38% tổng lỗ** | xem tần suất `api errors` trong `logs/turbo_err.log` |
+| **SL** chiếm **64%** số lần thoát | avgR +0.022 (SL gồm cả chốt lãi sau dời SL) | xem lại độ rộng SL (ATR) |
+| **Giữ lệnh > 8 giờ** | n=52, avgR −0.076 (**19% tổng lỗ**) | cân nhắc giới hạn thời gian giữ (max-hold) |
+| Ngược lại — **B_BREAKOUT_RETEST** tốt nhất | n=85, WR **76.5%**, avgR **+0.239** (+20.34R) | ưu tiên chiến lược này |
+| Regime **COMPRESSION** chiếm 60% số lệnh | avgR +0.016 nhưng **67.8% tổng lỗ** (do quá nhiều lệnh) | cân nhắc siết ngưỡng vào lệnh ở regime này |
+
+Cách dùng: chạy hằng ngày (hoặc sau khi bot lỗ nhiều) → đọc phần **ĐỀ XUẤT** → nếu đồng ý thì sửa `.env` (`SYMBOLS`/`EXTRA_SYMBOLS`, `STRATEGY_BLOCK`, `RISK_PER_TRADE_PCT`…) rồi restart bot. **Bot không tự sửa config** — mọi thay đổi vẫn do bạn quyết.
+
+
+
 
 
 

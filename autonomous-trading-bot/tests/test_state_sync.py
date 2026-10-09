@@ -168,6 +168,40 @@ class TestGitBin(unittest.TestCase):
         self.assertTrue(p.lower().endswith("git.exe") or p == "git", p)
 
 
+class TestLiveKeys(unittest.TestCase):
+    """(09/10) Khe key LIVE rieng: BINANCE_LIVE_API_KEY/SECRET."""
+
+    def test_key_pair_uu_tien_live(self):
+        self.assertEqual(SS.key_pair(_cfg(live_api_key="LK", live_api_secret="LS"))[2], "live")
+        self.assertTrue(SS.has_live_keys(_cfg(live_api_key="LK", live_api_secret="LS")))
+        # chi co 1 nua -> khong dung
+        self.assertEqual(SS.key_pair(_cfg(live_api_key="LK"))[2], "api")
+        self.assertFalse(SS.has_live_keys(_cfg()))
+
+    def test_khong_co_key_live_thi_khong_doi(self):
+        ok, why = SS.decide_go_live({"ok": True, "blockers": []}, {"ok": True, "blockers": []},
+                                    500.0, True, False, 10.0, live_keys=False)
+        self.assertFalse(ok)
+        self.assertIn("BINANCE_LIVE_API_KEY", why)
+
+    def test_go_live_ghi_key_live_vao_env(self):
+        import risk_tier
+        envp = Path(tempfile.mkdtemp()) / ".env"
+        envp.write_text("BINANCE_API_KEY=demo_key\nBINANCE_API_SECRET=demo_secret\n"
+                        "BINANCE_LIVE_API_KEY=live_key\nBINANCE_LIVE_API_SECRET=live_secret\n"
+                        "BINANCE_TESTNET=true\n", encoding="utf-8")
+        marker = Path(tempfile.mkdtemp()) / ".live_flipped"
+        with mock.patch.object(SS, "FLIP_MARKER", marker):
+            res = SS.go_live(_cfg(live_api_key="live_key", live_api_secret="live_secret"),
+                             "test", env_path=envp, tier=risk_tier.tier_for(50))
+        self.assertTrue(res["ok"], res)
+        txt = envp.read_text(encoding="utf-8")
+        self.assertIn("BINANCE_API_KEY=live_key", txt)
+        self.assertIn("BINANCE_API_SECRET=live_secret", txt)
+        self.assertIn("BINANCE_LIVE_API_KEY=live_key", txt)   # giu nguyen khe live
+        self.assertIn("BINANCE_TESTNET=false", txt)
+
+
 class TestGoLive(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())

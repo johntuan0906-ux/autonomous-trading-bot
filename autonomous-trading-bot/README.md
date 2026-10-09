@@ -979,6 +979,41 @@ Gom nhóm theo **cặp · hướng · chiến lược · regime · lý do thoát
 
 Cách dùng: chạy hằng ngày (hoặc sau khi bot lỗ nhiều) → đọc phần **ĐỀ XUẤT** → nếu đồng ý thì sửa `.env` (`SYMBOLS`/`EXTRA_SYMBOLS`, `STRATEGY_BLOCK`, `RISK_PER_TRADE_PCT`…) rồi restart bot. **Bot không tự sửa config** — mọi thay đổi vẫn do bạn quyết.
 
+## 18. (09/10) BOT ĐÃ SANG LIVE — 5 lỗi thật đã gặp & đã sửa
+
+Bot tự sang LIVE lúc **16:35:47** (đủ 5 chốt + chốt 4b). Ngay sau đó lộ ra 5 lỗi **chỉ xuất hiện ở LIVE** (testnet che mất), tất cả đã sửa + có test:
+
+| # | Lỗi | Triệu chứng đo được | Sửa |
+|---|---|---|---|
+| 1 | **Con chạy config CŨ sau khi sang LIVE** | `.env` = LIVE nhưng heartbeat vẫn `equity=4348` (số dư demo), quét 7 cặp cũ | `run_forever.child_env()` — **đọc lại `.env` + override mỗi lần spawn** con (trước đây `Popen` kế thừa env lúc supervisor khởi động) |
+| 2 | **Kill-switch trip OAN khi đổi chế độ** | `KILL-SWITCH: daily loss 99.49%` ngay khi sang LIVE (mốc `start_equity=4355` là số dư **demo**, equity LIVE 22) | `risk.KillSwitch.mode` — đổi DEMO↔LIVE ⇒ **mốc lại DD** (`note_equity(..., mode=...)`); `tripped` vẫn phải xoá tay |
+| 3 | **Tài khoản LIVE ở HEDGE mode** | mọi lệnh bị `-4061 Order's position side does not match user's setting` (demo là one-way nên trước đó chạy được) | `exchange.hedge_mode()` tự dò `dualSidePosition`; gửi `positionSide` + **KHÔNG** gửi `reduceOnly` (hedge trả `-1106` nếu gửi) |
+| 4 | **"Vị thế ma" trong portfolio** | state mang từ phiên DEMO sang ⇒ `SKIP_OPEN` mãi ⇒ bot **không vào lệnh** | `position_sync.adopt()` dọn cả `bot.portfolio` — chỉ xoá khi sàn **xác nhận qty=0** (đọc lỗi ⇒ giữ, fail-safe) |
+| 5 | **Test phụ thuộc `.env`** | `test_bot`, `test_live_guard` đỏ sau khi `.env` sang LIVE | test tự set config (`symbols`, `BINANCE_TESTNET`, `RISK_STATE_PATH`) — chạy đúng ở cả 2 chế độ |
+
+### 18.1 ⚠️ Tài khoản này CHẶN mọi lệnh điều kiện (`-4045`) — cần bạn xử lý
+
+Đã kiểm chứng kỹ (09/10):
+
+| Thử | Kết quả |
+|---|---|
+| `LIMIT` / market (vào/đóng vị thế) | ✅ chạy bình thường |
+| `STOP_MARKET` (qty + positionSide) | ❌ `-4045 Reach max stop order limit` |
+| `STOP_MARKET` + `closePosition` | ❌ `-4045` |
+| `TAKE_PROFIT_MARKET` / `TRAILING_STOP_MARKET` | ❌ `-4045` |
+| Trên symbol **không có vị thế** (BTC, DOGE) | ❌ `-4045` |
+| Số lệnh treo toàn tài khoản | **0** |
+
+⇒ **Không phải lỗi bot** (đặt tay đúng chuẩn vẫn lỗi, kể cả khi 0 lệnh treo) mà là **giới hạn phía tài khoản Binance**. Hệ quả: vị thế LIVE **không có SL/TP trên sàn**, chỉ được **monitor mềm** của bot bảo vệ (bot tắt = vị thế không được bảo vệ).
+
+Việc cần làm: mở app/web Binance → thử đặt SL tay cho 1 vị thế xem có bị chặn không; nếu cũng bị ⇒ liên hệ hỗ trợ Binance (kèm mã `-4045`). Trong lúc đó bot vẫn chạy được (soft SL đã chốt lãi thật: AVAX `r=+0.82`, SOL `r=+0.48`).
+
+### 18.2 Kết quả thực tế sau ~3.5 giờ LIVE
+
+- Equity: **22.11 → 22.6 USDT**; các lệnh đóng đều `r` dương (0.31–0.82) ⇒ bot vận hành đúng: mở lệnh, trail SL, chốt lời.
+- Vị thế đang mở: XRP/ADA/DOGE/AVAX (~41 USDT notional, ~5 USDT margin ở lev 8) — tổng risk nằm trong cap `MAX_TOTAL_RISK_PCT=2%`.
+- Xử lý DUST hoạt động: partial còn dưới `minNotional` ⇒ bot ghi CLOSE `DUST` + khoá sổ đúng (log: `CLOSE ADA/USDT:USDT DUST qty=19 < minNotional @ 0.2385`).
+
 
 
 

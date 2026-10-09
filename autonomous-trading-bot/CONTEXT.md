@@ -231,6 +231,21 @@ Nhưng: **đọc được NGẮT QUÃNG (2/6 · 3/5 · 1/5 lần)** với `-2015
 - `check_live_key.py`: đọc 5 lần (`x/y lần thành công`) + **bảng theo từng IP** (`ip_diag`) + **IP mà Binance TỪ CHỐI** (lấy từ message `-2015`, chính xác hơn ipify vì máy đổi đường ra giữa 2 lần gọi) + cảnh báo IP đã đổi; `--retry N`, `--json` (kèm `by_ip`/`rejected`); exit 2 nếu key không ổn định.
 - README **§16.3** ghi lại toàn bộ sự cố + cách sửa. Tests: **612 OK** (thêm `tests/test_check_live_key.py` 7 test).
 
+---
+
+## 14. (09/10) ĐÃ SANG LIVE + 5 lỗi LIVE-only đã sửa (xem README §18)
+
+**Trạng thái hiện tại**: bot chạy **LIVE** từ 16:35:47 (`.env`: `BINANCE_TESTNET=false`, key LIVE, risk 0.5% · `MAX_POSITIONS=2` · SOL/XRP+ADA/DOGE/AVAX). Sau ~3.5h: equity **22.11 → 22.6 USDT**, các lệnh đóng đều `r` dương (soft-SL chốt lãi: AVAX `r=+0.82`, SOL `r=+0.48`).
+
+**5 lỗi LIVE-only đã sửa (đều có test)**:
+1. **Con chạy config cũ**: `run_forever.child_env()` đọc lại `.env` mỗi lần spawn (trước: `Popen` kế thừa env lúc supervisor start ⇒ `.env` LIVE nhưng bot vẫn demo, heartbeat `equity=4348`).
+2. **Kill-switch trip oan khi đổi chế độ**: `risk.KillSwitch.mode` — DEMO↔LIVE ⇒ mốc lại DD (`note_equity(mode=...)`); đã gặp `daily loss 99.49%` do mốc demo 4355 vs equity LIVE 22.
+3. **HEDGE mode**: `exchange.hedge_mode()` tự dò; gửi `positionSide`, KHÔNG gửi `reduceOnly` (hedge trả `-1106`). Trước đó mọi lệnh `-4061`.
+4. **"Vị thế ma"**: `position_sync.adopt()` dọn cả `bot.portfolio` (chỉ xoá khi sàn xác nhận `qty=0`; lỗi đọc ⇒ giữ).
+5. **Test phụ thuộc `.env`**: `test_bot`, `test_live_guard` tự set config ⇒ chạy đúng ở cả demo và LIVE.
+
+⚠️ **CẦN BẠN XỬ LÝ — tài khoản chặn MỌI lệnh điều kiện (`-4045` "Reach max stop order limit")**: đã thử `STOP_MARKET`/`TAKE_PROFIT`/`TRAILING` (có/không `closePosition`, có/không `positionSide`, qty lớn, cả symbol không có vị thế) đều `-4045` trong khi **0 lệnh treo** và `LIMIT`/market chạy bình thường ⇒ **giới hạn phía Binance, không phải lỗi bot**. Hệ quả: vị thế LIVE **không có SL/TP trên sàn**, chỉ có **monitor mềm** (bot tắt ⇒ vị thế không được bảo vệ). Việc cần làm: thử đặt SL tay trên app Binance; nếu cũng bị ⇒ liên hệ hỗ trợ Binance.
+
 
 
 

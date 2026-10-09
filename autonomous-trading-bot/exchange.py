@@ -40,6 +40,7 @@ class BinanceFutures:
         self._client = None
         self._public = None
         self.last_error: str = ""   # loi cuoi cung khi doc/ghi (de chan doan -2015...)
+        self._hedge: bool | None = None   # None = chua do; xem hedge_mode()
         try:
             import ccxt  # type: ignore
             self._public = ccxt.binance({"options": {"defaultType": "future"},
@@ -75,6 +76,35 @@ class BinanceFutures:
         src = self._client if self._client is not None else self._public
         ticker = src.fetch_ticker(symbol)
         return float(ticker["last"])
+
+    # ---- HEDGE / ONE-WAY: tai khoan LIVE co the o che do 2 chieu ----------------
+
+    def hedge_mode(self) -> bool:
+        """Tai khoan dang o HEDGE (dual position side) hay ONE-WAY?
+
+        Vi sao can (loi that 09/10 16:45): lenh KHONG co `positionSide` bi tu choi
+        `-4061 Order's position side does not match user's setting` khi tai khoan o HEDGE.
+        Tai khoan DEMO la one-way nen bot chay duoc, sang LIVE (hedge) thi moi lenh hong.
+        Tu do 1 lan roi nho; loi mang -> coi nhu one-way (giu hanh vi cu).
+        """
+        if self._hedge is None:
+            self._hedge = False
+            try:
+                if self._client is not None:
+                    r = self._client.fapiPrivateGetPositionSideDual()
+                    self._hedge = bool((r or {}).get("dualSidePosition"))
+            except Exception:  # noqa: BLE001
+                pass
+        return bool(self._hedge)
+
+    def _pos_side(self, direction: str) -> dict:
+        """`{"positionSide": ...}` khi tai khoan HEDGE; rong khi ONE-WAY.
+
+        HEDGE: moi lenh phai khai bao phia vi the; va KHONG duoc gui `reduceOnly`.
+        """
+        if not self.hedge_mode():
+            return {}
+        return {"positionSide": "LONG" if str(direction).upper() == "LONG" else "SHORT"}
 
     def fetch_balance_usdt(self) -> float | None:
         """So du USDT futures thuc te. Tra None neu khong doc duoc."""
@@ -139,6 +169,7 @@ class BinanceFutures:
         if self._client is None or self.dry_run:
             return {"symbol": symbol, "side": side, "qty": qty, "dry_run": True}
         params = {"newClientOrderId": cid or _cid("entry")}
+        params.update(self._pos_side(direction))
         return self._client.create_market_order(symbol, side, qty, params=params)
 
     def stop_tp_orders(self, symbol: str, direction: str, qty: float, sl: float,
@@ -154,21 +185,33 @@ class BinanceFutures:
         if self._client is None or self.dry_run:
             return {"sl": sl, "tp": tp, "dry_run": True}
         close_side = "sell" if direction == "LONG" else "buy"
+        ps = self._pos_side(direction)   # HEDGE: bat buoc co positionSide (khong dung reduceOnly)
         out: dict = {"cancelled": self.cancel_symbol_orders(symbol) if cancel_first else None}
         for tag, otype, price in (("sl", "STOP_MARKET", sl), ("tp", "TAKE_PROFIT_MARKET", tp)):
-            try:
-                out[tag + "_order"] = self._client.create_order(
-                    symbol, otype, close_side, qty,
-                    params={"stopPrice": price, "reduceOnly": True,
-                            "workingType": "CONTRACT_PRICE",
-                            "newClientOrderId": _cid(cid_prefix + tag)})
-            except Exception:
-                # fallback: closePosition=True (khong truyen quantity -> tranh -1106)
-                out[tag + "_order"] = self._client.create_order(
-                    symbol, otype, close_side, None,
-                    params={"stopPrice": price, "closePosition": True,
-                            "workingType": "CONTRACT_PRICE",
-                            "newClientOrderId": _cid(cid_prefix + tag)})
+            base = {"stopPrice": price, "workingType": "CONTRACT_PRICE",
+                    "newClientOrderId": _cid(cid_prefix + tag)}
+            base.update(ps)
+            p_qty = dict(base)
+            p_close = dict(base)
+            if ps:
+                # HEDGE: `reduceOnly` KHONG duoc phep -> dong bang closePosition/positionSide.
+                p_close["closePosition"] = True
+                try:
+                    out[tag + "_order"] = self._client.create_order(
+                        symbol, otype, close_side, None, params=p_close)
+                except Exception:
+                    out[tag + "_order"] = self._client.create_order(
+                        symbol, otype, close_side, qty, params=p_qty)
+            else:
+                p_qty["reduceOnly"] = True
+                try:
+                    out[tag + "_order"] = self._client.create_order(
+                        symbol, otype, close_side, qty, params=p_qty)
+                except Exception:
+                    # fallback: closePosition=True (khong truyen quantity -> tranh -1106)
+                    p_close["closePosition"] = True
+                    out[tag + "_order"] = self._client.create_order(
+                        symbol, otype, close_side, None, params=p_close)
         return out
 
     def close_position(self, symbol: str, direction: str, qty: float,
@@ -176,9 +219,13 @@ class BinanceFutures:
         side = "sell" if direction == "LONG" else "buy"
         if self._client is None or self.dry_run:
             return {"symbol": symbol, "side": side, "qty": qty, "dry_run": True}
-        return self._client.create_market_order(
-            symbol, side, qty, params={"reduceOnly": True,
-                                       "newClientOrderId": cid or _cid("close")})
+        params: dict = {"newClientOrderId": cid or _cid("close")}
+        ps = self._pos_side(direction)
+        if ps:
+            params.update(ps)          # HEDGE: positionSide thay cho reduceOnly
+        else:
+            params["reduceOnly"] = True
+        return self._client.create_market_order(symbol, side, qty, params=params)
 
     # ---- P0-1/P0-5: doc trang thai THAT tren san -------------------------------
 

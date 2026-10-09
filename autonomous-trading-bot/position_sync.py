@@ -146,4 +146,19 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
         if sym not in keep:
             bot.managed.pop(sym, None)
             rep["stale"].append(sym)
+    # (09/10) Don CA `bot.portfolio`: state co the mang tu phien DEMO sang LIVE (hoac vi the
+    # da dong khi bot khong chay) ⇒ portfolio giu symbol KHONG con tren san ⇒ moi vong sau
+    # deu `SKIP_OPEN` ⇒ bot KHONG BAO GIO vao lenh (da gap that 09/10 16:59: SOL/XRP/AVAX
+    # ket o SKIP_OPEN). Chi xoa khi san XAC NHAN qty=0; doc loi/None ⇒ GIU (fail-safe).
+    for sym in list(getattr(getattr(bot, "portfolio", None), "positions", {}) or {}):
+        if sym in keep:
+            continue
+        try:
+            q = ex.position_qty(sym) if hasattr(ex, "position_qty") else None
+        except Exception:  # noqa: BLE001
+            q = None
+        if q is not None and abs(float(q)) == 0:
+            bot.portfolio.positions.pop(sym, None)
+            if sym not in rep["stale"]:
+                rep["stale"].append(sym)
     return rep

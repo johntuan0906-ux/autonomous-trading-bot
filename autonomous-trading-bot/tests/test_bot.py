@@ -113,6 +113,11 @@ class TestBotStep(unittest.TestCase):
 
         cfg = Settings()
         object.__setattr__(cfg, "dry_run", True)
+        # TAT DINH: khong phu thuoc `.env` that (sau khi bot sang LIVE, SYMBOLS hep lai
+        # -> BTC khong duoc quet -> status WAIT thay vi OPENED).
+        object.__setattr__(cfg, "symbols", ("BTC/USDT:USDT",))
+        object.__setattr__(cfg, "extra_symbols", ())
+        object.__setattr__(cfg, "max_positions", 4)
         bot = TradingBot(cfg, exchange=BinanceFutures(dry_run=True))
         bot.sentiment.inject(0.8)  # bullish macro -> BTC long
         provider = lambda s: bull_df() if s.startswith("BTC") else bear_df()  # noqa: E731

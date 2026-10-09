@@ -7,6 +7,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 import live_guard as LG
 import positions as P
@@ -122,7 +123,11 @@ class TestLiveGuard(unittest.TestCase):
         self.assertTrue(any("LIVE INTERLOCK CHAN" in str(e) for e in lg.errors))
 
     def test_cli_testnet_tra_exit_0(self):
-        self.assertEqual(LG.main(["--journal", self.jp]), 0)
+        # TAT DINH: khong phu thuoc `.env` that (co the dang o LIVE / kill-switch tripped).
+        ks = os.path.join(self.tmp, "risk_clean.json")     # file khong ton tai = sach
+        env = {"BINANCE_TESTNET": "true", "LIVE_CONFIRM": "false", "RISK_STATE_PATH": ks}
+        with mock.patch.dict(os.environ, env, clear=False):
+            self.assertEqual(LG.main(["--journal", self.jp]), 0)
 
 
 class TestCouncilWarnLive(unittest.TestCase):

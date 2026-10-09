@@ -62,6 +62,10 @@ class KillSwitch:
     day: str = field(default_factory=lambda: utc_day())   # ngay UTC dang tinh DD
     start_equity: float = 0.0   # equity THAT dau ngay (0 = chua biet -> dung start_balance)
     day_reset_utc: bool = True
+    # (09/10) "live"/"demo": doi che do ⇒ MOC LAI DD. Vi sao: equity 2 che do khac nhau
+    # hoan toan (demo 4355 USDT vs live 22 USDT) ⇒ giu moc cu se trip OAN
+    # "daily loss 99.49%" ngay khi bot doi tu demo sang LIVE (da gap that 09/10 16:45).
+    mode: str = ""
 
     def register_error(self) -> bool:
         self.errors += 1
@@ -116,25 +120,32 @@ class KillSwitch:
         base = self.base_equity()
         return (base - balance) / max(base, 1e-9) * 100.0
 
-    def note_equity(self, equity: float, now: float | None = None) -> bool:
-        """Dong bo EQUITY THAT tu san; tra True neu vua roll sang ngay moi.
+    def note_equity(self, equity: float, now: float | None = None,
+                    mode: str | None = None) -> bool:
+        """Dong bo EQUITY THAT tu san; tra True neu vua roll sang ngay moi / doi che do.
 
         - Lan dau (chua co moc) -> lay equity hien tai lam moc DD ngay.
         - Sang ngay moi -> moc lai DD + xoa dem trong ngay.
+        - **Doi che do DEMO <-> LIVE** -> moc lai DD (xem field `mode`).
         - `tripped` KHONG bao gio tu xoa (phai xoa tay bang reset_state) — khac ban cu:
           restart la mat kill-switch.
         """
         eq = float(equity or 0.0)
-        if eq > 0:
-            self.peak_balance = max(self.peak_balance or 0.0, eq)
         today = utc_day(now)
-        rolled = bool(self.day_reset_utc and today != self.day)
+        switched = bool(mode and self.mode and str(mode) != self.mode)
+        rolled = bool(self.day_reset_utc and today != self.day) or switched
         if rolled:
             self.day = today
             self.consec_losses = 0
             self.errors = 0
+            if switched and eq > 0:
+                self.peak_balance = eq      # moc lai MaxDD theo che do moi
+        if mode:
+            self.mode = str(mode)
         if eq > 0 and (rolled or self.start_equity <= 0):
             self.start_equity = eq
+        if eq > 0:
+            self.peak_balance = max(self.peak_balance or 0.0, eq)
         return rolled
 
     def to_dict(self) -> dict:
@@ -143,7 +154,7 @@ class KillSwitch:
                 "start_balance": self.start_balance, "start_equity": self.start_equity,
                 "peak_balance": self.peak_balance, "errors": self.errors,
                 "tripped": bool(self.tripped), "reason": self.reason,
-                "consec_losses": self.consec_losses, "day": self.day}
+                "consec_losses": self.consec_losses, "day": self.day, "mode": self.mode}
 
     @classmethod
     def from_dict(cls, d: dict) -> "KillSwitch":
@@ -159,6 +170,7 @@ class KillSwitch:
         ks.tripped = bool(d.get("tripped", False))
         ks.reason = str(d.get("reason", "") or "")
         ks.day = str(d.get("day") or utc_day())
+        ks.mode = str(d.get("mode") or "")
         return ks
 
     def trip(self, reason: str) -> bool:

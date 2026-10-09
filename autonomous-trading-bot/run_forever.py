@@ -185,6 +185,25 @@ def _mark(msg: str) -> None:
         f.write(f"[supervisor] {msg} {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
+def child_env() -> dict:
+    """Env cho tiến trình con — **ĐỌC LẠI `.env` mỗi lần spawn** (giá trị trong .env thắng).
+
+    Vì sao (bug thật 09/10 16:35): `load_dotenv()` chỉ nạp lúc supervisor khởi động và
+    `subprocess.Popen` **kế thừa env của supervisor**; `state_sync.restart_bot()` chỉ kill
+    tiến trình CON ⇒ con mới vẫn nhận config CŨ (demo key, `BINANCE_TESTNET=true`, danh sách
+    symbol cũ) ⇒ **`.env` đã ghi LIVE nhưng bot vẫn giao dịch demo** (đo được: heartbeat
+    `equity=4348` là số dư demo trong khi `.env` = LIVE 22 USDT). Đọc lại .env + override
+    mỗi lần spawn để lệnh tự-sang-LIVE có hiệu lực thật mà không cần restart supervisor.
+    """
+    try:
+        from dotenv import dotenv_values  # type: ignore
+        vals = {k: v for k, v in (dotenv_values(ROOT / ".env") or {}).items()
+                if v is not None}
+    except Exception:  # noqa: BLE001
+        vals = {}
+    return {**os.environ, **vals}
+
+
 def main() -> int:
     if not _acquire_lock():
         _mark("already running — exit")
@@ -203,14 +222,17 @@ def main() -> int:
     try:
         while True:
             n += 1
-            _mark(f"turbo start #{n}")
+            env = child_env()
+            _mark("turbo start #%d (BINANCE_TESTNET=%s, SYMBOLS=%s, MAX_POSITIONS=%s)"
+                  % (n, env.get("BINANCE_TESTNET"), env.get("SYMBOLS"),
+                     env.get("MAX_POSITIONS")))
             t0 = time.time()
             with open(OUT, "a", encoding="utf-8") as out, \
                     open(ERR, "a", encoding="utf-8") as err:
                 touch_heartbeat()
                 p = subprocess.Popen(
                     [PY, str(ROOT / "turbo_demo.py")],
-                    cwd=str(ROOT), stdout=out, stderr=err,
+                    cwd=str(ROOT), stdout=out, stderr=err, env=env,
                 )
                 # Poll thay vi p.wait(): phat hien bot TREO du tien trinh con song
                 while True:

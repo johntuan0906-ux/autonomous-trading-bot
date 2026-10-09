@@ -1384,6 +1384,52 @@ class TestBotSafety(unittest.TestCase):
                          "that bai that su -> khong duoc ghi nhan vi the")
 
 
+class _ExMapQty(FakeExchange):
+    """FakeExchange + `position_qty` theo TUNG symbol (None = khong doc duoc)."""
+
+    def __init__(self, qmap, **kw):
+        super().__init__(**kw)
+        self.qmap = qmap
+
+    def position_qty(self, s):
+        self._log("position_qty")
+        return self.qmap.get(s)
+
+
+class TestDonViTheMa(unittest.TestCase):
+    """(09/10) 'Vi the ma': state mang tu phien DEMO sang LIVE ⇒ portfolio giu symbol
+    KHONG con tren san ⇒ moi vong SKIP_OPEN ⇒ bot KHONG BAO GIO vao lenh (da gap that).
+    """
+
+    def _bot(self, ex) -> TradingBot:
+        return TradingBot(cfg(dry_run=False, adopt_positions=True), exchange=ex)
+
+    def test_san_xac_nhan_qty_0_thi_xoa_khoi_portfolio(self):
+        ex = _ExMapQty({"SOL/USDT:USDT": 0.0})
+        bot = self._bot(ex)
+        # gan truc tiep (bo qua cong risk cua portfolio — chi test don state)
+        bot.portfolio.positions["SOL/USDT:USDT"] = Position(
+            "SOL/USDT:USDT", "LONG", 100.0, 1.0, 98.0, 110.0)
+        bot.portfolio.positions["XRP/USDT:USDT"] = Position(
+            "XRP/USDT:USDT", "LONG", 1.0, 2.0, 0.9, 1.2)
+        bot.managed["SOL/USDT:USDT"] = new_trade("SOL/USDT:USDT", "LONG", 100.0, 1.0, 98.0, 110.0)
+        rows = [{"symbol": "XRP/USDT:USDT", "side": "long", "contracts": 2.0, "entryPrice": 1.0}]
+        rep = position_sync.adopt(bot, rows, atr_fn=lambda s: {"price": 1.0, "atr": 0.05})
+        self.assertNotIn("SOL/USDT:USDT", bot.portfolio.positions)
+        self.assertIn("SOL/USDT:USDT", rep["stale"])
+        self.assertIn("XRP/USDT:USDT", bot.portfolio.positions)   # con vi the THAT -> giu
+
+    def test_khong_doc_duoc_qty_thi_GIU_vi_the(self):
+        ex = _ExMapQty({})                     # position_qty -> None (khong doc duoc)
+        bot = self._bot(ex)
+        bot.portfolio.positions["SOL/USDT:USDT"] = Position(
+            "SOL/USDT:USDT", "LONG", 100.0, 1.0, 98.0, 110.0)
+        rep = position_sync.adopt(bot, [], atr_fn=lambda s: {"price": 100.0, "atr": 2.0})
+        self.assertIn("SOL/USDT:USDT", bot.portfolio.positions,
+                      "khong doc duoc trang thai san -> KHONG duoc xoa (fail-safe)")
+        self.assertNotIn("SOL/USDT:USDT", rep["stale"])
+
+
 
 
 

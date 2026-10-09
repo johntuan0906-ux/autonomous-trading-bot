@@ -878,7 +878,8 @@ def adopt_now(bot, cfg, ex, log, syms) -> dict:
         if _eq and _eq > 0:
             bot.equity = float(_eq)
             bot.balance = min(cfg.balance_usdt, bot.equity)
-        bot.kill.note_equity(bot.equity or cfg.balance_usdt)
+        bot.kill.note_equity(bot.equity or cfg.balance_usdt,
+                             mode=("demo" if cfg.testnet else "live"))
         ms_save(cfg.managed_state_path, bot)
         save_risk_state(cfg.risk_state_path, bot.kill)
         return rep
@@ -1100,7 +1101,7 @@ def main() -> None:
         _eq = bot.exchange.fetch_balance_usdt()
         if _eq and _eq > 0:
             bot.equity = float(_eq)
-            if bot.kill.note_equity(bot.equity):
+            if bot.kill.note_equity(bot.equity, mode=("demo" if cfg.testnet else "live")):
                 log.info("NGAY MOI (UTC %s): moc DD = %.2f USDT", bot.kill.day,
                          bot.kill.start_equity)
             bot.balance = min(cfg.balance_usdt, bot.equity)

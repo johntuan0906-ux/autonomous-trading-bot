@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 16:12:58 · commit `?`
+- **Cập nhật**: 09/10/2026 16:35:18 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `63620` · round `361` · nhịp tim cách đây 1.3s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `105092` · round `1` · nhịp tim cách đây 19.7s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
-- **Kill-switch**: ⚠️ TRIPPED — daily loss 2.02% >= 2.0%
+- **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 387 lệnh đóng, WR 60.98%, E(R) 0.0486, PnL 122.62$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 295 | 58.98 | 1.236 | 1.177 | 0.0482 | 100.23 |
-| 14 ngày | 358 | 60.06 | 1.177 | 1.099 | 0.0387 | 73.35 |
+| 7 ngày | 293 | 58.7 | 1.23 | 1.171 | 0.0472 | 96.36 |
+| 14 ngày | 356 | 60.39 | 1.214 | 1.135 | 0.0457 | 97.58 |
 | 30 ngày | 387 | 60.98 | 1.219 | 1.15 | 0.0486 | 122.62 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 14 ngay = 1.177 < 1.2; PF($) cua so 14 ngay = 1.099 < 1.1; kill-switch dang TRIPPED (daily loss 2.02% >= 2.0%) — chay `python risk.py --reset`
+- `live_ready.py`: **HOAN THANH**
 - `live_guard.py`: OK
 - Tự động sang LIVE: **BẬT**
 

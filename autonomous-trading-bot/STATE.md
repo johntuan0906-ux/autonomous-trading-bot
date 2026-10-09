@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 22:37:10 · commit `?`
+- **Cập nhật**: 09/10/2026 23:07:11 · commit `?`
 - **Chế độ**: **LIVE (TIỀN THẬT)** · `DRY_RUN=False` · `LIVE_CONFIRM=True`
-- **Bot**: pid `30756` · round `198` · nhịp tim cách đây 27.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 22.84 USDT
+- **Bot**: pid `30756` · round `240` · nhịp tim cách đây 2.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 22.7 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 416 lệnh đóng, WR 62.5%, E(R) 0.0564, PnL 123.14$)
@@ -39,12 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (3)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ADA/USDT:USDT | SHORT | 36.0 | 0.2363 | 0.239414 | 0.228515 | False | False | 0.257 |
-| DOGE/USDT:USDT | SHORT | 143.0 | 0.08453 | 0.085326 | 0.08254 | False | False | 0.088 |
+| DOGE/USDT:USDT | SHORT | 143.0 | 0.08453 | 0.085326 | 0.08254 | False | False | 0.126 |
+| SOL/USDT:USDT | SHORT | 0.1 | 109.54 | 110.587912 | 106.92022 | False | False | 0.076 |
 | XRP/USDT:USDT | SHORT | 4.2 | 1.3884 | 1.384493 | 1.354935 | True | True | 0.792 |
 
 ---

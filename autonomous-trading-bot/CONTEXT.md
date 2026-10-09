@@ -39,7 +39,7 @@ Bot giao dịch **USDT-M Futures (Binance)** tự động trên Windows: vòng l
 | Tham số rủi ro | risk 1%/lệnh, trần tổng 2%, `LEVERAGE=8`, `MAX_POSITIONS=4` | `BALANCE_USDT=1000` = trần size (`size_base = min(trần, equity thật)`) |
 | Kill-switch | bình thường (đã `python risk.py --reset` ngày 08/10) | |
 | **Cổng LIVE** | ✅ **`live_ready.py` = HOAN THANH** (n=301 · PF(R) 1.616 · PF($) 1.492) | chi tiết §3/§4 |
-| **Tự động hoá** | `STATE_SYNC_SEC=1800` · `AUTO_LIVE_ARMED=true` · `AUTO_LIVE_MIN_EQUITY=20` | `state_sync.py` mỗi 30 phút: ghi `STATE.md` + push GitHub + kiểm tra cổng; khi sang LIVE thì **áp mức rủi ro theo ví thật** (§11.1) |
+| **Tự động hoá** | `STATE_SYNC_SEC=1800` · `AUTO_LIVE_ARMED=true` · `AUTO_LIVE_MIN_EQUITY=10` | `state_sync.py` mỗi 30 phút: ghi `STATE.md` + push GitHub + kiểm tra cổng; khi sang LIVE thì **áp mức rủi ro theo ví thật** (§11.1) |
 
 ## 3. Hiệu suất hiện tại (đọc từ `logs/journal.jsonl`, ngày 09/10 ~00:10)
 
@@ -165,19 +165,23 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 
 **Bug thật đã gặp & đã sửa (09/10 00:05)**: process do supervisor spawn (pythonw) **không chạy được** `subprocess.run(["git", ...])` → `[WinError 2]` dù `shutil.which("git")` tìm thấy ⇒ nay dùng **đường dẫn tuyệt đối** (`state_sync._git_bin()`, có test).
 
-### 11.1 Ngưỡng rủi ro theo **ví THẬT** (dải — `risk_tier.py`)
+### 11.1 Ngưỡng rủi ro theo **ví THẬT** (dải 4 mức — `risk_tier.py`)
 
-Khi sang LIVE, `state_sync.py` **áp mức theo số dư thật** (không dùng một con số cứng):
+Khi sang LIVE, `state_sync.py` **áp mức theo số dư thật** và **tự lọc cặp theo min notional thật**:
 
-| Equity thật (USDT) | Mức | risk/lệnh | MAX_POSITIONS | Cặp | Vì sao |
+| Equity thật (USDT) | Mức | risk/lệnh | MAX_POSITIONS | Cặp (sau khi lọc) | Notional/lệnh |
 |---|---|---|---|---|---|
-| `< 20` | **giảm lệnh** | 1.0% | **1** | SOL/XRP/ADA/DOGE/AVAX | notional ~16$ > min 5$; BTC(50$)/LINK(20$) bị sàn từ chối; 1 vị thế ⇒ margin ~10–18% |
-| `20 .. < 100` | **cân bằng** | 0.5% | **2** | + LINK | notional 8–40$; BTC vẫn thiếu notional |
-| `>= 100` | **an toàn** | 1.0% | **4** | đủ (kể cả BTC) | notional ≥80$ ⇒ BTC đủ min 50$ |
+| `< 20` | **giảm lệnh** | 1.0% | **1** | SOL/XRP + ADA/DOGE/AVAX | ~8–16$ |
+| `20 .. < 62` | **cân bằng** | 0.5% | **2** | SOL/XRP + alts (**LINK từ ~50$**) | 8–25$ |
+| `62 .. < 100` | **cân bằng + BTC** | 1.0% | **2** | **+ BTC** (đủ min notional 50$) | 50–80$ |
+| `>= 100` | **an toàn** | 1.0% | **4** | đủ (BTC + LINK) | ≥80$ |
 
-- Ngưỡng tự sang LIVE: `AUTO_LIVE_MIN_EQUITY=20` (bắt đầu từ mức "cân bằng").
-- Xem trước: `python risk_tier.py 20` (hoặc `150`) — in mức + các dòng `.env` sẽ bị đổi.
-- Số liệu gốc: `logs/money_probe.py` (min notional ccxt + SL trung vị 1.24% + hàm `risk.position_size` thật).
+- **Ngưỡng BTC** (min notional 50$): cần equity ≥ **62$** ở risk 1% (mức "cân bằng + BTC"), hoặc ≥ **124$** ở risk 0.5% ⇒ đó là lý do mức 62–100 dùng risk **1%** (để BTC vào được).
+- **Lọc cặp tự động**: `notional = equity × risk% / SL(1.24%)` so với min notional từng cặp (BTC 50$, LINK 20$, alt 5$) ⇒ cặp chưa đủ bị **loại khỏi danh sách** (không để sàn từ chối lệnh).
+- Ngưỡng tự sang LIVE: **`AUTO_LIVE_MIN_EQUITY=10`** (từ 10$ đã vào được lệnh alt với 1 vị thế).
+- Xem trước: `python risk_tier.py 15` (giảm lệnh) · `python risk_tier.py 70` (có BTC) · `python risk_tier.py 150` (an toàn).
+- Số liệu gốc: `logs/money_probe.py` (min notional ccxt + SL trung vị 1.24% + `risk.position_size` thật).
+
 
 
 

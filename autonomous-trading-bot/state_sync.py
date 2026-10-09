@@ -10,14 +10,16 @@ Tất định 100%: chỉ ĐỌC file state + journal (không gọi LLM). Chỉ 
 `STATE.md`, `logs/state_snapshot.json`, `logs/state_sync.log`, và (chỉ khi --auto-live
 đủ điều kiện) sửa `.env` + kết thúc tiến trình con để supervisor restart với config mới.
 
-**TỰ ĐỘNG SANG LIVE — 5 chốt an toàn** (đây là tiền thật, không được tắt chốt nào):
+**TỰ ĐỘNG SANG LIVE — 5 chốt an toàn (+ chốt 4b: độ ổn định của key)** (đây là tiền thật, không được tắt chốt nào):
 
 1. `AUTO_LIVE_ARMED=true` trong `.env` — mặc định **false**, phải bật 1 lần.
 2. `live_ready.check()` OK — PF(R)≥1.2 **và** PF($)≥1.1 ở **mọi** cửa sổ 7/14/30 ngày,
    n≥300, chiến lược âm phải bị block, đủ mẫu 2 hướng.
 3. `live_guard.check()` OK — n≥50, PF≥1.2, risk≤2%, lev≤10, kill-switch sạch.
 4. **Ví THẬT** (endpoint live, chỉ đọc) ≥ `AUTO_LIVE_MIN_EQUITY` USDT (mặc định 100);
-   **không đọc được ⇒ KHÔNG đổi** (fail-safe).
+   **không đọc được ⇒ KHÔNG đổi** (fail-safe). **4b:** đọc **5 lần**, chỉ qua khi **ổn định
+   ≥4/5** — chặn trường hợp key lỗi `-2015` ngắt quãng (giới hạn IP + mạng nhiều IP ra) làm
+   bot LIVE không đặt được SL. Xem README §16.3.
 5. Chỉ đổi **1 lần** (marker `logs/.live_flipped`) + tự hạ rủi ro khởi đầu
    (`RISK_PER_TRADE_PCT=0.5`, `MAX_POSITIONS=3`) + ghi log/Telegram + ghi vào STATE.md.
 """
@@ -256,8 +258,11 @@ def render_md(snap: dict) -> str:
 
 def decide_go_live(rep_ready: dict, rep_guard: dict, real_equity, armed: bool,
                    already_flipped: bool, min_equity: float = DEFAULT_EQUITY_MIN,
-                   live_keys: bool = True) -> tuple:
-    """Có tự sang LIVE không? Trả (bool, lý do). HÀM THUẦN — test được."""
+                   live_keys: bool = True, key_stable: bool | None = None) -> tuple:
+    """Có tự sang LIVE không? Trả (bool, lý do). HÀM THUẦN — test được.
+
+    `key_stable=None` ⇒ bỏ qua chốt 4b (tương thích ngược, dùng trong test).
+    """
     if already_flipped:
         return False, "da doi 1 lan truoc do (marker logs/.live_flipped)"
     if not armed:
@@ -274,7 +279,12 @@ def decide_go_live(rep_ready: dict, rep_guard: dict, real_equity, armed: bool,
     if float(real_equity) < float(min_equity):
         return False, ("vi THAT %.2f USDT < %.2f USDT toi thieu"
                        % (float(real_equity), float(min_equity)))
-    return True, ("du dieu kien: vi that %.2f USDT + live_ready + live_guard OK"
+    if key_stable is False:
+        # (09/10) Chot 4b: doc duoc 1 lan KHONG du — loi -2015 ngat quang (key gioi han IP
+        # + mang nhieu IP ra) se lam bot LIVE loi dat SL / dong vi the ngau nhien.
+        return False, ("key LIVE doc KHONG on dinh (loi -2015 ngat quang: TAT 'Restrict access "
+                       "to trusted IPs only' tren Binance roi thu lai — xem README §16.3)")
+    return True, ("du dieu kien: vi that %.2f USDT + live_ready + live_guard OK + key on dinh"
                   % float(real_equity))
 
 
@@ -298,20 +308,64 @@ def has_live_keys(cfg) -> bool:
     return key_pair(cfg)[2] == "live"
 
 
+_LAST_LIVE_ERR = ""
+
+
 def real_equity_usdt(cfg) -> float | None:
     """Đọc số dư USDT của ví THẬT (endpoint live, CHỈ ĐỌC). None nếu không đọc được."""
+    global _LAST_LIVE_ERR
     key, secret, src = key_pair(cfg)
+    _LAST_LIVE_ERR = ""
     try:
         from exchange import BinanceFutures
         ex = BinanceFutures(api_key=key, api_secret=secret, testnet=False, dry_run=False)
         bal = ex.fetch_balance_usdt()
         if bal is None:
-            log("real_equity: khong doc duoc (nguon key=%s)" % src)
+            _LAST_LIVE_ERR = str(getattr(ex, "last_error", "") or "khong doc duoc")
+            log("real_equity: khong doc duoc (nguon key=%s) | %s" % (src, _LAST_LIVE_ERR[:200]))
             return None
         return float(bal)
     except Exception as e:  # noqa: BLE001
-        log("real_equity: loi %s (nguon key=%s)" % (str(e)[:120], src))
+        _LAST_LIVE_ERR = "%s: %s" % (type(e).__name__, str(e)[:200])
+        log("real_equity: loi %s (nguon key=%s)" % (_LAST_LIVE_ERR[:160], src))
         return None
+
+
+def last_live_error() -> str:
+    """Lỗi CUỐI CÙNG khi đọc ví THẬT (rỗng = không lỗi / chưa thử).
+
+    Dùng cho `check_live_key.py` để in mã lỗi thật (vd -2015 key/IP/quyền) thay vì
+    chỉ "không đọc được".
+    """
+    return _LAST_LIVE_ERR
+
+
+def real_equity_health(cfg, tries: int = 5, sleep_s: float = 1.0,
+                       min_ok: int | None = None) -> dict:
+    """Đo ĐỘ ỔN ĐỊNH của cặp key LIVE: đọc ví THẬT `tries` lần liên tiếp.
+
+    Trả `{"eq", "ok_n", "tries", "stable", "err", "min_ok"}`.
+
+    Vì sao cần: lỗi `-2015` có thể NGẮT QUÃNG (key bật *"Restrict access to trusted
+    IPs only"* + mạng có nhiều IP ra — đã đo thực tế 2/8 lần thành công 09/10). Đọc
+    được 1 lần KHÔNG có nghĩa key dùng được ở LIVE: nếu ~75% request lỗi thì bot có
+    thể **không đặt được SL / không đóng được vị thế** ⇒ mất tiền thật.
+    ⇒ Chỉ cho sang LIVE khi đọc ổn định (mặc định ≥80% số lần).
+    """
+    n = max(1, int(tries))
+    need = int(min_ok) if min_ok is not None else max(1, int(round(n * 0.8)))
+    ok_n, eq, err = 0, None, ""
+    for i in range(n):
+        v = real_equity_usdt(cfg)
+        if v is not None:
+            ok_n += 1
+            eq = v if eq is None else max(eq, v)
+        else:
+            err = _LAST_LIVE_ERR
+        if i + 1 < n:
+            time.sleep(float(sleep_s))
+    return {"eq": eq, "ok_n": ok_n, "tries": n, "min_ok": need,
+            "stable": ok_n >= need, "err": err}
 
 
 def go_live(cfg, reason: str, env_path=None, tier: dict | None = None) -> dict:
@@ -449,15 +503,18 @@ def main(argv: list | None = None) -> int:
         return 0
 
     import risk_tier
-    eq = real_equity_usdt(cfg)
+    health = real_equity_health(cfg)
+    eq = health["eq"]
     tier = risk_tier.tier_for(eq)
     ok, why = decide_go_live(snap["live_ready"], snap["live_guard"], eq,
                              snap["auto_live"]["armed"], snap["auto_live"]["flipped"],
                              snap["auto_live"]["min_equity"],
-                             live_keys=has_live_keys(cfg))
-    log("auto-live: %s | %s | vi that=%s | nguon key=%s | muc=%s (risk %s%%, %s vi the)"
-        % ("DOI SANG LIVE" if ok else "KHONG DOI", why, eq, key_pair(cfg)[2], tier["name"],
-           tier["risk_pct"], tier["max_positions"]))
+                             live_keys=has_live_keys(cfg), key_stable=health["stable"])
+    log("auto-live: %s | %s | vi that=%s (%d/%d lan doc duoc, on dinh=%s) | nguon key=%s | "
+        "muc=%s (risk %s%%, %s vi the)"
+        % ("DOI SANG LIVE" if ok else "KHONG DOI", why, eq, health["ok_n"], health["tries"],
+           health["stable"], key_pair(cfg)[2], tier["name"], tier["risk_pct"],
+           tier["max_positions"]))
     if not ok:
         return 0
     res = go_live(cfg, why, tier=tier)

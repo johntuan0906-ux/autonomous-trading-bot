@@ -5,10 +5,22 @@
 """
 from __future__ import annotations
 
+import re
 import secrets
 import time
 
 import pandas as pd
+
+
+def request_ip_from_error(msg: str) -> str:
+    """IP mà Binance THẤY khi trả lỗi -2015 (rỗng nếu Binance không nêu).
+
+    Vì sao cần: máy có nhiều đường ra Internet (2 WAN/CGNAT) ⇒ IP mà Binance thấy
+    có thể KHÁC IP `api.ipify.org` báo. Khi đó bật 'Restrict access to trusted IPs'
+    là bẫy: key "đúng" vẫn lỗi -2015 ngẫu nhiên, bot LIVE có thể không đặt được SL.
+    """
+    m = re.search(r"request ip:\s*([0-9]{1,3}(?:\.[0-9]{1,3}){3})", str(msg or ""))
+    return m.group(1) if m else ""
 
 
 def _cid(tag: str) -> str:
@@ -27,6 +39,7 @@ class BinanceFutures:
         self.testnet = testnet
         self._client = None
         self._public = None
+        self.last_error: str = ""   # loi cuoi cung khi doc/ghi (de chan doan -2015...)
         try:
             import ccxt  # type: ignore
             self._public = ccxt.binance({"options": {"defaultType": "future"},
@@ -86,8 +99,12 @@ class BinanceFutures:
                         return v
                 except (TypeError, ValueError):
                     continue
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            # Ghi lai loi THAT (khong nuot) — thieu dong nay thi log chi co
+            # "khong doc duoc" va khong biet -2015 (key/IP/quyen) hay -1021 (le gio).
+            self.last_error = "%s: %s" % (type(e).__name__, str(e)[:220])
             return None
+        self.last_error = "response khong co truong so du USDT"
         return None
 
     def quantize_qty(self, symbol: str, qty: float) -> float:

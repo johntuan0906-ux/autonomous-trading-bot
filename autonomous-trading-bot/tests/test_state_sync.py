@@ -202,6 +202,98 @@ class TestLiveKeys(unittest.TestCase):
         self.assertIn("BINANCE_TESTNET=false", txt)
 
 
+class TestLiveEquityDiag(unittest.TestCase):
+    """(09/10) Chẩn đoán key LIVE: ghi lại mã lỗi THẬT + thử lại khi lỗi ngắt quãng."""
+
+    def test_request_ip_from_error(self):
+        from exchange import request_ip_from_error
+        msg = ('binance {"code":-2015,"msg":"Invalid API-key, IP, or permissions '
+               'for action, request ip: 222.253.53.82"}')
+        self.assertEqual(request_ip_from_error(msg), "222.253.53.82")
+        self.assertEqual(request_ip_from_error("khong co ip nao"), "")
+        self.assertEqual(request_ip_from_error(None), "")
+
+    def test_real_equity_ghi_lai_ma_loi(self):
+        class FakeEx:
+            last_error = 'AuthenticationError: binance {"code":-2015,...}'
+
+            def __init__(self, **kw):
+                pass
+
+            def fetch_balance_usdt(self):
+                return None
+
+        with mock.patch("exchange.BinanceFutures", FakeEx):
+            self.assertIsNone(SS.real_equity_usdt(_cfg(live_api_key="LK", live_api_secret="LS")))
+        self.assertIn("-2015", SS.last_live_error())
+
+    def test_health_ghi_nhan_do_on_dinh(self):
+        calls = {"n": 0}
+
+        class FakeEx:
+            last_error = ""
+
+            def __init__(self, **kw):
+                pass
+
+            def fetch_balance_usdt(self):
+                calls["n"] += 1
+                return None if calls["n"] < 3 else 42.0
+
+        with mock.patch("exchange.BinanceFutures", FakeEx):
+            h = SS.real_equity_health(_cfg(live_api_key="LK", live_api_secret="LS"),
+                                      tries=5, sleep_s=0.0)
+        self.assertEqual(h["tries"], 5)
+        self.assertEqual(h["ok_n"], 3)
+        self.assertEqual(h["min_ok"], 4)      # 80% cua 5
+        self.assertFalse(h["stable"])         # 3/5 < 4 => KHONG sang LIVE
+        self.assertEqual(h["eq"], 42.0)
+
+    def test_health_on_dinh_thi_qua(self):
+        class FakeEx:
+            last_error = ""
+
+            def __init__(self, **kw):
+                pass
+
+            def fetch_balance_usdt(self):
+                return 21.5
+
+        with mock.patch("exchange.BinanceFutures", FakeEx):
+            h = SS.real_equity_health(_cfg(live_api_key="LK", live_api_secret="LS"),
+                                      tries=5, sleep_s=0.0)
+        self.assertTrue(h["stable"])
+        self.assertEqual(h["ok_n"], 5)
+        self.assertEqual(h["eq"], 21.5)
+
+    def test_health_het_lan_van_loi(self):
+        class FakeEx:
+            last_error = "loi"
+
+            def __init__(self, **kw):
+                pass
+
+            def fetch_balance_usdt(self):
+                return None
+
+        with mock.patch("exchange.BinanceFutures", FakeEx):
+            h = SS.real_equity_health(_cfg(live_api_key="LK", live_api_secret="LS"),
+                                      tries=2, sleep_s=0.0)
+        self.assertIsNone(h["eq"])
+        self.assertFalse(h["stable"])
+        self.assertEqual(h["err"], "loi")
+
+    def test_chot_4b_key_khong_on_dinh_thi_khong_sang_live(self):
+        ok, why = SS.decide_go_live({"ok": True, "blockers": []}, {"ok": True, "blockers": []},
+                                    500.0, True, False, 10.0, live_keys=True, key_stable=False)
+        self.assertFalse(ok)
+        self.assertIn("KHONG on dinh", why)
+        # key on dinh -> qua
+        ok2, why2 = SS.decide_go_live({"ok": True, "blockers": []}, {"ok": True, "blockers": []},
+                                      500.0, True, False, 10.0, live_keys=True, key_stable=True)
+        self.assertTrue(ok2, why2)
+
+
 class TestGoLive(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())

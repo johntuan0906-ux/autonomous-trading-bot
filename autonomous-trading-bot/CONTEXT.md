@@ -211,6 +211,25 @@ Chạy `python loss_report.py` (chi tiết: README §17). Kết quả trên n=36
 
 **Nguyên tắc**: bot **KHÔNG** tự sửa config — đề xuất chỉ để bạn quyết; mọi thay đổi đi qua `.env` + restart bot.
 
+---
+
+## 13. (09/10) Key LIVE đã điền — và bẫy lỗi `-2015` do IP
+
+Trạng thái: `BINANCE_LIVE_API_KEY`/`_SECRET` **đã điền** (64 ký tự, che dạng `K3IP20…DobC`). Đọc được ví THẬT: **21.96 USDT** ⇒ mức **`balanced`** (risk 0.5% · 2 vị thế; cặp SOL/XRP + ADA/DOGE/AVAX).
+
+Nhưng: **đọc được NGẮT QUÃNG (2/8 lần)** với `-2015 Invalid API-key, IP, or permissions`. Nguyên nhân **đã đo**: máy có **nhiều IP ra Internet** — `api.ipify.org` = `171.244.236.148` trong khi cùng lúc **Binance thấy `222.253.53.82`** ⇒ key bật *"Restrict access to trusted IPs only"* sẽ lỗi ngẫu nhiên.
+
+**Việc cần làm (Binance side)**: API Management → key → **Edit restrictions** → **TẮT** *"Restrict access to trusted IPs only"* (không có IP tĩnh thì đừng bật) + tick đủ *Enable Reading* & *Enable Futures* → Lưu → đợi 1–2 phút.
+
+**Đã cải thiện code** (để lần sau chẩn đoán trong 10 giây):
+- `exchange.fetch_balance_usdt` **ghi lại mã lỗi thật** vào `last_error` (trước đây nuốt lỗi ⇒ log chỉ có "không doc duoc").
+- `exchange.request_ip_from_error()` — lấy **IP mà Binance thấy** trong message `-2015`.
+- `state_sync.real_equity_health(cfg, tries=5)` — đọc ví **5 lần**, trả `ok_n/tries/stable`; **chốt 4b**: `decide_go_live(..., key_stable=...)` **CHẶN sang LIVE khi key không ổn định** (ngưỡng ≥4/5 = 80%). Đo thực tế: **3/5 ⇒ CHẶN** (bot vẫn testnet) — nếu không có chốt này, chỉ cần 1 lần đọc được là bot đã tự sang LIVE với key lỗi 75% (rất nguy hiểm: không đặt được SL).
+- `state_sync.last_live_error()` + ghi mã lỗi vào `logs/state_sync.log`.
+- `check_live_key.py --retry N` — in mã lỗi + số lần đọc được (`x/y`) + IP Binance thấy vs IP ipify + cảnh báo IP đã đổi; exit 2 nếu key không ổn định.
+- README **§16.3** ghi lại toàn bộ sự cố + cách sửa.
+
+
 
 
 

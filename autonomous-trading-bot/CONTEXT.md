@@ -244,7 +244,7 @@ Nhưng: **đọc được NGẮT QUÃNG (2/6 · 3/5 · 1/5 lần)** với `-2015
 4. **"Vị thế ma"**: `position_sync.adopt()` dọn cả `bot.portfolio` (chỉ xoá khi sàn xác nhận `qty=0`; lỗi đọc ⇒ giữ).
 5. **Test phụ thuộc `.env`**: `test_bot`, `test_live_guard` tự set config ⇒ chạy đúng ở cả demo và LIVE.
 
-⚠️ **CẦN BẠN XỬ LÝ — tài khoản chặn MỌI lệnh điều kiện (`-4045` "Reach max stop order limit")**: đã thử `STOP_MARKET`/`TAKE_PROFIT`/`TRAILING` (có/không `closePosition`, có/không `positionSide`, qty lớn, cả symbol không có vị thế) đều `-4045` trong khi **0 lệnh treo** và `LIMIT`/market chạy bình thường ⇒ **giới hạn phía Binance, không phải lỗi bot**. Hệ quả: vị thế LIVE **không có SL/TP trên sàn**, chỉ có **monitor mềm** (bot tắt ⇒ vị thế không được bảo vệ). Việc cần làm: thử đặt SL tay trên app Binance; nếu cũng bị ⇒ liên hệ hỗ trợ Binance.
+⚠️ **`-4045` khi đặt SL/TP = GIỚI HẠN của tài khoản (bạn xác nhận 09/10), không phải chặn hẳn — BỎ QUA, không cần xử lý phía Binance**: đã thử `STOP_MARKET`/`TAKE_PROFIT`/`TRAILING` (có/không `closePosition`, có/không `positionSide`, qty lớn, cả symbol không có vị thế) đều `-4045` trong khi **0 lệnh treo** và `LIMIT`/market chạy bình thường ⇒ giới hạn phía Binance, **không phải lỗi bot**. Bot tự đối phó: **thử lại mỗi 5 phút/cặp** (sau 3 lỗi giãn còn `PROTECT_BACKOFF_SEC=300`), tự dừng khi đã có SL trên sàn, **throttle log cảnh báo** (bỏ câu "kiểm tra tay" gây hiểu nhầm). Trong lúc chờ, vị thế được **monitor mềm** bảo vệ (đã chốt lãi thật: AVAX `r=+0.82`, SOL `r=+0.48`) — **chỉ cần để bot chạy**.
 
 
 

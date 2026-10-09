@@ -177,8 +177,16 @@ def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
                 _PROT_FAIL.pop(sym, None)
             else:
                 _PROT_FAIL[sym] = fails + 1
-                log.error("RE-ARM %s: san bao dat thanh cong nhung KHONG thay lenh treo "
-                          "-> can kiem tra tay (vi the dang KHONG co SL/TP tren san)", sym)
+                # (09/10) San gioi han so lenh dieu kien (kieu HAN NGACH: luc cho luc chan):
+                # san NHAN lenh roi KHONG giu lenh treo. Day la gioi han PHIA SAN, khong
+                # phai loi cua nguoi van hanh -> throttle log (PROTECT_BACKOFF_SEC) va
+                # KHONG noi "kiem tra tay" (da xac nhan 09/10: dat tay dung chuan van -4045).
+                if time.time() - float(_PROT_LOG.get(sym, 0.0)) >= PROTECT_BACKOFF_SEC:
+                    _PROT_LOG[sym] = time.time()
+                    log.error("RE-ARM %s: san NHAN lenh nhung KHONG giu lenh treo "
+                              "(gioi han lenh dieu kien cua san) — vi the dang KHONG co "
+                              "SL/TP tren san; monitor mem dang bao ve, se thu lai sau ~%ds",
+                              sym, int(PROTECT_BACKOFF_SEC))
         except Exception as e:  # noqa: BLE001
             _PROT_TRY[sym] = time.time()
             n = int(_PROT_FAIL.get(sym, 0)) + 1

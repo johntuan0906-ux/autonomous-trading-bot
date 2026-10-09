@@ -876,9 +876,19 @@ class TestRearmAnToan(unittest.TestCase):
         log = logging.getLogger("test_rearm_an_toan")
         with self.assertLogs("test_rearm_an_toan", level="ERROR") as cm:
             td._rearm_missing(bot, log, every_sec=0)
-        self.assertTrue(any("KHONG thay lenh treo" in m for m in cm.output),
+        self.assertTrue(any("KHONG giu lenh treo" in m for m in cm.output),
                         "phai bao dong khi san nhan lenh ma khong thay lenh treo")
         self.assertNotIn(self.SYM, td._PROT_SEEN, "chua xac nhan duoc thi khong duoc coi la OK")
+
+    def test_canh_bao_khong_giu_lenh_duoc_throttle(self):
+        """(09/10) Gioi han lenh dieu kien la chuyen PHIA SAN -> khong duoc spam log."""
+        ex = FakeExchange()
+        bot = self._setup(ex)
+        log = logging.getLogger("test_rearm_throttle")
+        with self.assertLogs("test_rearm_throttle", level="ERROR") as cm:
+            td._rearm_missing(bot, log, every_sec=0)
+            td._rearm_missing(bot, log, every_sec=0)      # lan 2 trong cung cua so -> im
+        self.assertEqual(len([m for m in cm.output if "KHONG giu lenh treo" in m]), 1)
 
     def test_san_chan_lien_tuc_thi_gian_nhip_5_phut(self):
         ex = FakeExchange(arm_boom=True)          # -4045 lien tuc

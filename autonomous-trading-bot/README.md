@@ -1004,9 +1004,9 @@ Bot tự sang LIVE lúc **16:35:47** (đủ 5 chốt + chốt 4b). Ngay sau đó
 | Trên symbol **không có vị thế** (BTC, DOGE) | ❌ `-4045` |
 | Số lệnh treo toàn tài khoản | **0** |
 
-⇒ **Không phải lỗi bot** (đặt tay đúng chuẩn vẫn lỗi, kể cả khi 0 lệnh treo) mà là **giới hạn phía tài khoản Binance**. Hệ quả: vị thế LIVE **không có SL/TP trên sàn**, chỉ được **monitor mềm** của bot bảo vệ (bot tắt = vị thế không được bảo vệ).
+⇒ **Không phải lỗi bot** (đặt tay đúng chuẩn vẫn lỗi, kể cả khi 0 lệnh treo) mà là **giới hạn phía tài khoản Binance**. **Bạn đã xác nhận (09/10): tài khoản chỉ GIỚI HẠN chứ không chặn hẳn** ⇒ có lúc sẽ đặt được. Hệ quả cần biết: vị thế LIVE **không có SL/TP trên sàn** cho tới khi lệnh đặt được, chỉ được **monitor mềm** của bot bảo vệ (bot tắt = vị thế không được bảo vệ).
 
-Việc cần làm: mở app/web Binance → thử đặt SL tay cho 1 vị thế xem có bị chặn không; nếu cũng bị ⇒ liên hệ hỗ trợ Binance (kèm mã `-4045`). Trong lúc đó bot vẫn chạy được (soft SL đã chốt lãi thật: AVAX `r=+0.82`, SOL `r=+0.48`).
+Cách bot đối phó (đã có sẵn, không cần làm gì thêm): **thử lại mỗi 5 phút/cặp** (`PROTECT_CHECK_SEC=60` → sau 3 lần lỗi giãn còn `PROTECT_BACKOFF_SEC=300`), tự dừng thử khi đã có SL trên sàn, và **throttle log cảnh báo** (mỗi 5 phút/cặp) để không rác log. Không cần "kiểm tra tay" — chỉ cần để bot chạy.
 
 ### 18.2 Kết quả thực tế sau ~3.5 giờ LIVE
 

@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/10/2026 23:07:11 · commit `?`
+- **Cập nhật**: 09/10/2026 23:37:11 · commit `?`
 - **Chế độ**: **LIVE (TIỀN THẬT)** · `DRY_RUN=False` · `LIVE_CONFIRM=True`
-- **Bot**: pid `30756` · round `240` · nhịp tim cách đây 2.0s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `30756` · round `282` · nhịp tim cách đây 20.8s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: 22.7 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 416 lệnh đóng, WR 62.5%, E(R) 0.0564, PnL 123.14$)
+## Hiệu suất (journal: 417 lệnh đóng, WR 62.59%, E(R) 0.0571, PnL 123.17$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 278 | 60.43 | 1.347 | 1.217 | 0.0719 | 105.66 |
-| 14 ngày | 385 | 62.08 | 1.257 | 1.136 | 0.0545 | 98.09 |
-| 30 ngày | 416 | 62.5 | 1.257 | 1.151 | 0.0564 | 123.14 |
+| 7 ngày | 279 | 60.57 | 1.353 | 1.217 | 0.0728 | 105.69 |
+| 14 ngày | 386 | 62.18 | 1.261 | 1.136 | 0.0552 | 98.13 |
+| 30 ngày | 417 | 62.59 | 1.261 | 1.151 | 0.0571 | 123.17 |
 
 ## Cổng sang LIVE
 
@@ -26,7 +26,7 @@
 ## Cấu hình rủi ro
 
 - risk/lệnh `0.5%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `2` · trần size `1000.0` USDT
-- Learner: 196 lần cập nhật trọng số · Hội đồng AI: **15 model**
+- Learner: 197 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -46,7 +46,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | ADA/USDT:USDT | SHORT | 36.0 | 0.2363 | 0.239414 | 0.228515 | False | False | 0.257 |
 | DOGE/USDT:USDT | SHORT | 143.0 | 0.08453 | 0.085326 | 0.08254 | False | False | 0.126 |
 | SOL/USDT:USDT | SHORT | 0.1 | 109.54 | 110.587912 | 106.92022 | False | False | 0.076 |
-| XRP/USDT:USDT | SHORT | 4.2 | 1.3884 | 1.384493 | 1.354935 | True | True | 0.792 |
+| XRP/USDT:USDT | SHORT | 8.8 | 1.3839 | 1.396646 | 1.352035 | False | False | 0.204 |
 
 ---
 

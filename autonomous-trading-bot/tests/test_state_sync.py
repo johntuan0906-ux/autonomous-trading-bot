@@ -180,17 +180,28 @@ class TestGoLive(unittest.TestCase):
         p.start()
         self.addCleanup(p.stop)
 
-    def test_go_live_doi_env_va_ha_rui_ro(self):
-        res = SS.go_live(_cfg(), "test reason", env_path=self.envp)
+    def test_go_live_doi_env_va_ap_muc_rui_ro(self):
+        import risk_tier
+        tier = risk_tier.tier_for(50)          # 20-100 -> muc "can bang"
+        res = SS.go_live(_cfg(), "test reason", env_path=self.envp, tier=tier)
         self.assertTrue(res["ok"], res)
+        self.assertEqual(res["tier"], "balanced")
         txt = self.envp.read_text(encoding="utf-8")
         self.assertIn("BINANCE_TESTNET=false", txt)
         self.assertIn("LIVE_CONFIRM=true", txt)
         self.assertIn("RISK_PER_TRADE_PCT=0.5", txt)
-        self.assertIn("MAX_POSITIONS=3", txt)
+        self.assertIn("MAX_POSITIONS=2", txt)
+        self.assertIn("SYMBOLS=SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT", txt)
         self.assertIn("KEEP=1", txt)                              # không làm hỏng dòng khác
         self.assertTrue((self.tmp / ".env.bak-live").exists())     # có backup
         self.assertTrue(self.marker.exists())                      # marker = chỉ đổi 1 lần
+
+    def test_go_live_khong_co_tier_thi_dung_muc_thap_nhat(self):
+        res = SS.go_live(_cfg(), "x", env_path=self.envp)
+        self.assertTrue(res["ok"], res)
+        self.assertEqual(res["tier"], "reduced")
+        txt = self.envp.read_text(encoding="utf-8")
+        self.assertIn("MAX_POSITIONS=1", txt)
 
     def test_go_live_env_khong_ton_tai_tra_loi(self):
         res = SS.go_live(_cfg(), "x", env_path=self.tmp / "khong-co.env")

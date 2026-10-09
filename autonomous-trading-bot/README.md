@@ -879,7 +879,23 @@ python state_sync.py --git --auto-live  # + kiểm tra cổng, tự sang LIVE n�
 
 Khi đủ 5 chốt: `.env` → `BINANCE_TESTNET=false` + `LIVE_CONFIRM=true` + `RISK_PER_TRADE_PCT=0.5` + `MAX_POSITIONS=3` (khởi đầu an toàn), backup `.env.bak-live`, gửi Telegram, ghi `STATE.md`, rồi kết thúc tiến trình con để supervisor restart với config mới.
 
-**Trạng thái 09/10**: chốt 2 và 3 **đã đạt** (n=301, PF(R) 1.616, PF($) 1.492) nhưng chốt 4 **chưa đạt** (API key hiện là key **demo** → không đọc được ví thật) ⇒ **chưa tự đổi**. Muốn tắt: `AUTO_LIVE_ARMED=false`; muốn tắt cả sync: `STATE_SYNC_SEC=0`.
+**Trạng thái 09/10**: chốt 2 và 3 **đã đạt** (n=338, PF(R) 1.464, PF($) 1.357) nhưng chốt 4 **chưa đạt** (API key hiện là key **demo** → không đọc được ví thật) ⇒ **chưa tự đổi**. Muốn tắt: `AUTO_LIVE_ARMED=false`; muốn tắt cả sync: `STATE_SYNC_SEC=0`.
+
+### 15.1 Ngưỡng rủi ro theo **ví THẬT** — dải 3 mức (`risk_tier.py`)
+
+Khi sang LIVE, `state_sync.py` **không dùng một con số cứng** mà áp mức theo số dư thật:
+
+| Equity thật (USDT) | Mức | risk/lệnh | MAX_POSITIONS | Cặp | Vì sao (số đo thật) |
+|---|---|---|---|---|---|
+| `< 20` | **giảm lệnh** | 1.0% | **1** | SOL/XRP/ADA/DOGE/AVAX | notional ~16$ > min 5$; BTC(50$)/LINK(20$) bị sàn từ chối |
+| `20 .. < 100` | **cân bằng** | 0.5% | **2** | + LINK | notional 8–40$; BTC vẫn thiếu notional |
+| `>= 100` | **an toàn** | 1.0% | **4** | đủ (kể cả BTC) | notional ≥80$ ⇒ BTC đủ min 50$; margin 4 vị thế ~40% |
+
+- Ngưỡng tối thiểu để tự sang LIVE: `AUTO_LIVE_MIN_EQUITY=20` (bắt đầu từ mức "cân bằng").
+- Xem trước bất cứ lúc nào: `python risk_tier.py 20` → in mức + đúng các dòng `.env` sẽ bị đổi (`RISK_PER_TRADE_PCT`, `MAX_POSITIONS`, `SYMBOLS`, `EXTRA_SYMBOLS`).
+- Cơ sở số liệu: `logs/money_probe.py` — min notional thật (ccxt: BTC 50$, LINK 20$, alt 5$), SL trung vị **1.24%**, tính bằng chính `risk.position_size()` của bot.
+- Chọn cách A (giữ testnet cho bot tự học) thì **không đổi gì ở testnet** — learner vẫn học, cổng LIVE vẫn tích luỹ; mức 3 bậc chỉ **áp lúc sang LIVE**.
+
 
 
 

@@ -126,10 +126,12 @@ def collect(cfg, journal=JOURNAL, now=None) -> dict:
 
     import live_guard
     import live_ready
+    import risk_tier
     rep_ready = live_ready.check(cfg, journal_path=str(journal))
     rep_guard = live_guard.check(cfg, journal_path=str(journal))
     models = council_models(cfg)
     st = rep_ready.get("all") or {}
+    tier = risk_tier.tier_for(hb.get("equity"))
 
     wins = {str(k): {"n": v.get("n"), "wr": v.get("wr"), "pf_r": v.get("pf_r"),
                      "pf_pnl": v.get("pf_pnl"), "e_r": v.get("e_r"), "pnl": v.get("pnl")}
@@ -166,6 +168,11 @@ def collect(cfg, journal=JOURNAL, now=None) -> dict:
                       "flipped": FLIP_MARKER.exists(),
                       "min_equity": float(getattr(cfg, "auto_live_min_equity",
                                                   DEFAULT_EQUITY_MIN) or DEFAULT_EQUITY_MIN)},
+        "tier": {"name": tier.get("name"), "label": tier.get("label"),
+                 "risk_pct": tier.get("risk_pct"),
+                 "max_positions": tier.get("max_positions"),
+                 "note": tier.get("note"),
+                 "table_md": risk_tier.table_md(hb.get("equity"))},
     }
 
 
@@ -219,6 +226,13 @@ def render_md(snap: dict) -> str:
            c["balance_usdt"]),
         "- Learner: %s lần cập nhật trọng số · Hội đồng AI: **%s model**"
         % (snap["learner"]["n_updates"], snap["council"]["n_models"]),
+        "",
+        "## Ngưỡng rủi ro theo ví THẬT (3 mức)",
+        "",
+        snap["tier"]["table_md"],
+        "",
+        "_Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp"
+        " đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._",
         "",
         "## Vị thế đang quản lý (%s)" % len(snap["positions"]),
         "",
@@ -274,15 +288,21 @@ def real_equity_usdt(cfg) -> float | None:
         return None
 
 
-def go_live(cfg, reason: str, env_path=None) -> dict:
-    """Đổi `.env` sang LIVE + hạ rủi ro khởi đầu + ghi marker. KHÔNG tự kill process."""
+def go_live(cfg, reason: str, env_path=None, tier: dict | None = None) -> dict:
+    """Đổi `.env` sang LIVE + áp mức rủi ro theo ví thật + ghi marker.
+
+    `tier` = dict từ `risk_tier.tier_for(equity)` (None -> dùng mức an toàn mặc định).
+    KHÔNG tự kill process (xem `restart_bot`).
+    """
+    import risk_tier
     path = Path(env_path) if env_path else (ROOT / ".env")
+    tier = tier or risk_tier.tier_for(None)
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as e:
         return {"ok": False, "err": "khong doc duoc .env: %s" % e}
-    upd = {"BINANCE_TESTNET": "false", "LIVE_CONFIRM": "true",
-           "RISK_PER_TRADE_PCT": str(START_RISK_PCT), "MAX_POSITIONS": str(START_MAX_POS)}
+    upd = {"BINANCE_TESTNET": "false", "LIVE_CONFIRM": "true"}
+    upd.update(risk_tier.env_updates(tier))
     new = set_env_values(text, upd)
     backup = path.with_name(path.name + ".bak-live")
     try:
@@ -290,11 +310,12 @@ def go_live(cfg, reason: str, env_path=None) -> dict:
         path.write_text(new, encoding="utf-8")
         FLIP_MARKER.parent.mkdir(parents=True, exist_ok=True)
         FLIP_MARKER.write_text(json.dumps({"ts": time.time(), "reason": reason,
+                                           "tier": tier.get("name"),
                                            "updates": upd}, ensure_ascii=False),
                                encoding="utf-8")
     except OSError as e:
         return {"ok": False, "err": "khong ghi duoc: %s" % e}
-    return {"ok": True, "updates": upd, "backup": str(backup)}
+    return {"ok": True, "updates": upd, "backup": str(backup), "tier": tier.get("name")}
 
 
 def restart_bot() -> dict:
@@ -395,19 +416,24 @@ def main(argv: list | None = None) -> int:
     if not args.auto_live:
         return 0
 
+    import risk_tier
     eq = real_equity_usdt(cfg)
+    tier = risk_tier.tier_for(eq)
     ok, why = decide_go_live(snap["live_ready"], snap["live_guard"], eq,
                              snap["auto_live"]["armed"], snap["auto_live"]["flipped"],
                              snap["auto_live"]["min_equity"])
-    log("auto-live: %s | %s | vi that=%s" % ("DOI SANG LIVE" if ok else "KHONG DOI", why, eq))
+    log("auto-live: %s | %s | vi that=%s | muc=%s (risk %s%%, %s vi the)"
+        % ("DOI SANG LIVE" if ok else "KHONG DOI", why, eq, tier["name"],
+           tier["risk_pct"], tier["max_positions"]))
     if not ok:
         return 0
-    res = go_live(cfg, why)
+    res = go_live(cfg, why, tier=tier)
     log("auto-live ket qua: %s" % res)
     if not res.get("ok"):
         return 2
-    notify_tg(cfg, "🚀 TỰ ĐỘNG SANG LIVE\n%s\nrisk 0.5%% / 3 vị thế\n%s"
-              % (why, snap["ts_human"]))
+    notify_tg(cfg, "🚀 TỰ ĐỘNG SANG LIVE\n%s\nMức: %s — risk %s%% · %s vị thế · cặp: %s\n%s"
+              % (why, tier["label"], tier["risk_pct"], tier["max_positions"],
+                 tier["symbols"], snap["ts_human"]))
     log("restart bot: %s" % restart_bot())
     snap2 = collect(Settings())
     write_state(render_md(snap2), snap2)

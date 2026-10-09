@@ -129,6 +129,8 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 | `state_sync.py` | đồng bộ `STATE.md` + push GitHub + tự động sang LIVE (§11) |
 | `check_live_key.py` | kiểm tra cặp key LIVE trong `.env` (đọc số dư THẬT, chỉ đọc) — §16 |
 | `loss_report.py` | phân tích lỗ theo 7 chiều + đề xuất cụ thể — §17 |
+| `restart_when_flat.py` | restart bot khi đã HẾT vị thế (an toàn, fail-safe) — §19.1 |
+| `market_brief.py` | bản tin: tin tức + sentiment + bối cảnh + vì sao chưa vào lệnh + bot học được gì — §19.2 |
 
 ---
 
@@ -230,6 +232,16 @@ Nhưng: **đọc được NGẮT QUÃNG (2/6 · 3/5 · 1/5 lần)** với `-2015
 - `state_sync.last_live_error()` + ghi mã lỗi vào `logs/state_sync.log`.
 - `check_live_key.py`: đọc 5 lần (`x/y lần thành công`) + **bảng theo từng IP** (`ip_diag`) + **IP mà Binance TỪ CHỐI** (lấy từ message `-2015`, chính xác hơn ipify vì máy đổi đường ra giữa 2 lần gọi) + cảnh báo IP đã đổi; `--retry N`, `--json` (kèm `by_ip`/`rejected`); exit 2 nếu key không ổn định.
 - README **§16.3** ghi lại toàn bộ sự cố + cách sửa. Tests: **612 OK** (thêm `tests/test_check_live_key.py` 7 test).
+
+---
+
+## 15. (09/10) Chế độ "theo dõi & học" — watcher + bản tin
+
+Yêu cầu: **KHÔNG restart khi đang mở vị thế**; chỉ restart khi **hết vị thế**; trong lúc đó **theo dõi + học + cập nhật tin tức** để vào lệnh.
+
+- **`restart_when_flat.py`** (đang chạy nền, PID trong `logs/restart_when_flat.log`): 30s/lần đọc vị thế THẬT; khi **0 vị thế** ⇒ kill supervisor + chạy lại `run_forever.py` (áp code mới). Đọc sàn lỗi ⇒ không restart (fail-safe). Xem README §19.1.
+- **`market_brief.py`**: bản tin 5 phần — tin tức/sentiment (RSS, không cần key) · bối cảnh từng cặp (giá/ATR/regime/funding/OI) · vị thế & rủi ro · **vì sao chưa vào lệnh** (vòng quét cuối) · **bot học được gì** (`logs/learner.json`). Xem README §19.2.
+- Trạng thái 09/10 20:45 (LIVE): equity **22.88 USDT** (từ 22.11 lúc sang LIVE), 5 vị thế (~39 USDT notional), tất cả cặp `COMPRESSION` (AVAX `BREAKDOWN`), learner n=189 (`sent +0.517`, `retest +0.421`, `htf −0.571`, `macd −0.398`).
 
 ---
 

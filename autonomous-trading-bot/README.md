@@ -1014,6 +1014,38 @@ Cách bot đối phó (đã có sẵn, không cần làm gì thêm): **thử l�
 - Vị thế đang mở: XRP/ADA/DOGE/AVAX (~41 USDT notional, ~5 USDT margin ở lev 8) — tổng risk nằm trong cap `MAX_TOTAL_RISK_PCT=2%`.
 - Xử lý DUST hoạt động: partial còn dưới `minNotional` ⇒ bot ghi CLOSE `DUST` + khoá sổ đúng (log: `CLOSE ADA/USDT:USDT DUST qty=19 < minNotional @ 0.2385`).
 
+## 19. (09/10) Theo dõi & bản tin thị trường — 2 công cụ mới
+
+### 19.1 `restart_when_flat.py` — restart bot khi ĐÃ HẾT VỊ THẾ
+
+```bash
+python restart_when_flat.py --once        # kiem tra 1 lan (0 = het vi the -> exit 0)
+python restart_when_flat.py               # theo doi 30s/lan, het vi the -> kill supervisor + chay lai
+pythonw restart_when_flat.py              # chay NEN (khuyen nghi)
+python restart_when_flat.py --dry-run     # chi bao, khong restart
+```
+
+Dùng khi cần **áp code/cấu hình mới mà KHÔNG cắt ngang vị thế đang mở** (vd đổi `SYMBOLS`, sửa log).
+An toàn: chỉ restart khi sàn **xác nhận 0 vị thế**; đọc sàn lỗi ⇒ **KHÔNG restart** (fail-safe); ghi `logs/restart_when_flat.log`; tự bỏ cuộc sau `--max-hours` (mặc định 12h).
+
+### 19.2 `market_brief.py` — bản tin để bạn theo dõi & học
+
+```bash
+python market_brief.py            # 5 phan: tin tuc | boi canh | vi the | vi sao chua vao lenh | bot hoc duoc gi
+python market_brief.py --no-news  # bo phan tin tuc (nhanh)
+python market_brief.py --json     # them JSON cho may doc
+```
+
+| Phần | Nội dung |
+|---|---|
+| 1. Tin tức & sentiment | score −1..1, số bài, tin URGENT bearish, top tiêu đề (RSS CoinDesk/Cointelegraph/Fed/Glassnode/Google News + GDELT — **không cần key**) |
+| 2. Bối cảnh theo cặp | giá, ATR%, **regime** (COMPRESSION/BREAKOUT/…), funding, OI change |
+| 3. Vị thế & rủi ro | equity THẬT, số vị thế, tổng notional, cap risk |
+| 4. Vì sao chưa vào lệnh | vòng quét cuối từ `logs/turbo_err.log`: `SKIP_OPEN` / `SKIP_RISK` / `BLOCKED_STRAT` / `BLOCKED_LEARN` / `COOLDOWN` + lý do |
+| 5. Bot học được gì | `logs/learner.json`: n cập nhật + trọng số lớn nhất (dấu `+` = có lợi ⇒ ưu tiên, `−` = bắt lỗi ⇒ tránh) |
+
+Ví dụ thật (09/10 20:43, LIVE): sentiment **−0.124** (24 bài, 1 tin urgent), các cặp đều `COMPRESSION` (AVAX `BREAKDOWN`), equity **22.88 USDT**, 5 vị thế, learner n=189 với `htf −0.571` · `sent +0.517` · `retest +0.421` · `macd −0.398` ⇒ bot đang **ưu tiên sentiment/retest và tránh htf/macd**.
+
 
 
 

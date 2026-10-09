@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 10/10/2026 02:47:45 · commit `?`
+- **Cập nhật**: 10/10/2026 03:17:45 · commit `?`
 - **Chế độ**: **LIVE (TIỀN THẬT)** · `DRY_RUN=False` · `LIVE_CONFIRM=True`
-- **Bot**: pid `42952` · round `1` · nhịp tim cách đây 23.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `42952` · round `41` · nhịp tim cách đây 22.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 22.63 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 425 lệnh đóng, WR 61.88%, E(R) 0.0589, PnL 123.31$)
@@ -33,15 +33,20 @@
 | Equity thật (USDT) | Mức | risk/lệnh | MAX_POS | Cặp |
 |---|---|---|---|---|
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
+| 20 – < 62 | **cân bằng** ⬅ **hiện tại** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (0)
+## Vị thế đang quản lý (4)
 
-_không có vị thế nào trong `managed_state.json`_
+| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
+|---|---|---|---|---|---|---|---|---|
+| ADA/USDT:USDT | SHORT | 42.0 | 0.2355 | 0.238168 | 0.22883 | False | False | 0.112 |
+| AVAX/USDT:USDT | SHORT | 1.0 | 10.121 | 10.22318 | 9.86555 | False | False | 0.069 |
+| SOL/USDT:USDT | SHORT | 0.12 | 108.53 | 109.440312 | 106.25422 | False | False | 0.121 |
+| XRP/USDT:USDT | SHORT | 11.0 | 1.3812 | 1.391586 | 1.355235 | False | False | 0.087 |
 
 ---
 

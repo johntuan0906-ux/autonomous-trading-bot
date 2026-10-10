@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 04:47:13 · commit `?`
+- **Cập nhật**: 11/10/2026 05:17:13 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `119320` · round `352` · nhịp tim cách đây 7.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `119320` · round `398` · nhịp tim cách đây 5.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 4242.7 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 451 lệnh đóng, WR 60.31%, E(R) 0.0252, PnL 93.69$)
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ADA/USDT:USDT | LONG | 7092.0 | 0.253 | 0.25159 | 0.256525 | False | False | 0.0 |
+| ADA/USDT:USDT | LONG | 7092.0 | 0.253 | 0.25159 | 0.256525 | False | False | 0.071 |
 | AVAX/USDT:USDT | SHORT | 76.0 | 10.363986842105264 | 10.566858 | 10.255855 | False | False | 0.0 |
 | BTC/USDT:USDT | LONG | 0.1092 | 83027.8 | 82936.291202 | 83256.571995 | False | False | 0.298 |
 | DOGE/USDT:USDT | LONG | 30487.0 | 0.08613 | 0.085802 | 0.08695 | False | False | 0.244 |

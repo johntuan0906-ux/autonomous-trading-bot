@@ -27,8 +27,10 @@ STATUS_RE = re.compile(r"['\"]status['\"]:\s*['\"]([A-Z_]+)['\"]")
 KILL_RE = re.compile(r"['\"]reason['\"]:\s*['\"]([^'\"]*(?:loss|error|volatility)[^'\"]*)['\"]", re.I)
 STOPPED_RE = re.compile(r"STOPPED:\s*(.+)")
 LOG_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?")
-MIN_TRADES = 50
-MIN_PF = 1.2
+MIN_TRADES = int(os.getenv("MIN_TRADES", "50") or 50)
+# (11/10) Nguong PF cho phep (configurable): chay SONG SONG testnet + live thi moi
+# instance can nguong rieng (vd instance LIVE dat MIN_PF=1.05 khi chap nhan edge mong).
+MIN_PF = float(os.getenv("MIN_PF", "1.2") or 1.2)
 MIN_SAMPLE_DAYS = 3            # mau CLOSE phai phan chia tren it nhat 3 ngay
 DIRECTIONS_REQUIRED = ("LONG", "SHORT")
 MIN_DIRECTION_TRADES = 5       # moi huong LONG/SHORT can >=5 lenh trong toan bo mau

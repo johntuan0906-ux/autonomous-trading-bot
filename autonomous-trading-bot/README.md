@@ -1046,6 +1046,44 @@ python market_brief.py --json     # them JSON cho may doc
 
 Ví dụ thật (09/10 20:43, LIVE): sentiment **−0.124** (24 bài, 1 tin urgent), các cặp đều `COMPRESSION` (AVAX `BREAKDOWN`), equity **22.88 USDT**, 5 vị thế, learner n=189 với `htf −0.571` · `sent +0.517` · `retest +0.421` · `macd −0.398` ⇒ bot đang **ưu tiên sentiment/retest và tránh htf/macd**.
 
+## 20. (11/10) CHẠY SONG SONG: TESTNET (học) + LIVE (thực chiến)
+
+Yêu cầu: vừa TESTNET để học/lấy kinh nghiệm, vừa LIVE để thực tế nhanh hơn; **hội đồng AI** chọn phương án phù hợp nhất.
+
+### 20.1 Kiến trúc: 2 instance, `logs/` RIÊNG
+
+`logs/journal.jsonl`, `learner.json`, `risk_state.json`, `managed_state.json`, `heartbeat.json` là **file dùng chung** ⇒ chạy 2 chế độ trong cùng thư mục sẽ **ghi đè lẫn nhau** (hỏng số liệu + hỏng bằng chứng học). Vì vậy tách hẳn 2 instance:
+
+| | Repo chính `autonomous-trading-bot/` | `../atb-live/` |
+|---|---|---|
+| Chế độ | **TESTNET** (học) | **LIVE** (tiền thật) |
+| Key | demo (`BINANCE_API_KEY`) | key THẬT (`BINANCE_API_KEY` = key live) |
+| Cặp | 7 (BTC,SOL,XRP + ADA,DOGE,LINK,AVAX) | 5 (SOL,XRP + ADA,DOGE,AVAX) |
+| Risk | 1.0% · `MAX_POSITIONS=4` | **0.5% · `MAX_POSITIONS=2`** |
+| Ngưỡng | `MIN_PF=1.2` · `MIN_TRADES=50` | **`MIN_PF=1.05` · `MIN_TRADES=30`** (chấp nhận edge mỏng để lấy kinh nghiệm thực tế) |
+| Git | push GitHub (`main`/`test-ai-agents`) | repo local riêng (không đụng GitHub) |
+
+Tạo/ghi lại cấu hình: `python tools/setup_parallel_env.py` (đọc `.env` hiện tại + `.env.bak-live`, in ra sẽ đổi gì; `--dry-run` để xem trước).
+
+Chạy mỗi bên: `pythonw run_forever.py` trong thư mục của nó (mỗi instance có supervisor + watchdog riêng).
+
+### 20.2 `compare_modes.py` — so sánh 2 chế độ + hội đồng quyết định
+
+```bash
+python compare_modes.py                 # bang so sanh + quy tac tat dinh + hoi dong AI tu van
+python compare_modes.py --no-council    # chi so sanh (nhanh)
+python compare_modes.py --apply         # ghi phuong an vao .env cua instance LIVE (co TRAN CUNG)
+```
+
+- Chỉ tính lệnh **sau mốc tách** (`../atb-live/logs/.split_ts`) ⇒ so sánh công bằng.
+- **Quy tắc tất định** (thứ được `--apply`): mẫu LIVE <20 lệnh ⇒ giữ nguyên · PF(LIVE)<1.0 ⇒ giảm risk · PF(LIVE)<1.1 mà TESTNET≥1.2 ⇒ học thêm ở testnet · cả 2 ≥1.2 ⇒ tăng risk.
+- **Trần cứng khi `--apply`**: `RISK_PER_TRADE_PCT` luôn trong **[0.25, 1.0]**, `MAX_POSITIONS` trong **[1, 3]** — hội đồng nói gì cũng không vượt.
+- **Hội đồng AI** (`agents.council_decision` + 1 vai `arbiter`): đọc bảng so sánh + danh sách 5 phương án (`TANG_RISK_LIVE` / `GIU_NGUYEN` / `GIAM_RISK_LIVE` / `PAUSE_LIVE` / `CHI_TESTNET`) để **tư vấn** — giữ đúng nguyên tắc dự án: **AI chỉ cố vấn, không tự đổi tiền/risk**.
+
+### 20.3 Ngưỡng cấu hình được (mới)
+
+`MIN_PF` và `MIN_TRADES` nay đọc từ `.env` (mặc định 1.2 / 50) ⇒ mỗi instance đặt ngưỡng riêng.
+
 
 
 

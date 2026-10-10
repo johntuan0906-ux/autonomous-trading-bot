@@ -245,6 +245,20 @@ Yêu cầu: **KHÔNG restart khi đang mở vị thế**; chỉ restart khi **h�
 
 ---
 
+## 16. (11/10) CHẠY SONG SONG TESTNET + LIVE (2 instance, hội đồng quyết định)
+
+Yêu cầu: vừa TESTNET để học vừa LIVE để thực tế nhanh hơn; **hội đồng AI** chọn phương án phù hợp nhất.
+
+- **2 instance, `logs/` RIÊNG** (journal/learner/risk_state/heartbeat dùng chung ⇒ ghi đè lẫn nhau, hỏng số liệu):
+  - Repo chính `autonomous-trading-bot/` = **TESTNET** (demo key, 7 cặp, risk 1.0%, `MAX_POSITIONS=4`, `MIN_PF=1.2`)
+  - `../atb-live/` = **LIVE** (key thật, 5 cặp, risk **0.5%**, `MAX_POSITIONS=2`, `MIN_PF=1.05`/`MIN_TRADES=30`, git local riêng — không đụng GitHub)
+  - Ghi lại cấu hình: `python tools/setup_parallel_env.py`; **mốc tách** `atb-live/logs/.split_ts`
+- **`compare_modes.py`**: bảng so sánh 2 chế độ (chỉ tính lệnh **sau mốc tách**) + **quy tắc tất định** + **hội đồng AI tư vấn** (5 phương án); `--apply` ghi vào `.env` LIVE trong **trần cứng** (risk 0.25–1.0%, max_positions 1–3).
+- **`MIN_PF`/`MIN_TRADES` nay cấu hình được qua `.env`** (mặc định 1.2/50) ⇒ mỗi instance ngưỡng riêng.
+- Trạng thái 11/10 00:50: TESTNET equity **4290** (demo) · LIVE **21.59** với 4 vị thế (ADA/DOGE/SOL của bot + `1000RATS` mở tay). 666 tests OK.
+
+---
+
 ## 14. (09/10) ĐÃ SANG LIVE + 5 lỗi LIVE-only đã sửa (xem README §18)
 
 **Trạng thái hiện tại**: bot chạy **LIVE** từ 16:35:47 (`.env`: `BINANCE_TESTNET=false`, key LIVE, risk 0.5% · `MAX_POSITIONS=2` · SOL/XRP+ADA/DOGE/AVAX). Sau ~3.5h: equity **22.11 → 22.6 USDT**, các lệnh đóng đều `r` dương (soft-SL chốt lãi: AVAX `r=+0.82`, SOL `r=+0.48`).

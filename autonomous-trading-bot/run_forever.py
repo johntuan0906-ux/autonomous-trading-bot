@@ -9,6 +9,7 @@ Chay bang pythonw.exe (khong co cua so console) de song doc lap VS Code:
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -69,11 +70,25 @@ def should_restart(age: float | None, child_alive: bool, limit: float) -> bool:
 
 
 def touch_heartbeat(path=None) -> None:
-    """Ghi nhip tim truoc khi spawn — de watchdog khong kill con MOI ngay lap tuc."""
+    """Ghi nhịp tim TRƯỚC khi spawn — để watchdog không kill con MỚI ngay lập tức.
+
+    (11/10) Ghi **dict** và GIỮ các trường cũ (pid/round của con): bản cũ ghi số trần
+    `str(time.time())` ⇒ file lúc là số lúc là dict ⇒ `state_sync` đọc được số và crash
+    `'float' object has no attribute 'get'` ⇒ state_sync/auto-live/git NGỪNG chạy.
+    """
     p = HEARTBEAT if path is None else path
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(str(time.time()), encoding="utf-8")
+        d: dict = {}
+        try:
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                d = raw
+        except Exception:  # noqa: BLE001
+            d = {}
+        d["ts"] = time.time()
+        d.setdefault("phase", "supervisor_touch")
+        p.write_text(json.dumps(d), encoding="utf-8")
     except OSError:
         pass
 
@@ -204,6 +219,29 @@ def child_env() -> dict:
     return {**os.environ, **vals}
 
 
+def spawn_sync_if_due(next_sync: float, sync_proc):
+    """Chạy `state_sync.py` nếu đã đến kỳ. Trả `(next_sync, sync_proc)`.
+
+    Vì sao (bug thật 10/10): trước đây chỉ kiểm tra việc này **trong vòng lặp con ĐANG SỐNG**
+    ⇒ khi bot thoát liên tục (kill-switch / LIVE interlock chặn, con thoát sau ~5s) thì
+    `state_sync` **NGỪNG chạy**: đo được tick cuối 10/10 08:47 rồi **15 giờ** không cập nhật
+    `STATE.md`, không push git, không kiểm auto-live. Nay gọi cả khi con đã thoát.
+    """
+    if not next_sync or time.time() < next_sync:
+        return next_sync, sync_proc
+    if sync_proc is not None and sync_proc.poll() is None:
+        return next_sync, sync_proc          # lan truoc con dang chay -> doi
+    nxt = time.time() + STATE_SYNC_SEC
+    try:
+        with open(SYNC_OUT, "a", encoding="utf-8") as so:
+            sync_proc = subprocess.Popen(
+                [PY, str(ROOT / "state_sync.py"), "--git", "--auto-live"],
+                cwd=str(ROOT), stdout=so, stderr=so)
+    except Exception as e:  # noqa: BLE001
+        _mark(f"state_sync khong chay duoc: {e}")
+    return nxt, sync_proc
+
+
 def main() -> int:
     if not _acquire_lock():
         _mark("already running — exit")
@@ -250,18 +288,12 @@ def main() -> int:
                             rc = -9
                         break
                     # (08/10) Dong bo bo nho du an + auto-live (khong chan vong lap).
-                    if next_sync and time.time() >= next_sync and (
-                            sync_proc is None or sync_proc.poll() is not None):
-                        next_sync = time.time() + STATE_SYNC_SEC
-                        try:
-                            with open(SYNC_OUT, "a", encoding="utf-8") as so:
-                                sync_proc = subprocess.Popen(
-                                    [PY, str(ROOT / "state_sync.py"), "--git", "--auto-live"],
-                                    cwd=str(ROOT), stdout=so, stderr=so)
-                        except Exception as e:  # noqa: BLE001
-                            _mark(f"state_sync khong chay duoc: {e}")
+                    next_sync, sync_proc = spawn_sync_if_due(next_sync, sync_proc)
                     time.sleep(POLL_SEC)
             run_sec = time.time() - t0
+            # (11/10) Van phai dong bo khi con DA THOAT (neu khong, bot bi chan lien tuc
+            # -> state_sync/auto-live/git NGUNG han).
+            next_sync, sync_proc = spawn_sync_if_due(next_sync, sync_proc)
             kill_blocked = tail_has(ERR, KILL_BLOCKED)
             delay = plan_delay(run_sec, delay, kill_blocked)
             if kill_blocked:

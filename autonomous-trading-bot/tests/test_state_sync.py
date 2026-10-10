@@ -202,6 +202,19 @@ class TestLiveKeys(unittest.TestCase):
         self.assertIn("BINANCE_TESTNET=false", txt)
 
 
+class TestAsDict(unittest.TestCase):
+    """(11/10) `heartbeat.json` từng là số trần ⇒ `state_sync` crash; nay đọc kiểu gì cũng an toàn."""
+
+    def test_dict_giu_nguyen(self):
+        self.assertEqual(SS.as_dict({"a": 1}), {"a": 1})
+
+    def test_so_tran_thanh_rong(self):
+        self.assertEqual(SS.as_dict(1791652772.73), {})
+        self.assertEqual(SS.as_dict(None), {})
+        self.assertEqual(SS.as_dict([1, 2]), {})
+        self.assertEqual(SS.as_dict("abc"), {})
+
+
 class TestLiveEquityDiag(unittest.TestCase):
     """(09/10) Chẩn đoán key LIVE: ghi lại mã lỗi THẬT + thử lại khi lỗi ngắt quãng."""
 

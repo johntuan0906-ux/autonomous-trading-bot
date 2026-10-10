@@ -76,6 +76,15 @@ def read_json(path, default=None):
         return default
 
 
+def as_dict(v) -> dict:
+    """Ép về `dict` — `heartbeat.json` có thể là **số trần** (bản cũ của `touch_heartbeat`).
+
+    Vì sao: 10/10 `state_sync` crash `'float' object has no attribute 'get'` ⇒ sync/git
+    NGỪNG chạy 15 giờ. Nay đọc kiểu gì cũng không làm chết sync.
+    """
+    return v if isinstance(v, dict) else {}
+
+
 def set_env_values(text: str, updates: dict) -> str:
     """Thay `KEY=...` trong nội dung .env; key chưa có thì thêm vào cuối. HÀM THUẦN."""
     out = text
@@ -112,7 +121,7 @@ def council_models(cfg) -> list:
 def collect(cfg, journal=JOURNAL, now=None) -> dict:
     """Gom trạng thái hiện tại thành dict (chỉ đọc file — không gọi sàn/LLM)."""
     now = float(now or time.time())
-    hb = read_json(HEARTBEAT, {}) or {}
+    hb = as_dict(read_json(HEARTBEAT, {}))
     hb_ts = float(hb.get("ts") or 0.0)
     age = round(now - hb_ts, 1) if hb_ts else None
     watchdog = int(os.getenv("WATCHDOG_SEC", "180"))
@@ -406,7 +415,7 @@ def go_live(cfg, reason: str, env_path=None, tier: dict | None = None) -> dict:
 
 def restart_bot() -> dict:
     """Kết thúc tiến trình con (turbo_demo) để supervisor tự restart với .env mới."""
-    hb = read_json(HEARTBEAT, {}) or {}
+    hb = as_dict(read_json(HEARTBEAT, {}))
     pid = int(hb.get("pid") or 0)
     if not pid:
         return {"ok": False, "err": "khong biet pid con (heartbeat thieu)"}

@@ -3,30 +3,30 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 04:17:13 · commit `?`
+- **Cập nhật**: 11/10/2026 04:47:13 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `119320` · round `306` · nhịp tim cách đây 27.9s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `119320` · round `352` · nhịp tim cách đây 7.5s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 450 lệnh đóng, WR 60.22%, E(R) 0.0249, PnL 91.96$)
+## Hiệu suất (journal: 451 lệnh đóng, WR 60.31%, E(R) 0.0252, PnL 93.69$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 312 | 57.37 | 1.104 | 1.139 | 0.0246 | 74.48 |
-| 14 ngày | 419 | 59.67 | 1.088 | 1.087 | 0.0207 | 66.92 |
-| 30 ngày | 450 | 60.22 | 1.104 | 1.106 | 0.0249 | 91.96 |
+| 7 ngày | 313 | 57.51 | 1.106 | 1.142 | 0.0251 | 76.21 |
+| 14 ngày | 420 | 59.76 | 1.09 | 1.089 | 0.0211 | 68.64 |
+| 30 ngày | 451 | 60.31 | 1.105 | 1.108 | 0.0252 | 93.69 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.104 < 1.2; PF(R) cua so 14 ngay = 1.088 < 1.2; PF($) cua so 14 ngay = 1.087 < 1.1; PF(R) cua so 30 ngay = 1.104 < 1.2
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.106 < 1.2; PF(R) cua so 14 ngay = 1.090 < 1.2; PF($) cua so 14 ngay = 1.089 < 1.1; PF(R) cua so 30 ngay = 1.105 < 1.2
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 217 lần cập nhật trọng số · Hội đồng AI: **15 model**
+- Learner: 218 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ADA/USDT:USDT | LONG | 3453.0 | 0.2531 | 0.2533531 | 0.25672 | True | True | 0.622 |
+| ADA/USDT:USDT | LONG | 7092.0 | 0.253 | 0.25159 | 0.256525 | False | False | 0.0 |
 | AVAX/USDT:USDT | SHORT | 76.0 | 10.363986842105264 | 10.566858 | 10.255855 | False | False | 0.0 |
 | BTC/USDT:USDT | LONG | 0.1092 | 83027.8 | 82936.291202 | 83256.571995 | False | False | 0.298 |
 | DOGE/USDT:USDT | LONG | 30487.0 | 0.08613 | 0.085802 | 0.08695 | False | False | 0.244 |

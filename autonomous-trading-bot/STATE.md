@@ -3,30 +3,30 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 13:38:29 · commit `?`
+- **Cập nhật**: 11/10/2026 14:08:53 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `59544` · round `None` · nhịp tim cách đây 24.1s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `59544` · round `3` · nhịp tim cách đây 124.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 4190.56 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 465 lệnh đóng, WR 58.49%, E(R) 0.0154, PnL 50.79$)
+## Hiệu suất (journal: 467 lệnh đóng, WR 58.24%, E(R) 0.011, PnL 30.36$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 327 | 55.05 | 1.047 | 1.057 | 0.0112 | 33.31 |
-| 14 ngày | 434 | 57.83 | 1.045 | 1.032 | 0.0107 | 25.75 |
-| 30 ngày | 465 | 58.49 | 1.064 | 1.056 | 0.0154 | 50.79 |
+| 7 ngày | 329 | 54.71 | 1.02 | 1.021 | 0.0049 | 12.88 |
+| 14 ngày | 436 | 57.57 | 1.025 | 1.006 | 0.006 | 5.31 |
+| 30 ngày | 467 | 58.24 | 1.045 | 1.033 | 0.011 | 30.36 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.047 < 1.2; PF($) cua so 7 ngay = 1.057 < 1.1; PF(R) cua so 14 ngay = 1.045 < 1.2; PF($) cua so 14 ngay = 1.032 < 1.1; PF(R) cua so 30 ngay = 1.064 < 1.2; PF($) cua so 30 ngay = 1.056 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.020 < 1.2; PF($) cua so 7 ngay = 1.021 < 1.1; PF(R) cua so 14 ngay = 1.025 < 1.2; PF($) cua so 14 ngay = 1.006 < 1.1; PF(R) cua so 30 ngay = 1.045 < 1.2; PF($) cua so 30 ngay = 1.033 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 220 lần cập nhật trọng số · Hội đồng AI: **15 model**
+- Learner: 221 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -35,22 +35,24 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (8)
+## Vị thế đang quản lý (10)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000000MOG/USDT:USDT | LONG | 14925.3 | 0.1107 | 0.11003 | 0.112375 | False | False | 0.149 |
+| 1000000BOB/USDT:USDT | LONG | 208333.0 | 0.00858 | 0.008532 | 0.0087 | False | False | 0.208 |
+| 1000000MOG/USDT:USDT | LONG | 7462.65 | 0.1107 | 0.111065 | 0.112375 | True | True | 1.045 |
 | 1000CAT/USDT:USDT | SHORT | 714285.0 | 0.002035 | 0.002049 | 0.002 | False | False | 0.286 |
-| 1000CHEEMS/USDT:USDT | LONG | 1250000.0 | 0.000521 | 0.0005215209999999999 | 0.000531 | True | True | 0.325 |
-| 1000FLOKI/USDT:USDT | LONG | 32467.5 | 0.02708 | 0.02710708 | 0.027465 | True | True | 0.584 |
-| 1000PEPE/USDT:USDT | LONG | 462962.0 | 0.0040136 | 0.003992 | 0.004069 | False | False | 0.028 |
-| 1000SHIB/USDT:USDT | SHORT | 454545.0 | 0.005401 | 0.005423 | 0.005346 | False | False | 0.182 |
-| 1INCH/USDT:USDT | LONG | 16556.0 | 0.09769 | 0.097086 | 0.0992 | False | False | 0.149 |
-| 1MBABYDOGE/USDT:USDT | LONG | 4347826.0 | 0.0003853 | 0.000383 | 0.00039 | False | False | 0.0 |
+| 1000CHEEMS/USDT:USDT | LONG | 1250000.0 | 0.000521 | 0.0005227000000000001 | 0.000531 | True | True | 0.925 |
+| 1000FLOKI/USDT:USDT | LONG | 32468.0 | 0.02708 | 0.027223 | 0.027465 | True | True | 1.429 |
+| 1000LUNC/USDT:USDT | LONG | 14705.5 | 0.05147 | 0.05152147 | 0.05232 | True | True | 0.471 |
+| 1000PEPE/USDT:USDT | LONG | 231481.0 | 0.0040136 | 0.0040226 | 0.004069 | True | True | 0.917 |
+| 1000RATS/USDT:USDT | LONG | 38461.0 | 0.03673 | 0.03647 | 0.03738 | False | False | 0.0 |
+| 1INCH/USDT:USDT | LONG | 8278.0 | 0.09769 | 0.097968 | 0.0992 | True | True | 0.96 |
+| 1MBABYDOGE/USDT:USDT | LONG | 2173913.0 | 0.0003853 | 0.00038585 | 0.00039 | True | True | 0.739 |
 
 ---
 

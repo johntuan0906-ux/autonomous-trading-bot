@@ -3,11 +3,11 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 12:32:36 · commit `?`
+- **Cập nhật**: 11/10/2026 12:38:21 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `9176` · round `1` · nhịp tim cách đây 16.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `74612` · round `1` · nhịp tim cách đây 8.0s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
-- **Kill-switch**: ⚠️ TRIPPED — daily loss 2.08% >= 2.0%
+- **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 465 lệnh đóng, WR 58.49%, E(R) 0.0154, PnL 50.79$)
 
@@ -19,7 +19,7 @@
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.047 < 1.2; PF($) cua so 7 ngay = 1.057 < 1.1; PF(R) cua so 14 ngay = 1.045 < 1.2; PF($) cua so 14 ngay = 1.032 < 1.1; PF(R) cua so 30 ngay = 1.064 < 1.2; PF($) cua so 30 ngay = 1.056 < 1.1; kill-switch dang TRIPPED (daily loss 2.08% >= 2.0%) — chay `python risk.py --reset`
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.047 < 1.2; PF($) cua so 7 ngay = 1.057 < 1.1; PF(R) cua so 14 ngay = 1.045 < 1.2; PF($) cua so 14 ngay = 1.032 < 1.1; PF(R) cua so 30 ngay = 1.064 < 1.2; PF($) cua so 30 ngay = 1.056 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 

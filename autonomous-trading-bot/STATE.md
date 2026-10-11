@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 16:56:31 · commit `?`
+- **Cập nhật**: 11/10/2026 17:26:37 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `82548` · round `5` · nhịp tim cách đây 76.6s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `82548` · round `9` · nhịp tim cách đây 60.6s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -39,15 +39,19 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (5)
+## Vị thế đang quản lý (9)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000CAT/USDT:USDT | SHORT | 833333.0 | 0.002031 | 0.002043 | 0.002001 | False | False | 0.083 |
+| 1000000BOB/USDT:USDT | LONG | 238095.0 | 0.00849 | 0.008448 | 0.008595 | False | False | 0.0 |
+| 1000CAT/USDT:USDT | SHORT | 416666.5 | 0.002031 | 0.002028969 | 0.002001 | True | True | 0.333 |
 | 1000CHEEMS/USDT:USDT | LONG | 2500000.0 | 0.000521 | 0.000517 | 0.000531 | False | False | 0.1 |
-| 1000FLOKI/USDT:USDT | SHORT | 58823.0 | 0.02717 | 0.02734 | 0.026745 | False | False | 0.176 |
-| 1000PEPE/USDT:USDT | LONG | 487804.0 | 0.0040135 | 0.003993 | 0.004063 | False | False | 0.0 |
+| 1000FLOKI/USDT:USDT | SHORT | 29411.5 | 0.02717 | 0.02714283 | 0.026745 | True | True | 0.647 |
+| 1000LUNC/USDT:USDT | LONG | 30487.0 | 0.0512 | 0.050872 | 0.05202 | False | False | 0.0 |
+| 1000PEPE/USDT:USDT | LONG | 487804.0 | 0.0040135 | 0.003993 | 0.004063 | False | False | 0.127 |
 | 1000RATS/USDT:USDT | LONG | 39370.0 | 0.0366 | 0.036346 | 0.037235 | False | False | 0.0 |
+| 1000SHIB/USDT:USDT | SHORT | 416666.0 | 0.005391 | 0.005415 | 0.005331 | False | False | 0.0 |
+| 1MBABYDOGE/USDT:USDT | LONG | 4761904.0 | 0.0003851 | 0.000383 | 0.00039 | False | False | 0.0 |
 
 ---
 

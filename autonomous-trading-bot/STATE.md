@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 12:38:21 · commit `?`
+- **Cập nhật**: 11/10/2026 13:08:23 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `74612` · round `1` · nhịp tim cách đây 8.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `74908` · round `1` · nhịp tim cách đây 53.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 4190.39 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 465 lệnh đóng, WR 58.49%, E(R) 0.0154, PnL 50.79$)
@@ -35,13 +35,22 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (0)
+## Vị thế đang quản lý (8)
 
-_không có vị thế nào trong `managed_state.json`_
+| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
+|---|---|---|---|---|---|---|---|---|
+| 1000000MOG/USDT:USDT | LONG | 14925.3 | 0.1107 | 0.11003 | 0.112375 | False | False | 0.149 |
+| 1000CAT/USDT:USDT | SHORT | 714285.0 | 0.002035 | 0.002049 | 0.002 | False | False | 0.143 |
+| 1000CHEEMS/USDT:USDT | LONG | 1250000.0 | 0.000521 | 0.0005215209999999999 | 0.000531 | True | True | 0.325 |
+| 1000FLOKI/USDT:USDT | LONG | 64935.0 | 0.02708 | 0.026926 | 0.027465 | False | False | 0.13 |
+| 1000PEPE/USDT:USDT | LONG | 462962.0 | 0.0040136 | 0.003992 | 0.004069 | False | False | 0.0 |
+| 1000SHIB/USDT:USDT | SHORT | 454545.0 | 0.005401 | 0.005423 | 0.005346 | False | False | 0.0 |
+| 1INCH/USDT:USDT | LONG | 16556.0 | 0.09769 | 0.097086 | 0.0992 | False | False | 0.0 |
+| 1MBABYDOGE/USDT:USDT | LONG | 4347826.0 | 0.0003853 | 0.000383 | 0.00039 | False | False | 0.0 |
 
 ---
 

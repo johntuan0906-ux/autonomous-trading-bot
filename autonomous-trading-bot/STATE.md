@@ -3,30 +3,30 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/10/2026 21:39:02 · commit `?`
+- **Cập nhật**: 11/10/2026 22:09:00 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `72448` · round `5` · nhịp tim cách đây 44.3s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `72448` · round `9` · nhịp tim cách đây 83.3s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
-- **Kill-switch**: bình thường
+- **Kill-switch**: ⚠️ TRIPPED — 7 consecutive losses (muc 12)
 
-## Hiệu suất (journal: 522 lệnh đóng, WR 56.7%, E(R) -0.0037, PnL -40.38$)
+## Hiệu suất (journal: 528 lệnh đóng, WR 56.25%, E(R) -0.0048, PnL -44.04$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 384 | 53.12 | 0.944 | 0.925 | -0.0142 | -57.86 |
-| 14 ngày | 491 | 56.01 | 0.963 | 0.935 | -0.0091 | -65.43 |
-| 30 ngày | 522 | 56.7 | 0.985 | 0.963 | -0.0037 | -40.38 |
+| 7 ngày | 390 | 52.56 | 0.939 | 0.922 | -0.0155 | -61.52 |
+| 14 ngày | 497 | 55.53 | 0.959 | 0.932 | -0.0102 | -69.09 |
+| 30 ngày | 528 | 56.25 | 0.981 | 0.96 | -0.0048 | -44.04 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.944 < 1.2; PF($) cua so 7 ngay = 0.925 < 1.1; PF(R) cua so 14 ngay = 0.963 < 1.2; PF($) cua so 14 ngay = 0.935 < 1.1; PF(R) cua so 30 ngay = 0.985 < 1.2; PF($) cua so 30 ngay = 0.963 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.939 < 1.2; PF($) cua so 7 ngay = 0.922 < 1.1; PF(R) cua so 14 ngay = 0.959 < 1.2; PF($) cua so 14 ngay = 0.932 < 1.1; PF(R) cua so 30 ngay = 0.981 < 1.2; PF($) cua so 30 ngay = 0.960 < 1.1; kill-switch dang TRIPPED (7 consecutive losses (muc 12)) — chay `python risk.py --reset`
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 231 lần cập nhật trọng số · Hội đồng AI: **15 model**
+- Learner: 234 lần cập nhật trọng số · Hội đồng AI: **15 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -39,18 +39,9 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (8)
+## Vị thế đang quản lý (0)
 
-| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
-|---|---|---|---|---|---|---|---|---|
-| 1000000MOG/USDT:USDT | LONG | 18726.5 | 0.1105 | 0.109966 | 0.111835 | False | False | 0.0 |
-| 1000CAT/USDT:USDT | SHORT | 625000.0 | 0.002028 | 0.002044 | 0.001988 | False | False | 0.0 |
-| 1000FLOKI/USDT:USDT | SHORT | 72463.0 | 0.02702 | 0.027158 | 0.026675 | False | False | 0.0 |
-| 1000SHIB/USDT:USDT | SHORT | 416666.0 | 0.005407 | 0.005431 | 0.005347 | False | False | 0.0 |
-| 1INCH/USDT:USDT | SHORT | 17921.0 | 0.09729 | 0.097848 | 0.095895 | False | False | 0.0 |
-| 1MBABYDOGE/USDT:USDT | LONG | 2272727.0 | 0.0003862 | 0.00038679999999999997 | 0.000391 | True | True | 0.773 |
-| AAVE/USDT:USDT | SHORT | 7.8 | 167.62 | 168.894176 | 164.43456 | False | False | 0.173 |
-| ACT/USDT:USDT | LONG | 44247.0 | 0.01109 | 0.010864 | 0.011655 | False | False | 0.0 |
+_không có vị thế nào trong `managed_state.json`_
 
 ---
 

@@ -159,6 +159,16 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
             q = None
         if q is not None and abs(float(q)) == 0:
             bot.portfolio.positions.pop(sym, None)
+            # (13/10) Vi the DA DONG tren san -> don lenh dieu kien con lai.
+            # Truong hop that: SL tren san khop truoc -> chan TP con lai thanh MO COI
+            # vinh vien, vi `cancel_all_orders` KHONG huy duoc lenh o Algo Order API.
+            # Day chinh la nguon lam tai khoan cham tran stop-order (`-4045`).
+            try:
+                if hasattr(ex, "cancel_symbol_orders"):
+                    ex.cancel_symbol_orders(sym)
+                    rep.setdefault("cleaned", []).append(sym)
+            except Exception as e:  # noqa: BLE001
+                rep["errors"].append(f"cleanup {sym}: {str(e)[:100]}")
             if sym not in rep["stale"]:
                 rep["stale"].append(sym)
     return rep

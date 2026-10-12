@@ -716,6 +716,23 @@ class TestAdoptViTheSan(unittest.TestCase):
         self.assertNotIn("SOL/USDT:USDT", bot.managed)
         self.assertIn("BTC/USDT:USDT", bot.managed)
 
+    def test_adopt_vi_the_da_dong_thi_huy_lenh_dieu_kien_con_lai(self):
+        """(13/10) SL tren san khop -> chan TP con lai thanh MO COI.
+
+        `cancel_all_orders` KHONG huy duoc lenh o Algo Order API -> phai goi
+        `cancel_symbol_orders` (da mo rong de huy ca algo) khi san xac nhan
+        vi the da dong. Neu bo sot: lenh mo coi tich tu -> cham tran -> `-4045`.
+        """
+        ex = FakeExchange(rows=[], landing=0.0)          # san xac nhan da dong
+        bot = self._bot(ex)
+        bot.portfolio.positions["SOL/USDT:USDT"] = Position(
+            "SOL/USDT:USDT", "SHORT", 100.0, 1.0, 110.0, 90.0)
+        rep = position_sync.adopt(bot, [], atr_fn=lambda s: {})
+        self.assertIn("SOL/USDT:USDT", rep.get("cleaned", []),
+                      "phai huy lenh treo con lai cua vi the da dong")
+        self.assertEqual(len(ex.named("cancel_symbol_orders")), 1)
+        self.assertNotIn("SOL/USDT:USDT", bot.portfolio.positions)
+
     def test_adopt_chua_co_bao_ve_thi_tinh_lai_bang_atr(self):
         ex = FakeExchange(rows=self.ROW)
         bot = self._bot(ex)

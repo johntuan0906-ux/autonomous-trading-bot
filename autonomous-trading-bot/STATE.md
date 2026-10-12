@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/10/2026 00:11:27 · commit `6b46e67`
+- **Cập nhật**: 13/10/2026 00:21:25 · commit `559fee5`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `70064` · round `2` · nhịp tim cách đây 99.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `91556` · round `None` · nhịp tim cách đây 3.6s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 595 lệnh đóng, WR 54.12%, E(R) 0.0011, PnL -117.48$)
+## Hiệu suất (journal: 596 lệnh đóng, WR 54.19%, E(R) 0.0015, PnL -115.33$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 366 | 48.36 | 0.905 | 0.834 | -0.0275 | -143.57 |
-| 14 ngày | 564 | 53.37 | 0.988 | 0.889 | -0.0032 | -142.53 |
-| 30 ngày | 595 | 54.12 | 1.004 | 0.915 | 0.0011 | -117.48 |
+| 7 ngày | 367 | 48.5 | 0.908 | 0.837 | -0.0269 | -141.42 |
+| 14 ngày | 565 | 53.45 | 0.989 | 0.89 | -0.0029 | -140.37 |
+| 30 ngày | 596 | 54.19 | 1.006 | 0.916 | 0.0015 | -115.33 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.905 < 1.2; PF($) cua so 7 ngay = 0.834 < 1.1; PF(R) cua so 14 ngay = 0.988 < 1.2; PF($) cua so 14 ngay = 0.889 < 1.1; PF(R) cua so 30 ngay = 1.004 < 1.2; PF($) cua so 30 ngay = 0.915 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.908 < 1.2; PF($) cua so 7 ngay = 0.837 < 1.1; PF(R) cua so 14 ngay = 0.989 < 1.2; PF($) cua so 14 ngay = 0.890 < 1.1; PF(R) cua so 30 ngay = 1.006 < 1.2; PF($) cua so 30 ngay = 0.916 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -50,7 +50,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | AR/USDT:USDT | SHORT | 95.05 | 4.099 | 4.0542929999999995 | 3.967535 | True | True | 1.35 |
 | ARB/USDT:USDT | SHORT | 1951.6 | 0.1885 | 0.185981 | 0.182095 | True | True | 1.483 |
 | BCH/USDT:USDT | SHORT | 2.5125 | 276.2 | 275.494932 | 271.22534 | True | True | 0.854 |
-| CFX/USDT:USDT | SHORT | 4488.0 | 0.06055 | 0.06048945 | 0.057765 | True | True | 0.332 |
+| CFX/USDT:USDT | SHORT | 4488.0 | 0.06055 | 0.060337 | 0.057765 | True | True | 0.691 |
 | CRV/USDT:USDT | SHORT | 1562.0 | 0.3505 | 0.356902 | 0.334495 | False | False | 0.0 |
 | CTSI/USDT:USDT | SHORT | 5592.5 | 0.03396 | 0.03392604 | 0.031725 | True | True | 0.537 |
 | NIGHT/USDT:USDT | SHORT | 6775.0 | 0.0466 | 0.046249 | 0.044755 | True | True | 0.976 |

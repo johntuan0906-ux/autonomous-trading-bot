@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 12/10/2026 11:49:27 · commit `?`
+- **Cập nhật**: 12/10/2026 12:19:28 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `3104` · round `3` · nhịp tim cách đây 159.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3786.18 USDT
+- **Bot**: pid `57496` · round `1` · nhịp tim cách đây 255.4s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3782.78 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 559 lệnh đóng, WR 56.17%, E(R) 0.0086, PnL -0.49$)
+## Hiệu suất (journal: 560 lệnh đóng, WR 56.07%, E(R) 0.0065, PnL -12.36$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 393 | 53.44 | 1.063 | 1.041 | 0.0165 | 33.54 |
-| 14 ngày | 528 | 55.49 | 1.017 | 0.977 | 0.0044 | -25.54 |
-| 30 ngày | 559 | 56.17 | 1.033 | 1.0 | 0.0086 | -0.49 |
+| 7 ngày | 394 | 53.3 | 1.051 | 1.026 | 0.0134 | 21.67 |
+| 14 ngày | 529 | 55.39 | 1.008 | 0.967 | 0.0021 | -37.4 |
+| 30 ngày | 560 | 56.07 | 1.025 | 0.99 | 0.0065 | -12.36 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.063 < 1.2; PF($) cua so 7 ngay = 1.041 < 1.1; PF(R) cua so 14 ngay = 1.017 < 1.2; PF($) cua so 14 ngay = 0.977 < 1.1; PF(R) cua so 30 ngay = 1.033 < 1.2; PF($) cua so 30 ngay = 1.000 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.051 < 1.2; PF($) cua so 7 ngay = 1.026 < 1.1; PF(R) cua so 14 ngay = 1.008 < 1.2; PF($) cua so 14 ngay = 0.967 < 1.1; PF(R) cua so 30 ngay = 1.025 < 1.2; PF($) cua so 30 ngay = 0.990 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,17 +39,18 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (8)
+## Vị thế đang quản lý (9)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000CAT/USDT:USDT | SHORT | 625000.0 | 0.002039 | 0.002055 | 0.001999 | False | False | 0.063 |
-| 1000CHEEMS/USDT:USDT | LONG | 2222222.0 | 0.0005265 | 0.000522 | 0.000536 | False | False | 0.067 |
-| 1000SHIB/USDT:USDT | LONG | 166666.5 | 0.005482 | 0.005497 | 0.005557 | True | True | 1.0 |
-| 1INCH/USDT:USDT | LONG | 7396.0 | 0.09897 | 0.099102 | 0.10066 | True | True | 0.695 |
-| 1MBABYDOGE/USDT:USDT | LONG | 4347826.0 | 0.0003913 | 0.000389 | 0.000396 | False | False | 0.0 |
-| AERO/USDT:USDT | LONG | 1107.4 | 0.9348 | 0.92577 | 0.957375 | False | False | 0.266 |
-| AGT/USDT:USDT | SHORT | 35971.0 | 0.018443 | 0.018721 | 0.017748 | False | False | 0.284 |
+| 1000000MOG/USDT:USDT | LONG | 10395.0 | 0.1131 | 0.112138 | 0.115505 | False | False | 0.104 |
+| 1000CHEEMS/USDT:USDT | LONG | 1111111.0 | 0.0005265 | 0.0005270264999999999 | 0.000536 | True | True | 0.533 |
+| 1000LUNC/USDT:USDT | LONG | 32051.0 | 0.05164 | 0.051328 | 0.05242 | False | False | 0.0 |
+| 1000SHIB/USDT:USDT | LONG | 166667.0 | 0.005482 | 0.00553 | 0.005557 | True | True | 2.1 |
+| 1INCH/USDT:USDT | LONG | 7396.0 | 0.09897 | 0.099362 | 0.10066 | True | True | 1.08 |
+| 1MBABYDOGE/USDT:USDT | LONG | 2173913.0 | 0.0003913 | 0.00039169130000000005 | 0.000396 | True | True | 0.565 |
+| AERO/USDT:USDT | LONG | 553.7 | 0.9348 | 0.9357348 | 0.957375 | True | True | 0.321 |
+| AGT/USDT:USDT | SHORT | 35971.0 | 0.018443 | 0.018721 | 0.017748 | False | False | 0.295 |
 | AIA/USDT:USDT | SHORT | 14970.0 | 0.0813 | 0.081968 | 0.07963 | False | False | 0.165 |
 
 ---

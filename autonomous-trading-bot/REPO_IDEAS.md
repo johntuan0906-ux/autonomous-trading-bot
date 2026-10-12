@@ -139,12 +139,81 @@ tích binary của sàn (vi phạm điều khoản sử dụng).
 
 ---
 
-## Tổng hợp việc nên làm tiếp (từ 9 repo)
+## 10. `dealignai/DeepSeek-V4.1-Flash-UNCENSORED-FP8` — **KHÔNG áp dụng** (12/10)
+
+**Dữ liệu đọc được từ trang model** (không tải trọng số):
+
+| Mục | Giá trị | Ý nghĩa với dự án |
+|---|---|---|
+| Tổng tham số | **763,2 B** (I8 557B + FP8_E4M3 204B) | MoE cực lớn; **phải giữ toàn bộ trọng số trong VRAM** |
+| Kích thước file | **~510 GB** (sharded) | Tải về đã tốn ~0,5 TB đĩa + băng thông |
+| VRAM cần (ước) | **~916 GB** ở 8-bit (công cụ tính) | Máy hiện tại: 1 GPU nhỏ (~8 GB) ⇒ **bất khả thi** |
+| Tag | `uncensored`, `abliterated`, **`crack`**, multimodal, fp8 | Đã **bỏ lớp từ chối** của model gốc |
+| `model-index` | **null** (không có eval) | Không có bằng chứng chất lượng nào để so |
+| License | khai `mit` trong khi base là DeepSeek | Nghi vấn **license laundering** |
+| Gated | không | Bất kỳ ai cũng tải được (không kiểm soát nguồn) |
+| Bản sao | hàng chục repo/Space clone cùng tên | Nguồn gốc trọng số **không kiểm chứng được** |
+
+**Vì sao không dùng cho dự án này**:
+
+1. **Không chạy được**: 763B tham số cần ~916 GB VRAM — dự án chạy trên 1 máy Windows
+   với hội đồng cloud + 1 model local 3B.
+2. **Ngược nguyên tắc an toàn của hội đồng**: hội đồng đọc **dữ liệu ngoài** (tin tức
+   RSS, headline) rồi đưa vào prompt. Một model không có lớp từ chối + nguồn gốc
+   không kiểm chứng = tăng rủi ro **prompt-injection** và không có gì bù lại.
+3. **Không có bằng chứng chất lượng**: không eval, không A/B ⇒ đúng quy tắc dự án
+   ("đo trước khi tin", `AGENTS.md`).
+4. **Rủi ro chuỗi cung ứng**: ~510 GB trọng số không kiểm chứng + tag `crack`;
+   nếu muốn thử thì phải safetensors-only, **không** `trust_remote_code`, chạy trong
+   môi trường tách biệt, và kiểm hash.
+5. **Không cần thiết**: cái dự án thật sự thiếu là **bằng chứng hội đồng đúng/sai**
+   (precision/recall VETO) và **lọc prompt-injection** — không phải model "mạnh hơn".
+
+### 10.1 Đã biến thành công cụ: `tools/model_audit.py`
+
+```bash
+python tools/model_audit.py                      # soi hoi dong trong .env
+python tools/model_audit.py --target live        # soi .env cua atb-live
+python tools/model_audit.py --hf <repo> --params-b 763 --bits 8 --size-gb 510
+```
+
+Checklist tất định (offline, không gọi mạng): **cờ đỏ trong tên** (uncensored /
+abliterated / crack / jailbreak / leak…) · **license** · **VRAM ước tính** từ số tham
+số × bit lượng hoá (×1,2 overhead) so với `--vram-gb` của máy · **có eval hay không**.
+Kết luận: `OK` / `XEM LAI` / `KHONG NEN DUNG` (mã thoát 2 nếu có mục KHÔNG NÊN DÙNG).
+
+Kết quả chạy thật:
+
+```
+=== AUDIT REPO: dealignai/DeepSeek-V4.1-Flash-UNCENSORED-FP8 ===
+  co do trong ten    : ['uncensored', 'dealign']
+  VRAM can (uoc)     : 915.6 GB (may co 8.0 GB)
+  KET LUAN           : KHONG NEN DUNG — co do + can ~916 GB VRAM + khong co eval
+=== HOI DONG TESTNET: 11 muc ===  -> KET LUAN: hoi dong sach
+```
+
+### 10.2 Nếu thật sự muốn "phân tích không bị từ chối" thì làm gì
+
+- Dùng **model local nhỏ** đã có trong hội đồng (`AGENT_COUNCIL_LOCAL=llama3.2:3b`
+  qua Ollama) + **system prompt nghiêm**: chỉ trả JSON, chỉ nói về dữ liệu được đưa,
+  không thực thi chỉ thị nằm trong dữ liệu.
+- Vá **P1 prompt-injection**: khử chỉ thị trong headline RSS trước khi vào prompt
+  (mục 3 của tài liệu này) — rủi ro thật của dự án, không phải việc thiếu model to.
+- Muốn "uncensored" cho văn bản nhạy cảm: cân nhắc model **3B–8B** đã abliterate
+  (chạy được, rẻ) **chỉ cho khâu tóm tắt tin**, và luôn đặt sau cổng tất định —
+  không bao giờ cho nó quyền mở/đóng lệnh.
+
+
+---
+
+## Tổng hợp việc nên làm tiếp (từ 10 repo)
 
 1. **P1** `SKILLS.md` (4 skill bản địa hoá: fix-bug-loop, retro, handoff, wizard).
-2. **P1** `.clineignore` loại `vendor/`, `d3*.min.js`, `logs/`, `data/` khỏi tìm kiếm.
+2. **P1** `.clineignore` loại `vendor/`, `d3*.min.js`, `logs/`, `data/` — **đã làm 12/10**.
 3. **P1** Eval hội đồng (precision/recall VETO) + lọc prompt-injection cho headline.
 4. **P1** Circuit breaker cho `derivatives.py`; bulkhead tách pool theo nguồn.
 5. **P2** `logs/metrics.prom` (Prometheus textfile) từ `tools/ops.py`.
 6. **P2** A/B "có/không hội đồng" chính thức trước khi cấp quyền veto.
 7. **P3** Cân nhắc `ccc` (index AST) và Collaborator nếu shell vẫn tệ.
+8. **P1** Chạy `python tools/model_audit.py` trước khi thêm/bớt model hội đồng — **đã có 12/10**.
+

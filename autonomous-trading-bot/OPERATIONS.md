@@ -172,5 +172,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Vị thế thật trên sàn | `python positions.py` (chạy trong từng instance) |
 | Kill-switch | `python risk.py --reset` (bot phải đã dừng) |
 | Test nhanh 1 module | `python -m unittest tests.test_ops_tools` |
+| Audit model hội đồng | `python tools/model_audit.py [--target live]` |
+| Audit 1 repo HF | `python tools/model_audit.py --hf <repo> --params-b <B> --bits 8` |
 | Test toàn bộ | `python -m unittest discover -s tests` (**690 test**) |
 | Đẩy code | `tools\git-sync.cmd "mo ta"` |

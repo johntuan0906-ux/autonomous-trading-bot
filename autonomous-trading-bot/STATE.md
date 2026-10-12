@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/10/2026 00:21:25 · commit `559fee5`
+- **Cập nhật**: 13/10/2026 00:51:28 · commit `fadd687`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `91556` · round `None` · nhịp tim cách đây 3.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `91556` · round `7` · nhịp tim cách đây 34.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3623.53 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 596 lệnh đóng, WR 54.19%, E(R) 0.0015, PnL -115.33$)
+## Hiệu suất (journal: 600 lệnh đóng, WR 54.5%, E(R) 0.0045, PnL -97.25$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 367 | 48.5 | 0.908 | 0.837 | -0.0269 | -141.42 |
-| 14 ngày | 565 | 53.45 | 0.989 | 0.89 | -0.0029 | -140.37 |
-| 30 ngày | 596 | 54.19 | 1.006 | 0.916 | 0.0015 | -115.33 |
+| 7 ngày | 371 | 49.06 | 0.924 | 0.858 | -0.0217 | -123.34 |
+| 14 ngày | 569 | 53.78 | 1.001 | 0.904 | 0.0003 | -122.29 |
+| 30 ngày | 600 | 54.5 | 1.017 | 0.929 | 0.0045 | -97.25 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.908 < 1.2; PF($) cua so 7 ngay = 0.837 < 1.1; PF(R) cua so 14 ngay = 0.989 < 1.2; PF($) cua so 14 ngay = 0.890 < 1.1; PF(R) cua so 30 ngay = 1.006 < 1.2; PF($) cua so 30 ngay = 0.916 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.924 < 1.2; PF($) cua so 7 ngay = 0.858 < 1.1; PF(R) cua so 14 ngay = 1.001 < 1.2; PF($) cua so 14 ngay = 0.904 < 1.1; PF(R) cua so 30 ngay = 1.017 < 1.2; PF($) cua so 30 ngay = 0.929 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -35,25 +35,24 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (11)
+## Vị thế đang quản lý (10)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000SHIB/USDT:USDT | SHORT | 113636.0 | 0.005357 | 0.005327 | 0.005247 | True | True | 1.182 |
-| ACE/USDT:USDT | SHORT | 3123.0 | 0.183 | 0.186202 | 0.174995 | False | False | 0.25 |
+| ACE/USDT:USDT | SHORT | 3123.0 | 0.183 | 0.186202 | 0.174995 | False | False | 0.281 |
 | ADA/USDT:USDT | SHORT | 1763.0 | 0.2437 | 0.242518 | 0.23661 | True | True | 0.917 |
-| AERO/USDT:USDT | SHORT | 396.6 | 0.9128 | 0.8959029999999999 | 0.881285 | True | True | 1.84 |
-| AR/USDT:USDT | SHORT | 95.05 | 4.099 | 4.0542929999999995 | 3.967535 | True | True | 1.35 |
-| ARB/USDT:USDT | SHORT | 1951.6 | 0.1885 | 0.185981 | 0.182095 | True | True | 1.483 |
-| BCH/USDT:USDT | SHORT | 2.5125 | 276.2 | 275.494932 | 271.22534 | True | True | 0.854 |
-| CFX/USDT:USDT | SHORT | 4488.0 | 0.06055 | 0.060337 | 0.057765 | True | True | 0.691 |
-| CRV/USDT:USDT | SHORT | 1562.0 | 0.3505 | 0.356902 | 0.334495 | False | False | 0.0 |
-| CTSI/USDT:USDT | SHORT | 5592.5 | 0.03396 | 0.03392604 | 0.031725 | True | True | 0.537 |
-| NIGHT/USDT:USDT | SHORT | 6775.0 | 0.0466 | 0.046249 | 0.044755 | True | True | 0.976 |
+| AERO/USDT:USDT | SHORT | 396.6 | 0.9128 | 0.8941030000000001 | 0.881285 | True | True | 1.983 |
+| APR/USDT:USDT | LONG | 3289.0 | 0.07411 | 0.07418411 | 0.07791 | True | True | 0.388 |
+| AR/USDT:USDT | SHORT | 95.1 | 4.099 | 4.047293 | 3.967535 | True | True | 1.483 |
+| ARB/USDT:USDT | SHORT | 1951.6 | 0.1885 | 0.18538100000000002 | 0.182095 | True | True | 1.717 |
+| CAKE/USDT:USDT | LONG | 395.0 | 2.3038 | 2.278496 | 2.36706 | False | False | 0.0 |
+| CFX/USDT:USDT | SHORT | 4488.0 | 0.06055 | 0.060297 | 0.057765 | True | True | 0.727 |
+| CRV/USDT:USDT | SHORT | 781.0 | 0.3505 | 0.3501495 | 0.334495 | True | True | 0.391 |
+| DOGE/USDT:USDT | SHORT | 14124.0 | 0.08466 | 0.085368 | 0.08289 | False | False | 0.0 |
 
 ---
 

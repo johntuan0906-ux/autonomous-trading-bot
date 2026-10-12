@@ -200,7 +200,13 @@ def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
 
 
 def _fetch_one(args):
-    """Fetch 1 cap: ohlcv + tech + mtf + deriv + liq. Chay song song 4 cap."""
+    """Fetch 1 cap: ohlcv + tech + mtf + deriv + liq. Chay song song 4 cap.
+
+    (12/10) deriv/liq duoc cache TTL 600s: moi cap = openInterest + premiumIndex
+    + longShortRatio + forceOrders(weight 20!) ~ 4 request x 458 cap ~ 1800 req/vong
+    -> chet rate-limit (FETCH_TIMEOUT ca vong). OI/funding/thanh ly la boi canh
+    cham -> cache 10 phut la du; vong sau chi con ~1 request kline/cap.
+    """
     bot, sym = args
     cfg = bot.cfg
     out: dict = {"sym": sym}
@@ -215,14 +221,40 @@ def _fetch_one(args):
     except Exception:
         out["mtf_b"] = 0
     try:
-        out["deriv"] = fetch_oi_funding(sym)
+        out["deriv"] = _cached_ctx(_DERIV_CACHE, ("deriv", sym), _CTX_TTL,
+                                   fetch_oi_funding, sym)
     except Exception:
         out["deriv"] = {"oi": 0.0, "oi_chg_24h": 0.0, "funding": 0.0, "ls_ratio": 0.0}
     try:
-        out["liq"] = fetch_liquidations(sym)
+        out["liq"] = _cached_ctx(_LIQ_CACHE, ("liq", sym), _CTX_TTL,
+                                 fetch_liquidations, sym)
     except Exception:
         out["liq"] = {"long_liq": 0.0, "short_liq": 0.0, "total": 0.0, "dominance": 0.0}
     return out
+
+
+_DERIV_CACHE: dict = {}
+_LIQ_CACHE: dict = {}
+_CTX_TTL = 600.0  # 10 phut cho OI/funding/thanh ly (boi canh cham)
+
+
+def _cached_ctx(cache: dict, key, ttl: float, fn, *args):
+    """Cache TTL + jitter (0-240s/entry) de cac cap khong refetch dong loat.
+    Mang loi -> keo dai TTL cu (khong bo ngang boi canh)."""
+    import time as _t
+    now = _t.time()
+    ent = cache.get(key)
+    if ent is not None and now - ent["ts"] < ttl:
+        return ent["v"]
+    try:
+        v = fn(*args)
+        cache[key] = {"ts": now + (hash(str(key)) % 240), "v": v}
+        return v
+    except Exception:  # noqa: BLE001
+        if ent is not None:
+            ent["ts"] = now   # khong spam retry
+            return ent["v"]
+        return None
 
 
 def tg(bot_cfg, text: str) -> None:
@@ -544,6 +576,11 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             _btc_cache["df"] = bot.exchange.fetch_ohlcv("BTC/USDT:USDT", "1h", 60)
             _btc_cache["ts"] = time.time()
         btc_df = _btc_cache["df"]
+        # (11/10) ATR% cua BTC = thuoc do bien dong TOAN THI TRUONG cho kill-switch.
+        # Truoc day chot bien dong dung ATR **lon nhat trong cac cap dang quet** ⇒ voi ~460 cap
+        # thi LUON co cap > 2% ⇒ trip lien tuc (da gap that 11/10 16:15 "volatility ATR 2.86%").
+        _bt = technical_score(btc_df, cfg.atr_period)
+        bot._btc_atr_pct = float(_bt.get("atr_pct") or 0.0)
         regime_b = 1.0 if float(btc_df["close"].iloc[-1]) > float(
             btc_df["close"].rolling(50).mean().iloc[-1]) else -1.0
     except Exception:
@@ -552,9 +589,14 @@ def turbo_round(bot: TradingBot) -> list[dict]:
     todo = [s for s in syms if s not in bot.portfolio.positions]
     fetched: dict[str, dict] = {}
     if todo:
+        # (11/10) TRAN so luong fetch song song: voi ~450 cap, `max_workers=len(todo)` se
+        # tao 450 thread + 450 ket noi dong thoi -> de bi san chan rate-limit/timeout.
+        # `SCAN_WORKERS` (mac dinh 16) giu tai o muc an toan; tang khi may khoe + cap it.
+        _sw = int(os.getenv("SCAN_WORKERS", "16") or 16)
+        todo_workers = max(1, min(len(todo), _sw))
         # P0-watchdog: 1 HTTP call treo se chan CA vong lap (pool.map khong timeout).
         # -> gioi han thoi gian cho ca cum fetch; cap nao qua han thi bo qua vong nay.
-        pool = _fut.ThreadPoolExecutor(max_workers=len(todo))
+        pool = _fut.ThreadPoolExecutor(max_workers=todo_workers)
         try:
             futs = {pool.submit(_fetch_one, (bot, s)): s for s in todo}
             done, pending = _fut.wait(futs, timeout=float(cfg.round_timeout_sec),
@@ -593,6 +635,15 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             continue
         bot._max_atr_pct = max(float(getattr(bot, "_max_atr_pct", 0.0)),
                                float(t.get("atr_pct") or 0.0))
+        # (11/10) Bo qua TUNG CAP qua bien dong (thay vi trip kill-switch toan cuc): quet ~460 cap
+        # thi luon co vai cap ATR cao — chi nen KHONG vao lenh cap do, khong dung ca bot.
+        _atr = float(t.get("atr_pct") or 0.0)
+        _atr_max = float(getattr(cfg, "max_atr_pct", 0.02) or 0.02)
+        if _atr >= _atr_max:
+            results.append({"symbol": sym, "status": "SKIP_VOL",
+                            "reason": "ATR %.2f%% >= %.2f%% (bien dong cao)"
+                                      % (100.0 * _atr, 100.0 * _atr_max)})
+            continue
         mtf_b = fr.get("mtf_b", 0)
         deriv = fr.get("deriv", {})
         liq = fr.get("liq", {})
@@ -702,7 +753,19 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                             "reason": _v.get("reason", ""), "direction": direction,
                             "alpha": alpha})
             continue
-        lv = atr_levels(t["close"], t["atr"], direction, cfg.sl_atr_mult, cfg.tp_atr_mult)
+        # (11/10) Du lieu xau (close/atr = 0) tung lam HONG CA VONG khi quet ~460 cap
+        # (`ValueError: entry and atr must be positive`) -> chan rieng tung cap.
+        if not (float(t.get("close") or 0) > 0 and float(t.get("atr") or 0) > 0):
+            results.append({"symbol": sym, "status": "SKIP_DATA",
+                            "reason": "close=%s atr=%s khong hop le"
+                                      % (t.get("close"), t.get("atr"))})
+            continue
+        try:
+            lv = atr_levels(t["close"], t["atr"], direction, cfg.sl_atr_mult, cfg.tp_atr_mult)
+        except Exception as e:  # noqa: BLE001
+            results.append({"symbol": sym, "status": "SKIP_DATA",
+                            "reason": "atr_levels loi: %s" % str(e)[:90]})
+            continue
         # Loc 1: TP phai du lon de cover phi round-trip (MIN_TP_PCT).
         # FOMO MODE: chi canh bao, van cho vao lenh (demo von ao, uu tien toc do test).
         tp_pct = lv["tp_dist"] / max(lv["entry"], 1e-9)
@@ -1151,7 +1214,7 @@ def main() -> None:
         # P0-6 + P0-2: kiem tra DD ngay (theo equity THAT) va bien dong ATR that su,
         # roi persist state — restart khong duoc quen trang thai ngung.
         if bot.kill.check(bot.equity or bot.balance,
-                          float(getattr(bot, "_max_atr_pct", 0.0) or 0.0)):
+                          float(getattr(bot, "_btc_atr_pct", 0.0) or 0.0)):
             log.error("KILL-SWITCH: %s -> flatten + dung", bot.kill.reason)
             tg(cfg, fmt_kill(bot.kill.reason))
             bot._flatten("kill-switch")

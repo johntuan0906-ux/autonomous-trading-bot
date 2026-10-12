@@ -32,6 +32,22 @@ def _cid(tag: str) -> str:
     return ("glow" + t + str(int(time.time() * 1000)) + secrets.token_hex(3))[:36]
 
 
+def _tune_session(cli) -> None:
+    """Nới connection pool của `requests` (mặc định 10 → 32).
+
+    Vì sao (11/10): quét ~460 cặp với `SCAN_WORKERS=16` làm pool đầy ⇒ log đầy
+    `Connection pool is full, discarding connection: fapi.binance.com` ⇒ request bị chậm/bỏ,
+    vòng quét kéo dài (đo được > 4 phút cho 1 vòng LIVE).
+    """
+    try:
+        from requests.adapters import HTTPAdapter
+        ad = HTTPAdapter(pool_connections=32, pool_maxsize=32, max_retries=2)
+        cli.session.mount("https://", ad)
+        cli.session.mount("http://", ad)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 class BinanceFutures:
     def __init__(self, api_key: str = "", api_secret: str = "", testnet: bool = True,
                  dry_run: bool = True):
@@ -45,12 +61,14 @@ class BinanceFutures:
             import ccxt  # type: ignore
             self._public = ccxt.binance({"options": {"defaultType": "future"},
                                          "enableRateLimit": True})
+            _tune_session(self._public)
             if not dry_run:
                 self._client = ccxt.binance({
                     "apiKey": api_key, "secret": api_secret,
                     "options": {"defaultType": "future"},
                     "enableRateLimit": True,
                 })
+                _tune_session(self._client)
                 if testnet:
                     # Binance da khai tu Futures testnet (testnet.binancefuture.com).
                     # Che do paper-trading moi: Demo Trading (demo.binance.com)
@@ -64,13 +82,63 @@ class BinanceFutures:
             self._public = None  # che do offline/demo, dung candles_provider
 
     def fetch_ohlcv(self, symbol: str, timeframe: str = "15m", limit: int = 200) -> pd.DataFrame:
+        """OHLCV + cache tang dan (11/10): quet ~460 cap thi KHONG the refetch
+        day du moi vong (weight ~916-2300/vong -> rate-limit -> FETCH_TIMEOUT).
+        Vong dau lay day du; cac vong sau chi ghep phan duoi (8 nen, weight 1)
+        -> ~458 weight/vong, khong can chet IP.
+
+        - Timeframe cao (1h/4h/1d): nen chi xuong 1 cai moi gio -> TTL 900s de
+          mtf khong phai fetch moi vong (cat ~1/2 so request moi vong).
+        - Fetch loi thi 'cache loi' 120s: khong retry full-fetch lien tuc moi
+          vong (retry-storm lam chet IP; symbol se duoc thu lai vong sau).
+
+        Thread-safe-ish (GIL): worst-case 2 luong fetch trung 1 cap — khong sai data.
+        """
         src = self._client if self._client is not None else self._public
         if src is None:
             raise RuntimeError("khong co ccxt / mang - dung demo.py offline")
-        raw = src.fetch_ohlcv(symbol, timeframe, limit=limit)
-        df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
-        df["ts"] = pd.to_datetime(df["ts"], unit="ms")
-        return df
+        cache = getattr(self, "_ohlcv_cache", None)
+        if cache is None:
+            cache = {}
+            self._ohlcv_cache = cache
+        key = (symbol, timeframe)
+        ent = cache.get(key)
+        now = time.monotonic()
+        m = re.search(r"(\d+)([a-z])$", str(timeframe))
+        slow_tf = bool(m) and (m.group(2) in "hdw" or (m.group(2) == "m" and int(m.group(1)) >= 60))
+        fresh_sec = 900.0 if slow_tf else 45.0      # 1h+ : nen xuong cham, 15p/vong
+        merge_sec = 86400.0 if slow_tf else 3600.0
+        if ent is not None:
+            if "err" in ent:
+                if now - ent["ts"] < 120.0:
+                    raise RuntimeError("fetch %s that bai gan day (cooldown): %s"
+                                       % (symbol, ent["err"][:80]))
+                ent = None                          # het cooldown -> thu lai
+        if ent is not None and now - ent["ts"] < fresh_sec:
+            # Moi bam gan day: dung lai, khong goi san.
+            return ent["df"].copy()
+        if ent is not None and now - ent["ts"] < merge_sec:
+            # Cap nhat tang dan: lay 8 nen moi nhat, ghep vao, cat bo nen cu.
+            try:
+                tail_raw = src.fetch_ohlcv(symbol, timeframe, limit=8)
+                tdf = pd.DataFrame(tail_raw, columns=["ts", "open", "high", "low", "close", "volume"])
+                tdf["ts"] = pd.to_datetime(tdf["ts"], unit="ms")
+            except Exception as e:  # noqa: BLE001
+                cache[key] = {"err": str(e), "ts": now}
+                raise
+            df = pd.concat([ent["df"], tdf], ignore_index=True)
+            df = (df.drop_duplicates(subset=["ts"], keep="last")
+                    .sort_values("ts").tail(limit).reset_index(drop=True))
+        else:
+            try:
+                raw = src.fetch_ohlcv(symbol, timeframe, limit=limit)
+            except Exception as e:  # noqa: BLE001
+                cache[key] = {"err": str(e), "ts": now}
+                raise
+            df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
+            df["ts"] = pd.to_datetime(df["ts"], unit="ms")
+        cache[key] = {"df": df.copy(), "ts": time.monotonic()}
+        return df.copy()
 
     def last_price(self, symbol: str) -> float:
         src = self._client if self._client is not None else self._public

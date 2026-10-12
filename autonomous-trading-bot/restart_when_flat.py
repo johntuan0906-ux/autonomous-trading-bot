@@ -40,8 +40,12 @@ def log(msg: str) -> None:
         pass
 
 
-def open_positions(ex) -> int | None:
-    """Số vị thế đang mở trên sàn. `None` = KHÔNG đọc được (fail-safe: không restart)."""
+def open_positions(ex, symbols=None) -> int | None:
+    """Số vị thế đang mở trên sàn. `None` = KHÔNG đọc được (fail-safe: không restart).
+
+    `symbols` (nếu có) = chỉ đếm vị thế thuộc **cặp của bot** — vị thế do người dùng mở TAY
+    (vd `1000RATS`) không được tính, nếu không watcher sẽ chờ mãi một lệnh nó không quản.
+    """
     if ex is None:
         return None
     try:
@@ -49,14 +53,34 @@ def open_positions(ex) -> int | None:
     except Exception as e:  # noqa: BLE001
         log("doc vi the loi: %s" % str(e)[:120])
         return None
+    want = set(symbols) if symbols else None
     n = 0
     for p in rows:
         try:
-            if abs(float(p.get("contracts") or 0)) > 0:
-                n += 1
+            if abs(float(p.get("contracts") or 0)) <= 0:
+                continue
         except (TypeError, ValueError):
             continue
+        if want is not None and p.get("symbol") not in want:
+            continue
+        n += 1
     return n
+
+
+def env_symbols(root: Path | None = None) -> list:
+    """Danh sách cặp của bot trong `.env` của instance (SYMBOLS + EXTRA_SYMBOLS)."""
+    import re
+    txt = ""
+    try:
+        txt = ((root or ROOT) / ".env").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    out: list = []
+    for key in ("SYMBOLS", "EXTRA_SYMBOLS"):
+        m = re.search(r"^%s=(.*)$" % key, txt, re.M)
+        if m:
+            out += [s.strip() for s in m.group(1).split(",") if s.strip()]
+    return list(dict.fromkeys(out))
 
 
 def make_exchange(cfg):
@@ -153,13 +177,15 @@ def main(argv: list | None = None) -> int:
     from config import Settings
     cfg = Settings()
     ex = make_exchange(cfg)
-    log("theo doi: poll=%ss max=%sh dry_run=%s testnet=%s"
-        % (args.poll, args.max_hours, args.dry_run, getattr(cfg, "testnet", None)))
+    syms = env_symbols()
+    log("theo doi: poll=%ss max=%sh dry_run=%s testnet=%s | cap cua bot=%d"
+        % (args.poll, args.max_hours, args.dry_run, getattr(cfg, "testnet", None), len(syms)))
     if args.once:
-        n = open_positions(ex)
-        log("vi the dang mo: %s" % n)
+        n = open_positions(ex, syms)
+        log("vi the cua BOT dang mo: %s (bo qua lenh mo tay)" % n)
         return 0 if n == 0 else 1
-    res = wait_flat(ex, poll=args.poll, max_hours=args.max_hours, dry_run=args.dry_run)
+    res = wait_flat(ex, poll=args.poll, max_hours=args.max_hours, dry_run=args.dry_run,
+                    fetch=lambda e: open_positions(e, syms))
     log("ket thuc: %s" % res)
     return 0 if res.get("ok") else 2
 

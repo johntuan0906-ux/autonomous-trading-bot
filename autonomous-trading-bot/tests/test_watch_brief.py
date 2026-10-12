@@ -39,6 +39,14 @@ class TestRestartWhenFlat(unittest.TestCase):
         self.assertEqual(RWF.open_positions(FakeEx([_pos(1), _pos(0), {"contracts": None}])), 1)
         self.assertEqual(RWF.open_positions(FakeEx([])), 0)
 
+    def test_chi_dem_vj_the_thuoc_cap_cua_bot(self):
+        """(11/10) Lenh nguoi dung mo TAY (vd 1000RATS) khong duoc tinh -> watcher khong cho mai."""
+        rows = [{"symbol": "SOL/USDT:USDT", "contracts": 1.0},
+                {"symbol": "1000RATS/USDT:USDT", "contracts": 680.0}]
+        self.assertEqual(RWF.open_positions(FakeEx(rows), ["SOL/USDT:USDT"]), 1)
+        self.assertEqual(RWF.open_positions(FakeEx(rows)), 2)          # khong loc -> dem ca 2
+        self.assertEqual(RWF.open_positions(FakeEx([rows[1]]), ["SOL/USDT:USDT"]), 0)
+
     def test_doc_loi_tra_None_fail_safe(self):
         self.assertIsNone(RWF.open_positions(FakeEx(boom=True)))
         self.assertIsNone(RWF.open_positions(None))

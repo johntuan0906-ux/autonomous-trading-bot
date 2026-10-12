@@ -835,7 +835,7 @@ Ghi lại **những gì đã kiểm chứng bằng lệnh thật** (để lần 
 
 | Muốn biết | Lệnh | Kỳ vọng |
 |---|---|---|
-| Code có hỏng? | `python -m unittest discover -s tests` | `Ran 555 tests ... OK` |
+| Code có hỏng? | `python -m unittest discover -s tests` | `Ran 690 tests ... OK` (3 bench skip khi bot chạy) |
 | Edge hiện tại? | `python live_ready.py` | bảng PF(R)/PF($) theo cửa sổ 7/14/30 ngày |
 | Số lệnh + PF thật? | `python monitor_report.py --days 7` | đọc trực tiếp `logs/journal.jsonl` |
 | Bot có lệnh thật trên sàn? | `python positions.py` | khớp với sàn (đối chiếu được) |

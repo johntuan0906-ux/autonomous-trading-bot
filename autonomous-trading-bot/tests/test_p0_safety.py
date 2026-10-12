@@ -1368,7 +1368,9 @@ class TestBotSafety(unittest.TestCase):
                          "equity khong doi -> khong duoc trip")
 
     def _step_for_entry(self, ex):
-        bot = self._bot(ex)
+        # (11/10) GHIM danh sach cap: .env that gio co ~460 cap, cap dau bat dau bang "BTC"
+        # la `BTCDOM/USDT:USDT` (khong phai BTC) => test phu thuoc .env se sai.
+        bot = self._bot(ex, symbols=(self.SYM,), extra_symbols=())
         bot.sentiment.get = lambda token="": type("S", (), {"score": 0.8})()
         return bot, bot.step(candles_provider=lambda s: (
             bull_df() if s.startswith("BTC") else bear_df()))

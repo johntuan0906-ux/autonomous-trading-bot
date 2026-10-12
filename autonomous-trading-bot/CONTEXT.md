@@ -1,14 +1,16 @@
 # CONTEXT.md — Ngữ cảnh hiện tại của dự án (đọc file này ĐẦU TIÊN)
 
 > **Mục đích**: một chỗ duy nhất ghi *trạng thái + kiến thức đã kiểm chứng* của dự án, để khi mở lại VS Code / mở phiên chat mới (người hoặc AI) là **nhớ lại ngay**, không phải suy đoán lại.
-> **Cập nhật lần cuối**: 08/10/2026 ~23:40 (sau commit `ee25859`).
+> **Cập nhật lần cuối**: 12/10/2026 ~11:15 (sau khi ổn định quét 458 cặp trên 2 instance song song).
 > **Quy tắc vàng**: mọi con số ở đây **có ngày** và **kèm lệnh tự kiểm chứng**. Số liệu hiệu suất thay đổi mỗi ngày → chạy lại lệnh ở §3 trước khi kết luận.
 
 ---
 
 ## 0. Khôi phục ngữ cảnh trong 60 giây (dành cho phiên AI mới)
 
-Đọc theo thứ tự: **CONTEXT.md (file này) → `STATE.md` (số liệu tự động) → AGENTS.md → README.md mục 13–15**. Sau đó chạy:
+**Đang chạy 2 instance SONG SONG** (từ 11/10): repo chính = **TESTNET** (demo, học), `../atb-live/` = **LIVE** (tiền thật ~19.7 USDT). Mỗi instance có `logs/`, `.env`, kill-switch RIÊNG; code dùng chung (sync bằng robocopy `*.py tools tests`). Cả hai quét **458 cặp** (nạp 522 → lọc sàn → ban BTC vĩnh viễn; danh sách trong `.env` `SYMBOLS` do `tools/apply_symbols.py` giữ, luôn trừ `logs/banned_pairs.json` của từng instance).
+
+Đọc theo thứ tự: **CONTEXT.md (file này) → `STATE.md` → AGENTS.md → README.md mục 13–15**. Sau đó chạy:
 
 ```bash
 python live_ready.py                 # còn thiếu cổng nào để sang LIVE
@@ -16,9 +18,10 @@ python monitor_report.py --days 7    # hiệu suất thật từ journal
 python status.py                     # bot có sống? ví? vị thế? learner?
 python agents.py --authority         # hội đồng AI đã có quyền chặn lệnh chưa
 git log --oneline -10                # vừa thay đổi gì
+python tools/apply_symbols.py --target both --dry-run   # xem danh sách cặp sẽ áp
 ```
 
-Hiện đang chạy **testnet (tiền demo)** — KHÔNG phải tiền thật. Bot do supervisor tự chạy lại (§6).
+Kiểm tra sức khoẻ vòng quét 458 cặp: đọc đuôi `logs/turbo_err.log` (mỗi instance) — không được có `FETCH_TIMEOUT`/`Connection pool is full`; `logs/heartbeat.json` phải tăng `round` mỗi ~300s.
 
 ---
 
@@ -26,20 +29,22 @@ Hiện đang chạy **testnet (tiền demo)** — KHÔNG phải tiền thật. B
 
 Bot giao dịch **USDT-M Futures (Binance)** tự động trên Windows: vòng lặp `turbo_demo.py` quét 7 cặp → tính điểm tín hiệu (kỹ thuật + phái sinh + tin tức + learner) → đi qua các cổng an toàn **tất định** (risk, strategy block, learner score, urgent) → mở lệnh kèm SL/TP → `bot._monitor()` bảo vệ mỗi vòng. Ngoài ra có **hội đồng AI (LLM)** để *cố vấn* (chưa có quyền chặn lệnh) và **learner** học online trọng số từ kết quả thật.
 
-## 2. Trạng thái hiện tại (09/10/2026 ~00:10 — số tự động xem `STATE.md`)
+## 2. Trạng thái hiện tại (12/10/2026 ~11:15 — số tự động xem `STATE.md`)
 
 | Hạng mục | Giá trị | Ghi chú |
 |---|---|---|
-| Chế độ | `BINANCE_TESTNET=true`, `DRY_RUN=false` | lệnh thật trên **tài khoản demo** |
-| Bot | supervisor PID `82912` + `turbo_demo` (tiến trình con) | tự restart khi crash; lock `logs/.supervisor.lock` |
-| Ví demo | ~4630 USDT | số mới nhất do `state_sync.py` ghi vào `STATE.md` |
-| Vị thế đang mở | **7**: DOGE, BTC, LINK, AVAX, ADA, XRP, SOL (toàn SHORT) | SL/TP trên sàn **bị chặn `-4045`** → monitor mềm bảo vệ |
-| Hội đồng AI | **15 model** (12 Cline + 2 Qwen CLI + 1 Local Ollama) | Copilot bị chặn tới 01/11; **Muse đã tắt hoàn toàn** |
-| Quyền veto của AI | **CHƯA cấp** (`granted=False` cho cả SETUP và COUNCIL) | hội đồng chỉ ghi `[shadow]`; `BLOCKED_VETO=0` |
-| Tham số rủi ro | risk 1%/lệnh, trần tổng 2%, `LEVERAGE=8`, `MAX_POSITIONS=4` | `BALANCE_USDT=1000` = trần size (`size_base = min(trần, equity thật)`) |
-| Kill-switch | bình thường (đã `python risk.py --reset` ngày 08/10) | |
-| **Cổng LIVE** | ✅ **`live_ready.py` = HOAN THANH** (n=301 · PF(R) 1.616 · PF($) 1.492) | chi tiết §3/§4 |
-| **Tự động hoá** | `STATE_SYNC_SEC=1800` · `AUTO_LIVE_ARMED=true` · `AUTO_LIVE_MIN_EQUITY=10` | `state_sync.py` mỗi 30 phút: ghi `STATE.md` + push GitHub + kiểm tra cổng; khi sang LIVE thì **áp mức rủi ro theo ví thật** (§11.1) |
+| Chế độ | **2 instance song song**: repo chính `BINANCE_TESTNET=true` (demo), `../atb-live` `BINANCE_TESTNET=false` (tiền thật ~19.7 USDT) | mốc tách `atb-live/logs/.split_ts`; code sync bằng robocopy |
+| Cặp quét | **458 cặp**/instance (nạp 522 → lọc sàn → ban BTC vĩnh viễn) | `tools/apply_symbols.py --target both`; tôn trọng `logs/banned_pairs.json` |
+| Vòng quét | `POLL_INTERVAL_SEC=300` (5 phút), `ROUND_TIMEOUT_SEC=280`, `SCAN_WORKERS=8` | 2 instance khởi động lệch ~90s để không chồng vòng 1 |
+| Fetch | **cache OHLCV tăng dần** trong `exchange.py` (vòng đầu full; vòng sau chỉ ghep 8 nến; TF 1h+ TTL 900s; lỗi cooldown 120s) | hết `Connection pool is full`/`FETCH_TIMEOUT` nhờ cache + pool HTTP 32 |
+| Kill-switch | LIVE: reset 12/10 ~10:50, baseline equity mới 19.70; TESTNET: reset ~11:05 (8 lệnh thua liên tiếp sáng 12/10 là thật, demo) | `risk.py --reset` chỉ có hiệu lực khi bot ĐÃ DỪNG (§6) |
+| Vị thế LIVE | 0 vị thế mở trên sàn (12/10 ~11:00, `positions.py`) | các dòng OPEN cũ trong journal là lịch sử, không phải vị thế thật |
+| `-4045` | RE-ARM SL/TP vẫn bị chặn trên TESTNET (giới hạn stop-order) | chấp nhận: monitor mềm + retry 5 phút |
+| IP | `222.253.53.82` / `171.244.236.148` (dual-WAN) — đã whitelist đủ | không còn `-2015` |
+| Hội đồng AI | 15 model; veto chỉ `[shadow]`, `BLOCKED_VETO=0` | chưa cấp quyền chặn thật |
+| Kill-switch trip là THẬT | 08 lệnh thua liên tiếp 12/10 (AAVE r=-1.15, FLOKI -1.35, MOG -1.42, PEPE -1.37…) đúng thiết kế | sau reset, nếu thị trường tiếp tục xấu sẽ trip lại — đó là đúng ý |
+
+Lệnh kiểm tra nhanh: `python _chk.py` → `logs/chk_out.txt` (script tạm, xoá sau khi ổn định); chính thức dùng `python status.py` + `python positions.py` (mỗi instance).
 
 ## 3. Hiệu suất hiện tại (đọc từ `logs/journal.jsonl`, ngày 09/10 ~00:10)
 
@@ -137,11 +142,15 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 ## 8. Việc đang mở / tiếp theo
 
 - [x] **Đủ n≥300** (n=301) → `live_ready.py` = `HOAN THANH` (09/10 00:07).
-- [ ] **Chờ điều kiện tiền thật để tự sang LIVE**: `state_sync.py --auto-live` đã chạy mỗi 30 phút nhưng **KHÔNG đổi** vì chưa đọc được ví THẬT (API key hiện là key demo). Cần: **API key live + số dư ≥ `AUTO_LIVE_MIN_EQUITY` (100 USDT)** → khi đó tự đổi, không hỏi lại (§11).
-- [ ] Theo dõi lỗi `api errors` (đã gây 2 lần `flatten + dung` tối 08/10) trước khi tin tưởng LIVE.
+- [x] **Sang LIVE thực chiến (11/10)**: 2 instance song song, `../atb-live` dùng key thật (~19.7 USDT), risk 0.5%, `MAX_POSITIONS=2`.
+- [x] **Mở rộng lên 458 cặp** (12/10): cache OHLCV tăng dần, pool HTTP 32, SCAN_WORKERS=8, POLL 300s, SKIP_VOL/SKIP_DATA, ATR BTC cho kill-switch toàn cục, ban BTC vĩnh viễn (`pair_audit.py`).
+- [x] **Sửa hạ tầng quét nhiều cặp**: `Connection pool is full` → pool 32; `FETCH_TIMEOUT` → cache tăng dần + cooldown lỗi 120s; `atr_levels` data xấu → SKIP_DATA; watcher chỉ đếm cặp của bot.
+- [ ] Theo dõi LIVE: kill-switch trip 12/10 10:45 (daily loss 2.17% — PnL realized hôm trước, không phải lệnh mới); nếu 458 cặp gây thua lỗ liên tiếp trên LIVE, cân nhắc thu hẹp danh sách LIVE.
+- [ ] Theo dõi `-4045` (RE-ARM SL/TP bị giới hạn stop-order): đang bỏ qua + monitor mềm; kiểm tra định kỳ xem hết hạn chưa.
 - [ ] (tuỳ chọn) Bật veto thật cho hội đồng khi có đủ bằng chứng **cả 2 nhóm** (`python agents.py --authority` phải `granted=True`), rồi `AGENT_VETO_SOURCE=COUNCIL`.
 - [ ] (tuỳ chọn) Muse: nạp credit → tạo API key → `muse auth set` → điền lại `AGENT_COUNCIL_MUSE_CLI`.
-- [ ] (tuỳ chọn) I/O offload: ghi journal async, cache OHLCV, Telegram ở thread riêng.
+- [ ] (tuỳ chọn) I/O offload: ghi journal async, Telegram ở thread riêng.
+- [ ] Dọn script tạm (`_chk.py`, `_g.py`, `_run_test.py`, các log `logs/*_out*.txt`) sau khi ổn định.
 
 ---
 

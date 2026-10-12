@@ -187,8 +187,13 @@ def run_build():
         return False
     STATE["building"] = True
     try:
+        try:
+            import winproc
+            _kw = winproc.hide_kwargs()
+        except Exception:  # noqa: BLE001
+            _kw = {}
         r = subprocess.run([sys.executable, "build_glow.py"], cwd=str(ROOT),
-                           capture_output=True, text=True, timeout=300)
+                           capture_output=True, text=True, timeout=300, **_kw)
         sys.stderr.write(r.stdout[-1500:] + ("\n" + r.stderr[-500:] if r.stderr else ""))
         return r.returncode == 0
     except Exception as e:

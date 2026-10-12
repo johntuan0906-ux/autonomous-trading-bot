@@ -247,5 +247,55 @@ class FakeOhlcvSrc:
         return out
 
 
+class FakeMarketSrc:
+    """Fake ccxt cho `quantize_qty`: chi can load_markets + amount_to_precision."""
+
+    def __init__(self, min_amt=None, max_amt=None):
+        self._m = {"limits": {"amount": {"min": min_amt, "max": max_amt}}}
+
+    def load_markets(self):
+        return {"X/USDT:USDT": self._m}
+
+    def amount_to_precision(self, symbol, q):
+        return "%.3f" % float(q)
+
+
+class TestQuantizeQty(unittest.TestCase):
+    """(12/10) Kep ca MIN lan MAX cua san.
+
+    Bug that: chi kep min -> cap co maxQty nho tra `-4005 Quantity greater than
+    max quantity` (da gap voi 1000BONK/1000PEPE tren LIVE).
+    """
+
+    def _ex(self, min_amt=None, max_amt=None):
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=True)
+        ex._client = None
+        ex._public = FakeMarketSrc(min_amt, max_amt)
+        return ex
+
+    def test_kep_max(self):
+        ex = self._ex(min_amt=1.0, max_amt=100.0)
+        self.assertEqual(ex.quantize_qty("X/USDT:USDT", 5000.0), 100.0,
+                         "qty vuot max phai bi kep ve max (khong de san tu choi)")
+
+    def test_duoi_min_tra_0(self):
+        ex = self._ex(min_amt=10.0, max_amt=1000.0)
+        self.assertEqual(ex.quantize_qty("X/USDT:USDT", 5.0), 0.0)
+
+    def test_trong_khoang_thi_cat_precision(self):
+        ex = self._ex(min_amt=1.0, max_amt=1000.0)
+        self.assertAlmostEqual(ex.quantize_qty("X/USDT:USDT", 12.3456), 12.346)
+
+    def test_khong_co_max_thi_giu_nguyen(self):
+        ex = self._ex(min_amt=1.0, max_amt=None)
+        self.assertAlmostEqual(ex.quantize_qty("X/USDT:USDT", 5000.0), 5000.0)
+
+    def test_khong_co_src_thi_lam_tron(self):
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=True)
+        ex._client = None
+        ex._public = None
+        self.assertAlmostEqual(ex.quantize_qty("X/USDT:USDT", 1.23456789), 1.234568)
+
+
 if __name__ == "__main__":
     unittest.main()

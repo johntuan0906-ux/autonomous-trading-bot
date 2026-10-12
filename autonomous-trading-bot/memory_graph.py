@@ -672,10 +672,15 @@ def main(argv=None) -> int:
                               "graph_error": str(e)[:160]}, indent=1))
     elif args.cmd == "changes":
         import subprocess
+        try:
+            import winproc
+            _kw = winproc.hide_kwargs()
+        except Exception:  # noqa: BLE001
+            _kw = {}
         git_files: list[str] = []
         try:
             r = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain"],
-                               capture_output=True, text=True, timeout=20)
+                               capture_output=True, text=True, timeout=20, **_kw)
             if r.returncode == 0:
                 for ln in r.stdout.splitlines():
                     p = ln[3:].strip().strip('"')

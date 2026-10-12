@@ -161,11 +161,20 @@ def plan_delay(run_sec: float, prev_delay: float, kill_blocked: bool = False,
     return next_delay(run_sec, prev_delay, base, fast_exit, cap)
 
 
+def _hide() -> dict:
+    """kwargs an cua so console cho tien trinh con (12/10: het pop-up taskkill/tasklist)."""
+    try:
+        import winproc
+        return winproc.hide_kwargs()
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def _kill_tree(pid: int) -> bool:
     """Kill ca cay tien trinh (turbo + moi thread/con) tren Windows."""
     try:
         subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30, **_hide())
         return True
     except Exception:  # noqa: BLE001
         return False
@@ -175,7 +184,7 @@ def _pid_alive(pid: int) -> bool:
     try:
         out = subprocess.run(
             ["tasklist", "/FI", f"PID eq {pid}"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, timeout=10, **_hide(),
         ).stdout
         return str(pid) in out
     except Exception:  # noqa: BLE001

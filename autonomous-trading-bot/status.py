@@ -11,9 +11,14 @@ TAIL = int(sys.argv[sys.argv.index("--tail") + 1]) if "--tail" in sys.argv else 
 
 print("=== 1) TIEN TRINH BOT ===")
 try:
+    import winproc
+    _kw = winproc.hide_kwargs()
+except Exception:  # noqa: BLE001
+    _kw = {}
+try:
     for exe in ("python.exe", "pythonw.exe"):
         out = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {exe}", "/FO", "TABLE"],
-                             capture_output=True, text=True, timeout=10)
+                             capture_output=True, text=True, timeout=10, **_kw)
         body = out.stdout.strip()
         print(f"[{exe}]\n{body or '(khong co)'}")
 except Exception as e:  # noqa: BLE001

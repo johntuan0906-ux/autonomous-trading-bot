@@ -28,3 +28,10 @@ logs/
 *.db
 *.bin
 *.zip
+# (12/10) bo sung: file vendor o GOC + thu muc du lieu lon (giam nhieu khi grep)
+d3.v7.min.js
+*.min.js
+data/
+outputs/
+assets/
+*.jsonl

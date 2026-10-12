@@ -587,12 +587,16 @@ def _subprocess_runner(cmd: list, timeout: float, cwd=None, env=None) -> tuple:
     (KHONG co console) nen khi spawn con (node/copilot CLI), Windows tu mo 1 cua so
     console cho con -> nguoi dung thay "pop-up node" nhay len roi bien mat moi lan
     co vote. Flag nay cho con chay ngam, khong con cua so nao.
+
+    (12/10) Dung chung `winproc.hide_kwargs()` (them ca SW_HIDE) de moi tien trinh
+    con trong du an co cung mot cach an cua so.
     """
     import subprocess
-    import sys
-    kwargs: dict = {}
-    if sys.platform == "win32":
-        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        import winproc
+        kwargs: dict = winproc.hide_kwargs()
+    except Exception:  # noqa: BLE001
+        kwargs = {}
     p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                        cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                        encoding="utf-8", errors="replace", **kwargs)

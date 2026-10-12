@@ -38,6 +38,30 @@ SCAN_TUNE = {
 }
 
 
+def tune_for(n: int) -> dict:
+    """Thong so quet theo SO CAP (12/10) — danh sach nho thi quet nhanh hon.
+
+    Vi sao: sau khi thu hep danh sach (vd LIVE 40 cap thanh khoan cao), giu
+    POLL 300s la lang phi — 40 cap chi ~40 request/vong, quet xong trong ~20s.
+    Vong ngan hon = tin hieu moi hon + may nhe hon (het giat lag).
+
+        <= 60 cap   : 2 phut/vong (chat luong tin hieu cao nhat, tai nhe)
+        <= 200 cap  : 3 phut/vong
+        >  200 cap  : 5 phut/vong (mac dinh cu)
+    """
+    n = int(n or 0)
+    if n <= 60:
+        poll, rto = "120", "180"
+    elif n <= 200:
+        poll, rto = "180", "240"
+    else:
+        poll, rto = "300", "280"
+    out = dict(SCAN_TUNE)
+    out["POLL_INTERVAL_SEC"] = poll
+    out["ROUND_TIMEOUT_SEC"] = rto
+    return out
+
+
 def to_ccxt(raw: str) -> list:
     """`BTCUSDT` -> `BTC/USDT:USDT` (bo hau to USDT roi ghep lai)."""
     out: list = []
@@ -75,6 +99,25 @@ def banned(target: Path) -> set:
     return set(d.keys()) if isinstance(d, dict) else set()
 
 
+def whitelist(target: Path) -> set:
+    """Danh sach cap duoc phep (do `tools/pick_symbols.py` sinh) cho instance `target`.
+
+    Rong = khong gioi han (chay toan bo SYMBOLS). File: `logs/<ten>_whitelist.txt`.
+    """
+    for nm in ("testnet", "live"):
+        if target.name == ("atb-live" if nm == "live" else "autonomous-trading-bot"):
+            p = target / "logs" / ("%s_whitelist.txt" % nm)
+            break
+    else:
+        p = target / "logs" / "whitelist.txt"
+    try:
+        txt = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return set()
+    return {ln.strip() for ln in txt.splitlines()
+            if ln.strip() and not ln.strip().startswith("#")}
+
+
 def validate(syms: list, cfg) -> tuple:
     """Loc theo san: chi giu cap co that + dang giao dich (public, khong can key)."""
     try:
@@ -109,12 +152,14 @@ def apply_one(target: Path, syms: list, tune: bool, dry_run: bool) -> dict:
         return {"ok": False, "err": "khong co %s" % envp}
     cur = envp.read_text(encoding="utf-8")
     upd = {"SYMBOLS": ",".join(syms), "EXTRA_SYMBOLS": ""}
+    tune_used = {}
     if tune:
-        upd.update(SCAN_TUNE)
+        tune_used = tune_for(len(syms))
+        upd.update(tune_used)
     new = SS.set_env_values(cur, upd)
     if not dry_run:
         envp.write_text(new, encoding="utf-8")
-    return {"ok": True, "env": str(envp), "n": len(syms), "tune": SCAN_TUNE if tune else {}}
+    return {"ok": True, "env": str(envp), "n": len(syms), "tune": tune_used}
 
 
 def main(argv: list | None = None) -> int:
@@ -123,6 +168,8 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-validate", action="store_true")
     ap.add_argument("--no-tune-scan", action="store_true", help="khong doi thong so quet")
+    ap.add_argument("--no-whitelist", action="store_true",
+                    help="bo qua logs/<target>_whitelist.txt (nap danh sach day du)")
     ap.add_argument("--limit", type=int, default=0, help="chi lay N cap dau (de thu)")
     args = ap.parse_args(argv)
     try:
@@ -145,6 +192,13 @@ def main(argv: list | None = None) -> int:
         ban = banned(d)
         keep = [s for s in syms if s not in ban]
         print("--- %s: ban=%d -> con %d cap" % (name, len(ban), len(keep)))
+        if not args.no_whitelist:
+            wl = whitelist(d)
+            if wl:
+                before = len(keep)
+                keep = [s for s in keep if s in wl]
+                print("    whitelist: %d cap -> %d cap (logs/%s_whitelist.txt)"
+                      % (before, len(keep), name))
         if not args.no_validate:
             sys.path.insert(0, str(ROOT))
             from config import Settings

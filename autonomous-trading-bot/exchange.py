@@ -206,7 +206,13 @@ class BinanceFutures:
         return None
 
     def quantize_qty(self, symbol: str, qty: float) -> float:
-        """Cat qty theo precision + min amount cua san."""
+        """Cat qty theo precision + min/max amount cua san.
+
+        (12/10) Them kep MAX: truoc day chi kep min nen cap co `maxQty` nho
+        (vd 1000PEPE/1000BONK...) bi san tra `-4005 Quantity greater than max
+        quantity` -> mat co hoi vao lenh + log on. Kep ve max la AN TOAN hon
+        (vi the nho hon du dinh = rui ro thap hon, khong bao gio lon hon).
+        """
         src = self._client if self._client is not None else self._public
         if src is None:
             return round(qty, 6)
@@ -216,7 +222,11 @@ class BinanceFutures:
             if not m:
                 return round(qty, 6)
             q = float(src.amount_to_precision(symbol, qty))
-            min_amt = (m.get("limits") or {}).get("amount", {}).get("min")
+            lim = ((m.get("limits") or {}).get("amount") or {})
+            max_amt = lim.get("max")
+            if max_amt and q > float(max_amt):
+                q = float(src.amount_to_precision(symbol, float(max_amt)))
+            min_amt = lim.get("min")
             if min_amt and q < float(min_amt):
                 return 0.0
             return q

@@ -10,7 +10,7 @@
 
 **Đang chạy 2 instance SONG SONG** (từ 11/10): repo chính = **TESTNET** (demo, học), `../atb-live/` = **LIVE** (tiền thật ~19.7 USDT). Mỗi instance có `logs/`, `.env`, kill-switch RIÊNG; code dùng chung (sync bằng robocopy `*.py tools tests`). Cả hai quét **458 cặp** (nạp 522 → lọc sàn → ban BTC vĩnh viễn; danh sách trong `.env` `SYMBOLS` do `tools/apply_symbols.py` giữ, luôn trừ `logs/banned_pairs.json` của từng instance).
 
-Đọc theo thứ tự: **CONTEXT.md (file này) → `STATE.md` → AGENTS.md → README.md mục 13–15**. Sau đó chạy:
+Đọc theo thứ tự: **CONTEXT.md (file này) → `OPERATIONS.md` (vận hành hằng ngày: 3 lệnh, shell, restart an toàn) → `STATE.md` → AGENTS.md → README.md mục 13–15 → `REPO_IDEAS.md` (9 repo tham khảo + việc áp dụng)**. Sau đó chạy:
 
 ```bash
 python live_ready.py                 # còn thiếu cổng nào để sang LIVE
@@ -90,6 +90,9 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 
 | Việc | Lệnh |
 |---|---|
+| Sức khoẻ 2 instance (1 lệnh) | `python tools/ops.py` |
+| Restart an toàn (dừng→reset→chạy) | `python tools/restart_bot.py --target both --reset --wait-flat` |
+| Chọn/nạp danh sách cặp | `python tools/pick_symbols.py --target live --top 40` → `python tools/apply_symbols.py --target live` |
 | Bot có sống? | `python status.py` (xem `supervisor lock pid=…`) |
 | Xem vị thế thật trên sàn | `python positions.py` |
 | Đối soát journal ↔ sàn | `python reconcile.py` |

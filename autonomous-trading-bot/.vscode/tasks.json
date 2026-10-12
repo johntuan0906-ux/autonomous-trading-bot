@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Ops: bao cao 2 instance",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/ops.py", "--minutes", "7"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "detail": "1 lenh thay cho Get-Content -Tail: vong quet, loi, kill-switch, vi the"
+    },
+    {
+      "label": "Ops: restart LIVE (reset + cho phang)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/restart_bot.py", "--target", "live", "--reset", "--wait-flat"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "detail": "Dung -> cho het vi the -> xoa risk_state -> chay lai (an cua so)"
+    },
+    {
+      "label": "Ops: restart TESTNET (reset)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/restart_bot.py", "--target", "testnet", "--reset"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Ops: restart CA HAI (reset, lech 90s)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/restart_bot.py", "--target", "both", "--reset", "--stagger", "90"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Cap: xem top 40 cho LIVE (dry-run)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/pick_symbols.py", "--target", "live", "--top", "40", "--dry-run"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Cap: nap danh sach vao .env (both)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/apply_symbols.py", "--target", "both"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Test: toan bo suite (690 test)",
+      "type": "shell",
+      "command": "python",
+      "args": ["-m", "unittest", "discover", "-s", "tests"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ]
+}

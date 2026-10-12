@@ -123,8 +123,13 @@ def restart_bot(root: Path | None = None) -> dict:
     killed = False
     if pid:
         try:
+            try:
+                import winproc
+                _kw = winproc.hide_kwargs()
+            except Exception:  # noqa: BLE001
+                _kw = {}
             r = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
-                               capture_output=True, text=True, timeout=60)
+                               capture_output=True, text=True, timeout=60, **_kw)
             killed = r.returncode == 0
         except Exception as e:  # noqa: BLE001
             log("taskkill loi: %s" % str(e)[:120])

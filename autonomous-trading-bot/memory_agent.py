@@ -445,8 +445,13 @@ def detect_changes(mem: MemoryEngine, since_minutes: int = 0) -> dict:
         else []
     git_files: list[str] = []
     try:
+        import winproc
+        _kw = winproc.hide_kwargs()
+    except Exception:  # noqa: BLE001
+        _kw = {}
+    try:
         r = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain"],
-                           capture_output=True, text=True, timeout=20)
+                           capture_output=True, text=True, timeout=20, **_kw)
         if r.returncode == 0:
             for ln in r.stdout.splitlines():
                 p = ln[3:].strip().strip('"')

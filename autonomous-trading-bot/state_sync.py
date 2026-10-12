@@ -99,11 +99,20 @@ def set_env_values(text: str, updates: dict) -> str:
     return out
 
 
+def _hide() -> dict:
+    """kwargs an cua so console cho tien trinh con (12/10: het pop-up git.exe)."""
+    try:
+        import winproc
+        return winproc.hide_kwargs()
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def git_head() -> str:
     """Hash commit ngắn hiện tại (rỗng nếu không đọc được)."""
     try:
         r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=str(ROOT),
-                           capture_output=True, text=True, timeout=15)
+                           capture_output=True, text=True, timeout=15, **_hide())
         return r.stdout.strip() if r.returncode == 0 else ""
     except Exception:  # noqa: BLE001
         return ""
@@ -421,7 +430,7 @@ def restart_bot() -> dict:
         return {"ok": False, "err": "khong biet pid con (heartbeat thieu)"}
     try:
         r = subprocess.run(["taskkill", "/PID", str(pid), "/F"],
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30, **_hide())
         return {"ok": r.returncode == 0, "pid": pid,
                 "out": (r.stdout + r.stderr).strip()[:160]}
     except Exception as e:  # noqa: BLE001
@@ -475,7 +484,7 @@ def git_commit_push(msg: str) -> dict:
 
     def _run(args, timeout=60):
         return subprocess.run([git] + args, cwd=str(ROOT), capture_output=True,
-                              text=True, timeout=timeout)
+                              text=True, timeout=timeout, **_hide())
     try:
         _run(["add", "STATE.md"], 30)
         c = _run(["commit", "-m", msg], 30)

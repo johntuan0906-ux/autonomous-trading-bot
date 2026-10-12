@@ -268,9 +268,14 @@ def bench_node(payload_text: str, qs, iters: int) -> dict | None:
         out = tmp / "out.json"
         inp.write_text(json.dumps(bench_input(payload_text, qs, iters),
                                   ensure_ascii=False), encoding="utf-8")
+        try:
+            import winproc
+            _kw = winproc.hide_kwargs()
+        except Exception:  # noqa: BLE001
+            _kw = {}
         r = subprocess.run(["node", str(tmp / "_run.js"), str(inp), str(out)],
                            capture_output=True, text=True, cwd=str(tmp),
-                           timeout=300)
+                           timeout=300, **_kw)
         if r.returncode != 0 or not out.exists():
             print("[warn] node bench loi: %s" % (r.stderr or r.stdout)[:500])
             return None

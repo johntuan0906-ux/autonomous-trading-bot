@@ -436,7 +436,12 @@ def main(argv: list | None = None) -> int:
     if args.print_cmd:
         return 0
     t0 = time.time()
-    proc = subprocess.run(cmd, cwd=str(MAA), env=child_env(args))
+    try:
+        import winproc
+        _kw = winproc.hide_kwargs()
+    except Exception:  # noqa: BLE001
+        _kw = {}
+    proc = subprocess.run(cmd, cwd=str(MAA), env=child_env(args), **_kw)
     rc = int(proc.returncode)
     print(f"[xong] rc={rc} sau {time.time() - t0:.0f}s")
     # Tim report moi nhat trong output-dir de tom tat/gui Telegram.

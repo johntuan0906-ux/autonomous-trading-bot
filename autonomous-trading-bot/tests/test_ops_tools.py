@@ -219,8 +219,38 @@ class TestTuneScanTheoSoCap(unittest.TestCase):
         self.assertEqual(t["COOLDOWN_SEC"], AS.SCAN_TUNE["COOLDOWN_SEC"])
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestProtectionDrift(unittest.TestCase):
+    """(12/10) Lenh dieu kien o Algo Order API truoc day KHONG huy duoc -> ban SL
+    CU (truoc BE/trail) van nam tren san. Neu chi hoi "co SL/TP chua" thi bot
+    tuong da bao ve va KHONG bao gio keo SL ve hoa von."""
+
+    def test_khop_thi_khong_dat_lai(self):
+        import turbo_demo as TD
+        self.assertFalse(TD.protection_drift({"sl": 100.0, "tp": 120.0}, 100.0, 120.0))
+
+    def test_lech_nho_trong_dung_sai_so(self):
+        import turbo_demo as TD
+        self.assertFalse(TD.protection_drift({"sl": 100.1, "tp": 120.0}, 100.0, 120.0))
+
+    def test_sl_cu_lech_nhieu_thi_phai_dat_lai(self):
+        import turbo_demo as TD
+        # san con SL cu 95 (truoc BE) trong khi state da keo ve 100 (hoa von)
+        self.assertTrue(TD.protection_drift({"sl": 95.0, "tp": 120.0}, 100.0, 120.0))
+
+    def test_tp_lech_cung_phai_dat_lai(self):
+        import turbo_demo as TD
+        self.assertTrue(TD.protection_drift({"sl": 100.0, "tp": 130.0}, 100.0, 120.0))
+
+    def test_thieu_hoac_khong_doc_duoc_thi_dat_lai(self):
+        import turbo_demo as TD
+        self.assertTrue(TD.protection_drift({}, 100.0, 120.0))
+        self.assertTrue(TD.protection_drift({"sl": None, "tp": 120.0}, 100.0, 120.0))
+        self.assertTrue(TD.protection_drift({"sl": "x", "tp": "y"}, 100.0, 120.0))
+
+    def test_khong_co_moc_so_sanh_thi_giu_nguyen(self):
+        import turbo_demo as TD
+        self.assertFalse(TD.protection_drift({"sl": 100.0, "tp": 120.0}, 0.0, 0.0))
+
 
 if __name__ == "__main__":
     unittest.main()

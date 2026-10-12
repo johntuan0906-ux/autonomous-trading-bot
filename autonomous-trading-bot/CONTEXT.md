@@ -39,7 +39,7 @@ Bot giao dịch **USDT-M Futures (Binance)** tự động trên Windows: vòng l
 | Fetch | **cache OHLCV tăng dần** trong `exchange.py` (vòng đầu full; vòng sau chỉ ghep 8 nến; TF 1h+ TTL 900s; lỗi cooldown 120s) | hết `Connection pool is full`/`FETCH_TIMEOUT` nhờ cache + pool HTTP 32 |
 | Kill-switch | LIVE: reset 12/10 ~10:50, baseline equity mới 19.70; TESTNET: reset ~11:05 (8 lệnh thua liên tiếp sáng 12/10 là thật, demo) | `risk.py --reset` chỉ có hiệu lực khi bot ĐÃ DỪNG (§6) |
 | Vị thế LIVE | 0 vị thế mở trên sàn (12/10 ~11:00, `positions.py`) | các dòng OPEN cũ trong journal là lịch sử, không phải vị thế thật |
-| `-4045` | RE-ARM SL/TP vẫn bị chặn trên TESTNET (giới hạn stop-order) | chấp nhận: monitor mềm + retry 5 phút |
+| `-4045` | **ĐÃ TÌM RA GỐC 12/10**: lệnh điều kiện ở **Algo Order API**, `fetch_open_orders` không thấy ⇒ re-arm mỗi 60s ⇒ **100 lệnh (TESTNET) / 200 (LIVE)** trùng lặp ⇒ chạm trần ⇒ `-4045` | đã vá `exchange.py` (`algo_orders`, `cancel_symbol_orders`, `fetch_protection`) + gom còn 1 SL/TP mỗi vị thế; xem `README §18.1`, `tools/orders_audit.py` |
 | IP | `222.253.53.82` / `171.244.236.148` (dual-WAN) — đã whitelist đủ | không còn `-2015` |
 | Hội đồng AI | 15 model; veto chỉ `[shadow]`, `BLOCKED_VETO=0` | chưa cấp quyền chặn thật |
 | Kill-switch trip là THẬT | 08 lệnh thua liên tiếp 12/10 (AAVE r=-1.15, FLOKI -1.35, MOG -1.42, PEPE -1.37…) đúng thiết kế | sau reset, nếu thị trường tiếp tục xấu sẽ trip lại — đó là đúng ý |
@@ -149,7 +149,7 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 - [x] **Mở rộng lên 458 cặp** (12/10): cache OHLCV tăng dần, pool HTTP 32, SCAN_WORKERS=8, POLL 300s, SKIP_VOL/SKIP_DATA, ATR BTC cho kill-switch toàn cục, ban BTC vĩnh viễn (`pair_audit.py`).
 - [x] **Sửa hạ tầng quét nhiều cặp**: `Connection pool is full` → pool 32; `FETCH_TIMEOUT` → cache tăng dần + cooldown lỗi 120s; `atr_levels` data xấu → SKIP_DATA; watcher chỉ đếm cặp của bot.
 - [ ] Theo dõi LIVE: kill-switch trip 12/10 10:45 (daily loss 2.17% — PnL realized hôm trước, không phải lệnh mới); nếu 458 cặp gây thua lỗ liên tiếp trên LIVE, cân nhắc thu hẹp danh sách LIVE.
-- [ ] Theo dõi `-4045` (RE-ARM SL/TP bị giới hạn stop-order): đang bỏ qua + monitor mềm; kiểm tra định kỳ xem hết hạn chưa.
+- [ ] Theo dõi `-4045`: **12/10 đã tìm ra gốc = lệnh điều kiện trùng lặp tích tụ ở Algo Order API** (đã vá `exchange.py` + gom còn 1 SL/TP mỗi vị thế). Kiểm tra định kỳ: `python tools/orders_audit.py --target live` — kỳ vọng **= 2 × số vị thế đang mở**; nhiều hơn ⇒ `--dedupe`.
 - [ ] (tuỳ chọn) Bật veto thật cho hội đồng khi có đủ bằng chứng **cả 2 nhóm** (`python agents.py --authority` phải `granted=True`), rồi `AGENT_VETO_SOURCE=COUNCIL`.
 - [ ] (tuỳ chọn) Muse: nạp credit → tạo API key → `muse auth set` → điền lại `AGENT_COUNCIL_MUSE_CLI`.
 - [ ] (tuỳ chọn) I/O offload: ghi journal async, Telegram ở thread riêng.
@@ -282,7 +282,7 @@ Yêu cầu: vừa TESTNET để học vừa LIVE để thực tế nhanh hơn; *
 4. **"Vị thế ma"**: `position_sync.adopt()` dọn cả `bot.portfolio` (chỉ xoá khi sàn xác nhận `qty=0`; lỗi đọc ⇒ giữ).
 5. **Test phụ thuộc `.env`**: `test_bot`, `test_live_guard` tự set config ⇒ chạy đúng ở cả demo và LIVE.
 
-⚠️ **`-4045` khi đặt SL/TP = GIỚI HẠN của tài khoản (bạn xác nhận 09/10), không phải chặn hẳn — BỎ QUA, không cần xử lý phía Binance**: đã thử `STOP_MARKET`/`TAKE_PROFIT`/`TRAILING` (có/không `closePosition`, có/không `positionSide`, qty lớn, cả symbol không có vị thế) đều `-4045` trong khi **0 lệnh treo** và `LIMIT`/market chạy bình thường ⇒ giới hạn phía Binance, **không phải lỗi bot**. Bot tự đối phó: **thử lại mỗi 5 phút/cặp** (sau 3 lỗi giãn còn `PROTECT_BACKOFF_SEC=300`), tự dừng khi đã có SL trên sàn, **throttle log cảnh báo** (bỏ câu "kiểm tra tay" gây hiểu nhầm). Trong lúc chờ, vị thế được **monitor mềm** bảo vệ (đã chốt lãi thật: AVAX `r=+0.82`, SOL `r=+0.48`) — **chỉ cần để bot chạy**.
+⚠️ **`-4045` — CHẨN ĐOÁN CŨ ĐÃ SAI (sửa 12/10)**: kết luận "giới hạn phía Binance, không phải lỗi bot" là **SAI**. Gốc thật: từ 2025-12-09 Binance chuyển lệnh điều kiện sang **Algo Order API** (`/fapi/v1/algoOrder`); ccxt `fetch_open_orders()` (và `cancel_all_orders`) **chỉ** thấy lệnh thường ⇒ bot tưởng vị thế chưa được bảo vệ ⇒ `_rearm_missing()` đặt lại mỗi 60s ⇒ **tích tụ 100 lệnh (TESTNET) / 200 (LIVE)** trùng lặp + lệnh mồ côi của cặp đã đóng (19 cặp TESTNET / 14 cặp LIVE) ⇒ **chạm trần stop-order của tài khoản** ⇒ mọi SL/TP mới bị `-4045`. Đã vá: `exchange.algo_orders()` (đọc algo), `fetch_protection()` (đọc cả 2 nguồn), `cancel_symbol_orders()` (huỷ cả algo), `turbo_demo.protection_drift()` (phát hiện SL/TP lệch giá) + công cụ `tools/orders_audit.py` (kiểm kê/`--dedupe`/`--cancel-orphans`). Đã gom: TESTNET 100→20, LIVE 200→4 (mỗi vị thế đúng 1 SL + 1 TP). Chi tiết: `README §18.1`.
 
 
 

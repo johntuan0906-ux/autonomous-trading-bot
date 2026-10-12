@@ -32,6 +32,21 @@ def _cid(tag: str) -> str:
     return ("glow" + t + str(int(time.time() * 1000)) + secrets.token_hex(3))[:36]
 
 
+def to_ccxt_symbol(raw: str) -> str:
+    """`AEROUSDT` -> `AERO/USDT:USDT` (giu nguyen neu da dung dang ccxt)."""
+    s = str(raw or "")
+    if "/" in s:
+        return s
+    if s.endswith("USDT") and len(s) > 4:
+        return "%s/USDT:USDT" % s[:-4]
+    return s
+
+
+def to_raw_symbol(sym: str) -> str:
+    """`AERO/USDT:USDT` -> `AEROUSDT` (endpoint algo nhan symbol tran)."""
+    return str(sym or "").replace("/", "").split(":")[0]
+
+
 def _tune_session(cli) -> None:
     """Nới connection pool của `requests` (mặc định 10 → 32).
 
@@ -308,15 +323,77 @@ class BinanceFutures:
     # ---- P0-1/P0-5: doc trang thai THAT tren san -------------------------------
 
     def cancel_symbol_orders(self, symbol: str) -> dict:
-        """Huy MOI lenh dang treo cua symbol (best-effort, khong nem loi)."""
+        """Huy MOI lenh dang treo cua symbol (best-effort, khong nem loi).
+
+        (12/10) Huy CA lenh dieu kien o Algo Order API. Truoc day chi goi
+        `cancel_all_orders` (endpoint lenh THUONG) -> lenh SL/TP nam o algo
+        KHONG BAO GIO duoc huy: vi the dong xong van con STOP/TP treo, co the
+        kich hoat va dong/mo nham vi the sau nay.
+        """
         if self._client is None or self.dry_run:
             return {"symbol": symbol, "cancelled": 0, "dry_run": True}
+        n = 0
+        err = None
         try:
             res = self._client.cancel_all_orders(symbol)
-            return {"symbol": symbol,
-                    "cancelled": len(res) if isinstance(res, list) else 1}
+            n += len(res) if isinstance(res, list) else 1
         except Exception as e:  # noqa: BLE001
-            return {"symbol": symbol, "cancelled": 0, "error": str(e)[:200]}
+            err = str(e)[:200]
+        n_algo, aerr = self._cancel_algo(symbol)
+        out = {"symbol": symbol, "cancelled": n + n_algo, "cancelled_algo": n_algo}
+        if err:
+            out["error"] = err
+        if aerr:
+            out["error_algo"] = aerr
+        return out
+
+    def _cancel_algo(self, symbol: str) -> tuple:
+        """Huy lenh dieu kien dang treo cua 1 symbol. Tra (so lenh, loi)."""
+        fn = getattr(self._client, "fapiPrivateDeleteAlgoOpenOrders", None)
+        if fn is None:
+            return 0, None
+        try:
+            res = fn({"symbol": to_raw_symbol(symbol)})
+            n = len(res) if isinstance(res, list) else (1 if res else 0)
+            return n, None
+        except Exception as e:  # noqa: BLE001
+            return 0, str(e)[:200]
+
+    def algo_orders(self, symbol: str | None = None) -> list:
+        """Lenh cho DIEU KIEN dang treo (Algo Order API `/fapi/v1/algoOrder`).
+
+        Vi sao can (12/10): Binance chuyen lenh dieu kien sang Algo Order API.
+        ccxt `fetch_open_orders()` chi tra lenh THUONG -> tra `[]` du tai khoan
+        dang co hang tram lenh SL/TP treo. Hau qua THAT (do duoc 12/10):
+        LIVE co **200** lenh algo (TESTNET 100) trong khi `fetch_open_orders`
+        bao 0 -> bot tuong "chua co bao ve" nen RE-ARM moi 60s
+        (`cancel_first=False`) => tich tu trung lap, cham tran stop-order =>
+        `-4045` => khong dat duoc bao ve MOI nua.
+
+        Tra dict da chuan hoa: id/symbol(ccxt)/type/stopPrice/clientOrderId/algo/ts.
+        """
+        out: list = []
+        if self._client is None or self.dry_run:
+            return out
+        fn = getattr(self._client, "fapiPrivateGetOpenAlgoOrders", None)
+        if fn is None:
+            return out
+        try:
+            params = {"symbol": to_raw_symbol(symbol)} if symbol else {}
+            for o in (fn(params) or []):
+                st = str((o or {}).get("algoStatus") or "NEW").upper()
+                if st not in ("NEW", "WORKING", "PENDING", ""):
+                    continue          # da huy/khop -> khong tinh la dang treo
+                out.append({"id": o.get("algoId"),
+                            "symbol": to_ccxt_symbol(o.get("symbol")),
+                            "type": o.get("orderType") or o.get("algoType") or "",
+                            "stopPrice": o.get("triggerPrice"),
+                            "clientOrderId": o.get("clientAlgoId"),
+                            "algo": True,
+                            "ts": o.get("bookTime") or o.get("time") or 0})
+        except Exception as e:  # noqa: BLE001
+            self.last_error = "algoOrders: %s" % str(e)[:200]
+        return out
 
     def fetch_positions(self, symbols=None) -> list:
         """Vi the dang mo THAT tren san (ccxt). Loi/dry_run -> [] (khong suy dien)."""
@@ -343,25 +420,34 @@ class BinanceFutures:
         """SL/TP dang TREO tren san -> {'sl': float|None, 'tp': float|None}.
 
         Dung khi khoi dong lai: biet vi the con duoc bao ve hay khong.
+
+        (12/10) Doc CA lenh dieu kien o Algo Order API. Truoc day chi doc
+        `fetch_open_orders` (lenh thuong) -> luon thay "thieu bao ve" du dang co
+        lenh SL/TP treo => `_rearm_missing` dat lai moi 60s => tich tu 200 lenh
+        trung tren LIVE (do duoc 12/10) => cham tran stop-order (`-4045`).
         """
         out: dict = {"sl": None, "tp": None}
         if self._client is None or self.dry_run:
             return out
+        orders: list = []
         try:
-            for o in self._client.fetch_open_orders(symbol):
-                t = str(o.get("type") or "")
-                px = o.get("stopPrice") or (o.get("info") or {}).get("stopPrice")
-                try:
-                    px = float(px or 0) or None
-                except (TypeError, ValueError):
-                    px = None
-                if not px:
-                    continue
-                if t == "STOP_MARKET":
-                    out["sl"] = px
-                elif t == "TAKE_PROFIT_MARKET":
-                    out["tp"] = px
-        except Exception:
+            orders.extend(self._client.fetch_open_orders(symbol) or [])
+        except Exception:  # noqa: BLE001
             pass
+        orders.extend(self.algo_orders(symbol))
+        for o in orders:
+            t = str((o or {}).get("type") or "")
+            px = (o.get("stopPrice") or (o.get("info") or {}).get("stopPrice")
+                  or (o.get("info") or {}).get("triggerPrice"))
+            try:
+                px = float(px or 0) or None
+            except (TypeError, ValueError):
+                px = None
+            if not px:
+                continue
+            if t == "STOP_MARKET":
+                out["sl"] = px
+            elif t == "TAKE_PROFIT_MARKET":
+                out["tp"] = px
         return out
 

@@ -206,14 +206,48 @@ Kết quả chạy thật:
 
 ---
 
-## Tổng hợp việc nên làm tiếp (từ 10 repo)
+## 11. Rà 10 repo agent/skill (13/10) — áp dụng được gì
 
-1. **P1** `SKILLS.md` (4 skill bản địa hoá: fix-bug-loop, retro, handoff, wizard).
+Đọc README/kiến trúc từng repo, đối chiếu với thứ dự án **đang thiếu** (bằng chứng
+hội đồng đúng/sai, chống prompt-injection, quan sát được, kỷ luật quy trình). Nguyên tắc
+giữ nguyên: **hội đồng/AI chỉ cố vấn; tiền và rủi ro đi qua ngưỡng tất định**.
+
+| # | Repo | Cốt lõi | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|---|---|
+| 1 | **browser-use** (MIT, 118k★) | Agent điều khiển browser qua `Agent(task, llm, tools)`; `@tools.action` khai báo công cụ; `ActionResult(extracted_content=...)` | **Không dùng** (bot không cần browser; thêm bề mặt tấn công + chi phí). Nhưng *pattern* `@tools.action(description=...)` rất đáng bắt chước khi mở API công cụ cho agent | P3 |
+| 2 | **agentmemory** (Apache-2.0) | Bộ nhớ 4 tầng (episodic→semantic→procedural), **decay theo đường cong Ebbinghaus**, hợp nhất theo phiên, **triple-stream retrieval** (BM25 + vector + graph, hợp nhất bằng **RRF k=60**), provenance ghi lúc lưu | **Áp dụng**: `memory_graph.py`/`memory_agent.py` đã có graph + retrieval; bổ sung **(a) decay + eviction** cho ký ức cũ, **(b) provenance**: mỗi ký ức trỏ về sự kiện journal sinh ra nó (đã có `bench_retrieval.py` để đo) | **P1** |
+| 3 | **scientific-agent-skills** (MIT) | 177 skill theo **chuẩn Agent Skills**: `skills/<ten>/SKILL.md` + frontmatter (`name`, `description`, `when_to_use`), thư mục `references/`, `scripts/` | **Áp dụng**: viết `SKILLS.md` của dự án (fix-bug-loop, retro, handoff, wizard, audit-lệnh-chờ) **theo đúng frontmatter chuẩn** để mọi agent đọc được | **P1** |
+| 4 | **diagram-design** (MIT) | 44 kiểu sơ đồ, HTML+SVG tự chứa, "1 accent, không đổ bóng, mọi toạ độ chia hết cho 4"; có **fidelity receipt**; nói rõ *khi nào KHÔNG nên vẽ* | **Áp dụng nhẹ**: 1 sơ đồ luồng `turbo_demo → bot → exchange → sàn` cho README. Quy tắc "Git hay đổi thì dùng Mermaid" ⇒ README dùng Mermaid, sơ đồ đẹp để riêng | P3 |
+| 5 | **anthropic-cybersecurity-skills** (Apache-2.0) | 818 skill, **map vào 6 framework** (MITRE ATT&CK, NIST CSF 2.0, ATLAS, D3FEND, AI RMF, F3) | **Áp dụng**: `SECURITY.md` của dự án nên **map biện pháp vào khung** (vd NIST CSF: Identify=whitelist IP/không quyền rút tiền; Protect=key tách 2 instance; Detect=`ops.py`/kill-switch; Respond=flatten; Recover=ADOPT). Giúp không bỏ sót lớp | P2 |
+| 6 | **OpenViking** (AGPL-3.0 ⚠️) | "Context database": memory + RAG + skill hợp nhất; **thư mục là ngữ cảnh truy hồi** (TrieHI, truy vấn theo nhánh), VikingRAG chỉ mở rộng truy hồi khi **thiếu bằng chứng** | **Chỉ lấy ý tưởng** (AGPL ⇒ KHÔNG nhúng code): (a) truy hồi theo *nhánh thư mục* cho `CONTEXT.md`/`STATE.md`; (b) **truy hồi tăng dần khi thiếu bằng chứng** = đúng cách `bench_retrieval.py` nên đo | P2 |
+| 7 | **awesome-harness-engineering** | Tuyển tập về **harness**: eval skill, guardrail, observability, **tool annotations as risk vocabulary** (`readOnlyHint/destructiveHint/idempotentHint/openWorldHint`), **"lethal trifecta"** = dữ liệu riêng + nội dung không tin cậy + kênh ra ngoài | **Áp dụng trực tiếp**: (a) dán nhãn công cụ của bot theo 4 hint trên (vd `orders_audit.py`=readOnly, `--dedupe`=destructive, `stop_tp_orders`=idempotent); (b) **lethal trifecta đúng với dự án**: hội đồng đọc tin RSS (nội dung không tin cậy) + thấy ví thật (dữ liệu riêng) + có thể gửi Telegram (kênh ra ngoài) ⇒ **giữ veto ở shadow**, lọc injection trước khi vào prompt | **P1** |
+| 8 | **GitNexus** (zero-server) | Chỉ mục code: tree-sitter AST + graph DB + BM25/FTS; nhiều biến `GITNEXUS_*` để chỉnh độ sâu truy vết luồng | **Chưa dùng** (nặng, cần Node + DB; repo này nhỏ ~40 file Python). Giữ ý tưởng: **truy vết luồng** khi sửa file lõi (`exchange.py` → `bot.py` → `turbo_demo.py`) — đã có `ccc` trong P3 | P3 |
+| 9 | **mattpocock/skills** (MIT, 288k★) | Bộ skill kỷ luật: `diagnosing-bugs` (**dựng vòng phản hồi đỏ trước → tối giản → giả thuyết → đo → sửa → test hồi quy**), `retro`, `handoff`, `code-review` (2 trục: chuẩn + đặc tả), `pr` (**one-way vs two-way door + blast radius**), `writing-for-agents` | **Áp dụng ngay**: (a) `diagnosing-bugs` = **đúng cách tôi tìm ra lỗi 200 lệnh hôm nay** (đo `openAlgoOrders` → thấy 200 → suy ra vòng re-arm) — đưa vào `SKILLS.md`; (b) `pr`: mọi thay đổi tiền/rủi ro phải ghi **một chiều hay hai chiều + bán kính ảnh hưởng**; (c) `writing-for-agents` cho `AGENTS.md` | **P1** |
+| 10 | **Understand-Anything** (MIT) | **Tách tất định vs ngữ nghĩa**: tree-sitter trích cấu trúc (cùng input → cùng output) + LLM chỉ để *dán nhãn* (tóm tắt, tầng kiến trúc, tour); pipeline 5 agent có **`graph-reviewer` kiểm tra tính toàn vẹn tham chiếu**; cập nhật tăng dần theo fingerprint | **Áp dụng**: (a) giữ đúng nguyên tắc "cấu trúc tất định, LLM chỉ dán nhãn" — chính là thiết kế hiện tại, nên **viết ra thành quy tắc**; (b) thêm **bước kiểm tra toàn vẹn** kiểu `graph-reviewer` vào `state_sync.py`/`memory_graph.py` (mọi ký ức phải trỏ tới sự kiện journal tồn tại) | P2 |
+
+**Kết luận rà soát**: 3 việc P1 đáng làm ngay, đều **nhỏ và không đụng vào logic tiền**:
+`SKILLS.md` (chuẩn Agent Skills) · nhãn rủi ro cho công cụ + **lọc prompt-injection cho headline**
+(lethal trifecta) · decay/provenance cho bộ nhớ. Phần còn lại là P2/P3, ghi lại để không quên.
+
+**Không áp dụng**: browser-use (không cần browser), GitNexus (nặng so với quy mô repo),
+OpenViking (AGPL ⇒ chỉ lấy ý tưởng, không nhúng).
+
+---
+
+## Tổng hợp việc nên làm tiếp
+
+1. **P1** `SKILLS.md` theo chuẩn Agent Skills (fix-bug-loop, retro, handoff, wizard, audit-lệnh-chờ).
 2. **P1** `.clineignore` loại `vendor/`, `d3*.min.js`, `logs/`, `data/` — **đã làm 12/10**.
 3. **P1** Eval hội đồng (precision/recall VETO) + lọc prompt-injection cho headline.
 4. **P1** Circuit breaker cho `derivatives.py`; bulkhead tách pool theo nguồn.
 5. **P2** `logs/metrics.prom` (Prometheus textfile) từ `tools/ops.py`.
 6. **P2** A/B "có/không hội đồng" chính thức trước khi cấp quyền veto.
 7. **P3** Cân nhắc `ccc` (index AST) và Collaborator nếu shell vẫn tệ.
-8. **P1** Chạy `python tools/model_audit.py` trước khi thêm/bớt model hội đồng — **đã có 12/10**.
+8. **P1** `python tools/model_audit.py` trước khi thêm/bớt model hội đồng — **đã có 12/10**.
+9. **P0** Lệnh điều kiện ở Algo Order API: đọc/huỷ qua `exchange.algo_orders()` + kiểm kê bằng `tools/orders_audit.py` — **đã vá 13/10** (200 → 4 lệnh LIVE).
+10. **P1** Nhãn rủi ro cho công cụ (`readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint`) — §11 mục 7.
+11. **P1** Bộ nhớ: thêm decay/eviction + provenance (mỗi ký ức trỏ về sự kiện journal) — §11 mục 2.
+12. **P2** `SECURITY.md` map biện pháp vào khung NIST CSF — §11 mục 5.
+13. **P2** `graph-reviewer` cho `state_sync.py`/`memory_graph.py` (toàn vẹn tham chiếu) — §11 mục 10.
+14. **P2** LIVE: chặn sớm khi notional < minNotional $5 (hiện `CFX` trả `-4164` mỗi vòng, tốn log/vòng quét).
 

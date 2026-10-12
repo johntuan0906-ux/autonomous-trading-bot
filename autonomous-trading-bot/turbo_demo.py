@@ -116,6 +116,29 @@ PROTECT_BACKOFF_AFTER = 3          # so lan loi lien tiep truoc khi gian nhip
 PROTECT_BACKOFF_SEC = 300.0        # nhip gian khi san dang chan hang loat
 
 
+def protection_drift(prot: dict, sl: float, tp: float,
+                     tol: float = 0.002) -> bool:
+    """SL/TP dang TREO tren san co LECH qua so voi `managed_state` khong?
+
+    Vi sao can (12/10): lenh dieu kien nam o Algo Order API nen truoc day KHONG
+    huy duoc -> ban CU (SL truoc khi BE/trail) van nam tren san. Neu chi kiem tra
+    "co SL/TP hay khong" thi bot se coi la da bao ve va KHONG bao gio keo SL ve
+    hoa von. Lech > `tol` (0,2%) thi coi nhu can dat lai.
+
+    Ham thuan -> test duoc, khong goi san.
+    """
+    try:
+        p_sl = float((prot or {}).get("sl") or 0)
+        p_tp = float((prot or {}).get("tp") or 0)
+    except (TypeError, ValueError):
+        return True                       # doc khong duoc -> coi nhu lech
+    if p_sl <= 0 or p_tp <= 0:
+        return True
+    if sl <= 0 or tp <= 0:
+        return False                      # khong co moc de so -> giu nguyen
+    return (abs(p_sl - sl) / sl > tol) or (abs(p_tp - tp) / tp > tol)
+
+
 def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
     """Doi soat bao ve SL/TP TREN SAN cho tung vi the va tu arm lai NGAY khi thieu.
 
@@ -146,17 +169,33 @@ def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
                                           else max(every, PROTECT_BACKOFF_SEC))
             if gap > 0 and (now - float(_PROT_TRY.get(sym, 0.0))) < gap:
                 continue                      # vua kiem tra/thu gan day -> bo qua
-            prot = (bot.exchange.fetch_protection(sym)
-                    if hasattr(bot.exchange, "fetch_protection") else {}) or {}
-            if prot.get("sl") and prot.get("tp"):
-                _PROT_SEEN[sym] = now
-                _PROT_TRY[sym] = now
-                _PROT_FAIL.pop(sym, None)     # da du bao ve -> xoa dem loi
-                continue
             mt = bot.managed.get(sym)
             ids_now = dict(getattr(mt, "prot_ids", {}) or {})
             sl = float(getattr(mt, "sl", 0) or pos.sl or 0)
             tp = float(getattr(mt, "tp", 0) or pos.tp or 0)
+            prot = (bot.exchange.fetch_protection(sym)
+                    if hasattr(bot.exchange, "fetch_protection") else {}) or {}
+            if prot.get("sl") and prot.get("tp"):
+                # (12/10) Co bao ve nhung GIA LECH managed_state: do la lenh CU
+                # (BE/trail truoc day huy khong duoc lenh dieu kien o Algo Order
+                # API nen ban cu van nam do) -> phai dat lai DUNG gia, neu khong
+                # vi the bi SL cu chan hoac khong duoc keo ve hoa von.
+                if sl > 0 and tp > 0 and protection_drift(prot, sl, tp):
+                    _PROT_TRY[sym] = now
+                    res = bot.exchange.stop_tp_orders(
+                        sym, pos.direction, pos.qty, sl, tp,
+                        cid_prefix="drift", cancel_first=True)
+                    if mt is not None:
+                        record_protection(mt, res)
+                    done.append(sym)
+                    log.warning("RE-ARM: SL/TP tren san LECH managed_state cho %s "
+                                "(san sl=%s tp=%s -> dat lai sl=%s tp=%s)",
+                                sym, prot.get("sl"), prot.get("tp"), sl, tp)
+                    continue
+                _PROT_SEEN[sym] = now
+                _PROT_TRY[sym] = now
+                _PROT_FAIL.pop(sym, None)     # da du bao ve -> xoa dem loi
+                continue
             if sl <= 0 or tp <= 0:
                 continue
             _PROT_TRY[sym] = now

@@ -17,6 +17,7 @@ Muse Code reads this file as project rules when it runs in this directory.
 - Trạng thái bot: `python status.py` · kill-switch: `python risk.py --reset` · bot demo: `python turbo_demo.py`
 - **2 instance song song** (12/10): repo chính = TESTNET, `../atb-live` = LIVE; sync code: robocopy `*.py tools tests`; danh sách cặp: `python tools/apply_symbols.py --target both`.
 - **Trước khi thêm/bớt model hội đồng AI**: chạy `python tools/model_audit.py` (checklist tất định: cờ đỏ trong tên, license, VRAM, có eval). KHÔNG thêm model "uncensored/abliterated/crack" hay trọng số không kiểm chứng vào hội đồng — xem `REPO_IDEAS.md` §10.
+- **Lệnh ĐIỀU KIỆN (SL/TP) nằm ở Algo Order API**, KHÔNG ở `fetch_open_orders()`. Muốn biết tài khoản có bao nhiêu lệnh chờ: `python tools/orders_audit.py --target live` (kỳ vọng **= 2 × số vị thế mở**; nhiều hơn ⇒ `--dedupe`). Đừng bao giờ kết luận "không có lệnh chờ" từ `fetch_open_orders`.
 - Hội đồng AI (5 provider): xem `README.md` mục 10–12.
 
 ## Git & GitHub (đọc kỹ trước khi động vào git)

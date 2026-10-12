@@ -557,6 +557,11 @@ stop (dù `GET /fapi/v1/openOrders` trả về `[]` — không có lệnh treo n
 được SL/TP trên sàn**, vị thế chỉ được **bảo vệ bằng MONITOR phần mềm** (`bot._monitor` tự đóng khi
 giá chạm SL/TP mỗi vòng) — chỉ an toàn khi bot đang chạy.
 
+> ✅ **Đã tìm ra nguyên nhân gốc 12/10** (xem §18.1): lệnh điều kiện nằm ở **Algo Order API**
+> (`/fapi/v1/algoOrder`) nên `openOrders` trả `[]` là **đúng** — nhưng tài khoản đã có
+> **100 (TESTNET) / 200 (LIVE) lệnh điều kiện trùng lặp** do chính bot tích tụ. Đã vá
+> (`exchange.py` đọc/huỷ được algo orders) và gom lại còn 1 SL + 1 TP cho mỗi vị thế.
+
 Cách nhận biết & xử lý:
 
 ```bash
@@ -991,22 +996,52 @@ Bot tự sang LIVE lúc **16:35:47** (đủ 5 chốt + chốt 4b). Ngay sau đó
 | 4 | **"Vị thế ma" trong portfolio** | state mang từ phiên DEMO sang ⇒ `SKIP_OPEN` mãi ⇒ bot **không vào lệnh** | `position_sync.adopt()` dọn cả `bot.portfolio` — chỉ xoá khi sàn **xác nhận qty=0** (đọc lỗi ⇒ giữ, fail-safe) |
 | 5 | **Test phụ thuộc `.env`** | `test_bot`, `test_live_guard` đỏ sau khi `.env` sang LIVE | test tự set config (`symbols`, `BINANCE_TESTNET`, `RISK_STATE_PATH`) — chạy đúng ở cả 2 chế độ |
 
-### 18.1 ⚠️ Tài khoản này CHẶN mọi lệnh điều kiện (`-4045`) — cần bạn xử lý
+### 18.1 ✅ `-4045` — ĐÃ TÌM RA NGUYÊN NHÂN THẬT (12/10): lệnh điều kiện nằm ở **Algo Order API**
 
-Đã kiểm chứng kỹ (09/10):
+**Kết luận cũ ("giới hạn phía Binance, không phải lỗi bot") là SAI.** Sự thật:
 
-| Thử | Kết quả |
-|---|---|
-| `LIMIT` / market (vào/đóng vị thế) | ✅ chạy bình thường |
-| `STOP_MARKET` (qty + positionSide) | ❌ `-4045 Reach max stop order limit` |
-| `STOP_MARKET` + `closePosition` | ❌ `-4045` |
-| `TAKE_PROFIT_MARKET` / `TRAILING_STOP_MARKET` | ❌ `-4045` |
-| Trên symbol **không có vị thế** (BTC, DOGE) | ❌ `-4045` |
-| Số lệnh treo toàn tài khoản | **0** |
+1. Binance (từ **2025-12-09**) chuyển lệnh điều kiện (`STOP_MARKET`, `TAKE_PROFIT_MARKET`,
+   `STOP`, `TAKE_PROFIT`, `TRAILING_STOP_MARKET`) sang **Algo Order API**
+   (`/fapi/v1/algoOrder`), **không** còn nằm ở danh sách lệnh thường.
+2. ccxt `fetch_open_orders()` (endpoint lệnh thường) **KHÔNG thấy** chúng ⇒ bot tưởng
+   "vị thế chưa có SL/TP" ⇒ `_rearm_missing()` đặt lại mỗi 60s (`cancel_first=False`)
+   ⇒ **tích tụ bản sao trùng lặp**.
+3. `cancel_all_orders()` cũng chỉ huỷ lệnh thường ⇒ **không bao giờ dọn được** các lệnh
+   điều kiện, kể cả khi vị thế đã đóng ⇒ lệnh **mồ côi** nằm lại vĩnh viễn.
+4. Tới **trần stop-order của tài khoản** ⇒ mọi lệnh SL/TP mới bị trả `-4045 Reach max
+   stop order limit` ⇒ đúng lúc cần bảo vệ nhất thì **không đặt được gì**.
 
-⇒ **Không phải lỗi bot** (đặt tay đúng chuẩn vẫn lỗi, kể cả khi 0 lệnh treo) mà là **giới hạn phía tài khoản Binance**. **Bạn đã xác nhận (09/10): tài khoản chỉ GIỚI HẠN chứ không chặn hẳn** ⇒ có lúc sẽ đặt được. Hệ quả cần biết: vị thế LIVE **không có SL/TP trên sàn** cho tới khi lệnh đặt được, chỉ được **monitor mềm** của bot bảo vệ (bot tắt = vị thế không được bảo vệ).
+**Đo thật 12/10 (trước khi sửa):**
 
-Cách bot đối phó (đã có sẵn, không cần làm gì thêm): **thử lại mỗi 5 phút/cặp** (`PROTECT_CHECK_SEC=60` → sau 3 lần lỗi giãn còn `PROTECT_BACKOFF_SEC=300`), tự dừng thử khi đã có SL trên sàn, và **throttle log cảnh báo** (mỗi 5 phút/cặp) để không rác log. Không cần "kiểm tra tay" — chỉ cần để bot chạy.
+| Instance | `fetch_open_orders` | `openAlgoOrders` | Sau khi gom |
+|---|---|---|---|
+| TESTNET | 0 | **100** (89 TP + 11 SL) | **20** (9 vị thế × 2 + dọn mồ côi) |
+| LIVE | 0 | **200** | **4** (2 vị thế × 2) |
+
+Lệnh mồ côi đến từ **19 cặp (TESTNET) / 14 cặp (LIVE) đã đóng từ lâu** — chúng có thể
+kích hoạt và đóng/mở nhầm vị thế sau này.
+
+**Đã sửa (12/10)** trong `exchange.py`:
+- `algo_orders()` — đọc `/fapi/v1/algoOrder` (`fapiPrivateGetOpenAlgoOrders`), chuẩn hoá
+  symbol `AEROUSDT` → `AERO/USDT:USDT`, bỏ lệnh đã hủy/khớp.
+- `fetch_protection()` — đọc **cả** lệnh thường **và** algo ⇒ bot thấy đúng thực tế,
+  hết vòng lặp re-arm.
+- `cancel_symbol_orders()` / `_cancel_algo()` — huỷ **cả** lệnh algo ⇒ đóng vị thế là
+  dọn sạch (hết mồ côi).
+- `turbo_demo.protection_drift()` — có SL/TP nhưng **lệch giá** so với `managed_state`
+  (bản SL cũ trước BE/trail) ⇒ đặt lại **đúng giá**, không giữ bản cũ.
+
+Kiểm kê & gom lệnh bất cứ lúc nào:
+
+```bash
+python tools/orders_audit.py                      # TESTNET: đếm lệnh chờ (thường + algo)
+python tools/orders_audit.py --target live        # LIVE
+python tools/orders_audit.py --target live --dedupe        # gom: 1 SL + 1 TP / vị thế
+python tools/orders_audit.py --target live --cancel-orphans  # chỉ huỷ lệnh mồ côi
+```
+
+⚠️ **Đừng bao giờ kết luận "không có lệnh chờ" chỉ từ `fetch_open_orders()`** — phải
+xem `openAlgoOrders` (công cụ trên làm sẵn).
 
 ### 18.2 Kết quả thực tế sau ~3.5 giờ LIVE
 

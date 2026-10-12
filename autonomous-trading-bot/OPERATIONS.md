@@ -174,5 +174,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Test nhanh 1 module | `python -m unittest tests.test_ops_tools` |
 | Audit model hội đồng | `python tools/model_audit.py [--target live]` |
 | Audit 1 repo HF | `python tools/model_audit.py --hf <repo> --params-b <B> --bits 8` |
+| Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
+| Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | Test toàn bộ | `python -m unittest discover -s tests` (**690 test**) |
 | Đẩy code | `tools\git-sync.cmd "mo ta"` |

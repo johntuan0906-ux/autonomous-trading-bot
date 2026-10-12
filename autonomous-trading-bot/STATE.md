@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 12/10/2026 12:19:28 · commit `?`
+- **Cập nhật**: 12/10/2026 12:49:29 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `57496` · round `1` · nhịp tim cách đây 255.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3782.78 USDT
+- **Bot**: pid `92660` · round `3` · nhịp tim cách đây 269.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 560 lệnh đóng, WR 56.07%, E(R) 0.0065, PnL -12.36$)
+## Hiệu suất (journal: 565 lệnh đóng, WR 56.28%, E(R) 0.0074, PnL -6.94$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 394 | 53.3 | 1.051 | 1.026 | 0.0134 | 21.67 |
-| 14 ngày | 529 | 55.39 | 1.008 | 0.967 | 0.0021 | -37.4 |
-| 30 ngày | 560 | 56.07 | 1.025 | 0.99 | 0.0065 | -12.36 |
+| 7 ngày | 397 | 53.9 | 1.057 | 1.034 | 0.0149 | 28.03 |
+| 14 ngày | 534 | 55.62 | 1.012 | 0.972 | 0.0031 | -31.99 |
+| 30 ngày | 565 | 56.28 | 1.028 | 0.994 | 0.0074 | -6.94 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.051 < 1.2; PF($) cua so 7 ngay = 1.026 < 1.1; PF(R) cua so 14 ngay = 1.008 < 1.2; PF($) cua so 14 ngay = 0.967 < 1.1; PF(R) cua so 30 ngay = 1.025 < 1.2; PF($) cua so 30 ngay = 0.990 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.057 < 1.2; PF($) cua so 7 ngay = 1.034 < 1.1; PF(R) cua so 14 ngay = 1.012 < 1.2; PF($) cua so 14 ngay = 0.972 < 1.1; PF(R) cua so 30 ngay = 1.028 < 1.2; PF($) cua so 30 ngay = 0.994 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
@@ -43,15 +43,15 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
+| 1000000BOB/USDT:USDT | LONG | 178571.0 | 0.008669999999999999 | 0.008614 | 0.00881 | False | False | 0.0 |
 | 1000000MOG/USDT:USDT | LONG | 10395.0 | 0.1131 | 0.112138 | 0.115505 | False | False | 0.104 |
-| 1000CHEEMS/USDT:USDT | LONG | 1111111.0 | 0.0005265 | 0.0005270264999999999 | 0.000536 | True | True | 0.533 |
+| 1000CAT/USDT:USDT | LONG | 625000.0 | 0.0020499999999999997 | 0.002034 | 0.00209 | False | False | 0.0 |
 | 1000LUNC/USDT:USDT | LONG | 32051.0 | 0.05164 | 0.051328 | 0.05242 | False | False | 0.0 |
-| 1000SHIB/USDT:USDT | LONG | 166667.0 | 0.005482 | 0.00553 | 0.005557 | True | True | 2.1 |
-| 1INCH/USDT:USDT | LONG | 7396.0 | 0.09897 | 0.099362 | 0.10066 | True | True | 1.08 |
-| 1MBABYDOGE/USDT:USDT | LONG | 2173913.0 | 0.0003913 | 0.00039169130000000005 | 0.000396 | True | True | 0.565 |
-| AERO/USDT:USDT | LONG | 553.7 | 0.9348 | 0.9357348 | 0.957375 | True | True | 0.321 |
-| AGT/USDT:USDT | SHORT | 35971.0 | 0.018443 | 0.018721 | 0.017748 | False | False | 0.295 |
-| AIA/USDT:USDT | SHORT | 14970.0 | 0.0813 | 0.081968 | 0.07963 | False | False | 0.165 |
+| 1000SHIB/USDT:USDT | LONG | 238095.0 | 0.005527 | 0.005485 | 0.005632 | False | False | 0.0 |
+| 1000XEC/USDT:USDT | LONG | 138888.0 | 0.007275 | 0.007203 | 0.007455 | False | False | 0.0 |
+| AERO/USDT:USDT | LONG | 553.7 | 0.9348 | 0.9357348 | 0.957375 | True | True | 0.587 |
+| AGT/USDT:USDT | SHORT | 8993.0 | 0.018443 | 0.018424557 | 0.017748 | True | True | 0.568 |
+| AIA/USDT:USDT | SHORT | 3742.5 | 0.0813 | 0.080734 | 0.07963 | True | True | 1.347 |
 
 ---
 

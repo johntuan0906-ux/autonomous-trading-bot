@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 12/10/2026 15:25:33 · commit `?`
+- **Cập nhật**: 12/10/2026 15:55:34 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `20180` · round `3` · nhịp tim cách đây 195.1s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3683.25 USDT
+- **Bot**: pid `20180` · round `7` · nhịp tim cách đây 157.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3685.75 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 575 lệnh đóng, WR 55.65%, E(R) 0.0167, PnL -27.19$)
+## Hiệu suất (journal: 576 lệnh đóng, WR 55.56%, E(R) 0.0149, PnL -36.8$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 392 | 51.53 | 1.059 | 0.95 | 0.016 | -42.83 |
-| 14 ngày | 544 | 54.96 | 1.051 | 0.956 | 0.013 | -52.24 |
-| 30 ngày | 575 | 55.65 | 1.064 | 0.979 | 0.0167 | -27.19 |
+| 7 ngày | 391 | 51.41 | 1.045 | 0.933 | 0.0123 | -57.25 |
+| 14 ngày | 545 | 54.86 | 1.043 | 0.948 | 0.0112 | -61.85 |
+| 30 ngày | 576 | 55.56 | 1.057 | 0.971 | 0.0149 | -36.8 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.059 < 1.2; PF($) cua so 7 ngay = 0.950 < 1.1; PF(R) cua so 14 ngay = 1.051 < 1.2; PF($) cua so 14 ngay = 0.956 < 1.1; PF(R) cua so 30 ngay = 1.064 < 1.2; PF($) cua so 30 ngay = 0.979 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.045 < 1.2; PF($) cua so 7 ngay = 0.933 < 1.1; PF(R) cua so 14 ngay = 1.043 < 1.2; PF($) cua so 14 ngay = 0.948 < 1.1; PF(R) cua so 30 ngay = 1.057 < 1.2; PF($) cua so 30 ngay = 0.971 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,7 +39,7 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (7)
+## Vị thế đang quản lý (6)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
@@ -49,7 +49,6 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | ADA/USDT:USDT | LONG | 4006.0 | 0.2534 | 0.250826 | 0.259135 | False | False | 0.0 |
 | AERO/USDT:USDT | LONG | 1013.7 | 0.9345 | 0.925642 | 0.958045 | False | False | 0.068 |
 | ALGO/USDT:USDT | LONG | 5128.2 | 0.13293 | 0.13106 | 0.137465 | False | False | 0.0 |
-| ANIME/USDT:USDT | LONG | 384615.0 | 0.0032199999999999998 | 0.003195 | 0.003279 | False | False | 0.0 |
 
 ---
 

@@ -1,1 +1,7 @@
 atb-live/
+
+# (13/10) Model local (llamafile ~1.1 GB) KHONG commit len GitHub (gioi han 100 MB).
+models/
+*.llamafile
+*.llamafile.exe
+*.gguf

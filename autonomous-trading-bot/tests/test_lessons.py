@@ -256,5 +256,39 @@ class TestLessonsGateTrongBot(unittest.TestCase):
                                         regime="SIDEWAY", direction="LONG")["block"])
 
 
+class TestImpact(unittest.TestCase):
+    """(13/10) Cong tiet kiem bao nhieu / bo lo bao nhieu — can cu de siet hay noi nguong."""
+
+    def _b(self, n, avg_r, pnl):
+        return {"n": n, "avg_r": avg_r, "pnl": pnl, "wr": 50.0}
+
+    def test_tiet_kiem_khi_chan_pnl_am(self):
+        imp = LES.impact({"x": self._b(25, -0.40, -30.0)}, min_n=20, max_avg_r=-0.20)
+        self.assertEqual(imp["saved_pnl"], -30.0)
+        self.assertEqual(imp["missed_pnl"], 0.0)
+        self.assertEqual(imp["net"], -30.0, "net am = tranh duoc lo")
+        self.assertEqual(len(imp["blocked"]), 1)
+
+    def test_phat_hien_bo_lo_lenh_thang_sat_nguong(self):
+        """To hop avgR -0.15 (chua bi chan) nhung PnL DUONG -> dang bo lo."""
+        imp = LES.impact({"y": self._b(25, -0.15, +40.0)}, min_n=20, max_avg_r=-0.20,
+                         near=0.10)
+        self.assertEqual(len(imp["missed"]), 1)
+        self.assertEqual(imp["missed_pnl"], 40.0)
+        self.assertEqual(imp["saved_pnl"], 0.0)
+
+    def test_it_mau_thi_bo_qua(self):
+        imp = LES.impact({"z": self._b(5, -0.90, -99.0)}, min_n=20, max_avg_r=-0.20)
+        self.assertEqual(imp["blocked"], [])
+        self.assertEqual(imp["missed"], [])
+
+    def test_tinh_net_dung(self):
+        buckets = {"a": self._b(25, -0.50, -50.0), "b": self._b(25, -0.10, +20.0)}
+        imp = LES.impact(buckets, min_n=20, max_avg_r=-0.20, near=0.15)
+        self.assertEqual(imp["saved_pnl"], -50.0)
+        self.assertEqual(imp["missed_pnl"], 20.0)
+        self.assertEqual(imp["net"], -70.0, "net = tiet kiem - bo lo")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -294,6 +294,13 @@ class Settings:
         default_factory=lambda: _get_int("AGENT_VETO_MIN_ALLOW", 10))
     agent_veto_min_gap: float = field(
         default_factory=lambda: _get_float("AGENT_VETO_MIN_GAP", 0.15))
+    # (13/10) Luat cap quyen: "two_cohort" (cu: VETO vs ALLOW, doi n_allow>=10) hoac
+    # "baseline" (VETO vs TOAN BO lenh tang agent da thay — dung khi hoi dong tra
+    # nhieu NO_OPINION nen nhom ALLOW qua it de so sanh).
+    agent_veto_rule: str = field(
+        default_factory=lambda: (_get("AGENT_VETO_RULE", "two_cohort") or "two_cohort").strip().lower())
+    agent_veto_baseline_min_n: int = field(
+        default_factory=lambda: _get_int("AGENT_VETO_BASELINE_MIN_N", 30))
     # Tu dong ap dung de xuat block/unblock (sau gate tat dinh). MAC DINH TAT.
     agent_auto_apply: bool = field(
         default_factory=lambda: _get_bool("AGENT_AUTO_APPLY", False))

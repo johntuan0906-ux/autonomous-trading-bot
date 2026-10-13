@@ -184,6 +184,35 @@ def human_section(md_text: str) -> str:
     return s[i + len(HUMAN_BEGIN):j].strip("\n")
 
 
+def impact(buckets: dict, *, min_n: int = 20, max_avg_r: float = -0.20,
+           near: float = 0.10) -> dict:
+    """Cong nay CHAN gi (tiet kiem) va BO LO gi (lenh thang bi chan nham)?
+
+    Ham thuan -> test duoc. Tra:
+      blocked : [{key, n, avg_r, pnl}]  — bi chan; pnl AM = TIET KIEM duoc
+      missed  : [{key, n, avg_r, pnl}]  — SÁT nguong (avg_r trong [max, max+near])
+                                          va PnL DUONG = dang bi bo lo
+      saved_pnl, missed_pnl, net
+    Vi sao: "chỉ nên siết lessons sau khi biết nó tiết kiệm hay làm mất bao nhiêu".
+    """
+    blocked, missed = [], []
+    for k, b in (buckets or {}).items():
+        n = int(b.get("n") or 0)
+        if n < int(min_n):
+            continue
+        avg = float(b.get("avg_r") or 0.0)
+        row = {"key": k, "n": n, "avg_r": avg, "pnl": float(b.get("pnl") or 0.0)}
+        if avg <= float(max_avg_r):
+            blocked.append(row)
+        elif avg <= float(max_avg_r) + float(near) and row["pnl"] > 0:
+            missed.append(row)
+    saved = round(sum(r["pnl"] for r in blocked if r["pnl"] < 0), 2)
+    lost = round(sum(r["pnl"] for r in missed), 2)
+    return {"blocked": sorted(blocked, key=lambda x: x["avg_r"]),
+            "missed": sorted(missed, key=lambda x: -x["pnl"]),
+            "saved_pnl": saved, "missed_pnl": lost, "net": round(saved - lost, 2)}
+
+
 def build(journal_path, *, keys=KEYS_DEFAULT, cap: int = 60,
           min_n: int = 20, max_avg_r: float = -0.30) -> dict:
     """Doc journal -> {trades, buckets, gates, notes, pruned, ts}."""

@@ -285,5 +285,89 @@ class TestPromMetrics(unittest.TestCase):
         self.assertIn("# TYPE bot_equity gauge", "\n".join(OPS.prom_lines([])))
 
 
+class TestLocalModelProbe(unittest.TestCase):
+    """(13/10) Phieu LOCAL cua hoi dong chet thi IM LANG mat (fail-open) -> phai kiem tra.
+
+    Ham nay doc AGENT_LOCAL_BASE_URL va goi /v1/models (llamafile) hoac /api/tags (Ollama).
+    """
+
+    def test_thieu_base_url_thi_bao_loi_ro(self):
+        import harness_audit as HA
+        r = HA.probe_local_model({})
+        self.assertFalse(r["ok"])
+        self.assertIn("trong", r["error"])
+
+    def test_url_sai_thi_khong_crash(self):
+        import harness_audit as HA
+        r = HA.probe_local_model({"AGENT_LOCAL_BASE_URL": "http://127.0.0.1:1/v1"},
+                                 timeout=0.5)
+        self.assertFalse(r["ok"])
+        self.assertTrue(r["error"])
+
+    def test_doc_duoc_danh_sach_model_tu_may_chu_gia(self):
+        import http.server
+        import harness_audit as HA
+        import threading
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):                       # noqa: N802
+                body = b'{"data":[{"id":"model-a"},{"id":"model-b"}]}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):              # im lang
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+        port = srv.server_address[1]
+        t = threading.Thread(target=srv.serve_forever, daemon=True)
+        t.start()
+        try:
+            r = HA.probe_local_model({"AGENT_LOCAL_BASE_URL": "http://127.0.0.1:%d/v1" % port})
+        finally:
+            srv.shutdown()
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["ids"], ["model-a", "model-b"])
+
+    def test_check_them_muc_model_local(self):
+        import harness_audit as HA
+        checks: list = []
+        HA._chk_local_model(checks, {})
+        self.assertEqual(checks[0]["name"], "model-local")
+        self.assertEqual(checks[0]["level"], "OK")
+
+    def test_canh_bao_khi_local_chet(self):
+        import harness_audit as HA
+        checks: list = []
+        HA._chk_local_model(checks, {"AGENT_COUNCIL_LOCAL": "x",
+                                     "AGENT_LOCAL_BASE_URL": "http://127.0.0.1:1/v1"})
+        self.assertEqual(checks[0]["level"], "WARN")
+        self.assertIn("llamafile", checks[0]["fix"])
+
+    def test_hai_ham_kiem_tra_tach_biet(self):
+        """(13/10) Loi that: xoa nham `def _chk_protection` -> than ham dinh vao
+        `_chk_local_model` => muc 'bao-ve' (goi san THAT) bi them o CA hai duong.
+        Test nay chan tai phat: `_chk_local_model` KHONG duoc them muc 'bao-ve'."""
+        import harness_audit as HA
+        self.assertTrue(callable(getattr(HA, "_chk_protection", None)),
+                        "_chk_protection phai la ham rieng")
+        checks: list = []
+        HA._chk_local_model(checks, {})              # khong co model local
+        names = [c["name"] for c in checks]
+        self.assertEqual(names, ["model-local"],
+                         "chi duoc them 1 muc model-local, khong keo theo 'bao-ve'")
+
+    def test_khong_co_with_exchange_thi_khong_goi_san(self):
+        """`audit_one` khong co --with-exchange => muc 'bao-ve' phai la 'bo qua'."""
+        import harness_audit as HA
+        rep = HA.audit_one(HA.ROOT, "TESTNET", with_exchange=False)
+        bv = [c for c in rep["checks"] if c["name"] == "bao-ve"]
+        self.assertEqual(len(bv), 1, "chi duoc co DUNG 1 muc bao-ve")
+        self.assertIn("bo qua", bv[0]["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()

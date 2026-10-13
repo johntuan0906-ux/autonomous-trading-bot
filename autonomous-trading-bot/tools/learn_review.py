@@ -33,6 +33,8 @@ def main(argv=None) -> int:
                     help="nguong avgR de chan (mac dinh: LESSONS_MAX_AVG_R trong .env)")
     ap.add_argument("--cap", type=int, default=60, help="tran so to hop giu lai")
     ap.add_argument("--dry", action="store_true", help="chi in, khong ghi file")
+    ap.add_argument("--impact", action="store_true",
+                    help="bao cao TAC DONG: cong tiet kiem bao nhieu / bo lo bao nhieu")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
@@ -60,6 +62,18 @@ def main(argv=None) -> int:
         print("  to hop DANG CHAN       : %d" % len(les["gates"]))
         for s in les["notes"]:
             print("  %s" % s)
+        if args.impact:
+            imp = LES.impact(les["buckets"], min_n=min_n, max_avg_r=max_avg_r)
+            print("  --- TAC DONG CUA CONG (uoc tinh tu journal) ---")
+            print("  tiet kiem duoc (PnL am bi chan) : %+.2f USDT" % imp["saved_pnl"])
+            print("  bo lo (PnL duong sat nguong)    : %+.2f USDT" % imp["missed_pnl"])
+            print("  NET                             : %+.2f USDT" % imp["net"])
+            for r in imp["blocked"]:
+                print("    [CHAN ] %s n=%d avgR=%+.3f PnL=%+.2f"
+                      % (r["key"], r["n"], r["avg_r"], r["pnl"]))
+            for r in imp["missed"]:
+                print("    [SAT-NGUONG, dang bo lo] %s n=%d avgR=%+.3f PnL=%+.2f"
+                      % (r["key"], r["n"], r["avg_r"], r["pnl"]))
 
     if not args.dry:
         rep = LES.write_files(les, json_path=base / "logs" / "lessons.json",

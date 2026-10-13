@@ -255,12 +255,57 @@ def audit_one(base: Path, label: str, *, with_exchange: bool = False) -> dict:
                 "dir": str(base)}
     env = _chk_core(checks, base, label)
     _chk_config(checks, env, label)
+    _chk_local_model(checks, env)
     if with_exchange:
         _chk_protection(checks, env, label)
     else:
         add(checks, "OK", "bao-ve", "bo qua (them --with-exchange de kiem tra that)")
     return {"label": label, "checks": checks, "summary": summarize(checks),
             "dir": str(base)}
+
+
+def probe_local_model(env: dict, timeout: float = 5.0) -> dict:
+    """Model LOCAL cua hoi dong con song khong? -> {'ok', 'url', 'ids', 'error'}.
+
+    Hoi dong co 1 phieu LOCAL mien phi (Ollama hoac llamafile). Neu dich vu chet thi
+    phieu do IM LANG mat (fail-open) — khong ai bao. Ham nay doc
+    `AGENT_LOCAL_BASE_URL` trong `.env` va goi `/v1/models` (hoac `/api/tags` cua Ollama).
+    """
+    import urllib.request
+    base = str(env.get("AGENT_LOCAL_BASE_URL") or "").rstrip("/")
+    out = {"ok": False, "url": base, "ids": [], "error": ""}
+    if not base:
+        out["error"] = "AGENT_LOCAL_BASE_URL trong"
+        return out
+    for path in ("/models", "/api/tags"):
+        try:
+            with urllib.request.urlopen(base + path, timeout=timeout) as r:
+                d = json.loads(r.read().decode("utf-8", errors="replace"))
+            ids = [str((m or {}).get("id") or (m or {}).get("name") or "")
+                   for m in (d.get("data") or d.get("models") or [])]
+            ids = [i for i in ids if i]
+            out.update({"ok": True, "ids": ids})
+            return out
+        except Exception as e:  # noqa: BLE001
+            out["error"] = str(e)[:110]
+    return out
+
+
+def _chk_local_model(checks: list, env: dict) -> None:
+    """Nhom 3: phieu LOCAL cua hoi dong (mien phi) co con hoat dong khong?"""
+    model = str(env.get("AGENT_COUNCIL_LOCAL") or "").strip()
+    if not model:
+        add(checks, "OK", "model-local", "khong dung model local (chi cloud)")
+        return
+    r = probe_local_model(env)
+    if r["ok"]:
+        add(checks, "OK", "model-local", "%s tai %s (co %d model)"
+            % (model, r["url"], len(r["ids"])))
+    else:
+        add(checks, "WARN", "model-local",
+            "%s KHONG tra loi (%s) -> hoi dong mat 1 phieu mien phi" % (model, r["error"]),
+            "chay lai dich vu local: `ollama serve` hoac "
+            "`python tools/llamafile_setup.py --start`")
 
 
 def _chk_protection(checks: list, env: dict, label: str) -> None:

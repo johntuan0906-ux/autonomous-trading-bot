@@ -1534,7 +1534,8 @@ def review_payload(symbol: str, direction: str, r_multiple: float, won: bool,
 
 def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
                     min_n_allow: int = 10, min_gap: float = 0.15, horizon_h: float = 48.0,
-                    status: str = "SETUP") -> dict:
+                    status: str = "SETUP", rule: str = "two_cohort",
+                    baseline_min_n: int = 30) -> dict:
     """Phase 4: co du bang chung SHADOW de cap quyen VETO that cho agent khong?
 
     Cach lam (tat dinh, khong LLM): doc journal ->
@@ -1542,9 +1543,19 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
         dat status="COUNCIL" de do RIENG quyet dinh cua hoi dong/arbiter) co VETO/ALLOW;
       * ghep moi ban ghi voi lenh CLOSE DAU TIEN cung symbol/direction sau thoi diem
         do (trong `horizon_h` gio);
-      * so sanh avgR nhom VETO vs nhom ALLOW.
-    Cap quyen khi: n_veto >= min_n VA avgR_veto <= avgR_allow - min_gap
-    (VETO phai thuc su te hon ro ret). Neu khong -> KHONG cap quyen (fail-safe).
+      * so sanh avgR nhom VETO vs nhom ALLOW (rule="two_cohort") HOAC vs BASELINE
+        (rule="baseline").
+
+    `rule="two_cohort"` (mac dinh, giu hanh vi cu): cap quyen khi
+        n_veto >= min_n VA n_allow >= min_n_allow VA avgR_veto <= avgR_allow - min_gap.
+
+    `rule="baseline"` (13/10): vetol chi CHAN lenh, nen khong bat buoc phai co nhom
+    ALLOW rieng — so sanh nhom VETO voi **toan bo cac lenh ma tang agent da "nhin thay"**
+    (moi ban ghi AGENT cung `status`, ke ca NO_OPINION). Ly do thuc te: hoi dong co
+    **878 NO_OPINION** (model treo) nhung chi **1 ALLOW** => doi `n_allow>=10` la cho
+    vo dinh; trong khi n_veto=33 da du de tra loi cau hoi "veto co gia tri khong?".
+        cap quyen khi n_veto >= min_n VA baseline_n >= baseline_min_n
+        VA avgR_veto <= avgR_baseline - min_gap.
     """
     try:
         from monitor_report import load_journal
@@ -1558,7 +1569,7 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
     for v in by_key.values():
         v.sort(key=lambda c: float(c.get("ts") or 0))
     used: set = set()
-    cohorts: dict = {"VETO": [], "ALLOW": []}
+    cohorts: dict = {"VETO": [], "ALLOW": [], "BASE": []}
     try:
         with open(journal, encoding="utf-8") as f:
             recs = [json.loads(ln) for ln in f if ln.strip()]
@@ -1568,7 +1579,7 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
         if rec.get("event") != "AGENT" or str(rec.get("status")) != str(status):
             continue
         act = str(rec.get("action") or "").upper()
-        if act not in cohorts:
+        if act not in ("VETO", "ALLOW", "NO_OPINION"):
             continue
         k = (str(rec.get("symbol") or ""), str(rec.get("direction") or "").upper())
         t0 = float(rec.get("ts") or 0)
@@ -1579,28 +1590,43 @@ def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
             tc = float(c.get("ts") or 0)
             if t0 <= tc <= t0 + horizon_h * 3600.0:
                 used.add(cid)
-                cohorts[act].append(_f(c.get("r")))
+                r = _f(c.get("r"))
+                if act in ("VETO", "ALLOW"):
+                    cohorts[act].append(r)
+                cohorts["BASE"].append(r)      # moi ban ghi deu vao baseline
                 break
     def _stat(rs):
         n = len(rs)
         return n, (round(sum(rs) / n, 4) if n else 0.0)
     nv, av = _stat(cohorts["VETO"])
     na, aa = _stat(cohorts["ALLOW"])
+    nb, ab = _stat(cohorts["BASE"])
     gap = round(aa - av, 4)
+    gap_base = round(ab - av, 4)
     # (08/10) PHAI du ca 2 nhom. Truoc day chi doi n_veto >= min_n nen chi can 1 lenh
     # ALLOW la du de "chung minh VETO te hon" -> cap quyen veto tren mau vo nghia
     # (thuc te 08/10: nguon COUNCIL granted=True voi n_allow=1). Doi them
     # n_allow >= min_n_allow de so sanh 2 nhom moi co y nghia thong ke.
-    granted = bool(nv >= min_n and na >= min_n_allow and av <= aa - min_gap)
+    if str(rule).lower() == "baseline":
+        granted = bool(nv >= min_n and nb >= baseline_min_n and av <= ab - min_gap)
+        basis = "baseline (n=%d avgR=%+.3f)" % (nb, ab)
+    else:
+        granted = bool(nv >= min_n and na >= min_n_allow and av <= aa - min_gap)
+        basis = "ALLOW (n=%d avgR=%+.3f)" % (na, aa)
     if granted:
-        reason = ("du bang chung: VETO te hon ALLOW %.3fR (n_veto=%d, n_allow=%d)"
-                  % (gap, nv, na))
+        reason = ("du bang chung: VETO te hon %s %.3fR (n_veto=%d)"
+                  % (basis, (gap_base if str(rule).lower() == "baseline" else gap), nv))
+    elif str(rule).lower() == "baseline":
+        reason = (f"chua du bang chung theo baseline (n_veto={nv}/{min_n}, "
+                  f"baseline_n={nb}/{baseline_min_n}, "
+                  f"gap={gap_base:+.3f}R/{min_gap})")
     else:
         reason = (f"chua du bang chung (n_veto={nv}/{min_n}, n_allow={na}/{min_n_allow},"
                   f" gap={gap:+.3f}R/{min_gap})")
     return {"granted": granted, "reason": reason, "veto_n": nv, "veto_avg_r": av,
             "allow_n": na, "allow_avg_r": aa, "gap": gap, "status": str(status),
-            "min_n": min_n, "min_n_allow": min_n_allow}
+            "min_n": min_n, "min_n_allow": min_n_allow, "rule": str(rule).lower(),
+            "baseline_n": nb, "baseline_avg_r": ab, "gap_vs_baseline": gap_base}
 
 
 # ---- HOI DONG (council): 2 vong + chu toa ------------------------------------
@@ -2606,7 +2632,9 @@ def main(argv: list | None = None) -> int:
                     help="chay thu HOI DONG NHIEU MODEL THAT song song (AGENT_COUNCIL_MODELS) "
                          "va in tung phieu + ket qua quorum")
     ap.add_argument("--authority", action="store_true",
-                    help="Phase 4: xem da du bang chung de cap quyen VETO cho agent chua")
+                    help="bao cao bang chung shadow de cap quyen VETO that cho agent")
+    ap.add_argument("--rule", choices=("two_cohort", "baseline"), default="two_cohort",
+                    help="luat cap quyen: two_cohort (cu) hoac baseline (VETO vs toan bo)")
     ap.add_argument("--auto-apply", action="store_true",
                     help="Phase 3/4: chay --reflect roi tu ap dung block/unblock duoc chap nhan "
                          "(can AGENT_AUTO_APPLY=true)")
@@ -2634,7 +2662,12 @@ def main(argv: list | None = None) -> int:
             auth = agent_authority(args.journal, status=src,
                                    min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
                                    min_n_allow=int(getattr(cfg, "agent_veto_min_allow", 10) or 10),
-                                   min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15))
+                                   min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15),
+                                   rule=args.rule)
+            base = agent_authority(args.journal, status=src,
+                                   min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
+                                   min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15),
+                                   rule="baseline")
             tag = "  (dang dung de cap quyen)" if src == getattr(
                 cfg, "agent_veto_source", "SETUP") else ""
             print(f"[{src}]{tag}")
@@ -2645,6 +2678,13 @@ def main(argv: list | None = None) -> int:
                   % (auth.get("gap") or 0, getattr(cfg, "agent_veto_min_gap", 0.15),
                      getattr(cfg, "agent_veto_min_n", 10),
                      getattr(cfg, "agent_veto_min_allow", 10)))
+            # (13/10) Luat BASELINE: veto chi CHAN lenh nen khong bat buoc phai co nhom
+            # ALLOW rieng. Thuc te hoi dong co 878 NO_OPINION va chi 1 ALLOW -> doi
+            # n_allow>=10 la cho vo dinh. So sanh VETO voi toan bo lenh tang agent thay.
+            print("  [rule=baseline] granted=%s | %s" % (base.get("granted"), base.get("reason")))
+            print("     baseline: n=%s avgR=%+.4f | gap (baseline-VETO) = %+.4f"
+                  % (base.get("baseline_n"), base.get("baseline_avg_r") or 0,
+                     base.get("gap_vs_baseline") or 0))
         print("  AGENTS_VETO_ENABLED trong .env = %s"
               % getattr(cfg, "agents_veto_enabled", False))
         print("  AGENT_VETO_SOURCE = %s (doi sang COUNCIL neu muon hoi dong lam nguon "

@@ -155,6 +155,25 @@ def download(url: str, dest: Path) -> bool:
         return False
 
 
+def chat_probe(port: int = PORT, prompt: str = "Tra loi dung mot tu: OK",
+               timeout: float = 90.0) -> dict:
+    """Goi thu `/v1/chat/completions` -> {'ok', 'text', 'error'} (kiem tra THAT)."""
+    import urllib.request
+    body = json.dumps({"model": "local", "max_tokens": 16,
+                       "messages": [{"role": "user", "content": prompt}]}).encode()
+    req = urllib.request.Request("http://127.0.0.1:%d/v1/chat/completions" % port,
+                                 data=body,
+                                 headers={"Content-Type": "application/json",
+                                          "Authorization": "Bearer llamafile"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            d = json.loads(r.read().decode("utf-8", errors="replace"))
+        txt = ((d.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        return {"ok": bool(txt.strip()), "text": txt.strip()[:200], "error": ""}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "text": "", "error": str(e)[:200]}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="llamafile cho model local cua hoi dong")
     ap.add_argument("--check", action="store_true")
@@ -163,10 +182,16 @@ def main(argv=None) -> int:
     ap.add_argument("--start", action="store_true")
     ap.add_argument("--stop", action="store_true")
     ap.add_argument("--probe", action="store_true")
+    ap.add_argument("--chat", action="store_true",
+                    help="goi thu /v1/chat/completions (kiem tra THAT, khong chi /models)")
     ap.add_argument("--env", action="store_true")
     ap.add_argument("--port", type=int, default=PORT)
     args = ap.parse_args(argv)
     sys.path.insert(0, str(ROOT))
+    try:                      # console Windows mac dinh cp1252 -> khong in duoc tieng Viet
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
 
     if args.env:
         print("# Thay Ollama bang llamafile — dien vao .env:")
@@ -217,6 +242,12 @@ def main(argv=None) -> int:
         print("probe:", json.dumps(r, ensure_ascii=False))
         if r["ok"]:
             print("dien vao .env: AGENT_COUNCIL_LOCAL=%s" % pick_model_id(r["ids"]))
+        return 0 if r["ok"] else 1
+
+    if args.chat:
+        r = chat_probe(args.port)
+        print("chat ok=%s | tra loi: %s | loi: %s"
+              % (r["ok"], r["text"].replace("\n", " ")[:120], r["error"]))
         return 0 if r["ok"] else 1
 
     print("=== LLAMAFILE ===")

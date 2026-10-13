@@ -563,7 +563,9 @@ def agent_authority_cached(cfg, ttl_sec: float = 3600.0) -> dict:
                     min_n=int(getattr(cfg, "agent_veto_min_n", 10) or 10),
                     min_n_allow=int(getattr(cfg, "agent_veto_min_allow", 10) or 10),
                     min_gap=float(getattr(cfg, "agent_veto_min_gap", 0.15) or 0.15),
-                    status=str(getattr(cfg, "agent_veto_source", "SETUP") or "SETUP"))
+                    status=str(getattr(cfg, "agent_veto_source", "SETUP") or "SETUP"),
+                    rule=str(getattr(cfg, "agent_veto_rule", "two_cohort") or "two_cohort"),
+                    baseline_min_n=int(getattr(cfg, "agent_veto_baseline_min_n", 30) or 30))
     except Exception as e:  # noqa: BLE001
         res = {"granted": False, "reason": f"loi tinh authority: {str(e)[:80]}"}
     _AGENT_AUTH["ts"] = now
@@ -580,8 +582,11 @@ def agent_veto(cfg, sym: str, direction: str, alpha: float, strat: str, tech: di
     An toan:
       * CHI chay khi `AGENTS_VETO_ENABLED=true` VA authority da duoc cap (bang chung
         shadow: nhom VETO te hon ALLOW >= min_gap, n >= min_n);
-      * Veto chi duoc PHEP bo qua lenh (giam rui ro) — khong tang size, khong doi
-        SL/TP, khong dong lenh;
+      * (13/10) CHAN CUNG khi bang chung NGUOC DAU: neu `gap_vs_baseline <= 0`
+        (nhom bi veto KHONG te hon baseline) thi KHONG BAO GIO chan — vi luc do veto
+        dang chan nham lenh tot (do that 13/10: COUNCIL veto avgR +0.0717 vs baseline
+        -0.0050 ⇒ veto NGUOC DAU). Veto chi duoc PHEP bo qua lenh (giam rui ro) —
+        khong tang size, khong doi SL/TP, khong dong lenh;
       * loi/timeout/het ngan sach -> KHONG chan (fail-open).
     Tra {"block": bool, "reason": str, "decision": dict|None}.
     """
@@ -595,6 +600,15 @@ def agent_veto(cfg, sym: str, direction: str, alpha: float, strat: str, tech: di
     if not auth.get("granted"):
         return {"block": False, "reason": "chua duoc cap quyen: " + str(auth.get("reason")),
                 "decision": None}
+    # (13/10) Chot chan cuoi: bang chung phai KHONG nguoc dau so voi baseline.
+    # Chi ap khi CO truong nay (tuong thich voi dict cu / test gia khong co truong).
+    _gb = auth.get("gap_vs_baseline")
+    if _gb is not None and float(_gb) <= 0:
+        log.error("AGENT VETO: bang chung NGUOC DAU (veto avgR=%+.4f >= baseline %+.4f) "
+                  "-> KHONG chan lenh nao; xem `python agents.py --authority --rule baseline`",
+                  float(auth.get("veto_avg_r") or 0.0),
+                  float(auth.get("baseline_avg_r") or 0.0))
+        return {"block": False, "reason": "bang chung veto nguoc dau (fail-safe)", "decision": None}
     try:
         from agents import Decision, setup_payload, veto_decision
         pay = setup_payload(sym, direction, alpha, strat, tech,

@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/10/2026 20:11:24 · commit `8b2a35e`
+- **Cập nhật**: 13/10/2026 20:41:25 · commit `ed5f3cd`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `21952` · round `None` · nhịp tim cách đây 28.9s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `111172` · round `5` · nhịp tim cách đây 123.8s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
-- **Kill-switch**: bình thường
+- **Kill-switch**: ⚠️ TRIPPED — daily loss 2.47% >= 2.0%
 
-## Hiệu suất (journal: 711 lệnh đóng, WR 57.1%, E(R) 0.0367, PnL 78.94$)
+## Hiệu suất (journal: 720 lệnh đóng, WR 56.67%, E(R) 0.0323, PnL 50.58$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 482 | 54.15 | 1.119 | 1.049 | 0.0318 | 52.85 |
-| 14 ngày | 665 | 56.84 | 1.173 | 1.074 | 0.0429 | 105.41 |
-| 30 ngày | 711 | 57.1 | 1.144 | 1.05 | 0.0367 | 78.94 |
+| 7 ngày | 491 | 53.56 | 1.095 | 1.022 | 0.0255 | 24.49 |
+| 14 ngày | 674 | 56.38 | 1.153 | 1.053 | 0.0382 | 77.05 |
+| 30 ngày | 720 | 56.67 | 1.126 | 1.031 | 0.0323 | 50.58 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.119 < 1.2; PF($) cua so 7 ngay = 1.049 < 1.1; PF(R) cua so 14 ngay = 1.173 < 1.2; PF($) cua so 14 ngay = 1.074 < 1.1; PF(R) cua so 30 ngay = 1.144 < 1.2; PF($) cua so 30 ngay = 1.050 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.095 < 1.2; PF($) cua so 7 ngay = 1.022 < 1.1; PF(R) cua so 14 ngay = 1.153 < 1.2; PF($) cua so 14 ngay = 1.053 < 1.1; PF(R) cua so 30 ngay = 1.126 < 1.2; PF($) cua so 30 ngay = 1.031 < 1.1; kill-switch dang TRIPPED (daily loss 2.47% >= 2.0%) — chay `python risk.py --reset`
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,18 +39,9 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (8)
+## Vị thế đang quản lý (0)
 
-| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
-|---|---|---|---|---|---|---|---|---|
-| 1000SHIB/USDT:USDT | SHORT | 178571.0 | 0.005179 | 0.005235 | 0.005039 | False | False | 0.161 |
-| AIN/USDT:USDT | SHORT | 7530.0 | 0.04264 | 0.04259736 | 0.04098 | True | True | 0.301 |
-| ALT/USDT:USDT | SHORT | 66666.0 | 0.00808 | 0.00823 | 0.007705 | False | False | 0.067 |
-| APT/USDT:USDT | SHORT | 726.2 | 0.8237 | 0.83747 | 0.789275 | False | False | 0.225 |
-| AR/USDT:USDT | SHORT | 172.0 | 3.873 | 3.93112 | 3.7277 | False | False | 0.0 |
-| ARB/USDT:USDT | SHORT | 4336.5 | 0.1844 | 0.186706 | 0.178635 | False | False | 0.0 |
-| AXS/USDT:USDT | SHORT | 720.0 | 1.133 | 1.146886 | 1.098285 | False | False | 0.216 |
-| BANK/USDT:USDT | SHORT | 15243.5 | 0.02744 | 0.02741256 | 0.02662 | True | True | 0.366 |
+_không có vị thế nào trong `managed_state.json`_
 
 ---
 

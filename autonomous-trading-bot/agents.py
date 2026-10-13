@@ -1532,6 +1532,88 @@ def review_payload(symbol: str, direction: str, r_multiple: float, won: bool,
     return p
 
 
+def council_health(journal_path: str = JOURNAL_PATH, *, hours: float = 48.0,
+                   now: float | None = None, min_n: int = 8,
+                   bad_rate: float = 0.6) -> dict:
+    """Suc khoe hoi dong: moi model dong gop bao nhieu PHIEU THAT vs treo/NO_OPINION.
+
+    Vi sao (13/10): do that 48h -> 328 ban ghi AGENT, **0 VETO / 0 ALLOW**: hoi dong
+    im lang hoan toan. Nguyen nhan: `cline-pass/mimo-v2.6-flash` treo 146/146 lan
+    (77% tong so treo), con lai la Copilot het quota thang (da bi chan theo ngay).
+    Khong co cong cu nay thi "hoi dong khong co y kien" la vo hinh.
+
+    Tra {records, window_h, per_model, dead, live, skip_lines} — thuan tuy, test duoc.
+      dead: model co n >= min_n VA ty le treo/NO_OPINION >= bad_rate -> nen bo
+      skip_lines: dong `.env` de bo chung (CLINE_SKIP_MODELS / LOCAL_SKIP_MODELS...)
+    """
+    import time as _t
+    t_now = float(now if now is not None else _t.time())
+    win = max(1.0, float(hours)) * 3600.0
+    per: dict = {}
+    recs = 0
+    try:
+        with open(journal_path, encoding="utf-8") as f:
+            for ln in f:
+                if '"event": "AGENT"' not in ln and '"event":"AGENT"' not in ln:
+                    continue
+                try:
+                    d = json.loads(ln)
+                except (TypeError, ValueError):
+                    continue
+                if d.get("event") != "AGENT":
+                    continue
+                try:
+                    age = t_now - float(d.get("ts") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if age > win or age < 0:
+                    continue
+                recs += 1
+                # Nhom theo `agent` (nguoi bo phieu that) — `model` co the la ten mac
+                # dinh cua provider (do that 13/10: ban ghi review co model=claude-sonnet-5.5
+                # nhung agent=review_agent -> neu nhom theo `model` thi bao sai).
+                m = str(d.get("agent") or d.get("model") or "?")
+                b = per.setdefault(m, {"n": 0, "abstain": 0, "veto": 0, "allow": 0,
+                                       "notes": {}, "status": {}})
+                b["n"] += 1
+                st = str(d.get("status") or "?")
+                b["status"][st] = int(b["status"].get(st, 0)) + 1
+                act = str(d.get("action") or "").upper()
+                if d.get("abstained") or act == "NO_OPINION":
+                    b["abstain"] += 1
+                    note = str(d.get("note") or "")[:60]
+                    if note:
+                        b["notes"][note] = int(b["notes"].get(note, 0)) + 1
+                elif act == "VETO":
+                    b["veto"] += 1
+                elif act == "ALLOW":
+                    b["allow"] += 1
+    except OSError:
+        return {"records": 0, "window_h": hours, "per_model": {}, "dead": [],
+                "live": [], "skip_lines": []}
+    dead, live = [], []
+    for m, b in per.items():
+        b["rate"] = round(b["abstain"] / max(1, b["n"]), 3)
+        b["top_note"] = (max(b["notes"].items(), key=lambda kv: kv[1])[0]
+                         if b["notes"] else "")
+        if b["n"] >= min_n and b["rate"] >= bad_rate:
+            dead.append(m)
+        elif b["veto"] or b["allow"]:
+            live.append(m)
+    def _skip_line(models: list) -> list:
+        cline = [m for m in models if m.startswith("cline-pass/") or "/" not in m]
+        local = [m for m in models if m.startswith("local/")]
+        out = []
+        if cline:
+            out.append("CLINE_SKIP_MODELS=%s" % ",".join(cline))
+        if local:
+            out.append("LOCAL_SKIP_MODELS=%s" % ",".join(local))
+        return out
+    return {"records": recs, "window_h": hours, "per_model": per,
+            "dead": sorted(dead), "live": sorted(live),
+            "skip_lines": _skip_line(sorted(dead))}
+
+
 def agent_authority(journal: str = JOURNAL_PATH, *, min_n: int = 10,
                     min_n_allow: int = 10, min_gap: float = 0.15, horizon_h: float = 48.0,
                     status: str = "SETUP", rule: str = "two_cohort",
@@ -2635,6 +2717,9 @@ def main(argv: list | None = None) -> int:
                     help="bao cao bang chung shadow de cap quyen VETO that cho agent")
     ap.add_argument("--rule", choices=("two_cohort", "baseline"), default="two_cohort",
                     help="luat cap quyen: two_cohort (cu) hoac baseline (VETO vs toan bo)")
+    ap.add_argument("--council-health", action="store_true",
+                    help="suc khoe hoi dong: model nao dong gop phieu that, model nao treo")
+    ap.add_argument("--hours", type=float, default=48.0, help="cua so gio cho --council-health")
     ap.add_argument("--auto-apply", action="store_true",
                     help="Phase 3/4: chay --reflect roi tu ap dung block/unblock duoc chap nhan "
                          "(can AGENT_AUTO_APPLY=true)")
@@ -2702,6 +2787,33 @@ def main(argv: list | None = None) -> int:
         else:
             print("  -> Veto DANG BAT: lenh co the bi bo qua khi agent VETO (conf >= %s)."
                   % getattr(cfg, "agent_veto_min_conf", 0.7))
+        return 0
+
+    if args.council_health:
+        h = council_health(args.journal, hours=args.hours)
+        print("=== SUC KHOE HOI DONG | %.0f gio | %d ban ghi ===" % (h["window_h"], h["records"]))
+        if not h["records"]:
+            print("  (khong co ban ghi AGENT trong cua so nay)")
+            return 0
+        rows = sorted(h["per_model"].items(), key=lambda kv: -kv[1]["n"])
+        print("  %-32s %5s %8s %5s %6s %6s" % ("MODEL", "n", "treo", "VETO", "ALLOW", "ty le"))
+        for m, b in rows[:20]:
+            print("  %-32s %5d %8d %5d %6d %5.0f%%%s"
+                  % (m[:32], b["n"], b["abstain"], b["veto"], b["allow"],
+                     100 * b["rate"], "   <-- NEN BO" if m in h["dead"] else ""))
+        n_veto = sum(b["veto"] for b in h["per_model"].values())
+        n_allow = sum(b["allow"] for b in h["per_model"].values())
+        print("  TONG: %d VETO / %d ALLOW / %d treo" %
+              (n_veto, n_allow, sum(b["abstain"] for b in h["per_model"].values())))
+        if not (n_veto or n_allow):
+            print("  !! HOI DONG IM LANG: khong co phieu that nao -> bang chung cap quyen")
+            print("     veto se KHONG bao gio tang. Xu ly: bo model treo ben duoi.")
+        for m in h["dead"]:
+            note = (h["per_model"].get(m) or {}).get("top_note") or ""
+            print("  - nen bo %s (treo %.0f%%): %s"
+                  % (m, 100 * (h["per_model"][m]["rate"]), note))
+        for ln in h["skip_lines"]:
+            print("    -> dien vao .env:  %s" % ln)
         return 0
 
     if args.council_test:

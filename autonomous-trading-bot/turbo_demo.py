@@ -646,6 +646,20 @@ def agent_vote_review(cfg, sym: str, direction: str, r_multiple: float, won: boo
     layer = agent_layer(cfg)
     if layer is None:
         return
+    # (13/10) Provider cua review dang BI CHAN (vd Copilot het quota thang) -> bo qua
+    # NGAY, khong goi. Do that: 48h co 134 ban ghi review 100% NO_OPINION voi ly do
+    # "agent dang TAT: ... copilot CLI ... quota" = ton 1 cuoc goi + rac journal moi
+    # lan dong lenh, khong dem lai gi.
+    try:
+        from agents import _provider_blocked as _blocked
+        prov = str(getattr(getattr(layer, "provider", None), "name", "") or "")
+        if prov:
+            why = _blocked(prov, cfg)
+            if why:
+                log.info("AGENTS review BO QUA: provider '%s' dang bi chan (%s)", prov, why)
+                return
+    except Exception:  # noqa: BLE001
+        pass
     try:
         pay = review_payload(sym, direction, r_multiple, won, reason, strat, extra)
     except Exception as e:  # noqa: BLE001

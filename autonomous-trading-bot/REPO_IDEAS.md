@@ -272,7 +272,8 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 18. ~~**P1** Thay Ollama bằng llamafile~~ — **đã làm 13/10**: `tools/llamafile_setup.py` (check/download/start/probe/env); cần chạy `--download` để có file thật.
 19. ~~**P1** Kỷ luật autoharness cho learner + bộ nhớ~~ — **đã làm 13/10**: `lessons.py` (hợp nhất theo tổ hợp, đếm `hits` = use ≠ view, trần + trục xuất vào `logs/lessons_archive.jsonl`, không sửa phần `<!-- HUMAN -->`).
 20. ~~**P1** `logs/metrics.prom`~~ — **đã làm 13/10**: `python tools/ops.py --prom` (4 test).
-21. **P1** Bật veto thật cho hội đồng: **13/10 đã đo dứt điểm bằng luật `baseline` ⇒ KHÔNG nên bật** (SETUP gap +0.012 = vô dụng; COUNCIL gap −0.077 = ngược dấu). Muốn có veto dùng được thì phải **sửa hội đồng trước** (giảm 878 NO_OPINION, tăng chất lượng phiếu), rồi đo lại — không phải chờ thêm mẫu ALLOW.
-22. ~~**P2** Nâng/hạ `LESSONS_MAX_AVG_R`~~ — **đã có công cụ đo**: `python tools/learn_review.py --impact` (TESTNET tiết kiệm 48.68 / bỏ lỡ 0; LIVE 62.46 / 0). Xem lại sau ~1 tuần để quyết siết về −0.10.
-23. **P2** Model local: llamafile đã cài & kiểm chứng (`tools/llamafile_setup.py`); muốn **bỏ hẳn Ollama** thì tải thêm GGUF 3B (Q4) chạy bằng `llamafile.exe -m model.gguf` rồi đổi 3 dòng `.env` (giữ chất lượng 3B, bỏ daemon).
+21. ~~**P1** Bật veto thật cho hội đồng~~ — **13/10: đo dứt điểm ⇒ KHÔNG nên bật** (SETUP gap +0.012 = vô dụng; COUNCIL gap −0.077 = ngược dấu). Thay vào đó đã **sửa sức khoẻ hội đồng**: bỏ model treo, bỏ review khi provider chết, nâng hạn mức gọi. Việc còn lại: theo dõi `--council-health` cho tới khi có VETO/ALLOW thật rồi đo lại.
+22. ~~**P2** Nâng/hạ `LESSONS_MAX_AVG_R`~~ — **đã quyết bằng `--sweep`**: −0.05 (tiết kiệm 82.33/62.46, bỏ lỡ 0) cho cả 2 instance.
+23. ~~**P2** Bỏ hẳn Ollama~~ — **đã làm 13/10**: llamafile thin + GGUF 3B Q4 đang chạy ở `127.0.0.1:8080`, cả 2 instance dùng nó; đổi qua lại bằng `tools/switch_local_model.py`.
+24. **P1** Chạy llamafile **tự động khi khởi động** (hiện phải `--start` tay): thêm vào `run_forever.py` (nếu endpoint chết thì start) hoặc Task Scheduler — để sau reboot hội đồng vẫn có phiếu local.
 

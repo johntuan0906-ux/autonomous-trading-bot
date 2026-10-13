@@ -34,17 +34,50 @@ WIN_LIMIT_GB = 4.0
 
 
 def find_binary(models_dir: Path = MODELS) -> Path | None:
-    """File llamafile da tai (bo qua file `llamafile.exe` tran = binary goc)."""
+    """File chay duoc: uu tien llamafile TU CHUA (`.llamafile*`), roi den binary thin
+    (`llamafile-0.10.6-thin.exe` — chay voi GGUF ngoai qua `-m`)."""
     try:
         cands = sorted(list(models_dir.glob("*.llamafile*")) +
                        list(models_dir.glob("*.exe")))
     except OSError:
         return None
-    for p in cands:
-        if p.name.lower().startswith("llamafile"):
-            continue
-        return p
+    for p in cands:                      # tu chua (co san trong khoi model)
+        if "llamafile-" not in p.name.lower():
+            return p
+    for p in cands:                      # binary thin
+        if "llamafile-" in p.name.lower() and "thin" in p.name.lower():
+            return p
     return None
+
+
+def find_gguf(models_dir: Path = MODELS) -> Path | None:
+    """File trong so GGUF di kem (dung voi binary thin)."""
+    try:
+        for p in sorted(models_dir.glob("*.gguf")):
+            return p
+    except OSError:
+        return None
+    return None
+
+
+def pick_runner(models_dir: Path = MODELS) -> tuple:
+    """(binary, gguf) nen chay: uu tien **thin + GGUF** khi co GGUF trong `models/`.
+
+    (13/10) Loi that: `find_binary` uu tien file tu chua -> no chon nham llamafile 0.8B
+    trong khi da co GGUF 3B + binary thin => chay sai model. Nay: co GGUF thi dung thin.
+    """
+    g = find_gguf(models_dir)
+    try:
+        exes = sorted(models_dir.glob("*.exe"))
+    except OSError:
+        exes = []
+    thin = next((p for p in exes if "thin" in p.name.lower()), None)
+    if g is not None and thin is not None:
+        return thin, g
+    for p in sorted(list(models_dir.glob("*.llamafile*")) + exes):
+        if "llamafile-" not in p.name.lower():
+            return p, None
+    return (thin, None) if thin is not None else (None, None)
 
 
 def env_lines(port: int = PORT, model: str = "local") -> list:
@@ -86,19 +119,55 @@ def size_gb(path: Path) -> float:
 
 
 def check(models_dir: Path = MODELS) -> dict:
-    """Trang thai cai dat: co file? dung luong? vuot gioi han Windows?"""
-    b = find_binary(models_dir)
+    """Trang thai cai dat: co file? dung luong? vuot gioi han Windows? co GGUF khong?"""
+    b, g = pick_runner(models_dir)
     out = {"dir": str(models_dir), "exists": b is not None,
            "file": str(b) if b else "", "size_gb": size_gb(b) if b else 0.0,
+           "gguf": str(g) if g else "", "gguf_gb": size_gb(g) if g else 0.0,
            "windows_ok": True, "ok": False}
     if b:
+        # Gioi han 4 GB cua Windows: binary thin luon nho; llamafile tu chua co the vuot
         out["windows_ok"] = out["size_gb"] < WIN_LIMIT_GB
-        out["ok"] = out["windows_ok"]
+        out["ok"] = bool(out["windows_ok"] and (g is not None or "thin" not in b.name.lower()))
     return out
 
 
-def start(binary: Path, port: int = PORT, log_path: Path | None = None) -> int:
-    """Chay llamafile o cua so an. Tra PID (0 = loi)."""
+def stop(models_dir: Path = MODELS) -> list:
+    """Tat MOI server llamafile cua repo (theo PID da luu + ten file trong models/).
+
+    (13/10) Loi that: `taskkill /IM llamafile.exe` KHONG khop vi file ten
+    `Qwen3.5-0.8B-Q8_0.llamafile.exe` / `llamafile-0.10.6-thin.exe` -> server cu van
+    giu port 8080, server moi khong khoi dong duoc (port busy) ma KHONG ai bao.
+    Tra danh sach ket qua tung buoc.
+    """
+    import subprocess
+    out: list = []
+    pidf = models_dir / "llamafile.pid"
+    try:
+        pid = int(pidf.read_text(encoding="utf-8").strip())
+        r = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                           capture_output=True, text=True, timeout=30)
+        out.append("pid %s -> rc=%s" % (pid, r.returncode))
+        pidf.unlink(missing_ok=True)
+    except Exception:  # noqa: BLE001
+        out.append("khong co file pid (bo qua)")
+    try:
+        names = sorted({p.name for p in models_dir.glob("*.exe")})
+    except OSError:
+        names = []
+    for n in names:
+        try:
+            r = subprocess.run(["taskkill", "/F", "/IM", n],
+                               capture_output=True, text=True, timeout=30)
+            out.append("%s -> rc=%s" % (n, r.returncode))
+        except Exception as e:  # noqa: BLE001
+            out.append("%s -> loi %s" % (n, str(e)[:60]))
+    return out
+
+
+def start(binary: Path, port: int = PORT, log_path: Path | None = None,
+          gguf: Path | None = None) -> int:
+    """Chay llamafile o cua so an (kem `-m <gguf>` khi dung binary thin). Tra PID."""
     import subprocess
     try:
         import winproc
@@ -106,6 +175,12 @@ def start(binary: Path, port: int = PORT, log_path: Path | None = None) -> int:
     except Exception:  # noqa: BLE001
         kw = {}
     args = [str(binary), "-ngl", "0", "--host", "127.0.0.1", "--port", str(port)]
+    if gguf is not None:
+        # (13/10) PHAI dung `--model` (khong phai `-m`): binary THIN da co `-m` mac dinh
+        # ben trong -> `-m` lan 2 gay "specified multiple times" va no nap nham model
+        # mmproj cua chinh no ("mismatch between text model n_embd=3072 and mmproj=1024")
+        # => server chet ma khong ro ly do. `--model` ghi de dung file GGUF chi dinh.
+        args += ["--model", str(gguf)]
     try:
         if log_path:
             f = open(log_path, "ab")
@@ -113,6 +188,10 @@ def start(binary: Path, port: int = PORT, log_path: Path | None = None) -> int:
                                  stderr=subprocess.STDOUT, **kw)
         else:
             p = subprocess.Popen(args, cwd=str(binary.parent), **kw)
+        try:                              # luu PID de `--stop` tat DUNG tien trinh nay
+            (binary.parent / "llamafile.pid").write_text(str(p.pid), encoding="utf-8")
+        except OSError:
+            pass
         return int(p.pid)
     except Exception as e:  # noqa: BLE001
         print("[LOI] khong chay duoc %s: %s" % (binary, str(e)[:150]))
@@ -207,7 +286,7 @@ def main(argv=None) -> int:
             print("tai %s\n  -> %s" % (args.url, dest))
             if not download(args.url, dest):
                 return 1
-        if os.name == "nt" and dest.suffix != ".exe":
+        if os.name == "nt" and dest.suffix != ".exe" and dest.suffix != ".gguf":
             newp = dest.with_suffix(dest.suffix + ".exe")
             if not newp.exists():
                 dest.rename(newp)
@@ -215,13 +294,8 @@ def main(argv=None) -> int:
         return 0
 
     if args.stop:
-        import subprocess
-        try:
-            out = subprocess.run(["taskkill", "/F", "/IM", "llamafile.exe"],
-                                 capture_output=True, text=True, timeout=30).stdout
-            print(out.strip() or "khong co tien trinh llamafile")
-        except Exception as e:  # noqa: BLE001
-            print("[LOI] %s" % str(e)[:120])
+        for ln in stop():
+            print("  %s" % ln)
         return 0
 
     st = check()
@@ -233,7 +307,8 @@ def main(argv=None) -> int:
             print("[LOI] file %.2f GB >= %.0f GB: Windows KHONG chay duoc"
                   % (st["size_gb"], WIN_LIMIT_GB))
             return 1
-        pid = start(Path(st["file"]), args.port, MODELS / "llamafile.log")
+        pid = start(Path(st["file"]), args.port, MODELS / "llamafile.log",
+                    Path(st["gguf"]) if st["gguf"] else None)
         print("da chay PID=%s (log: models/llamafile.log)" % pid)
         return 0
 
@@ -255,7 +330,11 @@ def main(argv=None) -> int:
     if not st["exists"]:
         print("  trang thai: CHUA co -> python tools/llamafile_setup.py --download")
     else:
-        print("  file      : %s (%.2f GB)" % (st["file"], st["size_gb"]))
+        print("  binary    : %s (%.2f GB)" % (st["file"], st["size_gb"]))
+        if st["gguf"]:
+            print("  trong so  : %s (%.2f GB)" % (st["gguf"], st["gguf_gb"]))
+        elif "thin" in Path(st["file"]).name.lower():
+            print("  trong so  : CHUA co GGUF -> binary thin can `-m <file.gguf>`")
         print("  Windows   : %s" % ("OK (< 4 GB)" if st["windows_ok"]
                                      else "KHONG chay duoc (>= 4 GB)"))
     p = probe(args.port)

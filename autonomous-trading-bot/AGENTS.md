@@ -20,6 +20,7 @@ Muse Code reads this file as project rules when it runs in this directory.
 - **Lệnh ĐIỀU KIỆN (SL/TP) nằm ở Algo Order API**, KHÔNG ở `fetch_open_orders()`. Muốn biết tài khoản có bao nhiêu lệnh chờ: `python tools/orders_audit.py --target live` (kỳ vọng **= 2 × số vị thế mở**; nhiều hơn ⇒ `--dedupe`). Đừng bao giờ kết luận "không có lệnh chờ" từ `fetch_open_orders`.
 - **Trước/sau mỗi thay đổi quan trọng**: chạy `python tools/harness_audit.py --both` (chấm điểm setup: code-parity, test, kill-switch, nhịp tim, journal, trần rủi ro, whitelist, veto, độ phủ bảo vệ). Có mục FAIL ⇒ sửa trước khi làm việc khác.
 - **Rút kinh nghiệm (lessons)**: bài học lấy từ journal, ngưỡng chặn nằm trong `.env` (`LESSONS_MIN_N`, `LESSONS_MAX_AVG_R`, `LESSONS_ENFORCE`). Sinh lại: `python tools/learn_review.py --target live`. **Không bao giờ sửa phần giữa `<!-- HUMAN -->` trong `LESSONS.md`** (đó là ghi chú của người vận hành).
+- **Trước khi tin hội đồng AI**: `python agents.py --council-health --hours 48` — nếu **0 VETO / 0 ALLOW** thì hội đồng đang im lặng (model treo), mọi kết luận về veto là vô nghĩa. Đo quyền veto bằng `--authority --rule baseline`.
 - Hội đồng AI (5 provider): xem `README.md` mục 10–12.
 
 ## Git & GitHub (đọc kỹ trước khi động vào git)

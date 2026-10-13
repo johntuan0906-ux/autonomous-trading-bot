@@ -269,13 +269,21 @@ class TestImpact(unittest.TestCase):
         self.assertEqual(imp["net"], -30.0, "net am = tranh duoc lo")
         self.assertEqual(len(imp["blocked"]), 1)
 
-    def test_phat_hien_bo_lo_lenh_thang_sat_nguong(self):
-        """To hop avgR -0.15 (chua bi chan) nhung PnL DUONG -> dang bo lo."""
-        imp = LES.impact({"y": self._b(25, -0.15, +40.0)}, min_n=20, max_avg_r=-0.20,
+    def test_phat_hien_bo_lo_lenh_thang_BI_CHAN(self):
+        """Tổ hợp avgR -0.30 (BỊ chặn ở ngưỡng -0.20) nhưng PnL DƯƠNG = mất thật sự."""
+        imp = LES.impact({"y": self._b(25, -0.30, +40.0)}, min_n=20, max_avg_r=-0.20,
                          near=0.10)
-        self.assertEqual(len(imp["missed"]), 1)
+        self.assertEqual(len(imp["missed"]), 1, "bi chan ma co lai -> tinh vao bo lo")
         self.assertEqual(imp["missed_pnl"], 40.0)
         self.assertEqual(imp["saved_pnl"], 0.0)
+
+    def test_lenh_thang_sat_nguong_nhung_CHUA_bi_chan(self):
+        """avgR -0.15 > ngưỡng -0.20 => CHƯA bị chặn -> chỉ nằm ở danh sách theo dõi."""
+        imp = LES.impact({"z": self._b(25, -0.15, +40.0)}, min_n=20, max_avg_r=-0.20,
+                         near=0.10)
+        self.assertEqual(imp["missed"], [], "chua bi chan thi khong duoc tinh la bo lo")
+        self.assertEqual(len(imp["near"]), 1)
+        self.assertEqual(imp["missed_pnl"], 0.0)
 
     def test_it_mau_thi_bo_qua(self):
         imp = LES.impact({"z": self._b(5, -0.90, -99.0)}, min_n=20, max_avg_r=-0.20)
@@ -286,8 +294,10 @@ class TestImpact(unittest.TestCase):
         buckets = {"a": self._b(25, -0.50, -50.0), "b": self._b(25, -0.10, +20.0)}
         imp = LES.impact(buckets, min_n=20, max_avg_r=-0.20, near=0.15)
         self.assertEqual(imp["saved_pnl"], -50.0)
-        self.assertEqual(imp["missed_pnl"], 20.0)
-        self.assertEqual(imp["net"], -70.0, "net = tiet kiem - bo lo")
+        self.assertEqual(imp["missed_pnl"], 0.0,
+                         "b (avgR -0.10) KHONG bi chan o nguong -0.20 -> khong phai mat lai")
+        self.assertEqual(imp["net"], -50.0, "net = tiet kiem - bo lo (am = tranh duoc lo)")
+        self.assertEqual(len(imp["near"]), 1, "b nam trong danh sach theo doi")
 
 
 if __name__ == "__main__":

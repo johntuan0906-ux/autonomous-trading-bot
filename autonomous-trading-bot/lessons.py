@@ -189,28 +189,61 @@ def impact(buckets: dict, *, min_n: int = 20, max_avg_r: float = -0.20,
     """Cong nay CHAN gi (tiet kiem) va BO LO gi (lenh thang bi chan nham)?
 
     Ham thuan -> test duoc. Tra:
-      blocked : [{key, n, avg_r, pnl}]  — bi chan; pnl AM = TIET KIEM duoc
-      missed  : [{key, n, avg_r, pnl}]  — SÁT nguong (avg_r trong [max, max+near])
-                                          va PnL DUONG = dang bi bo lo
-      saved_pnl, missed_pnl, net
-    Vi sao: "chỉ nên siết lessons sau khi biết nó tiết kiệm hay làm mất bao nhiêu".
+      blocked : [{key, n, avg_r, pnl}]  — bi chan (avg_r <= max_avg_r); pnl AM = TIET KIEM
+      missed  : tap con cua `blocked` co pnl DUONG = bi chan NHAM (mat lai that su)
+      near    : avg_r trong (max_avg_r, max_avg_r+near] va pnl DUONG = SAP bi chan, theo doi
+      saved_pnl, missed_pnl, net (net am = tranh duoc lo)
+
+    ⚠️ (13/10) Sua loi dinh nghia: ban dau `missed` tinh ca to hop KHONG bi chan
+    (avg_r > max_avg_r) => con so "bo lo" phong dai, khuyen nghi nguong SAI.
+    Chi to hop BI CHAN ma co lai moi la mat mat that su.
     """
-    blocked, missed = [], []
+    blocked, missed, near_list = [], [], []
     for k, b in (buckets or {}).items():
         n = int(b.get("n") or 0)
         if n < int(min_n):
             continue
         avg = float(b.get("avg_r") or 0.0)
-        row = {"key": k, "n": n, "avg_r": avg, "pnl": float(b.get("pnl") or 0.0)}
+        pnl = float(b.get("pnl") or 0.0)
+        row = {"key": k, "n": n, "avg_r": avg, "pnl": pnl}
         if avg <= float(max_avg_r):
             blocked.append(row)
-        elif avg <= float(max_avg_r) + float(near) and row["pnl"] > 0:
-            missed.append(row)
+            if pnl > 0:
+                missed.append(row)              # bi chan nhung co lai = mat that su
+        elif avg <= float(max_avg_r) + float(near) and pnl > 0:
+            near_list.append(row)               # sap bi chan -> theo doi
     saved = round(sum(r["pnl"] for r in blocked if r["pnl"] < 0), 2)
     lost = round(sum(r["pnl"] for r in missed), 2)
     return {"blocked": sorted(blocked, key=lambda x: x["avg_r"]),
             "missed": sorted(missed, key=lambda x: -x["pnl"]),
+            "near": sorted(near_list, key=lambda x: -x["pnl"]),
             "saved_pnl": saved, "missed_pnl": lost, "net": round(saved - lost, 2)}
+
+
+def sweep(buckets: dict, *, thresholds=(-0.05, -0.10, -0.15, -0.20, -0.25, -0.30),
+          min_n: int = 20, near: float = 0.10) -> list:
+    """Quet nguong `max_avg_r` -> moi nguong tiet kiem/bo lo bao nhieu (ham thuan).
+
+    Vi sao (13/10): "siết lessons sau ~1 tuần" can so lieu de quyet, khong phai cam tinh.
+    Moi dong: {max_avg_r, n_blocked, saved_pnl, missed_pnl, net, keys}
+    """
+    out = []
+    for t in thresholds:
+        imp = impact(buckets, min_n=min_n, max_avg_r=float(t), near=near)
+        out.append({"max_avg_r": float(t),
+                    "n_blocked": len(imp["blocked"]),
+                    "saved_pnl": imp["saved_pnl"],
+                    "missed_pnl": imp["missed_pnl"],
+                    "net": imp["net"],
+                    "keys": [r["key"] for r in imp["blocked"]]})
+    return out
+
+
+def best_threshold(rows: list) -> dict:
+    """Nguong co NET tot nhat (am nhat = tranh lo nhieu nhat). Tra {} neu rong."""
+    if not rows:
+        return {}
+    return min(rows, key=lambda r: float(r.get("net") or 0.0))
 
 
 def build(journal_path, *, keys=KEYS_DEFAULT, cap: int = 60,

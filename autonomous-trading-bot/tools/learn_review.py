@@ -35,6 +35,8 @@ def main(argv=None) -> int:
     ap.add_argument("--dry", action="store_true", help="chi in, khong ghi file")
     ap.add_argument("--impact", action="store_true",
                     help="bao cao TAC DONG: cong tiet kiem bao nhieu / bo lo bao nhieu")
+    ap.add_argument("--sweep", action="store_true",
+                    help="quet nhieu nguong avgR -> chon nguong tot nhat bang so lieu")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
@@ -62,6 +64,21 @@ def main(argv=None) -> int:
         print("  to hop DANG CHAN       : %d" % len(les["gates"]))
         for s in les["notes"]:
             print("  %s" % s)
+        if args.sweep:
+            rows = LES.sweep(les["buckets"], min_n=min_n)
+            best = LES.best_threshold(rows)
+            print("  --- QUET NGUONG avgR (n>=%d) ---" % min_n)
+            print("  %-9s %8s %12s %12s %10s" % ("nguong", "so chan", "tiet kiem", "bo lo", "NET"))
+            for r in rows:
+                mark = "  <-- tot nhat" if best and r["max_avg_r"] == best["max_avg_r"] else ""
+                print("  %-9.2f %8d %12.2f %12.2f %10.2f%s"
+                      % (r["max_avg_r"], r["n_blocked"], r["saved_pnl"],
+                         r["missed_pnl"], r["net"], mark))
+            if best:
+                print("  => nen dat LESSONS_MAX_AVG_R=%.2f (NET %.2f USDT, chan %d to hop)"
+                      % (best["max_avg_r"], best["net"], best["n_blocked"]))
+                for k in best["keys"]:
+                    print("     - %s" % k)
         if args.impact:
             imp = LES.impact(les["buckets"], min_n=min_n, max_avg_r=max_avg_r)
             print("  --- TAC DONG CUA CONG (uoc tinh tu journal) ---")
@@ -72,7 +89,10 @@ def main(argv=None) -> int:
                 print("    [CHAN ] %s n=%d avgR=%+.3f PnL=%+.2f"
                       % (r["key"], r["n"], r["avg_r"], r["pnl"]))
             for r in imp["missed"]:
-                print("    [SAT-NGUONG, dang bo lo] %s n=%d avgR=%+.3f PnL=%+.2f"
+                print("    [BI CHAN NHAM, mat lai] %s n=%d avgR=%+.3f PnL=%+.2f"
+                      % (r["key"], r["n"], r["avg_r"], r["pnl"]))
+            for r in imp.get("near") or []:
+                print("    [SAP bi chan, theo doi] %s n=%d avgR=%+.3f PnL=%+.2f"
                       % (r["key"], r["n"], r["avg_r"], r["pnl"]))
 
     if not args.dry:

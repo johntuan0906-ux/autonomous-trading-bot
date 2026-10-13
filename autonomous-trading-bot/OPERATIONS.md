@@ -180,6 +180,9 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Chấm điểm + kiểm tra lệnh bảo vệ thật | `python tools/harness_audit.py --target live --with-exchange` |
 | **Rút kinh nghiệm từ journal** | `python tools/learn_review.py [--target live] [--impact]` |
 | Đo quyền veto (luật VETO-vs-baseline) | `python agents.py --authority --rule baseline` |
+| **Sức khoẻ hội đồng** (model nào treo) | `python agents.py --council-health --hours 48` |
+| Quét ngưỡng lessons | `python tools/learn_review.py --target live --sweep` |
+| Đổi model local (llamafile ↔ ollama) | `python tools/switch_local_model.py .env llamafile` |
 | Metrics cho Prometheus | `python tools/ops.py --prom` → `logs/metrics.prom` |
 | Model local không cần daemon | `python tools/llamafile_setup.py --check` |
 | Test toàn bộ | `python -m unittest discover -s tests` (**690 test**) |

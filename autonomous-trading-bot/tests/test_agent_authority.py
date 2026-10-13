@@ -157,5 +157,70 @@ class TestChotChanNguocDauTrongBot(unittest.TestCase):
         self.assertNotIn("nguoc dau", out["reason"])
 
 
+class TestCouncilHealth(unittest.TestCase):
+    """(13/10) Do that 48h: 328 ban ghi AGENT, **0 VETO/0 ALLOW** — hoi dong im lang.
+
+    Nguyen nhan: `cline-pass/mimo-v2.6-flash` treo 144/144 (45% tong so treo) + cac
+    ban ghi review dung provider Copilot het quota. Cong cu nay lam viec do LAP LAI duoc.
+    """
+
+    NOW = 1_800_000_000.0
+
+    def _j(self, rows) -> Path:
+        d = tempfile.mkdtemp()
+        p = Path(d) / "journal.jsonl"
+        p.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        return p
+
+    def _rec(self, agent, action, *, abstained=False, ts=None, status="COUNCIL",
+             model=None, note=""):
+        return {"event": "AGENT", "agent": agent, "model": model or agent,
+                "action": action, "abstained": abstained, "status": status,
+                "note": note, "ts": self.NOW - 3600 if ts is None else ts}
+
+    def test_phat_hien_model_treo_va_de_xuat_bo(self):
+        rows = ([self._rec("cline-pass/dead", "NO_OPINION", abstained=True,
+                           note="treo/loi/het gio") for _ in range(10)]
+                + [self._rec("cline-pass/good", "VETO") for _ in range(3)])
+        h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW)
+        self.assertEqual(h["records"], 13)
+        self.assertIn("cline-pass/dead", h["dead"])
+        self.assertIn("cline-pass/good", h["live"])
+        self.assertNotIn("cline-pass/good", h["dead"])
+        self.assertTrue(any("CLINE_SKIP_MODELS" in ln and "cline-pass/dead" in ln
+                            for ln in h["skip_lines"]))
+
+    def test_bo_qua_ban_ghi_ngoai_cua_so(self):
+        rows = [self._rec("old", "NO_OPINION", abstained=True, ts=self.NOW - 100 * 3600)
+                for _ in range(10)]
+        h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW)
+        self.assertEqual(h["records"], 0)
+        self.assertEqual(h["dead"], [])
+
+    def test_nhom_theo_agent_khong_theo_model(self):
+        """Ban ghi review co model=<model mac dinh cua provider> nhung agent=review_agent."""
+        rows = [self._rec("review_agent", "NO_OPINION", abstained=True,
+                          model="claude-sonnet-5.5", status="CLOSED")
+                for _ in range(10)]
+        h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW)
+        self.assertIn("review_agent", h["per_model"])
+        self.assertNotIn("claude-sonnet-5.5", h["per_model"])
+
+    def test_model_local_vao_dong_LOCAL_SKIP(self):
+        rows = [self._rec("local/llama3.2:3b", "NO_OPINION", abstained=True)
+                for _ in range(9)]
+        h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW)
+        self.assertTrue(any(ln.startswith("LOCAL_SKIP_MODELS=") for ln in h["skip_lines"]))
+
+    def test_chi_bao_treo_khi_du_mau(self):
+        rows = [self._rec("moi-xuat-hien", "NO_OPINION", abstained=True) for _ in range(2)]
+        h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW, min_n=8)
+        self.assertEqual(h["dead"], [], "2 mau chua du de ket luan")
+
+    def test_file_khong_ton_tai(self):
+        h = AG.council_health(str(Path("khong/co.jsonl")), now=self.NOW)
+        self.assertEqual(h["records"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

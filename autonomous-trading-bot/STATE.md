@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/10/2026 01:12:18 · commit `13e44e9`
+- **Cập nhật**: 14/10/2026 01:42:19 · commit `576e78d`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `52440` · round `1` · nhịp tim cách đây 19.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `52440` · round `8` · nhịp tim cách đây 21.1s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -39,9 +39,18 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (0)
+## Vị thế đang quản lý (8)
 
-_không có vị thế nào trong `managed_state.json`_
+| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
+|---|---|---|---|---|---|---|---|---|
+| 1000PEPE/USDT:USDT | LONG | 156494.0 | 0.0042109 | 0.004147 | 0.004371 | False | False | 0.0 |
+| 1000SHIB/USDT:USDT | SHORT | 100000.0 | 0.005218 | 0.005212782 | 0.005093 | True | True | 0.4 |
+| ADA/USDT:USDT | SHORT | 1692.5 | 0.2367 | 0.2364633 | 0.229315 | True | True | 0.44 |
+| AERO/USDT:USDT | SHORT | 948.5 | 0.9019 | 0.912442 | 0.875545 | False | False | 0.161 |
+| AIN/USDT:USDT | SHORT | 7530.0 | 0.04427 | 0.045598 | 0.04095 | False | False | 0.0 |
+| AIOT/USDT:USDT | LONG | 8278.0 | 0.0555 | 0.054292 | 0.05852 | False | False | 0.0 |
+| AKE/USDT:USDT | SHORT | 15870.0 | 0.0251139 | 0.025744 | 0.023539 | False | False | 0.193 |
+| ALT/USDT:USDT | SHORT | 32051.0 | 0.00816 | 0.00815184 | 0.00777 | True | True | 0.385 |
 
 ---
 

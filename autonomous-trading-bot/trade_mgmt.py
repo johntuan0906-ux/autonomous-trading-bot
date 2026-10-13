@@ -87,14 +87,35 @@ def record_protection(mt, res) -> dict:
     return ids
 
 
+def dust_notional(qty: float, price: float, min_notional: float = 0.0) -> bool:
+    """`qty*price` co nho hon `min_notional` khong (True = san se TU CHOI).
+
+    Ham thuan -> test duoc. `min_notional <= 0` = khong kiem tra (hanh vi cu).
+    """
+    try:
+        if float(min_notional) <= 0:
+            return False
+        n = float(qty) * float(price)
+        return 0.0 < n < float(min_notional)
+    except (TypeError, ValueError):
+        return False
+
+
 def manage(trade: ManagedTrade, price: float, atr: float = 0.0, *,
            partial_at_r: float = 1.0, partial_pct: float = 0.5,
            be_at_r: float = 1.0, be_buffer_pct: float = FEE_ROUNDTRIP_PCT,
-           trail_atr_mult: float = 0.0) -> dict:
+           trail_atr_mult: float = 0.0, min_notional: float = 0.0) -> dict:
     """Quyet dinh cho 1 vi the tai gia `price`.
 
     Tra dict: action (HOLD|PARTIAL|BE|TRAIL|EXIT_SL|EXIT_TP), close_qty,
     new_sl, reason, r.
+
+    `min_notional` (13/10): san TU CHOI dong vi the co notional < nguong nay
+    (`-4164 ... unless you choose reduce only`; o HEDGE mode khong dung duoc
+    reduceOnly) ⇒ chot mot phan se de lai "bui" khong dong duoc, va vi the do
+    nam lai tren san KHONG co bao ve. Vi vay: neu phan CON LAI sau khi chot
+    mot phan qua nho thi BO QUA partial (giu nguyen vi the, dong tron khi
+    cham TP/SL). Mac dinh 0 = hanh vi cu (test cu khong doi).
     """
     d = trade.direction.upper()
     r = r_multiple(d, trade.entry, trade.initial_sl, price)
@@ -120,9 +141,13 @@ def manage(trade: ManagedTrade, price: float, atr: float = 0.0, *,
     if (partial_at_r > 0 and not trade.partial_done and r >= partial_at_r
             and 0.0 < partial_pct < 1.0 and trade.qty > 0):
         cq = max(0.0, min(round(trade.qty * partial_pct, 10), trade.qty))
-        if cq > 0:
+        remain = round(trade.qty - cq, 10)
+        # (13/10) Chan "bui": phan con lai ma nho hon minNotional thi san TU CHOI
+        # dong (HEDGE mode khong dung reduceOnly) -> vi the nam lai tren san khong
+        # co SL/TP va bot da quen no. Bo qua partial de dong TRON khi cham TP/SL.
+        if cq > 0 and not dust_notional(remain, price, min_notional):
             trade.booked_pnl += (cq * abs(price - trade.entry)) * (1.0 - FEE_ROUNDTRIP_PCT)
-            trade.qty = round(trade.qty - cq, 10)
+            trade.qty = remain
             trade.partial_done = True
             trade.sl = _be_sl(trade, be_buffer_pct)
             trade.be_done = True
@@ -177,9 +202,10 @@ def cfg_from_env(env: dict | None = None) -> dict:
 
 
 def manage_trade(trade: ManagedTrade, price: float, atr: float = 0.0,
-                 env: dict | None = None) -> dict:
+                 env: dict | None = None, min_notional: float = 0.0) -> dict:
     """Wrapper: manage() voi tham so lay tu .env."""
-    return manage(trade, price, atr, **cfg_from_env(env))
+    return manage(trade, price, atr, min_notional=min_notional,
+                  **cfg_from_env(env))
 
 
 def trade_result(trade: ManagedTrade, exit_reason: str, exit_price: float) -> dict:

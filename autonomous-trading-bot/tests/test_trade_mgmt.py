@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backtest import VARIANTS, build_signals, simulate, stats, verdict  # noqa: E402
 from strategy import bump, classify_strategy, report  # noqa: E402
-from trade_mgmt import (manage, manage_trade, new_trade,  # noqa: E402
+from trade_mgmt import (dust_notional, manage, manage_trade, new_trade,  # noqa: E402
                         r_multiple, trade_result)
 
 
@@ -57,6 +57,29 @@ class TestTradeMgmt(unittest.TestCase):
         self.assertTrue(res["won"])
         self.assertGreater(res["pnl"], 0)
         self.assertTrue(res["partial_done"])
+
+    def test_dust_notional(self):
+        self.assertFalse(dust_notional(1.0, 100.0, 0))        # 0 = khong kiem tra
+        self.assertFalse(dust_notional(1.0, 100.0, 5))        # 100 >= 5 -> OK
+        self.assertTrue(dust_notional(0.01, 100.0, 5))        # 1 < 5 -> bui
+        self.assertFalse(dust_notional(0.0, 100.0, 5))
+        self.assertFalse(dust_notional("x", 100.0, 5))        # du lieu xau -> khong chan
+
+    def test_bo_qua_partial_khi_phan_con_lai_la_bui(self):
+        """(13/10) San TU CHOI dong vi the bui (HEDGE khong dung reduceOnly) ->
+        neu van chot mot phan thi phan con lai thanh vi the mo coi tren san.
+        Vi the: phan con lai < minNotional thi BO QUA partial."""
+        t = new_trade("BTCUSDT", "LONG", 100, 1, 98, 106)     # 1 x 100 = $100
+        mg = manage(t, 102.0, 2.0, min_notional=80.0)         # con 0.5 x 102 = $51 < 80
+        self.assertNotEqual(mg["action"], "PARTIAL")
+        self.assertFalse(t.partial_done, "khong duoc danh dau da chot mot phan")
+        self.assertAlmostEqual(t.qty, 1.0, places=9, msg="giu nguyen vi the")
+
+    def test_van_chot_partial_khi_phan_con_lai_du_lon(self):
+        t = new_trade("BTCUSDT", "LONG", 100, 1, 98, 106)
+        mg = manage(t, 102.0, 2.0, min_notional=5.0)          # con $51 >= 5 -> chot
+        self.assertEqual(mg["action"], "PARTIAL")
+        self.assertTrue(t.partial_done)
 
     def test_exit_sl_before_tp(self):
         t = new_trade("BTCUSDT", "LONG", 100, 1, 98, 106)

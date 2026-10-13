@@ -1329,6 +1329,30 @@ class TestBotSafety(unittest.TestCase):
         # 01/10: review cua agent can direction (truoc day thieu -> NO_OPINION vo dung)
         self.assertEqual(bot.last_exits[self.SYM]["direction"], "LONG")
 
+    def test_san_tu_choi_dong_vi_the_bui_thi_khong_duoc_bo_roi(self):
+        """(13/10) THAT tren LIVE: HEDGE mode khong dung duoc `reduceOnly` nen san
+        tra `-4164 notional < 5` khi dong vi the bui ⇒ vi the VAN nam tren san
+        trong khi bot da xoa khoi so sach = **mo coi, khong SL/TP**.
+
+        Yeu cau: doc lai vi the THAT; san van giu thi GIU trong so sach + arm bao ve.
+        """
+        from unittest import mock
+        ex = FakeExchange(landing=0.1)          # sau khi "dong", san van con 0.1
+        bot = TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0,
+                             min_notional_usdt=20.0), exchange=ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 0.1,
+                                                     98.0, 200.0)
+        t = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        t.qty, t.partial_done, t.booked_pnl = 0.1, True, 3.0
+        bot.managed[self.SYM] = t
+        with mock.patch.object(botmod, "log_trade", lambda **kw: None):
+            bot._monitor(candles_provider=lambda s: pd.DataFrame({"close": [100.0]}))
+        self.assertIn(self.SYM, bot.portfolio.positions,
+                      "vi the con tren san -> phai GIU trong so sach, khong bo roi")
+        self.assertIn(self.SYM, bot.managed)
+        self.assertTrue(ex.named("stop_tp_orders"),
+                        "phai arm lai bao ve cho vi the con lai")
+
     def test_vi_the_binh_thuong_thi_khong_bi_coi_la_bui(self):
         """Vi the binh thuong (notional >= minNotional) khong duoc dong oan."""
         from unittest import mock

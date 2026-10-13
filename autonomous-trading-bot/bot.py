@@ -68,7 +68,8 @@ class TradingBot:
                     closed[sym] = "DUST"
                     continue
                 atr_est = abs(mt.entry - mt.initial_sl) / max(self.cfg.sl_atr_mult, 1e-9)
-                mg = manage_trade(mt, price, atr_est)
+                mg = manage_trade(mt, price, atr_est,
+                                  min_notional=self.cfg.min_notional_usdt)
                 act = mg["action"]
 
                 if act == "PARTIAL" and mg["close_qty"] > 0:
@@ -178,6 +179,14 @@ class TradingBot:
         Vi sao: sau partial/BE, qty con lai co the nho den muc san TU CHOI dong lenh
         -> 'xac' vi the 0.01 lot nam mai trong portfolio (SKIP_OPEN vinh vien) va
         journal KHONG bao gio co dong CLOSE cho lenh do (WR/PF sai + `n` ket).
+
+        ⚠️ (13/10) Su that tren LIVE: o HEDGE mode, lenh dong KHONG duoc dung
+        `reduceOnly` ⇒ Binance tu choi `-4164 Order's notional must be no smaller
+        than 5` cho vi the bui ⇒ vi the VAN NAM TREN SAN trong khi bot da xoa khoi
+        so sach = **vi the mo coi, khong SL/TP, khong ai quan ly** (do duoc 13/10:
+        LIVE co 3 vi the nhu vay: 1000PEPE/HYPE/ONDO). Vi the: sau khi dong, DOC LAI
+        vi the THAT; neu san van giu thi GIU LAI trong so sach + arm bao ve + canh bao,
+        khong duoc bo roi.
         """
         res = trade_result(mt, "PARTIAL", price)
         self.last_exits[sym] = {"reason": "DUST", "r": res["r"], "won": res["won"],
@@ -190,6 +199,27 @@ class TradingBot:
                   reason="DUST", partial=res.get("partial_done"),
                   mfe_r=res.get("mfe_r"))
         self._close(sym, f"DUST qty={mt.qty:g} < minNotional @ {price}")
+        # Xac nhan lai voi SAN: dong duoc chua? (None = khong doc duoc -> tin bot)
+        try:
+            left = (self.exchange.position_qty(sym)
+                    if hasattr(self.exchange, "position_qty") else None)
+        except Exception:  # noqa: BLE001
+            left = None
+        if left is None or abs(float(left)) <= 0:
+            return
+        # San TU CHOI dong vi the bui -> tra vi the ve so sach de khong bi bo roi.
+        self.portfolio.positions[sym] = pos
+        self.managed[sym] = mt
+        try:
+            r2 = self.exchange.stop_tp_orders(sym, pos.direction, abs(float(left)),
+                                             pos.sl, pos.tp, cid_prefix="dust")
+            record_protection(mt, r2)
+        except Exception as e:  # noqa: BLE001
+            log.error("DUST %s: san tu choi dong VA khong arm duoc bao ve: %s",
+                      sym, str(e)[:120])
+        log.error("DUST %s qty=%g: san TU CHOI dong (notional qua nho) -> GIU LAI "
+                  "vi the + da arm lai bao ve; can xu ly tay (dong bang lenh "
+                  "reduce-only/positionSide hoac gop lenh).", sym, abs(float(left)))
 
     def _scan_and_maybe_open(self, candles_provider=None) -> dict:
         cfg = self.cfg

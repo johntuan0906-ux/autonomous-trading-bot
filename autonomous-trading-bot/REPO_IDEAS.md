@@ -234,7 +234,23 @@ OpenViking (AGPL ⇒ chỉ lấy ý tưởng, không nhúng).
 
 ---
 
-## Tổng hợp việc nên làm tiếp
+## 12. Rà 5 repo harness/memory (13/10, đợt 2)
+
+| # | Repo | Cốt lõi | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|---|---|
+| 1 | **ruvnet/ruflo** (MIT, TS, 74k★) | "Agent harness": **27 hooks**, swarm (Raft/Byzantine/Gossip), HNSW vector memory, SONA self-learning, **`ruflo verify`** (chứng minh bằng mật mã rằng byte đã cài khớp witness đã ký), AIDefence, **MetaHarness** = "chấm điểm setup agent, quét cấu hình tool để tìm lỗ hổng, phát hiện thay đổi giữa các lần chạy" | **Áp dụng (P1)**: ý tưởng **MetaHarness** → viết `tools/harness_audit.py`: 1 lệnh **chấm điểm setup** theo tiêu chí tất định (số test, kill-switch, **độ phủ bảo vệ = 2 × số vị thế**, whitelist ↔ `.env`, journal OPEN/CLOSE cân, veto còn shadow, `.clineignore`). **Không** mang cả framework TS vào (nặng, thừa cho 1 bot Python) | **P1** |
+| 2 | **mozilla-ai/llamafile** (Apache-2.0, 26k★) | 1 file thực thi = llama.cpp + Cosmopolitan, chạy **không cần cài**; phục vụ **API tương thích OpenAI**; **Windows: chỉ file < 4 GB**; kèm `whisperfile` | **Áp dụng (P1)**: thay phụ thuộc **Ollama** cho model local của hội đồng (`llama3.2:3b`) bằng 1 `.llamafile` + trọng số GGUF — cùng endpoint `/v1` nên **không phải đổi code**, nhưng bỏ được daemon/dịch vụ nền (đang là điểm chết khi máy khởi động lại). Chọn bản quantized để file < 4 GB | **P1** |
+| 3 | **vxcontrol/pentagi** (MIT, Go+React+Docker, 27k★) | Agent tự trị chạy tác vụ dài: nhiều agent chuyên trách, **flow/chain** có trao artifact, sandbox Docker, **stack quan sát** (compose riêng cho Langfuse/Prometheus/Grafana), API GraphQL | **Áp dụng một phần (P2)**: (a) **quan sát** — xác nhận việc `logs/metrics.prom` (đếm OPEN/CLOSE/lỗi/kill-switch) là hướng đúng, nên làm; (b) **flow có artifact** = mô hình hội đồng 2 vòng hiện tại (đã có). **Không** nhúng: cần Docker + Go + React, quá nặng | P2 |
+| 4 | **tigerless-labs/autoharness** (MIT, Python, 11k★) | Lớp **skill tự học**: rút skill từ phiên thật, **hợp nhất skill cùng tình huống thay vì xếp chồng bản gần giống**, cập nhật khi dùng, **tỉa skill hết dùng** (lưu trữ, không xoá), đếm **use / view / patch** riêng (adherence ≠ lượt xem), **không bao giờ đụng vào skill do người viết** (có dấu ledger), giới hạn số lượng + trục xuất, **không daemon, không benchmark** | **Áp dụng (P1)** — đúng 4 điều dự án đang thiếu: (a) **hợp nhất thay vì xếp chồng** cho `learner.json` (đang **251 cập nhật**, chưa có kiểm tra trùng) và cho bộ nhớ; (b) **đếm use vs view** cho hội đồng (ta đã ghi `event=AGENT` — cần tách "được dùng" và "chỉ đọc"); (c) **trần + trục xuất vào kho lưu trữ** cho ký ức; (d) **không tự sửa mục do người viết** (áp cho `CONTEXT.md`/`STATE.md`) | **P1** |
+| 5 | **Egonex-AI/Understand-Anything** (MIT, 86k★) | tree-sitter **tất định** + LLM **chỉ dán nhãn**; pipeline 5 agent có **`graph-reviewer` kiểm tra toàn vẹn tham chiếu**; cập nhật tăng dần theo fingerprint | **Đã ghi ở §11 mục 10** — giữ nguyên: (a) viết thành quy tắc "cấu trúc tất định, LLM chỉ dán nhãn"; (b) thêm bước **kiểm tra toàn vẹn** kiểu `graph-reviewer` (mọi ký ức phải trỏ tới sự kiện journal tồn tại) | P2 |
+
+**Không áp dụng**: ruflo (framework TS + swarm — thừa cho 1 bot Python 40 file),
+pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
+
+**Việc rút ra cho lần tới (đã xếp vào danh sách tổng hợp):** `tools/harness_audit.py`
+(ruflo/MetaHarness) · llamafile thay Ollama · kỷ luật hợp nhất/tỉa của autoharness cho
+`learner` + bộ nhớ · `metrics.prom` (pentagi).
+
 
 1. **P1** `SKILLS.md` theo chuẩn Agent Skills (fix-bug-loop, retro, handoff, wizard, audit-lệnh-chờ).
 2. **P1** `.clineignore` loại `vendor/`, `d3*.min.js`, `logs/`, `data/` — **đã làm 12/10**.
@@ -252,4 +268,8 @@ OpenViking (AGPL ⇒ chỉ lấy ý tưởng, không nhúng).
 14. **P2** LIVE: chặn sớm khi notional < minNotional $5 (hiện `CFX` trả `-4164` mỗi vòng, tốn log/vòng quét).
 15. **P2** Gọi `position_sync.adopt()` **định kỳ trong vòng lặp** (vd mỗi 10 vòng): hiện chỉ chạy lúc khởi động nên entry "ma" (symbol đã đóng trên sàn nhưng còn trong `managed`/`portfolio`) sống tới lần restart sau; quan sát 13/10: LIVE còn `BNB` trong `managed=4` trong khi sàn chỉ có 3 vị thế. Không nguy hiểm (đã có `fetch_protection` nên KHÔNG re-arm trùng), nhưng nên dọn định kỳ.
 16. **P2** Quét mồ côi định kỳ: `python tools/orders_audit.py --target live --cancel-orphans` (mỗi lần đóng vị thế có thể để lại 1 chân TP nếu SL trên sàn khớp trước khi bot kịp `_close`).
+17. **P1** `tools/harness_audit.py` — 1 lệnh **chấm điểm setup** (test, kill-switch, độ phủ bảo vệ = 2× số vị thế, whitelist ↔ `.env`, journal OPEN/CLOSE, veto shadow, `.clineignore`) — §12 mục 1.
+18. **P1** Thay Ollama bằng **llamafile** cho model local của hội đồng (1 file, cùng endpoint `/v1`, bỏ daemon; Windows cần file < 4 GB) — §12 mục 2.
+19. **P1** Kỷ luật autoharness cho `learner` + bộ nhớ: **hợp nhất thay vì xếp chồng**, đếm use ≠ view, trần + trục xuất vào kho lưu trữ, không tự sửa mục do người viết — §12 mục 4.
+20. **P1** `logs/metrics.prom` (đếm OPEN/CLOSE/lỗi/kill-switch) — §11 mục 7 + §12 mục 3.
 

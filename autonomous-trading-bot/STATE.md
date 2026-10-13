@@ -3,30 +3,30 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/10/2026 02:42:19 · commit `321b9d2`
+- **Cập nhật**: 14/10/2026 03:12:19 · commit `924accd`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `52440` · round `22` · nhịp tim cách đây 150.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3405.05 USDT
+- **Bot**: pid `52440` · round `30` · nhịp tim cách đây 20.4s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3399.81 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 760 lệnh đóng, WR 56.32%, E(R) 0.02, PnL -30.27$)
+## Hiệu suất (journal: 762 lệnh đóng, WR 56.3%, E(R) 0.0188, PnL -38.99$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 531 | 53.3 | 1.03 | 0.955 | 0.0083 | -56.36 |
-| 14 ngày | 714 | 56.02 | 1.097 | 0.998 | 0.0247 | -3.79 |
-| 30 ngày | 760 | 56.32 | 1.076 | 0.983 | 0.02 | -30.27 |
+| 7 ngày | 533 | 53.28 | 1.024 | 0.949 | 0.0067 | -65.08 |
+| 14 ngày | 716 | 56.01 | 1.091 | 0.992 | 0.0234 | -12.51 |
+| 30 ngày | 762 | 56.3 | 1.071 | 0.978 | 0.0188 | -38.99 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.030 < 1.2; PF($) cua so 7 ngay = 0.955 < 1.1; PF(R) cua so 14 ngay = 1.097 < 1.2; PF($) cua so 14 ngay = 0.998 < 1.1; PF(R) cua so 30 ngay = 1.076 < 1.2; PF($) cua so 30 ngay = 0.983 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.024 < 1.2; PF($) cua so 7 ngay = 0.949 < 1.1; PF(R) cua so 14 ngay = 1.091 < 1.2; PF($) cua so 14 ngay = 0.992 < 1.1; PF(R) cua so 30 ngay = 1.071 < 1.2; PF($) cua so 30 ngay = 0.978 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 337 lần cập nhật trọng số · Hội đồng AI: **14 model**
+- Learner: 339 lần cập nhật trọng số · Hội đồng AI: **14 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -44,11 +44,11 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000PEPE/USDT:USDT | LONG | 156494.0 | 0.0042109 | 0.004147 | 0.004371 | False | False | 0.236 |
-| 1000SHIB/USDT:USDT | SHORT | 250000.0 | 0.005216 | 0.005256 | 0.005116 | False | False | 0.15 |
 | AIN/USDT:USDT | SHORT | 7530.0 | 0.04427 | 0.045598 | 0.04095 | False | False | 0.0 |
 | AIOT/USDT:USDT | LONG | 8278.0 | 0.0555 | 0.054292 | 0.05852 | False | False | 0.0 |
 | AKE/USDT:USDT | SHORT | 15870.0 | 0.0251139 | 0.025744 | 0.023539 | False | False | 0.206 |
-| APE/USDT:USDT | SHORT | 5714.0 | 0.1493 | 0.15105 | 0.144925 | False | False | 0.0 |
+| ALGO/USDT:USDT | SHORT | 6393.8 | 0.12086 | 0.122424 | 0.11695 | False | False | 0.032 |
+| BANK/USDT:USDT | SHORT | 35460.0 | 0.02774 | 0.028022 | 0.027035 | False | False | 0.0 |
 
 ---
 

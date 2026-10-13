@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/10/2026 06:12:22 · commit `3f443cd`
+- **Cập nhật**: 14/10/2026 06:42:22 · commit `631d042`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `52440` · round `74` · nhịp tim cách đây 147.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3407.24 USDT
+- **Bot**: pid `52440` · round `82` · nhịp tim cách đây 33.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3401.95 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 766 lệnh đóng, WR 56.4%, E(R) 0.018, PnL -43.8$)
@@ -45,9 +45,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 |---|---|---|---|---|---|---|---|---|
 | 1000PEPE/USDT:USDT | LONG | 156494.0 | 0.0042109 | 0.004147 | 0.004371 | False | False | 0.236 |
 | ACE/USDT:USDT | LONG | 2829.0 | 0.1955 | 0.191966 | 0.204335 | False | False | 0.028 |
-| ADA/USDT:USDT | SHORT | 2214.0 | 0.2363 | 0.23606370000000002 | 0.230655 | True | True | 0.31 |
+| ADA/USDT:USDT | SHORT | 2214.0 | 0.2363 | 0.23606370000000002 | 0.230655 | True | True | 0.487 |
 | AERO/USDT:USDT | SHORT | 972.5 | 0.9 | 0.910282 | 0.874295 | False | False | 0.146 |
-| AIN/USDT:USDT | SHORT | 12468.0 | 0.04434 | 0.045142 | 0.042335 | False | False | 0.187 |
+| AIN/USDT:USDT | SHORT | 12468.0 | 0.04434 | 0.045142 | 0.042335 | False | False | 0.2 |
 | AKE/USDT:USDT | SHORT | 15870.0 | 0.0251139 | 0.025744 | 0.023539 | False | False | 0.206 |
 | APT/USDT:USDT | SHORT | 389.4 | 0.8413 | 0.83772 | 0.8092 | True | True | 0.779 |
 

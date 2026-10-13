@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/10/2026 21:49:40 · commit `0ee1b23`
+- **Cập nhật**: 13/10/2026 22:19:40 · commit `cfc8a11`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `90444` · round `14` · nhịp tim cách đây 89.1s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3480.26 USDT
+- **Bot**: pid `90444` · round `21` · nhịp tim cách đây 174.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3504.79 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 729 lệnh đóng, WR 56.79%, E(R) 0.0282, PnL 23.59$)
@@ -39,18 +39,19 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (8)
+## Vị thế đang quản lý (9)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ALGO/USDT:USDT | SHORT | 4730.3 | 0.1201 | 0.122214 | 0.114815 | False | False | 0.0 |
-| APE/USDT:USDT | SHORT | 4582.0 | 0.1491 | 0.151282 | 0.143645 | False | False | 0.0 |
-| APR/USDT:USDT | SHORT | 4821.0 | 0.0526 | 0.054674 | 0.047415 | False | False | 0.0 |
-| APT/USDT:USDT | SHORT | 675.1 | 0.8217 | 0.836512 | 0.78467 | False | False | 0.061 |
-| AR/USDT:USDT | SHORT | 147.5 | 3.945 | 4.012792 | 3.77552 | False | False | 0.192 |
-| ATOM/USDT:USDT | SHORT | 183.04 | 1.821 | 1.8176580000000002 | 1.75271 | True | True | 0.622 |
-| BANK/USDT:USDT | SHORT | 14204.5 | 0.02773 | 0.02770227 | 0.02685 | True | True | 0.398 |
-| QNT/USDT:USDT | SHORT | 0.85 | 209.21 | 209.00079 | 194.63101 | True | True | 0.473 |
+| 1000SHIB/USDT:USDT | SHORT | 166666.0 | 0.0052 | 0.00526 | 0.00505 | False | False | 0.15 |
+| ACE/USDT:USDT | LONG | 2994.0 | 0.1932 | 0.18986 | 0.20155 | False | False | 0.0 |
+| ALGO/USDT:USDT | SHORT | 2365.15 | 0.1201 | 0.1199799 | 0.114815 | True | True | 0.43 |
+| APE/USDT:USDT | SHORT | 4582.0 | 0.1491 | 0.151282 | 0.143645 | False | False | 0.137 |
+| APR/USDT:USDT | SHORT | 4821.0 | 0.0526 | 0.054674 | 0.047415 | False | False | 0.048 |
+| APT/USDT:USDT | SHORT | 675.1 | 0.8217 | 0.836512 | 0.78467 | False | False | 0.095 |
+| AR/USDT:USDT | SHORT | 73.75 | 3.945 | 3.941055 | 3.77552 | True | True | 0.457 |
+| ATOM/USDT:USDT | SHORT | 183.04 | 1.821 | 1.814658 | 1.75271 | True | True | 0.732 |
+| QNT/USDT:USDT | SHORT | 0.85 | 209.21 | 208.575798 | 194.63101 | True | True | 0.609 |
 
 ---
 

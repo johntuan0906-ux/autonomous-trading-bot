@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/10/2026 19:01:35 · commit `ca937a8`
+- **Cập nhật**: 13/10/2026 19:31:37 · commit `e71ff3a`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `4228` · round `1` · nhịp tim cách đây 7.7s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `4228` · round `7` · nhịp tim cách đây 173.0s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -39,19 +39,20 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (9)
+## Vị thế đang quản lý (10)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| AERO/USDT:USDT | SHORT | 972.3 | 0.8829 | 0.893184 | 0.85719 | False | False | 0.263 |
-| AKE/USDT:USDT | SHORT | 10638.0 | 0.024452 | 0.024236999999999998 | 0.023277 | True | True | 0.957 |
+| 1000PEPE/USDT:USDT | SHORT | 185185.0 | 0.004072 | 0.004126 | 0.003937 | False | False | 0.141 |
+| AERO/USDT:USDT | SHORT | 486.15 | 0.8829 | 0.8820171 | 0.85719 | True | True | 0.574 |
+| AKE/USDT:USDT | SHORT | 10638.0 | 0.024452 | 0.024206 | 0.023277 | True | True | 1.023 |
 | AR/USDT:USDT | SHORT | 80.3 | 3.902 | 3.888133 | 3.746335 | True | True | 0.723 |
-| ARB/USDT:USDT | SHORT | 2059.3 | 0.1849 | 0.184214 | 0.17883 | True | True | 0.783 |
-| ASTER/USDT:USDT | SHORT | 1460.0 | 0.6903 | 0.697148 | 0.67318 | False | False | 0.248 |
-| ATOM/USDT:USDT | SHORT | 194.17 | 1.809 | 1.7998750000000001 | 1.744625 | True | True | 0.854 |
-| AVAX/USDT:USDT | SHORT | 32.0 | 10.292 | 10.281708 | 9.90185 | True | True | 0.391 |
+| ARB/USDT:USDT | SHORT | 2059.3 | 0.1849 | 0.18351399999999998 | 0.17883 | True | True | 1.071 |
+| ASTER/USDT:USDT | SHORT | 730.0 | 0.6903 | 0.689424 | 0.67318 | True | True | 0.628 |
+| ATOM/USDT:USDT | SHORT | 194.17 | 1.809 | 1.796875 | 1.744625 | True | True | 0.971 |
+| AVAX/USDT:USDT | SHORT | 32.0 | 10.292 | 10.25903 | 9.90185 | True | True | 0.711 |
 | AXL/USDT:USDT | SHORT | 4604.1 | 0.0551 | 0.055042999999999995 | 0.052385 | True | True | 0.552 |
-| AXS/USDT:USDT | SHORT | 720.0 | 1.133 | 1.146886 | 1.098285 | False | False | 0.072 |
+| AXS/USDT:USDT | SHORT | 720.0 | 1.133 | 1.146886 | 1.098285 | False | False | 0.216 |
 
 ---
 

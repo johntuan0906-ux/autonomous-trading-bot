@@ -176,5 +176,10 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Audit 1 repo HF | `python tools/model_audit.py --hf <repo> --params-b <B> --bits 8` |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
+| **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |
+| Chấm điểm + kiểm tra lệnh bảo vệ thật | `python tools/harness_audit.py --target live --with-exchange` |
+| **Rút kinh nghiệm từ journal** | `python tools/learn_review.py [--target live]` |
+| Metrics cho Prometheus | `python tools/ops.py --prom` → `logs/metrics.prom` |
+| Model local không cần daemon | `python tools/llamafile_setup.py --check` |
 | Test toàn bộ | `python -m unittest discover -s tests` (**690 test**) |
 | Đẩy code | `tools\git-sync.cmd "mo ta"` |

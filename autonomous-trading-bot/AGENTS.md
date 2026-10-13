@@ -18,6 +18,8 @@ Muse Code reads this file as project rules when it runs in this directory.
 - **2 instance song song** (12/10): repo chính = TESTNET, `../atb-live` = LIVE; sync code: robocopy `*.py tools tests`; danh sách cặp: `python tools/apply_symbols.py --target both`.
 - **Trước khi thêm/bớt model hội đồng AI**: chạy `python tools/model_audit.py` (checklist tất định: cờ đỏ trong tên, license, VRAM, có eval). KHÔNG thêm model "uncensored/abliterated/crack" hay trọng số không kiểm chứng vào hội đồng — xem `REPO_IDEAS.md` §10.
 - **Lệnh ĐIỀU KIỆN (SL/TP) nằm ở Algo Order API**, KHÔNG ở `fetch_open_orders()`. Muốn biết tài khoản có bao nhiêu lệnh chờ: `python tools/orders_audit.py --target live` (kỳ vọng **= 2 × số vị thế mở**; nhiều hơn ⇒ `--dedupe`). Đừng bao giờ kết luận "không có lệnh chờ" từ `fetch_open_orders`.
+- **Trước/sau mỗi thay đổi quan trọng**: chạy `python tools/harness_audit.py --both` (chấm điểm setup: code-parity, test, kill-switch, nhịp tim, journal, trần rủi ro, whitelist, veto, độ phủ bảo vệ). Có mục FAIL ⇒ sửa trước khi làm việc khác.
+- **Rút kinh nghiệm (lessons)**: bài học lấy từ journal, ngưỡng chặn nằm trong `.env` (`LESSONS_MIN_N`, `LESSONS_MAX_AVG_R`, `LESSONS_ENFORCE`). Sinh lại: `python tools/learn_review.py --target live`. **Không bao giờ sửa phần giữa `<!-- HUMAN -->` trong `LESSONS.md`** (đó là ghi chú của người vận hành).
 - Hội đồng AI (5 provider): xem `README.md` mục 10–12.
 
 ## Git & GitHub (đọc kỹ trước khi động vào git)

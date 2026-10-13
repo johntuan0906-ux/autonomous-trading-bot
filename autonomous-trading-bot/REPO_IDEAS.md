@@ -268,8 +268,10 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 14. **P2** LIVE: chặn sớm khi notional < minNotional $5 (hiện `CFX` trả `-4164` mỗi vòng, tốn log/vòng quét).
 15. **P2** Gọi `position_sync.adopt()` **định kỳ trong vòng lặp** (vd mỗi 10 vòng): hiện chỉ chạy lúc khởi động nên entry "ma" (symbol đã đóng trên sàn nhưng còn trong `managed`/`portfolio`) sống tới lần restart sau; quan sát 13/10: LIVE còn `BNB` trong `managed=4` trong khi sàn chỉ có 3 vị thế. Không nguy hiểm (đã có `fetch_protection` nên KHÔNG re-arm trùng), nhưng nên dọn định kỳ.
 16. **P2** Quét mồ côi định kỳ: `python tools/orders_audit.py --target live --cancel-orphans` (mỗi lần đóng vị thế có thể để lại 1 chân TP nếu SL trên sàn khớp trước khi bot kịp `_close`).
-17. **P1** `tools/harness_audit.py` — 1 lệnh **chấm điểm setup** (test, kill-switch, độ phủ bảo vệ = 2× số vị thế, whitelist ↔ `.env`, journal OPEN/CLOSE, veto shadow, `.clineignore`) — §12 mục 1.
-18. **P1** Thay Ollama bằng **llamafile** cho model local của hội đồng (1 file, cùng endpoint `/v1`, bỏ daemon; Windows cần file < 4 GB) — §12 mục 2.
-19. **P1** Kỷ luật autoharness cho `learner` + bộ nhớ: **hợp nhất thay vì xếp chồng**, đếm use ≠ view, trần + trục xuất vào kho lưu trữ, không tự sửa mục do người viết — §12 mục 4.
-20. **P1** `logs/metrics.prom` (đếm OPEN/CLOSE/lỗi/kill-switch) — §11 mục 7 + §12 mục 3.
+17. ~~**P1** `tools/harness_audit.py`~~ — **đã làm 13/10** (chấm điểm setup, 16 test).
+18. ~~**P1** Thay Ollama bằng llamafile~~ — **đã làm 13/10**: `tools/llamafile_setup.py` (check/download/start/probe/env); cần chạy `--download` để có file thật.
+19. ~~**P1** Kỷ luật autoharness cho learner + bộ nhớ~~ — **đã làm 13/10**: `lessons.py` (hợp nhất theo tổ hợp, đếm `hits` = use ≠ view, trần + trục xuất vào `logs/lessons_archive.jsonl`, không sửa phần `<!-- HUMAN -->`).
+20. ~~**P1** `logs/metrics.prom`~~ — **đã làm 13/10**: `python tools/ops.py --prom` (4 test).
+21. **P1** Bật veto thật cho hội đồng: cần thêm mẫu `n_allow ≥ 10` (hiện 1) — `python agents.py --authority`.
+22. **P2** Nâng `LESSONS_MAX_AVG_R` lên −0.10 (chặt hơn) sau khi xem tác động ~1 tuần; hoặc thêm trục `alpha bucket` vào khoá tổ hợp.
 

@@ -302,6 +302,12 @@ def main(argv=None) -> int:
     if args.json:
         import json
         print(json.dumps(s, ensure_ascii=False, indent=2))
+        # (13/10) Luu snapshot de `tools/ops.py` + `harness_audit` doc lai (khong goi san).
+        try:
+            (base / "logs" / "orders_snapshot.json").write_text(
+                json.dumps(s, ensure_ascii=False, indent=1), encoding="utf-8")
+        except OSError:
+            pass
     else:
         print("=== KIEM KE LENH CHO: %s (%s) ==="
               % (args.target.upper(), "LIVE THAT" if live else "DEMO"))

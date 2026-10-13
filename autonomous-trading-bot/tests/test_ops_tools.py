@@ -252,5 +252,38 @@ class TestProtectionDrift(unittest.TestCase):
         self.assertFalse(TD.protection_drift({"sl": 100.0, "tp": 120.0}, 0.0, 0.0))
 
 
+class TestPromMetrics(unittest.TestCase):
+    """`logs/metrics.prom` (Prometheus textfile) tu bao cao ops — y tuong tu pentagi."""
+
+    REP = [{"name": "TESTNET", "equity": 3615.22, "round": 135, "hb_age_s": 41.5,
+            "kill_tripped": False, "positions": 7, "orders": 14, "orphans": 0,
+            "errors_win": {"OPENED": 2, "ORDER_FAILED": 1}},
+           {"name": "LIVE", "equity": 19.46, "round": 5, "hb_age_s": 33.0,
+            "kill_tripped": True, "positions": 0, "orders": 0, "orphans": 0}]
+
+    def test_co_help_type_va_gia_tri(self):
+        txt = "\n".join(OPS.prom_lines(self.REP))
+        self.assertIn("# TYPE bot_equity gauge", txt)
+        self.assertIn('bot_equity{instance="testnet"} 3615.22', txt)
+        self.assertIn('bot_positions{instance="live"} 0', txt)
+        self.assertIn('bot_kill_switch{instance="live"} 1', txt)
+        self.assertIn('bot_errors_15m{instance="testnet",kind="OPENED"} 2', txt)
+
+    def test_equity_khong_doc_duoc_thi_0(self):
+        txt = "\n".join(OPS.prom_lines([{"name": "X", "equity": None}]))
+        self.assertIn('bot_equity{instance="x"} 0.0', txt)
+
+    def test_write_prom_ghi_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = OPS.write_prom(self.REP, path=Path(d) / "m.prom")
+            self.assertTrue(p)
+            txt = Path(p).read_text(encoding="utf-8")
+        self.assertIn("bot_round", txt)
+
+    def test_prom_rong_thi_khong_crash(self):
+        self.assertIn("# TYPE bot_equity gauge", "\n".join(OPS.prom_lines([])))
+
+
 if __name__ == "__main__":
     unittest.main()

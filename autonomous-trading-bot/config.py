@@ -179,6 +179,16 @@ class Settings:
     strat_stats_path: str = field(
         default_factory=lambda: _get("STRAT_STATS_PATH", "logs/strategy_stats.json"))
 
+    # ---- (13/10) Lessons gate: chan TO HOP dieu kien co bang chung am tu JOURNAL ----
+    # Khac strategy_gate (theo 1 truc strategy): day la to hop
+    # strategy x setup_type x market_regime x huong, lay tu chinh journal cua instance
+    # (`python tools/learn_review.py`). Mac dinh TAT — bat sau khi xem so lieu that.
+    lessons_enforce: bool = field(default_factory=lambda: _get_bool("LESSONS_ENFORCE", False))
+    lessons_min_n: int = field(default_factory=lambda: _get_int("LESSONS_MIN_N", 20))
+    lessons_max_avg_r: float = field(
+        default_factory=lambda: _get_float("LESSONS_MAX_AVG_R", -0.20))
+    lessons_path: str = field(default_factory=lambda: _get("LESSONS_PATH", "logs/lessons.json"))
+
     # ---- Phase 1: tang multi-AI agent (CHI CO VAN, mac dinh TAT) ----
     # Agent khong duoc sua qty/SL/TP/kill-switch; quyet dinh cua agent chi duoc
     # ghi vao journal (event=AGENT) de do luong ("shadow"). Bat lenh thuc thi

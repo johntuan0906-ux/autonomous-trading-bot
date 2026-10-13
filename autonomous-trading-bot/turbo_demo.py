@@ -329,6 +329,55 @@ _AGENT_AUTH: dict = {"ts": 0.0, "res": None}   # Phase 4: cache quyen veto
 _AGENT_MAX_PENDING = 4   # hang doi toi da: vuot thi bo (khong de nghen bot)
 _AGENT_TIMEOUT_HINT = 90.0
 
+# (13/10) Lessons: cache `logs/lessons.json` (nap lai moi LESSONS_TTL_SEC) de chan
+# som to hop dieu kien co bang chung am. Ghi lai so lan THUC SU chan ("applied") de
+# phan biet "duoc dung" voi "chi doc" (ky luat autoharness).
+_LESSONS: dict = {"ts": 0.0, "gates": set(), "n": 0, "hits": {}}
+_LESSONS_TTL_SEC = 600.0
+
+
+def lessons_gate(cfg, *, strat: str, setup: str, regime: str, direction: str) -> dict:
+    """To hop dieu kien nay co nam trong danh sach CHAN khong?
+
+    Tra {'block': bool, 'reason': str}.
+
+    NGUONG do `.env` quyet dinh (`LESSONS_MIN_N`, `LESSONS_MAX_AVG_R`) va duoc ap len
+    `buckets` trong `logs/lessons.json` — KHONG dung truong `gates` cua file, vi file
+    co the duoc sinh voi nguong khac (lech nguong = cong trong im lang, da gap 13/10).
+    Nho vay nguong luon cong khai + doi duoc bang 1 dong `.env`.
+    """
+    if not bool(getattr(cfg, "lessons_enforce", False)):
+        return {"block": False, "reason": ""}
+    import time as _t
+    now = _t.time()
+    if now - float(_LESSONS["ts"]) > _LESSONS_TTL_SEC:
+        _LESSONS["ts"] = now
+        try:
+            import json as _j
+            from pathlib import Path as _P
+            import lessons as _L
+            d = _j.loads(_P(str(getattr(cfg, "lessons_path", "logs/lessons.json")))
+                         .read_text(encoding="utf-8"))
+            gates = _L.gate_list(
+                d.get("buckets") or {},
+                min_n=int(getattr(cfg, "lessons_min_n", 20)),
+                max_avg_r=float(getattr(cfg, "lessons_max_avg_r", -0.20)))
+            _LESSONS["gates"] = {str(g.get("key")) for g in gates}
+            _LESSONS["detail"] = {str(g.get("key")): g for g in gates}
+        except Exception:  # noqa: BLE001
+            _LESSONS["gates"] = set()
+            _LESSONS["detail"] = {}
+    key = " | ".join([str(strat or "?"), str(setup or "?"),
+                      str(regime or "?"), str(direction or "?")])
+    if key not in _LESSONS["gates"]:
+        return {"block": False, "reason": ""}
+    g = (_LESSONS.get("detail") or {}).get(key) or {}
+    _LESSONS["hits"][key] = int(_LESSONS["hits"].get(key, 0)) + 1
+    return {"block": True,
+            "reason": "bai hoc journal: %s avgR=%+.3f n=%s (da chan %d lan)"
+                      % (key, float(g.get("avg_r") or 0.0), g.get("n"),
+                         _LESSONS["hits"][key])}
+
 
 def _agent_submit(job) -> bool:
     """Chay 1 job agent o luong rieng. Tra False neu hang doi day (bo qua job).
@@ -783,6 +832,15 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             results.append({"symbol": sym, "status": "BLOCKED_LEARN",
                             "reason": f"learner edge {learn_edge:.2f} (da hoc: mo kieu nay hay thua)"})
             continue
+        # (13/10) Lessons gate: chan TO HOP (strategy x setup x regime x huong) da co
+        # bang chung am tu chinh journal (`python tools/learn_review.py`). Mac dinh TAT;
+        # bat bang LESSONS_ENFORCE=true. Nguong cong khai trong logs/lessons.json.
+        _lg = lessons_gate(cfg, strat=strat, setup=str(st.get("bos", "NONE")),
+                           regime=str(reg.get("regime", "")), direction=direction)
+        if _lg.get("block"):
+            results.append({"symbol": sym, "status": "SKIP_LESSON",
+                            "reason": _lg.get("reason", ""), "strategy": strat})
+            continue
         # Phase 4 (opt-in): VETO cua agent — CHI khi da duoc cap quyen bang bang chung
         # shadow (agent_authority) va AGENTS_VETO_ENABLED=true. Chi BO QUA lenh.
         _v = agent_veto(cfg, sym, direction, alpha, strat, t, senti,
@@ -846,6 +904,18 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         if not ok_risk:
             results.append({"symbol": sym, "status": "SKIP_RISK", "reason": why_risk,
                             "new_risk_usdt": round(new_risk, 2)})
+            continue
+        # (13/10) Chan SOM khi notional qua nho: san TU CHOI `-4164 Order's notional
+        # must be no smaller than 5` (LIVE equity ~19 USDT + SL xa => notional < 5).
+        # Ban cu van gui lenh -> ORDER_FAILED moi vong (rac log, ton vong quet) va
+        # khong bao gio vao duoc lenh. Kiem tra truoc cho minh bach.
+        _notional = float(qty) * float(lv["entry"])
+        if _notional < float(cfg.min_notional_usdt):
+            results.append({"symbol": sym, "status": "SKIP_NOTIONAL",
+                            "notional": round(_notional, 2),
+                            "reason": "notional %.2f < minNotional %.2f (SL qua xa so voi "
+                                      "von) — bo qua thay vi de san tu choi -4164"
+                                      % (_notional, float(cfg.min_notional_usdt))})
             continue
         try:
             bot.exchange.set_leverage(sym, cfg.leverage)
@@ -1249,6 +1319,35 @@ def main() -> None:
         if i % 20 == 0:
             log.info("learner state n=%s w=%s b=%.3f", _learner.n_updates,
                      {k: round(v, 3) for k, v in _learner.w.items()}, _learner.b)
+            # (13/10) Nhac lai bai hoc tu journal (advisory) — de nguoi van hanh va
+            # hoi dong thay "dang hoc duoc gi" ma khong phai mo file.
+            try:
+                _les = lessons_gate(cfg, strat="?", setup="?", regime="?", direction="?")
+                _n_gates = len(_LESSONS.get("gates") or ())
+                if _n_gates or _LESSONS.get("hits"):
+                    log.info("LESSONS: %d to hop dang chan | da chan %s lan | %s",
+                             _n_gates, sum(_LESSONS["hits"].values()),
+                             _LESSONS["hits"] or "chua chan lan nao")
+                del _les
+            except Exception:  # noqa: BLE001
+                pass
+        # (13/10) ADOPT DINH KY: ban cu chi adopt luc khoi dong, nen vi the mo/dong
+        # trong luc bot chay bi bo quen (entry 'ma' trong managed/portfolio) va lenh
+        # dieu kien con lai cua vi the da dong khong duoc don -> tich tu (do that
+        # 13/10: LIVE con BNB trong managed trong khi san chi con 3 vi the khac).
+        # Adopt lai se: nap vi the that, tinh lai SL/TP neu thieu, don state 'xac',
+        # HUY lenh mo coi. Mac dinh 10 vong/lan; 0 = tat.
+        _adopt_every = int(os.getenv("ADOPT_EVERY_ROUNDS", "10") or 10)
+        if _adopt_every > 0 and i % _adopt_every == 0:
+            try:
+                rep = adopt_now(bot, cfg, ex, log, syms0)
+                if rep.get("stale") or rep.get("cleaned") or rep.get("adopted"):
+                    log.warning("ADOPT DINH KY vong %d: adopted=%s stale=%s da-don-lenh=%s",
+                                i, rep.get("adopted"), rep.get("stale"),
+                                rep.get("cleaned"))
+            except Exception as e:  # noqa: BLE001
+                log.warning("ADOPT DINH KY vong %d loi (bo qua, vong sau thu lai): %s",
+                            i, str(e)[:120])
         log.info("round %d monitor=%s -> %s", i, mon, res)
         # P0-6 + P0-2: kiem tra DD ngay (theo equity THAT) va bien dong ATR that su,
         # roi persist state — restart khong duoc quen trang thai ngung.

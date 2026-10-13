@@ -96,6 +96,16 @@ def _instance(name: str, d: Path, minutes: float) -> dict:
         rep["managed_trades"] = len(ms.get("trades") or {})
     except Exception:  # noqa: BLE001
         rep["managed_trades"] = None
+    # (13/10) So vi the THAT + so lenh cho: doc tu snapshot do `orders_audit --json` ghi
+    # (khong goi san o day de ops.py van chay < 1s).
+    try:
+        snap = json.loads((d / "logs" / "orders_snapshot.json").read_text(encoding="utf-8"))
+        rep["positions"] = int(snap.get("positions") or 0)
+        rep["orders"] = int(snap.get("orders") or 0)
+        rep["orphans"] = int(snap.get("orphans") or 0)
+    except Exception:  # noqa: BLE001
+        rep["positions"] = rep.get("managed_trades")
+        rep["orders"] = None
     tail = _read_tail(d / "logs" / "turbo_err.log")
     win = _window_lines(tail, minutes)
     counts = {p: sum(p in ln for ln in win) for p in COUNT_PATTERNS}
@@ -123,6 +133,9 @@ def _print(rep: dict, minutes: float) -> None:
     print("         supervisor=%s child_pid=%s managed=%s"
           % (rep.get("supervisor_pid") or "-", rep.get("pid") or "-",
              rep.get("managed_trades")))
+    if rep.get("orders") is not None or rep.get("positions") is not None:
+        print("         san: %s vi the / %s lenh cho / %s mo coi (snapshot orders_audit)"
+              % (rep.get("positions"), rep.get("orders"), rep.get("orphans", 0)))
     if rep.get("kill_tripped"):
         print("         KILL-SWITCH: TRIPPED (%s) -> dung bot, python risk.py --reset, chay lai"
               % rep.get("kill_reason"))
@@ -135,10 +148,63 @@ def _print(rep: dict, minutes: float) -> None:
     print("         log cuoi: %s" % (rep.get("last_log_ts") or "-"))
 
 
+def prom_lines(reps: list) -> list:
+    """Sinh `logs/metrics.prom` (Prometheus textfile) tu bao cao ops.
+
+    Ham thuan -> test duoc. Vi sao: (y tuong tu vxcontrol/pentagi) co stack quan sat
+    thi moi thay xu huong (equity, so vi the, lenh cho, kill-switch, loi theo loai)
+    thay vi doc log bang mat.
+    """
+    out = ["# HELP bot_equity USDT equity (demo hoac that)",
+           "# TYPE bot_equity gauge",
+           "# HELP bot_positions So vi the dang mo",
+           "# TYPE bot_positions gauge",
+           "# HELP bot_pending_orders So lenh cho (thuong + algo)",
+           "# TYPE bot_pending_orders gauge",
+           "# HELP bot_kill_switch 1 = kill-switch dang ngung",
+           "# TYPE bot_kill_switch gauge",
+           "# HELP bot_round Vong quet hien tai",
+           "# TYPE bot_round gauge",
+           "# HELP bot_heartbeat_age_seconds Tuoi nhip tim",
+           "# TYPE bot_heartbeat_age_seconds gauge",
+           "# HELP bot_errors_15m So lan xuat hien tung loai trong cua so",
+           "# TYPE bot_errors_15m gauge"]
+    for r in reps or []:
+        lbl = 'instance="%s"' % str(r.get("name", "?")).lower()
+        eq = r.get("equity")
+        try:
+            eqv = float(eq)
+        except (TypeError, ValueError):
+            eqv = 0.0
+        out.append("bot_equity{%s} %s" % (lbl, eqv))
+        out.append("bot_positions{%s} %d" % (lbl, int(r.get("positions") or 0)))
+        out.append("bot_pending_orders{%s} %d" % (lbl, int(r.get("orders") or 0)))
+        out.append("bot_kill_switch{%s} %d" % (lbl, 1 if r.get("kill_tripped") else 0))
+        out.append("bot_round{%s} %s" % (lbl, r.get("round") or 0))
+        out.append("bot_heartbeat_age_seconds{%s} %.1f"
+                   % (lbl, float(r.get("hb_age_s") or 0.0)))
+        for k, v in (r.get("errors_win") or {}).items():
+            out.append('bot_errors_15m{%s,kind="%s"} %d' % (lbl, k, int(v)))
+    return out
+
+
+def write_prom(reps: list, path=None) -> str:
+    """Ghi file metrics.prom (mac dinh logs/metrics.prom). Tra duong dan."""
+    p = Path(path) if path else (ROOT / "logs" / "metrics.prom")
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("\n".join(prom_lines(reps)) + "\n", encoding="utf-8")
+    except OSError:
+        return ""
+    return str(p)
+
+
 def main(argv: list | None = None) -> int:
     ap = argparse.ArgumentParser(description="Bao cao suc khoe 2 instance bot")
     ap.add_argument("--minutes", type=float, default=7.0, help="cua so dem loi (phut)")
     ap.add_argument("--json", action="store_true", help="in JSON")
+    ap.add_argument("--prom", action="store_true",
+                    help="ghi logs/metrics.prom (Prometheus textfile)")
     args = ap.parse_args(argv)
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -146,6 +212,9 @@ def main(argv: list | None = None) -> int:
         pass
     reps = [_instance("TESTNET", ROOT, args.minutes),
             _instance("LIVE", LIVE_DIR, args.minutes)]
+    if args.prom:
+        p = write_prom(reps)
+        print("da ghi %s" % (p or "LOI"))
     if args.json:
         print(json.dumps(reps, ensure_ascii=False, indent=1))
         return 0

@@ -979,12 +979,27 @@ LOCAL_PREFIX = "local/"
 
 
 class ClineProvider:
-    """Model `cline-pass/...` qua gateway Cline (CLINE_API_KEY), chi tra van ban."""
+    """Model `cline-pass/...` qua gateway Cline (CLINE_API_KEY), chi tra van ban.
+
+    (13/10) Hai loi that da sua o day:
+      1. **Ten model phai map sang id gateway** (`cline-pass/glm-5.3` -> `z-ai/glm-5.3`).
+         Gui ten cu lam gateway tra `HTTP 500 {"error":"empty response content"}` —
+         do 48h: 12/14 model hoi dong chet, hoi dong im lang (0 VETO/0 ALLOW).
+      2. **Phai gui `max_tokens`**: khong gui thi vai model tra RONG (kiem tra that:
+         cung model, `max_tokens=300` -> tra JSON binh thuong).
+    """
 
     name = "cline"
 
-    def __init__(self, model: str = "", api_key: str = "", url: str = CLINE_ENDPOINT):
-        self.model = model
+    def __init__(self, model: str = "", api_key: str = "", url: str = CLINE_ENDPOINT,
+                 max_tokens: int = 300):
+        self.model = model                                   # alias -> giu de log/journal
+        try:
+            from model_aliases import to_gateway
+            self.api_model = to_gateway(model) or model      # id THAT gui len gateway
+        except Exception:  # noqa: BLE001
+            self.api_model = model
+        self.max_tokens = max(32, int(max_tokens or 300))
         self.api_key = (api_key or os.getenv("CLINE_API_KEY", "")).strip()
         self.url = url
 
@@ -995,7 +1010,8 @@ class ClineProvider:
         r = requests.post(self.url, timeout=timeout,
                           headers={"Authorization": "Bearer " + self.api_key,
                                    "Content-Type": "application/json"},
-                          json={"model": self.model, "stream": False,
+                          json={"model": self.api_model, "stream": False,
+                                "max_tokens": self.max_tokens,
                                 "messages": [{"role": "system", "content": system},
                                              {"role": "user", "content": user}]})
         r.raise_for_status()
@@ -1850,7 +1866,16 @@ def council_summary_text(symbol: str, direction: str, res: dict) -> str:
 
 
 def _provider_blocked(provider: str, cfg=None) -> str:
-    """Tra '' neu provider hoat dong; tra ly do neu bi chan."""
+    """Tra '' neu provider hoat dong; tra ly do neu bi chan.
+
+    (13/10) Chuan hoa ten provider: journal dung `copilot_cli`/`cline_cli` (ten LOP
+    provider) trong khi `.env`/ham nay dung `copilot`/`cline` -> truoc day
+    `_provider_blocked("copilot_cli")` roi vao nhanh `else` (khong bao gio chan) nen
+    viec "bo qua review khi provider bi chan" KHONG co tac dung.
+    """
+    provider = str(provider or "").strip()
+    if provider.endswith("_cli"):
+        provider = provider[:-4]          # copilot_cli -> copilot, cline_cli -> cline
     blk = _PROVIDER_BLOCKED.get(provider)
     if blk is True:
         return "session-blocked (all models from this provider abstained)"

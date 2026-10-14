@@ -233,6 +233,27 @@ class TestCouncilHealth(unittest.TestCase):
         self.assertEqual(h["records"], 0)
 
 
+class TestChuanHoaTenProvider(unittest.TestCase):
+    """(13/10) Journal ghi `copilot_cli` con .env dung `copilot` -> phai chuan hoa,
+    neu khong viec 'bo qua review khi provider bi chan' khong co tac dung."""
+
+    def test_hau_to_cli_duoc_bo(self):
+        import agents as AG
+        from config import Settings
+        cfg = Settings()
+        # copilot dang bi chan theo ngay (het quota thang) trong .env
+        self.assertTrue(AG._provider_blocked("copilot", cfg))
+        self.assertEqual(AG._provider_blocked("copilot_cli", cfg),
+                         AG._provider_blocked("copilot", cfg),
+                         "copilot_cli phai cho CUNG ket qua voi copilot")
+
+    def test_provider_khong_bi_chan_thi_rong(self):
+        import agents as AG
+        from config import Settings
+        cfg = Settings()
+        self.assertEqual(AG._provider_blocked("openai_compatible", cfg), "")
+
+
 class TestCauDaoTheoProvider(unittest.TestCase):
     """(13/10) LOI THAT: 5 loi lien tiep tu Copilot (het quota thang) da `disable`
     CA FILE state -> moi provider (cline-pass mien phi, local) bi chan suot ngay =>

@@ -6,6 +6,7 @@ Tat ca deu la ham THUAN TUY / doc file -> khong goi mang, chay nhanh.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -367,6 +368,69 @@ class TestLocalModelProbe(unittest.TestCase):
         bv = [c for c in rep["checks"] if c["name"] == "bao-ve"]
         self.assertEqual(len(bv), 1, "chi duoc co DUNG 1 muc bao-ve")
         self.assertIn("bo qua", bv[0]["detail"])
+
+
+class TestBackupTool(unittest.TestCase):
+    """(14/10) tools/backup.py — sao luu .env + journal + state, CO KIEM CHUNG doc lai."""
+
+    def _mod(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "backup_tool", str(ROOT / "tools" / "backup.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _fake_instance(self, base):
+        (base / "logs").mkdir(parents=True, exist_ok=True)
+        (base / "logs" / "journal.jsonl").write_text('{"event":"OPEN"}\n', encoding="utf-8")
+        (base / "logs" / "agent_state.json").write_text('{"calls":1}', encoding="utf-8")
+        (base / ".env").write_text("A=1\n", encoding="utf-8")
+        (base / "logs" / "rong.json").write_text("", encoding="utf-8")   # bo qua
+        return base
+
+    def test_dry_run_liet_ke_khong_tao_file(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            base = self._fake_instance(Path(td) / "inst")
+            out = Path(td) / "backups"
+            rep = mod.make_backup("testnet", base, out, dry_run=True)
+            self.assertEqual(rep["files"], 3)
+            self.assertFalse(out.exists())
+            self.assertIn(".env", rep["sources"])
+
+    def test_nen_va_kiem_chung_doc_lai(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            base = self._fake_instance(Path(td) / "inst")
+            out = Path(td) / "backups"
+            rep = mod.make_backup("testnet", base, out, keep=14)
+            self.assertTrue(rep["ok"], rep)
+            self.assertTrue(rep["verify"]["has_journal"])
+            self.assertEqual(rep["verify"]["entries"], 3)
+            self.assertTrue(Path(rep["path"]).exists())
+
+    def test_giu_keep_ban_moi_nhat_va_xoa_cu(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            base = self._fake_instance(Path(td) / "inst")
+            out = Path(td) / "backups"
+            for i in range(3):
+                p = out / ("atb-testnet-2026010%d-000000.zip" % i)
+                out.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(b"cu")
+                os.utime(p, (1000 + i, 1000 + i))
+            removed = mod.prune(out, "testnet", 1)
+            self.assertEqual(len(removed), 2)
+            self.assertEqual([p.name for p in out.glob("atb-testnet-*.zip")],
+                             ["atb-testnet-20260102-000000.zip"])
+
+    def test_khong_co_file_thi_bao_loi_khong_crash(self):
+        mod = self._mod()
+        with tempfile.TemporaryDirectory() as td:
+            rep = mod.make_backup("live", Path(td) / "khong-co", Path(td) / "b")
+            self.assertFalse(rep["ok"])
+            self.assertIn("khong co file", rep["error"])
 
 
 class TestJournalTail(unittest.TestCase):

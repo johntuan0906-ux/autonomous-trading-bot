@@ -34,3 +34,7 @@ glow_map.html
 glow_map_webgl.html
 glow_map_*_preview.png
 cross_index.json
+
+# (14/10) ban sao luu co the chua .env (khoa that) -> khong bao gio commit
+backups/
+*.zip

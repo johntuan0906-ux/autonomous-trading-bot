@@ -3,30 +3,30 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/10/2026 02:01:30 · commit `890d61c`
+- **Cập nhật**: 15/10/2026 02:31:31 · commit `b5d63df`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `89760` · round `22` · nhịp tim cách đây 16.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `89760` · round `29` · nhịp tim cách đây 22.2s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3399.59 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 872 lệnh đóng, WR 58.6%, E(R) 0.0259, PnL 43.87$)
+## Hiệu suất (journal: 875 lệnh đóng, WR 58.63%, E(R) 0.025, PnL 36.57$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 643 | 56.92 | 1.068 | 1.011 | 0.0184 | 17.78 |
-| 14 ngày | 826 | 58.47 | 1.119 | 1.037 | 0.0303 | 70.34 |
-| 30 ngày | 872 | 58.6 | 1.099 | 1.021 | 0.0259 | 43.87 |
+| 7 ngày | 646 | 56.97 | 1.063 | 1.007 | 0.0172 | 10.48 |
+| 14 ngày | 829 | 58.5 | 1.115 | 1.033 | 0.0294 | 63.05 |
+| 30 ngày | 875 | 58.63 | 1.095 | 1.018 | 0.025 | 36.57 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.068 < 1.2; PF($) cua so 7 ngay = 1.011 < 1.1; PF(R) cua so 14 ngay = 1.119 < 1.2; PF($) cua so 14 ngay = 1.037 < 1.1; PF(R) cua so 30 ngay = 1.099 < 1.2; PF($) cua so 30 ngay = 1.021 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.063 < 1.2; PF($) cua so 7 ngay = 1.007 < 1.1; PF(R) cua so 14 ngay = 1.115 < 1.2; PF($) cua so 14 ngay = 1.033 < 1.1; PF(R) cua so 30 ngay = 1.095 < 1.2; PF($) cua so 30 ngay = 1.018 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 390 lần cập nhật trọng số · Hội đồng AI: **8 model**
+- Learner: 391 lần cập nhật trọng số · Hội đồng AI: **8 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -35,23 +35,22 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (9)
+## Vị thế đang quản lý (8)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | SHORT | 89126.5 | 0.0040849 | 0.004080815099999999 | 0.003945 | True | True | 0.446 |
+| 1000SHIB/USDT:USDT | SHORT | 208333.0 | 0.005052 | 0.0051 | 0.004932 | False | False | 0.0 |
 | ACE/USDT:USDT | LONG | 2927.0 | 0.1861 | 0.182684 | 0.19464 | False | False | 0.088 |
 | ADA/USDT:USDT | SHORT | 3974.0 | 0.2278 | 0.230316 | 0.22151 | False | False | 0.04 |
-| AIN/USDT:USDT | SHORT | 4638.0 | 0.04015 | 0.040109849999999996 | 0.037455 | True | True | 0.362 |
-| AKE/USDT:USDT | LONG | 7961.5 | 0.025881 | 0.025906881 | 0.027451 | True | True | 0.443 |
-| ALGO/USDT:USDT | SHORT | 2702.7 | 0.11684 | 0.11646500000000001 | 0.112215 | True | True | 0.703 |
-| APE/USDT:USDT | SHORT | 4370.0 | 0.142 | 0.144288 | 0.13628 | False | False | 0.262 |
-| APT/USDT:USDT | SHORT | 858.5 | 0.7967 | 0.808348 | 0.76758 | False | False | 0.0 |
-| ARB/USDT:USDT | SHORT | 1840.9 | 0.1842 | 0.182858 | 0.17741 | True | True | 0.994 |
+| AIN/USDT:USDT | SHORT | 4638.0 | 0.04015 | 0.040109849999999996 | 0.037455 | True | True | 0.39 |
+| AIOT/USDT:USDT | SHORT | 10964.0 | 0.0495 | 0.050412 | 0.04722 | False | False | 0.0 |
+| AKE/USDT:USDT | LONG | 7961.5 | 0.025881 | 0.026232 | 0.027451 | True | True | 1.059 |
+| ALGO/USDT:USDT | SHORT | 2702.7 | 0.11684 | 0.115675 | 0.112215 | True | True | 1.13 |
+| ARB/USDT:USDT | SHORT | 1840.9 | 0.1842 | 0.182258 | 0.17741 | True | True | 1.215 |
 
 ---
 

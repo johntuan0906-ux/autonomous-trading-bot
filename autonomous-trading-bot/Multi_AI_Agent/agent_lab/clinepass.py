@@ -3,6 +3,7 @@
 import asyncio
 import json
 import math
+import os
 import re
 import time
 from dataclasses import asdict, dataclass
@@ -134,12 +135,28 @@ class ClineClient:
     async def complete(self, model: str, messages: list[dict]) -> Reply:
         if not MODEL_PATTERN.fullmatch(model):
             raise CallFailure("Chỉ hỗ trợ model có tiền tố cline-pass/.")
+        # (14/10) Gateway Cline đổi id sang `<vendor>/<tên>`; gửi NGUYÊN alias
+        # `cline-pass/glm-5.3` bị `HTTP 500 {"error":"empty response content"}`.
+        # Map sang id thật nhưng VAN ghi alias trong log/báo cáo để so sánh lịch sử.
+        api_model = model
+        try:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _root = str(_Path(__file__).resolve().parents[2])
+            if _root not in _sys.path:
+                _sys.path.insert(0, _root)
+            from model_aliases import to_gateway
+            api_model = to_gateway(model) or model
+        except Exception:  # noqa: BLE001
+            api_model = model
         try:
             response = await self.client.post(
                 ENDPOINT,
                 headers={"Authorization": f"Bearer {self.key}",
                          "Content-Type": "application/json", "X-Title": "Python Multi-AI Lab"},
-                json={"model": model, "messages": messages, "stream": False},
+                json={"model": api_model, "messages": messages, "stream": False,
+                      # Khong gui max_tokens thi vai model tra RONG -> gateway 500.
+                      "max_tokens": int(os.getenv("CLINE_MAX_TOKENS", "800") or 800)},
             )
         except httpx.HTTPError:
             # Do not print exception internals, headers, secrets or prompt data.

@@ -25,6 +25,63 @@ sys.path.insert(0, str(ROOT / "Multi_AI_Agent"))
 from agent_lab.clinepass import unwrap_envelope                               # noqa: E402
 
 
+class TestMapIdGatewayLab(unittest.TestCase):
+    """(14/10) Client LAB cung phai gui ID THAT cua gateway (khong gui alias).
+
+    Truoc day `clinepass.py` gui nguyen `cline-pass/glm-5.3` -> gateway tra
+    `HTTP 500 {"error":"empty response content"}` => moi lan `clinepass_review.py`
+    deu that bai. Dong thoi phai gui `max_tokens` (thieu -> vai model tra rong).
+    """
+
+    def _run(self, model: str) -> dict:
+        import asyncio
+        sys.path.insert(0, str(ROOT / "Multi_AI_Agent"))
+        from agent_lab.clinepass import ClineClient
+        seen: dict = {}
+
+        class _Resp:
+            status_code = 200
+            headers: dict = {}
+
+            def json(self):
+                return {"data": {"choices": [{"message": {"content": "ok"},
+                                              "finish_reason": "stop"}],
+                                 "usage": {"prompt_tokens": 3, "completion_tokens": 1}}}
+
+        class _Client:
+            async def post(self, url, headers=None, json=None):  # noqa: A002
+                seen.update(json or {})
+                return _Resp()
+
+        cli = ClineClient(_Client(), "key-test")
+        rep = asyncio.run(cli.complete(model, [{"role": "user", "content": "hi"}]))
+        seen["_reply_model"] = rep.returned_model
+        return seen
+
+    def test_gui_id_gateway_chu_khong_phai_alias(self):
+        seen = self._run("cline-pass/mimo-v2.6-pro")
+        self.assertEqual(seen.get("model"), "xiaomi/mimo-v2.6-pro")
+        self.assertIn("max_tokens", seen)
+        self.assertGreaterEqual(seen["max_tokens"], 32)
+
+    def test_model_da_la_id_gateway_thi_giu_nguyen(self):
+        seen = self._run("cline-pass/qwen3.7-plus")
+        self.assertEqual(seen.get("model"), "qwen/qwen3.7-plus")
+
+    def test_van_tu_choi_model_khong_co_tien_to(self):
+        from agent_lab.clinepass import CallFailure
+        import asyncio
+        sys.path.insert(0, str(ROOT / "Multi_AI_Agent"))
+        from agent_lab.clinepass import ClineClient
+
+        class _Client:
+            async def post(self, *a, **k):  # pragma: no cover - khong duoc goi
+                raise AssertionError("khong duoc goi API")
+
+        with self.assertRaises(CallFailure):
+            asyncio.run(ClineClient(_Client(), "k").complete("gpt-4", []))
+
+
 class TestEnvelope(unittest.TestCase):
     """Gateway Cline boc ket qua trong {"data": ...} (01/10) — client phai nhan ca 2 dang."""
 

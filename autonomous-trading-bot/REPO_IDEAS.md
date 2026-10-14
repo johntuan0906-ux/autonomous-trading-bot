@@ -276,4 +276,6 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 22. ~~**P2** Nâng/hạ `LESSONS_MAX_AVG_R`~~ — **đã quyết bằng `--sweep`**: −0.05 (tiết kiệm 82.33/62.46, bỏ lỡ 0) cho cả 2 instance.
 23. ~~**P2** Bỏ hẳn Ollama~~ — **đã làm 13/10**: llamafile thin + GGUF 3B Q4 đang chạy ở `127.0.0.1:8080`, cả 2 instance dùng nó; đổi qua lại bằng `tools/switch_local_model.py`.
 24. **P1** Chạy llamafile **tự động khi khởi động** (hiện phải `--start` tay): thêm vào `run_forever.py` (nếu endpoint chết thì start) hoặc Task Scheduler — để sau reboot hội đồng vẫn có phiếu local.
+25. **P1 (mới, 13/10)** **Map lại alias hội đồng → id gateway ClinePass**: gateway còn sống (462 model) nhưng id cũ `cline-pass/glm-5.3` trả **HTTP 500**; id thật `anthropic/claude-haiku-5.5` chạy OK. Sửa `Multi_AI_Agent/models.clinepass.json` (và/hoặc `clinepass.py` để có bảng map) rồi xác nhận bằng `python agents.py --council-multi-test ETH/USDT:USDT SHORT` → phải thấy phiếu VETO/ALLOW thật.
+26. **P2** Hội đồng chạy **rất chậm** (14 model × 2 vòng > 10 phút khi test tay): cân nhắc giảm còn 5–6 model hoặc hạ `COUNCIL_ROUNDS=1` cho các vòng bình thường.
 

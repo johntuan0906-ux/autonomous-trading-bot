@@ -217,9 +217,74 @@ class TestCouncilHealth(unittest.TestCase):
         h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW, min_n=8)
         self.assertEqual(h["dead"], [], "2 mau chua du de ket luan")
 
+    def test_khong_de_xuat_bo_VAI_agent(self):
+        """(13/10) `review_agent` la VAI (provider chet), khong phai model -> de xuat
+        `CLINE_SKIP_MODELS=review_agent` la SAI (nguoi van hanh dien rac vao .env)."""
+        rows = [self._rec("review_agent", "NO_OPINION", abstained=True,
+                          model="claude-sonnet-5.5", status="CLOSED")
+                for _ in range(10)]
+        h = AG.council_health(str(self._j(rows)), hours=48, now=self.NOW)
+        self.assertIn("review_agent", h["dead"], "van bao no la muc treo")
+        joined = " ".join(h["skip_lines"])
+        self.assertNotIn("review_agent", joined, "nhung KHONG duoc de xuat bo vao .env")
+
     def test_file_khong_ton_tai(self):
         h = AG.council_health(str(Path("khong/co.jsonl")), now=self.NOW)
         self.assertEqual(h["records"], 0)
+
+
+class TestCauDaoTheoProvider(unittest.TestCase):
+    """(13/10) LOI THAT: 5 loi lien tiep tu Copilot (het quota thang) da `disable`
+    CA FILE state -> moi provider (cline-pass mien phi, local) bi chan suot ngay =>
+    hoi dong im lang hoan toan (do 48h: 328 ban ghi AGENT, 0 VETO/0 ALLOW)."""
+
+    def _b(self, tmp: str, max_errors: int = 3):
+        return AG.AgentBudget(path=Path(tmp) / "agent_state.json",
+                              daily_calls=1000, daily_budget_usd=100.0,
+                              max_errors=max_errors)
+
+    def test_loi_cua_mot_provider_khong_tat_cac_provider_khac(self):
+        with tempfile.TemporaryDirectory() as d:
+            b = self._b(d, max_errors=3)
+            for _ in range(3):
+                b.note(ok=False, reason="quota", provider="copilot")
+            self.assertTrue(b.provider_disabled("copilot"), "copilot phai bi tat")
+            self.assertEqual(b.disabled(), "", "KHONG duoc tat toan cuc")
+            ok_c, why_c = b.can_spend(provider="copilot")
+            self.assertFalse(ok_c)
+            self.assertIn("copilot", why_c)
+            ok_k, _ = b.can_spend(provider="cline")
+            self.assertTrue(ok_k, "provider khac VAN phai goi duoc")
+            ok_l, _ = b.can_spend(provider="local")
+            self.assertTrue(ok_l, "local (mien phi) VAN phai goi duoc")
+
+    def test_thanh_cong_thi_xoa_dem_loi_cua_provider(self):
+        with tempfile.TemporaryDirectory() as d:
+            b = self._b(d, max_errors=3)
+            b.note(ok=False, reason="x", provider="cline")
+            b.note(ok=False, reason="x", provider="cline")
+            b.note(ok=True, provider="cline")
+            b.note(ok=False, reason="x", provider="cline")
+            self.assertEqual(b.provider_disabled("cline"), "",
+                             "thanh cong phai reset dem loi cua provider")
+
+    def test_loi_KHONG_co_provider_van_tat_toan_cuc(self):
+        with tempfile.TemporaryDirectory() as d:
+            b = self._b(d, max_errors=2)
+            b.note(ok=False, reason="loi noi bo")
+            b.note(ok=False, reason="loi noi bo")
+            self.assertTrue(b.disabled(), "loi noi bo (khong ro provider) van fail-closed")
+            self.assertFalse(b.can_spend(provider="cline")[0])
+
+    def test_enable_go_ca_toan_cuc_lan_theo_provider(self):
+        with tempfile.TemporaryDirectory() as d:
+            b = self._b(d, max_errors=1)
+            b.note(ok=False, reason="quota", provider="copilot")
+            b.note(ok=False, reason="x")
+            b.enable()
+            self.assertEqual(b.disabled(), "")
+            self.assertEqual(b.provider_disabled("copilot"), "",
+                             "enable phai xoa ca disabled theo provider")
 
 
 if __name__ == "__main__":

@@ -1196,11 +1196,21 @@ class AgentBudget:
         self._roll()
         return str(self.state.get("disabled") or "")
 
-    def can_spend(self, est_cost: float = 0.0) -> tuple:
-        """(ok, ly_do). ok=False thi KHONG goi provider."""
+    def can_spend(self, est_cost: float = 0.0, provider: str = "") -> tuple:
+        """(ok, ly_do). ok=False thi KHONG goi provider.
+
+        (13/10) `provider`: cau dao theo TUNG provider. Loi that: 5 loi lien tiep cua
+        Copilot (het quota thang) da `disable` ca file state -> MOI provider (ke ca
+        cline-pass mien phi va local) bi chan suot ngay => hoi dong im lang hoan toan
+        (do 48h: 328 ban ghi AGENT, 0 VETO/0 ALLOW).
+        """
         self._roll()
-        if self.disabled():
+        if self.disabled():                     # tat TOAN CUC (nguoi van hanh / loi noi bo)
             return False, f"agent dang TAT: {self.disabled()}"
+        if provider:
+            why = self.provider_disabled(provider)
+            if why:
+                return False, f"provider '{provider}' dang TAT: {why}"
         if self.calls() >= self.daily_calls:
             return False, f"het tran cuoc goi/ngay ({self.daily_calls})"
         if self.cost() + max(0.0, float(est_cost)) > self.daily_budget_usd:
@@ -1208,18 +1218,38 @@ class AgentBudget:
                            f"${self.daily_budget_usd:.2f})")
         return True, ""
 
+    def provider_disabled(self, provider: str) -> str:
+        """Ly do provider nay bi TAT (rong = dang dung duoc)."""
+        self._roll()
+        return str((self.state.get("disabled_by") or {}).get(str(provider)) or "")
+
     # -- mutations
-    def note(self, *, cost: float = 0.0, ok: bool = True, reason: str = "") -> None:
+    def note(self, *, cost: float = 0.0, ok: bool = True, reason: str = "",
+             provider: str = "") -> None:
+        """Ghi 1 cuoc goi. `provider` -> dem loi RIENG cho provider do.
+
+        Loi co `provider` => chi tat provider do (khong keo ca hoi dong xuong);
+        loi KHONG co provider => coi la loi noi bo, van tat toan cuc nhu truoc.
+        """
         self._roll()
         self.state["calls"] = self.calls() + 1
         self.state["cost_usd"] = round(self.cost() + max(0.0, float(cost)), 8)
         self.state["last_ts"] = self._now()
         if ok:
             self.state["errors"] = 0
+            if provider:
+                self.state.setdefault("errors_by", {})[str(provider)] = 0
         else:
             self.state["errors"] = _i(self.state.get("errors")) + 1
-            if self.state["errors"] >= self.max_errors:
-                self.state["disabled"] = f"loi lien tiep {self.state['errors']} lan ({reason})"[:120]
+            if provider:
+                eb = self.state.setdefault("errors_by", {})
+                eb[str(provider)] = _i(eb.get(str(provider))) + 1
+                if eb[str(provider)] >= self.max_errors:
+                    self.state.setdefault("disabled_by", {})[str(provider)] = (
+                        "loi lien tiep %d lan (%s)" % (eb[str(provider)], reason))[:120]
+            elif self.state["errors"] >= self.max_errors:
+                self.state["disabled"] = (
+                    f"loi lien tiep {self.state['errors']} lan ({reason})")[:120]
         self.save()
 
     def disable(self, reason: str) -> None:
@@ -1228,9 +1258,12 @@ class AgentBudget:
         self.save()
 
     def enable(self) -> None:
+        """Go cau dao: ca toan cuc LAN theo tung provider."""
         self._roll()
         self.state["disabled"] = ""
         self.state["errors"] = 0
+        self.state.pop("disabled_by", None)
+        self.state.pop("errors_by", None)
         self.save()
 
     def snapshot(self) -> dict:
@@ -1428,7 +1461,8 @@ class AgentLayer:
             return Decision(**d)
         system, user = build_prompt(role, payload or {}, self.max_prompt_tokens)
         est = cost_usd(self.model, approx_tokens(system + user), 160)
-        ok, why = self.budget.can_spend(est_cost=est)
+        _prov = str(getattr(self.provider, "name", "") or "")
+        ok, why = self.budget.can_spend(est_cost=est, provider=_prov)
         if not ok:
             base.note = why
             return base
@@ -1444,7 +1478,7 @@ class AgentLayer:
             # thay vi fine-tune ($$$$) hay structured-output (khong phai provider nao cung ho tro).
             if (parsed.get("parse") != "ok"
                     and bool(getattr(self.cfg, "agent_json_repair", True))):
-                ok_r, _why_r = self.budget.can_spend(est_cost=est)
+                ok_r, _why_r = self.budget.can_spend(est_cost=est, provider=_prov)
                 if ok_r:
                     res2, used2 = _complete_with_retry(
                         self.provider, system, user + _STRICT_SUFFIX,
@@ -1469,11 +1503,11 @@ class AgentLayer:
             if used_attempts > 1:
                 base.note += f" (retry x{used_attempts - 1})"
             base.raw_text = str(res.get("text") or "")[:4000]
-            self.budget.note(cost=base.cost_usd, ok=True)
+            self.budget.note(cost=base.cost_usd, ok=True, provider=_prov)
         except Exception as e:  # noqa: BLE001  (fail-open tuyet doi)
             base.action = "NO_OPINION"
             base.note = f"loi provider: {str(e)[:120]}"
-            self.budget.note(cost=0.0, ok=False, reason=base.note)
+            self.budget.note(cost=0.0, ok=False, reason=base.note, provider=_prov)
             if self.log:
                 self.log.warning("agents: %s loi (%s) -> NO_OPINION", role, base.note)
         base.latency_ms = round((self._now() - t0) * 1000.0, 2)
@@ -1601,8 +1635,16 @@ def council_health(journal_path: str = JOURNAL_PATH, *, hours: float = 48.0,
         elif b["veto"] or b["allow"]:
             live.append(m)
     def _skip_line(models: list) -> list:
-        cline = [m for m in models if m.startswith("cline-pass/") or "/" not in m]
-        local = [m for m in models if m.startswith("local/")]
+        """Dong `.env` de bo model treo — CHI voi ten model that.
+
+        (13/10) `review_agent`/`macro_agent`... la VAI (role), khong phai model -> khong
+        duoc de xuat bo (de xuat sai lam nguoi van hanh dien rac vao CLINE_SKIP_MODELS).
+        """
+        role_like = ("review_agent", "macro_agent", "critic_agent", "arbiter_agent",
+                     "setup", "council", "selftest")
+        names = [m for m in models if str(m).lower() not in role_like]
+        cline = [m for m in names if m.startswith("cline-pass/") or "/" not in m]
+        local = [m for m in names if m.startswith("local/")]
         out = []
         if cline:
             out.append("CLINE_SKIP_MODELS=%s" % ",".join(cline))
@@ -2719,6 +2761,9 @@ def main(argv: list | None = None) -> int:
                     help="luat cap quyen: two_cohort (cu) hoac baseline (VETO vs toan bo)")
     ap.add_argument("--council-health", action="store_true",
                     help="suc khoe hoi dong: model nao dong gop phieu that, model nao treo")
+    ap.add_argument("--reset-budget", action="store_true",
+                    help="go cau dao agent (disabled/errors + disabled_by) — dung khi provider "
+                         "het quota lam tat ca hoi dong")
     ap.add_argument("--hours", type=float, default=48.0, help="cua so gio cho --council-health")
     ap.add_argument("--auto-apply", action="store_true",
                     help="Phase 3/4: chay --reflect roi tu ap dung block/unblock duoc chap nhan "
@@ -2787,6 +2832,20 @@ def main(argv: list | None = None) -> int:
         else:
             print("  -> Veto DANG BAT: lenh co the bi bo qua khi agent VETO (conf >= %s)."
                   % getattr(cfg, "agent_veto_min_conf", 0.7))
+        return 0
+
+    if args.reset_budget:
+        b = AgentBudget(path=args.state)
+        old = b.disabled() or "(khong)"
+        by = dict(b.state.get("disabled_by") or {})
+        b.enable()
+        b.state.pop("disabled_by", None)
+        b.state.pop("errors_by", None)
+        b.save()
+        print("DA GO CAU DAO agent:")
+        print("  disabled cu   : %s" % old)
+        print("  provider tat  : %s" % (by or "(khong)"))
+        print("  -> calls=%s cost=$%s errors=%s" % (b.calls(), b.cost(), b.state.get("errors")))
         return 0
 
     if args.council_health:

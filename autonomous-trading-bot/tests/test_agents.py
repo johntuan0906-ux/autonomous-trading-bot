@@ -180,11 +180,19 @@ class TestGuardrails(unittest.TestCase):
         self.assertEqual(d.confidence, 0.0)
 
     def test_circuit_breaker_tat_sau_n_lan_loi(self):
+        """(13/10) Cau dao theo TUNG provider: provider loi bi tat, KHONG keo ca hoi dong.
+
+        Loi that: 5 loi lien tiep tu Copilot (het quota thang) da tat CA file state ->
+        moi provider (cline-pass mien phi, local) bi chan suot ngay => hoi dong im lang
+        (do 48h: 328 ban ghi AGENT, 0 VETO/0 ALLOW).
+        """
         p = _BoomProvider()
         lyr = _layer(provider=p, agent_max_errors=2)
         lyr.vote("critic", {"a": 1})
         lyr.vote("critic", {"a": 2})
-        self.assertTrue(lyr.budget.disabled())     # da ngat
+        self.assertTrue(lyr.budget.provider_disabled(p.name), "provider loi phai bi tat")
+        self.assertEqual(lyr.budget.disabled(), "",
+                         "KHONG duoc tat toan cuc vi loi cua 1 provider")
         before = p.calls
         d = lyr.vote("critic", {"a": 3})
         self.assertEqual(p.calls, before)          # khong goi nua

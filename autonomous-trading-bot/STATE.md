@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/10/2026 21:39:05 · commit `15d714f`
+- **Cập nhật**: 14/10/2026 22:09:07 · commit `a868713`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `3836` · round `None` · nhịp tim cách đây 0.5s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `3836` · round `7` · nhịp tim cách đây 83.8s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 856 lệnh đóng, WR 58.18%, E(R) 0.0192, PnL -17.43$)
+## Hiệu suất (journal: 858 lệnh đóng, WR 58.28%, E(R) 0.0205, PnL -6.25$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 627 | 56.3 | 1.033 | 0.971 | 0.0091 | -43.52 |
-| 14 ngày | 810 | 58.02 | 1.091 | 1.005 | 0.0234 | 9.05 |
-| 30 ngày | 856 | 58.18 | 1.073 | 0.991 | 0.0192 | -17.43 |
+| 7 ngày | 629 | 56.44 | 1.04 | 0.979 | 0.0109 | -32.34 |
+| 14 ngày | 812 | 58.13 | 1.096 | 1.011 | 0.0247 | 20.23 |
+| 30 ngày | 858 | 58.28 | 1.078 | 0.997 | 0.0205 | -6.25 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.033 < 1.2; PF($) cua so 7 ngay = 0.971 < 1.1; PF(R) cua so 14 ngay = 1.091 < 1.2; PF($) cua so 14 ngay = 1.005 < 1.1; PF(R) cua so 30 ngay = 1.073 < 1.2; PF($) cua so 30 ngay = 0.991 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.040 < 1.2; PF($) cua so 7 ngay = 0.979 < 1.1; PF(R) cua so 14 ngay = 1.096 < 1.2; PF($) cua so 14 ngay = 1.011 < 1.1; PF(R) cua so 30 ngay = 1.078 < 1.2; PF($) cua so 30 ngay = 0.997 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,20 +39,18 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (10)
+## Vị thế đang quản lý (8)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000SHIB/USDT:USDT | SHORT | 92592.5 | 0.005036 | 0.005030964 | 0.004901 | True | True | 0.389 |
-| ADA/USDT:USDT | SHORT | 3021.0 | 0.2276 | 0.23091 | 0.219325 | False | False | 0.06 |
-| AERO/USDT:USDT | SHORT | 322.85 | 0.8688 | 0.8679312 | 0.830085 | True | True | 0.491 |
-| AIN/USDT:USDT | SHORT | 9242.0 | 0.03853 | 0.039612 | 0.035825 | False | False | 0.157 |
-| ALGO/USDT:USDT | SHORT | 2340.8 | 0.11693 | 0.11681307 | 0.11159 | True | True | 0.351 |
+| 1000PEPE/USDT:USDT | SHORT | 166112.0 | 0.0040408 | 0.004101 | 0.003891 | False | False | 0.148 |
+| ADA/USDT:USDT | SHORT | 3021.0 | 0.2276 | 0.23091 | 0.219325 | False | False | 0.272 |
+| AERO/USDT:USDT | SHORT | 322.9 | 0.8688 | 0.864743 | 0.830085 | True | True | 0.762 |
+| AIN/USDT:USDT | SHORT | 9242.0 | 0.03853 | 0.039612 | 0.035825 | False | False | 0.203 |
+| ALGO/USDT:USDT | SHORT | 2340.8 | 0.11693 | 0.11681307 | 0.11159 | True | True | 0.501 |
 | APE/USDT:USDT | SHORT | 4370.0 | 0.142 | 0.144288 | 0.13628 | False | False | 0.0 |
-| APT/USDT:USDT | SHORT | 436.6 | 0.8029 | 0.793826 | 0.77427 | True | True | 1.292 |
-| ARB/USDT:USDT | SHORT | 1973.15 | 0.1842 | 0.18166700000000002 | 0.177865 | True | True | 1.5 |
-| AXS/USDT:USDT | SHORT | 382.0 | 1.097 | 1.09054 | 1.0643 | True | True | 0.994 |
-| BANK/USDT:USDT | SHORT | 19531.0 | 0.02688 | 0.026668 | 0.02624 | True | True | 1.328 |
+| AXS/USDT:USDT | SHORT | 382.0 | 1.097 | 1.08654 | 1.0643 | True | True | 1.3 |
+| BANK/USDT:USDT | SHORT | 19531.0 | 0.02688 | 0.026628 | 0.02624 | True | True | 1.484 |
 
 ---
 

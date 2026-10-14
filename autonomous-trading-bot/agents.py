@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -2018,6 +2019,10 @@ def _fallback_chains(models: list, cfg=None) -> dict:
     return chains
 
 
+_MODEL_PREFIX_PROVIDER = ((CLINE_PREFIX, "cline"), (MUSE_PREFIX, "muse"),
+                          ("qwen/", "qwen"), ("local/", "local"))
+
+
 def _council_models(cfg) -> list:
     """Danh sach model hoi dong, tu loai bo provider het quota.
 
@@ -2050,11 +2055,23 @@ def _council_models(cfg) -> list:
         out.extend(qwen_models)
     if not local_blocked:
         out.extend(local_models)
+    # (13/10) Loc THEO TIEN TO lan cuoi: danh sach chung (`AGENT_COUNCIL_MODELS`) co the
+    # chua model cua provider khac (vd `cline-pass/...`). Truoc day ten hong
+    # `qwen/cline-pass/x` che mat loi nay; khi Cline bi chan thi model cline van duoc dung
+    # -> goi gateway vo ich + sai bang chung "provider con lai lam 100%".
+    blocked_provs = {"cline": cline_blocked, "muse": muse_blocked,
+                     "muse_cli": muse_cli_blocked, "qwen": qwen_blocked,
+                     "local": local_blocked}
+    for pref, prov in _MODEL_PREFIX_PROVIDER:
+        if blocked_provs.get(prov):
+            out = [m for m in out if not str(m).startswith(pref)]
     if not out:
+        # Ca 2 provider deu chan: van tra danh sach (KHONG loc) de vong lap khong crash —
+        # dung nhu hop dong cu cua ham nay.
         import logging
         logging.getLogger("agents").warning(
             "COUNCIL: CA HAI provider deu bi chan -> hoi dong TAM DUNG.")
-        out = copilot_models
+        out = list(copilot_models)
     elif copilot_blocked or cline_blocked:
         import logging
         who = ("Copilot" if copilot_blocked else "") + ("+Cline" if copilot_blocked and cline_blocked else "Cline" if cline_blocked else "")
@@ -2757,6 +2774,13 @@ def doctor(cfg=None, log=None) -> int:
 
 
 def main(argv: list | None = None) -> int:
+    # (13/10) Console Windows (cp1252) khong in duoc ky tu co dau/emoji trong tra loi
+    # model -> `--council-multi-test` CRASH (UnicodeEncodeError) ngay khi in phieu.
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except Exception:
+            pass
     ap = argparse.ArgumentParser(
         description="Tang multi-AI agent (Phase 1: co van, mac dinh shadow)")
     ap.add_argument("--selftest", action="store_true",

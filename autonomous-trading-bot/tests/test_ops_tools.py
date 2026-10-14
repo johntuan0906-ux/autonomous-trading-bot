@@ -369,5 +369,33 @@ class TestLocalModelProbe(unittest.TestCase):
         self.assertIn("bo qua", bv[0]["detail"])
 
 
+class TestJournalTail(unittest.TestCase):
+    """(13/10) tools/journal_tail.py — cong cu doc ly do that cua tung phieu AGENT."""
+
+    def test_chi_lay_ban_ghi_agent_va_lay_cuoi(self):
+        import tempfile
+        import json as _j
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "journal_tail", str(ROOT / "tools" / "journal_tail.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "journal.jsonl"
+            lines = [
+                _j.dumps({"event": "OPEN", "symbol": "BTC"}),
+                _j.dumps({"event": "AGENT", "model": "m1", "note": "treo"}),
+                "khong-phai-json",
+                _j.dumps({"event": "AGENT", "model": "m2", "note": "loi provider"}),
+                _j.dumps({"event": "CLOSE", "symbol": "BTC"}),
+            ]
+            p.write_text("\n".join(lines), encoding="utf-8")
+            got = mod.tail_agents(p, 5)
+            self.assertEqual([r["model"] for r in got], ["m1", "m2"])
+            self.assertEqual([r["model"] for r in mod.tail_agents(p, 1)], ["m2"])
+            self.assertEqual(mod.tail_agents(Path(td) / "khong-co.jsonl", 5), [])
+            self.assertIn("m2", mod.format_row({"model": "m2", "note": "loi provider"}))
+
+
 if __name__ == "__main__":
     unittest.main()

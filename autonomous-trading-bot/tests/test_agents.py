@@ -1471,6 +1471,18 @@ class TestCouncilProviderFallback(unittest.TestCase):
         self.assertTrue(all(not m.startswith(self.A.CLINE_PREFIX) for m in models),
                         "Cline bi chan -> chi con model copilot")
 
+    def test_khong_ro_ri_model_cua_provider_bi_chan(self):
+        """(13/10) `AGENT_COUNCIL_MODELS` co the chua `cline-pass/...`: khi Cline bi chan
+        thi KHONG duoc dung chung (truoc day ten hong `qwen/cline-pass/x` che mat loi)."""
+        cfg = self._cfg(agent_council_cline_until="2999-01-01",
+                        agent_council_copilot_until="",
+                        agent_council_models="cline-pass/qwen3.8-max,claude-sonnet-5.5")
+        models = self.A._council_models(cfg)
+        self.assertTrue(models)
+        self.assertTrue(all(not m.startswith(self.A.CLINE_PREFIX) for m in models),
+                        "model cline trong danh sach chung phai bi loc khi Cline bi chan")
+        self.assertIn("claude-sonnet-5.5", models)
+
     def test_ca_hai_deu_chan_van_khong_crash(self):
         cfg = self._cfg(agent_council_copilot_until="2999-01-01",
                         agent_council_cline_until="2999-01-01")

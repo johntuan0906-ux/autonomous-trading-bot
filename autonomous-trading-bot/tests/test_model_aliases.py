@@ -40,6 +40,14 @@ class TestMapGateway(unittest.TestCase):
         """Ten la -> tra ve ten da bo tien to (gateway se tu choi, health se hien)."""
         self.assertEqual(MA.to_gateway("cline-pass/khong-co-that"), "khong-co-that")
 
+    def test_ten_hong_tien_to_kep(self):
+        """`qwen/cline-pass/qwen3.8-max` (loi that trong .env) van phai map duoc."""
+        self.assertEqual(MA.strip_prefix("qwen/cline-pass/qwen3.8-max"), "qwen3.8-max")
+        self.assertEqual(MA.to_gateway("qwen/cline-pass/qwen3.8-max"),
+                         "qwen/qwen3.8-max-prime")
+        self.assertEqual(MA.to_gateway("qwen/cline-pass/qwen3.7-plus"),
+                         "qwen/qwen3.7-plus")
+
     def test_rong_va_khong_co_tien_to(self):
         self.assertEqual(MA.to_gateway(""), "")
         self.assertEqual(MA.to_gateway("glm-5.3"), "z-ai/glm-5.3",

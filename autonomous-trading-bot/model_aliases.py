@@ -38,9 +38,16 @@ GATEWAY_MAP = {
 
 
 def strip_prefix(model: str) -> str:
-    """Bo tien to `cline-pass/` (giu nguyen neu khong co)."""
-    m = str(model or "")
-    return m[len(CLINE_PREFIX):] if m.startswith(CLINE_PREFIX) else m
+    """Bo tien to `cline-pass/` (giu nguyen neu khong co).
+
+    (13/10) Chiu ca truong hop ten **hong tien to kep** trong `.env`:
+    `qwen/cline-pass/qwen3.8-max` -> `qwen3.8-max`. Da gap that: 2/12 model trong
+    `AGENT_COUNCIL_MODELS` bi loi nay nen vinh vien 500.
+    """
+    m = str(model or "").strip()
+    if CLINE_PREFIX in m:                 # ke ca "qwen/cline-pass/xyz"
+        m = m.split(CLINE_PREFIX, 1)[1]
+    return m
 
 
 def to_gateway(model: str) -> str:

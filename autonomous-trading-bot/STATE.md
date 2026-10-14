@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/10/2026 10:42:24 · commit `f249926`
+- **Cập nhật**: 14/10/2026 11:12:25 · commit `699a0f5`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `52440` · round `141` · nhịp tim cách đây 16.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3362.05 USDT
+- **Bot**: pid `52440` · round `148` · nhịp tim cách đây 110.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3370.9 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 785 lệnh đóng, WR 57.07%, E(R) 0.0186, PnL -35.97$)
@@ -39,16 +39,17 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (7)
+## Vị thế đang quản lý (8)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000SHIB/USDT:USDT | SHORT | 333333.0 | 0.005189 | 0.005219 | 0.005114 | False | False | 0.2 |
-| ADA/USDT:USDT | SHORT | 4621.0 | 0.2376 | 0.239764 | 0.23219 | False | False | 0.139 |
+| ACE/USDT:USDT | LONG | 3201.0 | 0.1983 | 0.195176 | 0.20611 | False | False | 0.0 |
+| ADA/USDT:USDT | SHORT | 2310.5 | 0.2376 | 0.237282 | 0.23219 | True | True | 0.647 |
 | AKE/USDT:USDT | SHORT | 15870.0 | 0.0251139 | 0.025744 | 0.023539 | False | False | 0.239 |
-| ALGO/USDT:USDT | SHORT | 7751.9 | 0.12006 | 0.12135 | 0.116835 | False | False | 0.0 |
-| APE/USDT:USDT | SHORT | 6127.0 | 0.153 | 0.154632 | 0.14892 | False | False | 0.0 |
-| APR/USDT:USDT | SHORT | 3937.0 | 0.05329 | 0.05323671 | 0.050115 | True | True | 0.307 |
+| ALGO/USDT:USDT | SHORT | 3875.95 | 0.12006 | 0.11993994 | 0.116835 | True | True | 0.341 |
+| APE/USDT:USDT | SHORT | 6127.0 | 0.153 | 0.154632 | 0.14892 | False | False | 0.245 |
+| APR/USDT:USDT | SHORT | 3937.0 | 0.05329 | 0.05323671 | 0.050115 | True | True | 0.465 |
 | ARB/USDT:USDT | LONG | 4314.0 | 0.1921 | 0.189782 | 0.197895 | False | False | 0.0 |
 
 ---

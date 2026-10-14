@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/10/2026 02:31:31 · commit `b5d63df`
+- **Cập nhật**: 15/10/2026 03:01:31 · commit `32841ba`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `89760` · round `29` · nhịp tim cách đây 22.2s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3399.59 USDT
+- **Bot**: pid `89760` · round `36` · nhịp tim cách đây 127.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3403.64 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 875 lệnh đóng, WR 58.63%, E(R) 0.025, PnL 36.57$)
@@ -46,11 +46,11 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | 1000SHIB/USDT:USDT | SHORT | 208333.0 | 0.005052 | 0.0051 | 0.004932 | False | False | 0.0 |
 | ACE/USDT:USDT | LONG | 2927.0 | 0.1861 | 0.182684 | 0.19464 | False | False | 0.088 |
 | ADA/USDT:USDT | SHORT | 3974.0 | 0.2278 | 0.230316 | 0.22151 | False | False | 0.04 |
-| AIN/USDT:USDT | SHORT | 4638.0 | 0.04015 | 0.040109849999999996 | 0.037455 | True | True | 0.39 |
+| AERO/USDT:USDT | SHORT | 784.4 | 0.8813 | 0.894048 | 0.84943 | False | False | 0.204 |
 | AIOT/USDT:USDT | SHORT | 10964.0 | 0.0495 | 0.050412 | 0.04722 | False | False | 0.0 |
-| AKE/USDT:USDT | LONG | 7961.5 | 0.025881 | 0.026232 | 0.027451 | True | True | 1.059 |
+| AKE/USDT:USDT | LONG | 7961.5 | 0.025881 | 0.0264415 | 0.027451 | True | True | 1.393 |
 | ALGO/USDT:USDT | SHORT | 2702.7 | 0.11684 | 0.115675 | 0.112215 | True | True | 1.13 |
-| ARB/USDT:USDT | SHORT | 1840.9 | 0.1842 | 0.182258 | 0.17741 | True | True | 1.215 |
+| ARB/USDT:USDT | SHORT | 1840.9 | 0.1842 | 0.181958 | 0.17741 | True | True | 1.325 |
 
 ---
 

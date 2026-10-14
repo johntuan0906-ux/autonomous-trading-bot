@@ -1534,10 +1534,23 @@ class AgentLayer:
         return base
 
     def log_decision(self, dec: Decision, extra: dict | None = None) -> dict:
-        """Ghi y kien agent vao journal (event=AGENT) de do luong sau nay."""
+        """Ghi y kien agent vao journal (event=AGENT) de do luong sau nay.
+
+        (14/10) Nhan CA dict: `multi_model_council` tra `votes` da o dang dict
+        (`d.to_dict()`), con `turbo_demo` dua thang dict do vao day. Truoc day ham goi
+        `dec.to_dict()` -> AttributeError -> bi `except` NUOT IM LANG => **moi phieu
+        VETO/ALLOW cua hoi dong khong bao gio vao journal** (health tool chi thay model
+        treo; bang chung cap quyen veto khong bao gio tang).
+        """
         try:
             from journal import log_trade
-            rec = {"event": "AGENT", **dec.to_dict()}
+            if hasattr(dec, "to_dict"):
+                body = dec.to_dict()
+            elif isinstance(dec, dict):
+                body = dict(dec)
+            else:
+                return {}
+            rec = {"event": "AGENT", **body}
             rec.update(extra or {})
             rec = log_trade(self.journal, **rec)
             self.logged += 1

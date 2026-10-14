@@ -434,6 +434,21 @@ def agent_layer(cfg):
     return _AGENTS["layer"]
 
 
+def _provider_label(model: str) -> str:
+    """Nhan provider THAT theo tien to model (14/10).
+
+    Truoc day moi model khong phai `cline-pass/` deu bi ghi la `copilot` (ke ca
+    `qwen/...`, `local/...`) -> journal/bao cao nhom sai provider, de gay hieu nham
+    "copilot van dang lam viec" trong khi copilot da het quota tu lau.
+    """
+    m = str(model or "")
+    for pref, name in (("cline-pass/", "cline"), ("muse-cli/", "muse_cli"),
+                       ("muse/", "muse"), ("qwen/", "qwen"), ("local/", "local")):
+        if m.startswith(pref):
+            return name
+    return "copilot"
+
+
 def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
                      tech: dict, senti, regime: str) -> None:
     """Ghi y kien agent cho 1 setup — CHAY NEN, khong doi hanh vi/khong chan.
@@ -480,20 +495,22 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
             for mname, dec in (res.get("votes") or {}).items():
                 if dec is None:
                     continue
-                hit = hit or bool(getattr(dec, "cache_hit", False))
-                provider = "cline" if str(mname).startswith("cline-pass/") else "copilot"
+                # (14/10) `votes` la DICT (da to_dict) -> doc cache_hit theo ca 2 dang.
+                ch = dec.get("cache_hit") if isinstance(dec, dict) else getattr(dec, "cache_hit", False)
+                hit = hit or bool(ch)
                 layer.log_decision(dec, extra={
                     "symbol": sym, "direction": direction,
-                    "status": "COUNCIL", "model": mname, "provider": provider,
+                    "status": "COUNCIL", "model": mname,
+                    "provider": _provider_label(mname),
                     "final_action": res.get("action")})
             # Log ca model treo (abstained) de co so lieu day du
             for mname in (res.get("abstained") or []):
-                pdv = "cline" if str(mname).startswith("cline-pass/") else "copilot"
                 d = Decision(role="critic", agent=mname, action="NO_OPINION",
                               note="treo/loi/het gio", ts=time.time())
                 layer.log_decision(d, extra={
                     "symbol": sym, "direction": direction,
-                    "status": "COUNCIL", "model": mname, "provider": pdv,
+                    "status": "COUNCIL", "model": mname,
+                    "provider": _provider_label(mname),
                     "abstained": True, "final_action": res.get("action")})
             action = str(res.get("action") or "NO_OPINION").upper()
             conf = float(res.get("confidence") or 0)

@@ -268,6 +268,27 @@ class TestShadowIsolation(unittest.TestCase):
         # khong lan vao du lieu lenh: khong co truong entry/order
         self.assertNotIn("entry", rec)
 
+    def test_log_decision_nhan_ca_dict_tu_hoi_dong(self):
+        """(14/10) `multi_model_council` tra `votes` dang DICT; truoc day `log_decision`
+        goi `dec.to_dict()` -> AttributeError bi nuot im lang => MOI phieu VETO/ALLOW cua
+        hoi dong khong vao journal (health tool chi thay model treo, bang chung cap quyen
+        veto khong bao gio tang)."""
+        tmp = tempfile.mkdtemp()
+        jp = os.path.join(tmp, "journal.jsonl")
+        lyr = A.AgentLayer(_cfg(), provider=_FixedProvider('{"action":"ALLOW"}'),
+                           journal=jp, state_path=os.path.join(tmp, "st.json"))
+        as_dict = {"role": "critic", "agent": "cline-pass/mimo-v2.6-pro",
+                   "action": "VETO", "confidence": 0.8, "reasons": ["nguoc xu huong"],
+                   "risk_flags": [], "shadow": True}
+        rec = lyr.log_decision(as_dict, extra={"symbol": "ETH/USDT:USDT",
+                                               "status": "COUNCIL",
+                                               "model": "cline-pass/mimo-v2.6-pro"})
+        self.assertEqual(rec.get("event"), "AGENT", "phieu dang dict phai duoc ghi")
+        self.assertEqual(rec.get("action"), "VETO")
+        self.assertEqual(A.count_agent_events(jp), {"critic:VETO": 1})
+        # dau vao rac -> tra {} chu KHONG nem loi (fail-open)
+        self.assertEqual(lyr.log_decision(object()), {})
+
     def test_payload_khong_chua_bi_mat_va_on_dinh_cache(self):
         p = A.setup_payload("SOL/USDT:USDT", "SHORT", 0.123456, "A_TREND_PULLBACK",
                             {"rsi": 47.777, "atr_pct": 0.01234567}, {"score": 0.2})
@@ -902,6 +923,23 @@ class TestEnableFlag(unittest.TestCase):
 
 
 
+class TestNhanProviderTheoTienTo(unittest.TestCase):
+    """(14/10) Truoc day moi model khong phai `cline-pass/` deu bi ghi la `copilot`
+    (ke ca `qwen/`, `local/`) -> journal/bao cao nhom sai provider."""
+
+    def test_nhan_dung_theo_tien_to(self):
+        import turbo_demo as T
+        cases = {"cline-pass/qwen3.7-plus": "cline",
+                 "qwen/cline-pass/qwen3.8-max": "qwen",
+                 "local/llama3.2-3b-local": "local",
+                 "muse/muse-spark-1.2": "muse",
+                 "muse-cli/muse-spark-1.2": "muse_cli",
+                 "claude-sonnet-5.5": "copilot"}
+        for model, want in cases.items():
+            self.assertEqual(T._provider_label(model), want, model)
+
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -963,6 +1001,47 @@ class TestTurboAgentWiring(unittest.TestCase):
         events = A.count_agent_events(jp)
         self.assertEqual(events.get("macro:VETO"), 1)
         self.assertEqual(events.get("critic:VETO"), 1)
+
+    def test_phieu_dict_cua_hoi_dong_duoc_ghi_vao_journal(self):
+        """(14/10) Loi THAT: `multi_model_council` tra `votes` dang DICT, `log_decision`
+        goi `dec.to_dict()` -> AttributeError bi nuot im lang => phieu VETO/ALLOW khong
+        bao gio vao journal (health tool mù, bang chung cap quyen veto khong tang).
+        Test nay di DUNG duong turbo_demo voi layer THAT."""
+        import json as _json
+        import tempfile as _tf
+        import time as _time
+        from unittest import mock as _mock
+
+        tmp = _tf.mkdtemp()
+        jp = os.path.join(tmp, "journal.jsonl")
+        layer = A.AgentLayer(_cfg(), provider=_FixedProvider('{"action":"ALLOW"}'),
+                             journal=jp, state_path=os.path.join(tmp, "st.json"))
+        self.T._AGENTS["layer"] = layer
+        fake = {
+            "votes": {"cline-pass/mimo-v2.6-pro": {
+                "role": "critic", "agent": "cline-pass/mimo-v2.6-pro", "action": "VETO",
+                "confidence": 0.8, "reasons": ["nguoc regime"], "risk_flags": [],
+                "shadow": True, "cache_hit": False}},
+            "abstained": ["cline-pass/minimax-m3"], "action": "VETO", "confidence": 0.8,
+            "why": "test hoi dong", "escalated": False, "debated": False}
+        cfg = _cfg(agents_council=True, agents_council_multi_model=True)
+        with _mock.patch.object(self.T, "multi_model_council", lambda *a, **k: fake):
+            self.T.agent_vote_setup(cfg, "ETH/USDT:USDT", "SHORT", 0.42, "NONE",
+                                    {"rsi": 58.0},
+                                    SimpleNamespace(score=0.1, urgent_bearish=0), "UPTREND")
+            deadline = _time.time() + 3.0
+            while _time.time() < deadline and self.T._AGENTS["pending"] > 0:
+                _time.sleep(0.05)
+        with open(jp, encoding="utf-8") as f:
+            rows = [_json.loads(l) for l in f if l.strip()]
+        votes = [r for r in rows if r.get("action") == "VETO" and not r.get("abstained")]
+        self.assertTrue(votes, "phieu VETO cua hoi dong PHAI duoc ghi vao journal")
+        self.assertEqual(votes[-1].get("model"), "cline-pass/mimo-v2.6-pro")
+        self.assertEqual(votes[-1].get("provider"), "cline", "nhan provider dung tien to")
+        self.assertEqual(votes[-1].get("status"), "COUNCIL")
+        # model treo van duoc ghi de co so lieu day du
+        self.assertTrue([r for r in rows if r.get("abstained")])
+
 
     def test_hang_doi_day_thi_bo_khong_nghen(self):
         """pending vuot tran -> bo job (dropped), khong xep hang vo han."""

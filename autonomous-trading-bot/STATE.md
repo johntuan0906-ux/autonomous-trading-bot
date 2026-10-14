@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/10/2026 19:32:47 · commit `732888b`
+- **Cập nhật**: 14/10/2026 19:46:28 · commit `f29eb4e`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `34636` · round `1` · nhịp tim cách đây 15.3s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `44348` · round `1` · nhịp tim cách đây 14.4s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -26,7 +26,7 @@
 ## Cấu hình rủi ro
 
 - risk/lệnh `1.0%` · trần tổng `2.0%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 378 lần cập nhật trọng số · Hội đồng AI: **11 model**
+- Learner: 378 lần cập nhật trọng số · Hội đồng AI: **9 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -39,14 +39,18 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (8)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000SHIB/USDT:USDT | SHORT | 147059.0 | 0.005161 | 0.005195 | 0.005076 | False | False | 0.029 |
-| ADA/USDT:USDT | SHORT | 2115.0 | 0.2355 | 0.237864 | 0.22959 | False | False | 0.0 |
-| AIN/USDT:USDT | SHORT | 5656.0 | 0.03982 | 0.039242 | 0.03761 | True | True | 1.154 |
-| AR/USDT:USDT | SHORT | 90.6 | 3.887 | 3.942172 | 3.74907 | False | False | 0.0 |
+| 1000PEPE/USDT:USDT | LONG | 177304.0 | 0.0041094 | 0.004053 | 0.004249 | False | False | 0.229 |
+| ADA/USDT:USDT | SHORT | 1058.0 | 0.2355 | 0.23188199999999998 | 0.22959 | True | True | 2.03 |
+| AERO/USDT:USDT | LONG | 659.2 | 0.8913 | 0.876132 | 0.92922 | False | False | 0.0 |
+| AIN/USDT:USDT | SHORT | 5656.0 | 0.03982 | 0.038542 | 0.03761 | True | True | 1.946 |
+| AKE/USDT:USDT | LONG | 15822.0 | 0.025075 | 0.024443 | 0.026655 | False | False | 0.0 |
+| ALGO/USDT:USDT | SHORT | 5291.0 | 0.12084 | 0.12273 | 0.116115 | False | False | 0.185 |
+| APE/USDT:USDT | SHORT | 5235.0 | 0.1468 | 0.14871 | 0.142025 | False | False | 0.209 |
+| AR/USDT:USDT | SHORT | 45.3 | 3.887 | 3.8715859999999997 | 3.74907 | True | True | 0.779 |
 
 ---
 

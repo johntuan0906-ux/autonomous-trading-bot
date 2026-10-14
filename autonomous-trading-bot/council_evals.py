@@ -151,3 +151,128 @@ def build_eval_dataset(journal_path: str, out_path: str,
         return len(cases)
     except Exception:  # noqa: BLE001
         return 0
+
+
+# ---- Eval theo TUNG MODEL (14/10, y tuong tu ai-engineering-from-scratch phase G) ----
+# Truoc day chi co bao cao A/B GOP (VETO vs ALLOW) -> khong biet model NAO dong gop.
+# Ham duoi day cham diem tung model bang ket qua THAT trong journal.
+
+ROLE_LIKE = ("review_agent", "macro_agent", "critic_agent", "arbiter_agent",
+             "setup", "council", "selftest")
+
+
+def _model_of(case: dict) -> str:
+    """Ten model that (khong phai VAI nhu `critic_agent`)."""
+    return str(case.get("model") or case.get("agent") or case.get("provider") or "?")
+
+
+def _avg_r(cases: list):
+    vals = [float((c.get("outcome") or {}).get("r") or 0.0) for c in cases]
+    return (sum(vals) / len(vals)) if vals else None
+
+
+def calibration(cases: list, buckets: int = 5) -> dict:
+    """Calibration: `confidence` co khop voi ty le thang THAT khong (eval framework).
+
+    brier = trung binh (confidence - won)^2 tren cac case DA ghep duoc lenh CLOSE
+    (0 = hoan hao, 0.25 = nhu doan bua 50/50). `buckets` = so o do tin cay.
+    """
+    matched = [c for c in cases if c.get("matched_close")]
+    if not matched:
+        return {"n": 0, "brier": None, "bins": []}
+    n = len(matched)
+    brier = sum((float(c.get("confidence") or 0.0)
+                 - (1.0 if (c.get("outcome") or {}).get("won") else 0.0)) ** 2
+                for c in matched) / n
+    bins = []
+    step = 1.0 / max(1, int(buckets))
+    for i in range(int(buckets)):
+        lo, hi = i * step, (i + 1) * step
+        grp = [c for c in matched
+               if lo <= float(c.get("confidence") or 0.0) < (hi + (1e-9 if i == int(buckets) - 1 else 0))]
+        if grp:
+            wins = sum(1 for c in grp if (c.get("outcome") or {}).get("won"))
+            bins.append({"lo": round(lo, 2), "hi": round(hi, 2), "n": len(grp),
+                         "win_rate": round(wins / len(grp), 3),
+                         "conf_avg": round(sum(float(c.get("confidence") or 0.0)
+                                               for c in grp) / len(grp), 3)})
+    return {"n": n, "brier": round(brier, 4), "bins": bins}
+
+
+def skip_lines(models: list) -> list:
+    """Dong `.env` de bo model (giong `agents.council_health` -> nhat quan cho nguoi van hanh).
+
+    CHI voi ten model that: `review_agent`/`critic_agent`... la VAI, khong phai model.
+    """
+    names = [m for m in models if str(m).lower() not in ROLE_LIKE]
+    cline = [m for m in names if m.startswith("cline-pass/") or "/" not in m]
+    local = [m for m in names if m.startswith("local/")]
+    qwen = [m for m in names if m.startswith("qwen/")]
+    out = []
+    if cline:
+        out.append("CLINE_SKIP_MODELS=%s" % ",".join(cline))
+    if local:
+        out.append("LOCAL_SKIP_MODELS=%s" % ",".join(local))
+    if qwen:
+        out.append("QWEN_SKIP_MODELS=%s" % ",".join(qwen))
+    return out
+
+
+def model_leaderboard(journal_path: str, *, window_sec: float = 3600.0,
+                      hours: float | None = None, min_n: int = 8,
+                      now: float | None = None) -> dict:
+    """Bang xep hang TUNG MODEL hoi dong theo ket qua THAT (khong phai theo so phieu).
+
+    Voi moi model (ghep phieu -> lenh CLOSE dau tien cung symbol/direction):
+      * `allow_avg_r` — avgR cac lenh model CHO PHEP;
+      * `veto_avg_r`  — avgR cac lenh model dinh CHAN (counterfactual gan dung);
+      * `value_r` = allow_avg_r - veto_avg_r: **>0** = phan biet duoc lenh tot/xau
+        (dang giu); **<=0** = khong phan biet duoc (nen bo);
+      * `veto_precision` — ty le VETO dung (lenh do THUA);
+      * `brier` — calibration cua `confidence`.
+
+    Tra {window_h, cases, per_model, keep, drop, thin, skip_lines, calibration}.
+    `thin` = chua du mau (n_ghep < min_n) -> KHONG ket luan.
+    """
+    import time as _t
+    t_now = float(now if now is not None else _t.time())
+    cases = pair_cases(journal_path, window_sec)
+    if hours:
+        cut = t_now - max(1.0, float(hours)) * 3600.0
+        cases = [c for c in cases if float(c.get("ts") or 0) >= cut]
+    per: dict = {}
+    for c in cases:
+        m = _model_of(c)
+        b = per.setdefault(m, {"votes": 0, "matched": 0, "allow": [], "veto": [],
+                               "conf": []})
+        b["votes"] += 1
+        b["conf"].append(float(c.get("confidence") or 0.0))
+        if c.get("matched_close"):
+            b["matched"] += 1
+            (b["allow"] if c.get("action") == "ALLOW" else b["veto"]).append(c)
+    out: dict = {}
+    keep, drop, thin = [], [], []
+    for m, b in per.items():
+        aa, va = _avg_r(b["allow"]), _avg_r(b["veto"])
+        veto_n = len(b["veto"])
+        prec = (round(sum(1 for c in b["veto"]
+                          if not (c.get("outcome") or {}).get("won")) / veto_n, 3)
+                if veto_n else None)
+        value = round(aa - va, 4) if (aa is not None and va is not None) else None
+        cal = calibration([c for c in cases if _model_of(c) == m])
+        row = {"votes": b["votes"], "matched": b["matched"],
+               "allow_n": len(b["allow"]), "veto_n": veto_n,
+               "allow_avg_r": None if aa is None else round(aa, 4),
+               "veto_avg_r": None if va is None else round(va, 4),
+               "value_r": value, "veto_precision": prec, "brier": cal["brier"]}
+        out[m] = row
+        if b["matched"] < int(min_n):
+            thin.append(m)
+        elif value is not None and value <= 0:
+            drop.append(m)
+        elif value is not None:
+            keep.append(m)
+    return {"window_h": hours, "cases": len(cases), "per_model": out,
+            "keep": sorted(keep), "drop": sorted(drop), "thin": sorted(thin),
+            "skip_lines": skip_lines(sorted(drop)),
+            "calibration": calibration(cases)}

@@ -186,6 +186,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Kill-switch LIVE + chạy lại (dừng → xoá risk_state → chạy) | `python tools/restart_bot.py --target live --reset` |
 | **Hội đồng đọc tài liệu/diff và cho ý kiến** | `python clinepass_review.py --task strategy_review --bundle none --file <tài liệu>.md --engine clinepass --provider clinepass --model cline-pass/mimo-v2.6-pro --concurrency 3 --output-dir logs/council_review` |
 | Model nào còn chạy được (dò song song, tốn quota) | `python tools/probe_cline.py` — hoặc `python clinepass_review.py --check` |
+| **Chấm điểm TỪNG model hội đồng** (theo kết quả thật) | `python tools/council_eval.py [--target live] [--hours 336] [--min-n 8] [--json]` |
 | Kiểm chứng 1 model qua gateway | `python -c "from agents import ClineProvider as C; print(C(model='cline-pass/qwen3.7-plus').complete('sys','Tra loi JSON: {\"action\":\"ALLOW\"}'))"` |
 | Quét ngưỡng lessons | `python tools/learn_review.py --target live --sweep` |
 | Đổi model local (llamafile ↔ ollama) | `python tools/switch_local_model.py .env llamafile` |

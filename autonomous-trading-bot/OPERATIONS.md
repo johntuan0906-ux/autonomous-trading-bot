@@ -182,6 +182,8 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Đo quyền veto (luật VETO-vs-baseline) | `python agents.py --authority --rule baseline` |
 | **Sức khoẻ hội đồng** (model nào treo) | `python agents.py --council-health --hours 48` |
 | **Lý do thật từng phiếu** (model nào treo vì gì) | `python tools/journal_tail.py 40 [live]` |
+| Dò model hội đồng nào thật sự chạy (song song) | `python tools/probe_cline.py` |
+| Kill-switch LIVE + chạy lại (dừng → xoá risk_state → chạy) | `python tools/restart_bot.py --target live --reset` |
 | Kiểm chứng 1 model qua gateway | `python -c "from agents import ClineProvider as C; print(C(model='cline-pass/qwen3.7-plus').complete('sys','Tra loi JSON: {\"action\":\"ALLOW\"}'))"` |
 | Quét ngưỡng lessons | `python tools/learn_review.py --target live --sweep` |
 | Đổi model local (llamafile ↔ ollama) | `python tools/switch_local_model.py .env llamafile` |

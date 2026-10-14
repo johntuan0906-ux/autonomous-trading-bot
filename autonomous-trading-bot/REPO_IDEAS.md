@@ -216,6 +216,59 @@ giữ nguyên: **hội đồng/AI chỉ cố vấn; tiền và rủi ro đi qua 
 |---|---|---|---|---|
 | 1 | **browser-use** (MIT, 118k★) | Agent điều khiển browser qua `Agent(task, llm, tools)`; `@tools.action` khai báo công cụ; `ActionResult(extracted_content=...)` | **Không dùng** (bot không cần browser; thêm bề mặt tấn công + chi phí). Nhưng *pattern* `@tools.action(description=...)` rất đáng bắt chước khi mở API công cụ cho agent | P3 |
 | 2 | **agentmemory** (Apache-2.0) | Bộ nhớ 4 tầng (episodic→semantic→procedural), **decay theo đường cong Ebbinghaus**, hợp nhất theo phiên, **triple-stream retrieval** (BM25 + vector + graph, hợp nhất bằng **RRF k=60**), provenance ghi lúc lưu | **Áp dụng**: `memory_graph.py`/`memory_agent.py` đã có graph + retrieval; bổ sung **(a) decay + eviction** cho ký ức cũ, **(b) provenance**: mỗi ký ức trỏ về sự kiện journal sinh ra nó (đã có `bench_retrieval.py` để đo) | **P1** |
+
+---
+
+## 12. Rà 3 repo lớn (14/10) — AI engineering, self-hosted, agent harness
+
+Đọc README + cấu trúc thư mục của từng repo, đối chiếu với thứ dự án **đang thiếu**.
+Nguyên tắc bất biến: **AI/hội đồng chỉ cố vấn; tiền và rủi ro đi qua ngưỡng tất định**.
+
+### 12.1 `rohitg00/ai-engineering-from-scratch` (MIT, 69k★, 20 phase / 87 bài)
+
+| Phần | Cốt lõi | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|---|
+| **G. Eval framework** (bài 70–75) | Task Spec Format, classical metrics, code-exec metric, **perplexity & calibration**, leaderboard, end-to-end eval runner | **`tools/council_eval.py`**: chấm điểm từng model hội đồng bằng kết quả THẬT từ journal — avg R khi model bỏ VETO vs ALLOW, **calibration** giữa `confidence` và tỉ lệ thắng (Brier). Thay `--council-health` (chỉ đếm treo) bằng eval định lượng ⇒ biết model nào đáng giữ | **P1** |
+| **I. Safety harness** (82–87) | Prompt-injection detector, refusal eval, content classifier, **Constitutional Rules Engine (Python + YAML)**, end-to-end safety gate | Khử chỉ thị nằm trong **headline RSS** trước khi vào prompt (rủi ro thật, đã ghi ở §10.2) + bộ luật YAML làm cổng an toàn trước hội đồng — cùng khuôn với `lessons.py` | **P1** |
+| **F. Advanced RAG** (64–69) | Chunking, hybrid BM25 + dense, cross-encoder rerank, HyDE/multi-query, **RAG eval: precision/recall/MRR/nDCG/faithfulness** | `lessons.py` + `memory_graph.py` đang truy xuất thô: thêm **MRR/nDCG** để biết lesson nào thực sự hữu ích (hiện chỉ đếm số lần chặn) | P2 |
+| **D. Auto research** (50–57) | Hypothesis generator → experiment runner → **result evaluator** → **critic loop** → iteration scheduler | `learner.py` đã gần mô hình này; bổ sung **iteration scheduler** (1 thí nghiệm/tuần, có bảng kết quả) + critic loop cho đề xuất tự động | P2 |
+| B/C/E/H (transformer, DPO, VLM, distributed) | Train model từ đầu | **Không áp dụng** — dự án không train model | — |
+
+### 12.2 `awesome-selfhosted/awesome-selfhosted` (326k★) — công cụ tự host
+
+| Nhu cầu | Công cụ (nhóm trong danh sách) | Trạng thái dự án | Ưu tiên |
+|---|---|---|---|
+| **Dead-man switch** (bot chết hẳn) | **Healthchecks**, Uptime Kuma | Đã có watchdog nội bộ + heartbeat, **chưa có cảnh báo khi tiến trình chết hẳn** | **P1** |
+| **Backup** | Restic / Borg | `logs/journal.jsonl` + `.env` (khoá thật) **chưa có backup tự động** | **P1** |
+| Metrics | Prometheus + `node_exporter` | Đã có `tools/ops.py --prom` → `logs/metrics.prom` (thiếu nơi scrape) | P2 |
+| Dashboard | Grafana | — | P2 |
+| Log tập trung | Loki + Promtail / Grafana Alloy | Log đang là file rời trong `logs/` | P2 |
+| Alerting | Alertmanager → Telegram | Đã có Telegram trực tiếp từ bot | P2 |
+| Scheduler | Cronicle / systemd timer / Task Scheduler | Cần cho việc #24 (tự chạy llamafile khi boot) | P2 |
+| Secrets | Infisical / Vault | `.env` đang **plaintext** (khoá API live) | P2 |
+| Local LLM | llama.cpp / llamafile, Open WebUI | Đang dùng llamafile; Open WebUI chỉ để **xem log hội đồng** | P3 |
+
+### 12.3 `affaan-m/ECC` (MIT, 279k★) — agent harness performance
+
+Cốt lõi: `skills/` + **instincts** (`/instinct-status`, `/instinct-import|export`, `/evolve` gom
+instinct thành skill, `/prune` xoá instinct hết hạn), `hooks/` (PreToolUse/PostToolUse/Stop),
+`rules/` (coding-style, testing TDD 80% coverage, performance, security), `commands/`
+(plan, code-review, **quality-gate**, **learn / learn-eval**, checkpoint, test-coverage),
+memory-persistence hooks, strategic-compact.
+
+| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|
+| **`/evolve`** — gom instinct thành skill | `lessons.py` chính là "instinct": thêm `tools/evolve_lessons.py` gom lesson cùng chủ đề thành **skill có tên** + đề xuất đổi ngưỡng (vẫn qua cổng tất định `AGENT_AUTO_APPLY`) | **P1** |
+| **`/prune`** — xoá instinct hết hạn | Lesson cũ không tái hiện (>60 ngày) ⇒ archive, tránh `SKIP_LESSON` chặn oan (đang bắn 11–13 lần/vòng) | **P1** |
+| **`/quality-gate`** — cổng xác minh trước khi merge | `tools/git-sync.cmd` gọi trước: `unittest discover` + `harness_audit.py --both`; điểm tụt ⇒ chặn push | P2 |
+| **`/checkpoint`** — lưu trạng thái xác minh | Ghi (số test, điểm harness, số vị thế) vào `STATE.md` để so sánh giữa các phiên | P2 |
+| **strategic-compact** — nén ngữ cảnh theo ngân sách | Hội đồng đã có `agent_max_prompt_tokens`; thêm cắt theo tier khi prompt phình | P3 |
+| **hooks Pre/PostToolUse** | Đặt lệnh đã có guard tất định; **không cần thêm** (thêm hook = thêm bề mặt lỗi) | — |
+
+**Việc nên làm ngay từ §12**: (a) `tools/council_eval.py` (eval model hội đồng, P1),
+(b) chống prompt-injection từ headline RSS (P1), (c) Healthchecks dead-man switch (P1),
+(d) backup journal + `.env` bằng Restic (P1), (e) `/evolve` + `/prune` cho `lessons.py` (P1).
+
 | 3 | **scientific-agent-skills** (MIT) | 177 skill theo **chuẩn Agent Skills**: `skills/<ten>/SKILL.md` + frontmatter (`name`, `description`, `when_to_use`), thư mục `references/`, `scripts/` | **Áp dụng**: viết `SKILLS.md` của dự án (fix-bug-loop, retro, handoff, wizard, audit-lệnh-chờ) **theo đúng frontmatter chuẩn** để mọi agent đọc được | **P1** |
 | 4 | **diagram-design** (MIT) | 44 kiểu sơ đồ, HTML+SVG tự chứa, "1 accent, không đổ bóng, mọi toạ độ chia hết cho 4"; có **fidelity receipt**; nói rõ *khi nào KHÔNG nên vẽ* | **Áp dụng nhẹ**: 1 sơ đồ luồng `turbo_demo → bot → exchange → sàn` cho README. Quy tắc "Git hay đổi thì dùng Mermaid" ⇒ README dùng Mermaid, sơ đồ đẹp để riêng | P3 |
 | 5 | **anthropic-cybersecurity-skills** (Apache-2.0) | 818 skill, **map vào 6 framework** (MITRE ATT&CK, NIST CSF 2.0, ATLAS, D3FEND, AI RMF, F3) | **Áp dụng**: `SECURITY.md` của dự án nên **map biện pháp vào khung** (vd NIST CSF: Identify=whitelist IP/không quyền rút tiền; Protect=key tách 2 instance; Detect=`ops.py`/kill-switch; Respond=flatten; Recover=ADOPT). Giúp không bỏ sót lớp | P2 |

@@ -206,6 +206,19 @@ class TestCouncilHealth(unittest.TestCase):
         self.assertIn("review_agent", h["per_model"])
         self.assertNotIn("claude-sonnet-5.5", h["per_model"])
 
+    def test_phieu_hoi_dong_nhom_theo_model_khong_theo_critic_agent(self):
+        """(14/10) turbo_demo ghi phieu hoi dong voi agent=critic_agent nhung
+        model=<model that> -> neu nhom theo `agent` thi moi VETO bi gop vao
+        'critic_agent' (do that: 3 VETO hien thanh critic_agent, model that vo hinh)."""
+        rows = [{"event": "AGENT", "agent": "critic_agent",
+                 "model": "local/llama3.2-3b-local", "action": "VETO",
+                 "abstained": False, "status": "COUNCIL", "ts": self.NOW - 60}
+                for _ in range(3)]
+        h = AG.council_health(str(self._j(rows)), hours=1, now=self.NOW)
+        self.assertIn("local/llama3.2-3b-local", h["per_model"])
+        self.assertNotIn("critic_agent", h["per_model"])
+        self.assertEqual(h["per_model"]["local/llama3.2-3b-local"]["veto"], 3)
+
     def test_model_local_vao_dong_LOCAL_SKIP(self):
         rows = [self._rec("local/llama3.2:3b", "NO_OPINION", abstained=True)
                 for _ in range(9)]

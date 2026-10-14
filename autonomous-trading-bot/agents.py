@@ -1633,10 +1633,16 @@ def council_health(journal_path: str = JOURNAL_PATH, *, hours: float = 48.0,
                 if age > win or age < 0:
                     continue
                 recs += 1
-                # Nhom theo `agent` (nguoi bo phieu that) — `model` co the la ten mac
+                # (14/10) Nhom theo `agent` (nguoi bo phieu that) — `model` co the la ten mac
                 # dinh cua provider (do that 13/10: ban ghi review co model=claude-sonnet-5.5
                 # nhung agent=review_agent -> neu nhom theo `model` thi bao sai).
-                m = str(d.get("agent") or d.get("model") or "?")
+                # NGOAI LE: phieu cua HOI DONG (status=COUNCIL) do turbo_demo ghi voi
+                # `agent=critic_agent` nhung `model=<model that>` -> phai uu tien `model`,
+                # neu khong moi phieu VETO deu bi gop vao "critic_agent" (do that 14/10).
+                if str(d.get("status") or "") == "COUNCIL" and d.get("model"):
+                    m = str(d.get("model"))
+                else:
+                    m = str(d.get("agent") or d.get("model") or "?")
                 b = per.setdefault(m, {"n": 0, "abstain": 0, "veto": 0, "allow": 0,
                                        "notes": {}, "status": {}})
                 b["n"] += 1

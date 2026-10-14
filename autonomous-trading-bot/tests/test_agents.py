@@ -300,7 +300,14 @@ class TestShadowIsolation(unittest.TestCase):
         self.assertNotIn("balance", body)
 
     def test_build_prompt_cat_theo_ngan_sach(self):
-        _sys, user = A.build_prompt("critic", {"big": "x" * 50_000}, max_tokens=200)
+        """Ngân sách token vẫn cắt được body khi payload gồm NHIỀU trường.
+
+        (14/10) Một trường đơn dài 50.000 ký tự giờ bị `prompt_guard` cắt còn 120 ký tự
+        TRƯỚC khi tới bước cắt theo ngân sách — nên để kiểm tra ngân sách, dùng nhiều
+        trường (mỗi trường đều hợp lệ).
+        """
+        payload = {"f%03d" % i: "y" * 100 for i in range(120)}
+        _sys, user = A.build_prompt("critic", payload, max_tokens=200)
         self.assertLessEqual(len(user), 200 * 4 + 200)
         self.assertIn("cat bot", user)
 

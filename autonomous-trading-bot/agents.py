@@ -1399,10 +1399,19 @@ def _system_prompt(role: str) -> str:
 
 
 def build_prompt(role: str, payload: dict, max_tokens: int = 1200) -> tuple:
-    """(system, user) — payload JSON bi cat theo ngan sach token."""
+    """(system, user) — payload JSON bi cat theo ngan sach token.
+
+    (14/10) Payload di qua `prompt_guard.sanitize_payload()` truoc khi vao prompt:
+    du lieu ngoai lai (ten cap, pattern/regime/ly do...) la KHONG dang tin — bo mau
+    chi thi, URL, ky tu dieu khien. Xem `prompt_guard.py`.
+    """
     system = _system_prompt(str(role))
-    body = json.dumps({"role": role, **(payload or {})}, ensure_ascii=False,
-                      sort_keys=True, default=str)
+    try:
+        from prompt_guard import sanitize_payload
+        body_data, _findings = sanitize_payload({"role": role, **(payload or {})})
+    except Exception:  # noqa: BLE001
+        body_data = {"role": role, **(payload or {})}
+    body = json.dumps(body_data, ensure_ascii=False, sort_keys=True, default=str)
     limit = max(200, int(max_tokens) * 4)
     if len(body) > limit:
         body = body[:limit] + "...(cat bot)"

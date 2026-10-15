@@ -2088,6 +2088,38 @@ class TestLocalProvider(unittest.TestCase):
         self.assertEqual(A._timeout_for_model(cfg, "model-a"), 6.0)
 
 
+class TestProviderAgentDon(unittest.TestCase):
+    """(15/10) Tang agent DON (review/macro/reflect) phai doi duoc provider.
+
+    Do that o LIVE: `.env` ghim `AGENT_PROVIDER=copilot_cli` + Copilot het quota thang
+    (`AGENT_COUNCIL_COPILOT_UNTIL`) => review sau khi dong lenh chet 100% (7/7 ban ghi
+    "loi provider: copilot CLI rc=1: You have exceeded your monthly quota") => khong rut
+    duoc bai hoc nao tu lenh LIVE.
+    """
+
+    def test_chon_cline_lam_provider_agent_don(self):
+        cfg = _cfg(agent_provider="cline", agent_model="mimo-v2.6-pro")
+        p = A.build_provider(cfg)
+        self.assertEqual(type(p).__name__, "ClineProvider")
+        self.assertEqual(p.model, "mimo-v2.6-pro")
+        self.assertEqual(p.name, "cline")
+
+    def test_cline_mac_dinh_khi_thieu_agent_model(self):
+        cfg = _cfg(agent_provider="cline", agent_model="")
+        p = A.build_provider(cfg)
+        self.assertEqual(type(p).__name__, "ClineProvider")
+        self.assertTrue(p.model, "phai co model mac dinh dung gateway")
+
+    def test_ten_khac_nhau_cua_cline(self):
+        for name in ("clinepass", "cline_pass", "CLINE"):
+            cfg = _cfg(agent_provider=name, agent_model="qwen3.7-plus")
+            self.assertEqual(type(A.build_provider(cfg)).__name__, "ClineProvider", name)
+
+    def test_provider_la_van_tra_stub(self):
+        cfg = _cfg(agent_provider="khong_ton_tai", agent_model="x")
+        self.assertEqual(type(A.build_provider(cfg)).__name__, "StubProvider")
+
+
 class TestRunnerAnCuaSo(unittest.TestCase):
     """(05/10) Bot chay duoi pythonw -> moi lan goi CLI (node/copilot) phai chay NGAM.
 

@@ -1184,6 +1184,20 @@ def build_provider(cfg=None, log=None):
             if log:
                 log.warning("agents: muse loi (%s) -> stub", e)
             return StubProvider()
+    if name in ("cline", "clinepass", "cline_pass"):
+        # (15/10) Provider cho TANG AGENT DON (review/macro/reflect). Copilot het quota
+        # thang (`AGENT_COUNCIL_COPILOT_UNTIL=2026-11-01`) trong khi `.env` ghim
+        # `AGENT_PROVIDER=copilot_cli` => review sau khi dong lenh CHET 100% (do that o
+        # LIVE: 7/7 ban ghi "loi provider: copilot CLI rc=1: You have exceeded your
+        # monthly quota") => khong rut duoc bai hoc nao tu lenh LIVE. Cline mien phi va
+        # da kiem chung phieu that. CO Y KHONG dat trong `_PROVIDERS`: nhanh duoi do gan
+        # default_model kieu "claude-3-5-haiku" (sai gateway) -> phai tra ve o day.
+        try:
+            return ClineProvider(model=model or "mimo-v2.6-pro")
+        except Exception as e:  # noqa: BLE001
+            if log:
+                log.warning("agents: cline loi (%s) -> stub", e)
+            return StubProvider()
     cls = _PROVIDERS.get(name)
     if cls is None or cls is StubProvider:
         return StubProvider(model=model or "stub-rules")

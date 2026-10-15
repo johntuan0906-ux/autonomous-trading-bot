@@ -172,6 +172,11 @@ class Settings:
     # cho tien that -> mac dinh 3%, khuyen nghi 2% khi moi len live.
     max_total_risk_pct: float = field(default_factory=lambda: _get_float("MAX_TOTAL_RISK_PCT", 3.0))
     adopt_positions: bool = field(default_factory=lambda: _get_bool("ADOPT_POSITIONS", True))
+    # (15/10) Vi the do NGUOI DUNG/bot khac mo -> BO QUA hoan toan (khong adopt, khong
+    # dat SL/TP, khong tinh vao slot). Vi du: `ADOPT_SKIP_SYMBOLS=BTW` hoac
+    # `BTW/USDT:USDT,SOL/USDT:USDT` (nhan ca 2 dang ten).
+    adopt_skip_symbols: str = field(
+        default_factory=lambda: _get("ADOPT_SKIP_SYMBOLS", ""))
     round_timeout_sec: int = field(default_factory=lambda: _get_int("ROUND_TIMEOUT_SEC", 90))
     socket_timeout_sec: int = field(default_factory=lambda: _get_int("SOCKET_TIMEOUT_SEC", 20))
     risk_state_path: str = field(default_factory=lambda: _get("RISK_STATE_PATH", "logs/risk_state.json"))

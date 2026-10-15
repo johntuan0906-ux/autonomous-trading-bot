@@ -669,6 +669,27 @@ class TestAdoptViTheSan(unittest.TestCase):
 
 
 
+    def test_adopt_bo_qua_vi_the_nguoi_dung_mo(self):
+        """(15/10) `ADOPT_SKIP_SYMBOLS`: vi the do NGUOI DUNG/bot khac mo phai duoc BO QUA
+        HOAN TOAN — khong vao portfolio/managed, khong dat SL/TP, khong tinh vao slot.
+        """
+        ex = FakeExchange(rows=self.ROW)
+        bot = self._bot(ex)
+        rep = position_sync.adopt(bot, self.ROW,
+                                  atr_fn=lambda s: {"price": 100.0, "atr": 2.0},
+                                  skip_symbols=["BTC"])
+        self.assertEqual(rep["ignored"], ["BTC/USDT:USDT"])
+        self.assertEqual(rep["adopted"], [])
+        self.assertEqual(bot.portfolio.positions, {})
+        self.assertEqual(bot.managed, {})
+        self.assertEqual(ex.named("stop_tp_orders"), [], "khong duoc dat lenh nao")
+
+    def test_nhan_ca_hai_dang_ten_cap_trong_danh_sach_bo_qua(self):
+        self.assertTrue(position_sync._sym_in_ignore("BTW/USDT:USDT", {"BTW"}))
+        self.assertTrue(position_sync._sym_in_ignore("BTW/USDT:USDT", {"BTW/USDT:USDT"}))
+        self.assertFalse(position_sync._sym_in_ignore("BTW/USDT:USDT", set()))
+        self.assertFalse(position_sync._sym_in_ignore("BTC/USDT:USDT", {"BTW"}))
+
     def test_adopt_khong_dung_vao_SL_dang_treo_tren_san(self):
         ex = FakeExchange(rows=self.ROW,
                           prot={"BTC/USDT:USDT": {"sl": 95.0, "tp": 115.0}})

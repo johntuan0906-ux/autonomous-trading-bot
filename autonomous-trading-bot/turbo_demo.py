@@ -1120,8 +1120,16 @@ def adopt_now(bot, cfg, ex, log, syms) -> dict:
         rep = adopt_positions(bot, ex.fetch_positions(list(syms)),
                               atr_fn=lambda s: atr_of(ex, cfg, s),
                               managed=_ms.get("trades"),
+                              skip_symbols=[x.strip() for x in
+                                            str(getattr(cfg, "adopt_skip_symbols", "")
+                                                or "").split(",") if x.strip()],
                               alert=lambda t: tg(cfg, t))
         heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
+        if rep.get("ignored"):
+            # (15/10) Vi the do nguoi dung/bot khac mo (ADOPT_SKIP_SYMBOLS): bot KHONG
+            # quan ly — khong dat SL/TP, khong chot loi, khong tinh vao slot.
+            log.warning("ADOPT: BO QUA %d vi the theo ADOPT_SKIP_SYMBOLS: %s",
+                        len(rep["ignored"]), rep["ignored"])
         log.warning("ADOPT vi the san: adopted=%s armed=%s KHONG-arm-duoc-tren-san=%s "
                     "chua-bao-ve=%s skipped=%s errors=%s (state nap=%s)",
                     rep["adopted"], rep["armed"], rep["unarmed"],

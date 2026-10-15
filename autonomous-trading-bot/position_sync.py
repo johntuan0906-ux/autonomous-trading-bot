@@ -60,16 +60,32 @@ def _atr_levels_for(bot, sym: str, direction: str, entry: float, atr_fn) -> tupl
     return float(lv["sl"]), float(lv["tp"]), float(entry or lv["entry"])
 
 
-def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None) -> dict:
+def _sym_in_ignore(sym: str, ignore: set) -> bool:
+    """Cặp có nằm trong danh sách BỎ QUA không? Chấp nhận cả `BTW` lẫn `BTW/USDT:USDT`."""
+    s = str(sym or "").upper()
+    return bool(ignore) and (s in ignore or s.split("/")[0] in ignore)
+
+
+def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=()) -> dict:
     """Gan vi the san vao `bot.portfolio` + `bot.managed`; arm lai SL/TP khi can.
 
-    Tra bao cao: {adopted, armed, unmanaged, skipped, errors}.
+    Tra bao cao: {adopted, armed, unmanaged, skipped, ignored, errors}.
+
+    `skip_symbols` (15/10): vi the do NGUOI DUNG/bot KHAC mo -> BO QUA HOAN TOAN (khong
+    nap state, khong arm SL/TP, khong tinh vao slot). Truoc day chi co the "bo qua" khi
+    cap do da nam trong `bot.portfolio` — tuc la vi the ngoai danh sach cap cua bot thi
+    vo tinh duoc bo qua, con vi the TRONG danh sach thi bi adopt va bot se tu quan ly
+    (dat SL/TP, chot loi, dong) — trai voi y muon nguoi van hanh.
     """
     ex = bot.exchange
     rep: dict = {"adopted": [], "armed": [], "unarmed": [], "unmanaged": [],
-                 "skipped": [], "errors": [], "stale": []}
+                 "skipped": [], "errors": [], "stale": [], "ignored": []}
+    ignore = {str(s).strip().upper() for s in (skip_symbols or ()) if str(s).strip()}
     for p in normalize(rows):
         sym, d, qty, entry = p["symbol"], p["direction"], p["qty"], p["entry"]
+        if _sym_in_ignore(sym, ignore):
+            rep["ignored"].append(sym)
+            continue
         if sym in bot.portfolio.positions:
             rep["skipped"].append(sym)
             continue

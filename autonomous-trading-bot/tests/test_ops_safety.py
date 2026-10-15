@@ -363,5 +363,143 @@ class TestUnpairedJournal(unittest.TestCase):
             self.assertIn("? | ? | ? | ?", les["buckets"])
 
 
+class TestLessonsHint(unittest.TestCase):
+    """(15/10) Cay tri thuc + truy hoi theo pham vi + TRAN TOKEN khi nhoi vao prompt."""
+
+    def _b(self):
+        return {
+            "A_TREND_PULLBACK | BOS_UP | UPTREND | LONG": {
+                "n": 30, "wins": 9, "sum_r": -6.0, "avg_r": -0.20, "wr": 30.0,
+                "pnl": -15.0, "last_ts": 10.0},
+            "A_TREND_PULLBACK | BOS_UP | UPTREND | SHORT": {
+                "n": 20, "wins": 14, "sum_r": 5.0, "avg_r": 0.25, "wr": 70.0,
+                "pnl": 20.0, "last_ts": 10.0},
+            "B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT": {
+                "n": 80, "wins": 50, "sum_r": 8.8, "avg_r": 0.11, "wr": 62.0,
+                "pnl": 90.0, "last_ts": 10.0},
+            "C_LIQ_SWEEP_RECLAIM | BOS_UP | SIDEWAY | LONG": {
+                "n": 3, "wins": 1, "sum_r": -1.5, "avg_r": -0.5, "wr": 33.0,
+                "pnl": -2.0, "last_ts": 10.0},
+        }
+
+    def test_tree_gom_theo_cap_va_cong_don_so_lieu(self):
+        t = LES.tree(self._b())
+        self.assertEqual(t["n"], 133)                     # tong so lenh
+        self.assertIn("A_TREND_PULLBACK", t["children"])
+        st = t["children"]["A_TREND_PULLBACK"]
+        self.assertEqual(st["n"], 50)                     # 30 + 20
+        self.assertEqual(st["children"]["BOS_UP"]["n"], 50)
+        leaf = st["children"]["BOS_UP"]["children"]["UPTREND"]["children"]["LONG"]
+        self.assertEqual(leaf["n"], 30)
+        self.assertAlmostEqual(leaf["avg_r"], -0.20, places=2)
+
+    def test_relevant_uu_tien_khop_nhieu_chieu(self):
+        rows = LES.relevant(self._b(), strategy="A_TREND_PULLBACK", setup="BOS_UP",
+                            regime="UPTREND", direction="LONG", max_nodes=2)
+        self.assertEqual(rows[0]["key"], "A_TREND_PULLBACK | BOS_UP | UPTREND | LONG")
+        self.assertEqual(rows[0]["hits"], 4)
+        self.assertTrue(rows[0]["blocked"])               # avgR -0.20 <= -0.05
+
+    def test_hint_chan_so_muc_va_do_dai(self):
+        h = LES.hint(self._b(), strategy="A_TREND_PULLBACK", regime="UPTREND",
+                     direction="SHORT", max_nodes=2, max_chars=60)
+        self.assertEqual(len(h), 2)                       # TRAN: 2 muc
+        self.assertTrue(all(len(s) <= 60 for s in h))     # TRAN: do dai
+        self.assertIn("n=20", " ".join(h))
+        self.assertTrue(all("|" in s for s in h))         # con nguyen khoa to hop
+
+    def test_hint_rong_khi_khong_co_du_lieu(self):
+        self.assertEqual(LES.hint({}, strategy="X"), [])
+        self.assertEqual(LES.hint(self._b(), strategy="X", max_nodes=0), [])
+
+    def test_hint_bo_qua_to_hop_qua_it_mau(self):
+        h = LES.hint(self._b(), strategy="C_LIQ_SWEEP_RECLAIM", max_nodes=5)
+        self.assertNotIn("C_LIQ_SWEEP_RECLAIM", " ".join(h))   # n=3 < min_n=5
+
+
+class TestIncrementalLessons(unittest.TestCase):
+    """(15/10) Doc journal TANG DAN theo fingerprint — ket qua phai GIONG doc lai toan bo."""
+
+    def _lines(self):
+        return [
+            {"event": "OPEN", "pair": "AAA/USDT", "ts": 1.0,
+             "strategy": "A_TREND_PULLBACK", "setup_type": "BOS_UP",
+             "market_regime": "UPTREND", "direction": "LONG"},
+            {"event": "CLOSE", "pair": "AAA/USDT", "ts": 2.0, "r": 1.0, "pnl": 5.0,
+             "won": True, "reason": "TP"},
+            {"event": "CLOSE", "pair": "ZZZ/USDT", "ts": 3.0, "r": 2.0, "pnl": 9.0,
+             "won": True, "reason": "DUST"},                 # khong co OPEN
+        ]
+
+    def _write(self, p, rows, mode="w"):
+        with open(p, mode, encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+        return p
+
+    def test_tang_dan_khop_voi_doc_lai_toan_bo(self):
+        with tempfile.TemporaryDirectory() as td:
+            j = self._write(Path(td) / "j.jsonl", self._lines())
+            st = LES.update_state({}, j)
+            inc = LES.build_from_state(st)
+            full = LES.build(j)
+            self.assertEqual(sorted(inc["buckets"]), sorted(full["buckets"]))
+            for k in full["buckets"]:
+                self.assertEqual(inc["buckets"][k]["n"], full["buckets"][k]["n"], k)
+                self.assertAlmostEqual(inc["buckets"][k]["avg_r"],
+                                       full["buckets"][k]["avg_r"], places=4)
+            self.assertEqual(inc["trades"], full["trades"])          # 1
+            self.assertEqual(inc["unpaired"], full["unpaired"])      # 1 (DUST)
+
+    def test_them_lenh_moi_thi_chi_doc_phan_moi(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = self._write(Path(td) / "j.jsonl", self._lines())
+            st = LES.update_state({}, p)
+            off1 = st["offset"]
+            self._write(p, [
+                {"event": "OPEN", "pair": "BBB/USDT", "ts": 4.0,
+                 "strategy": "B_BREAKOUT_RETEST", "setup_type": "BOS_DOWN",
+                 "market_regime": "DOWNTREND", "direction": "SHORT"},
+                {"event": "CLOSE", "pair": "BBB/USDT", "ts": 5.0, "r": 3.0, "pnl": 12.0,
+                 "won": True, "reason": "TP"},
+            ], mode="a")
+            st2 = LES.update_state(st, p)
+            self.assertGreater(st2["offset"], off1)                  # da doc them
+            self.assertEqual(len(st2["buckets"]), 2)                 # bucket cu + moi
+            self.assertEqual(st2["n_closed"], 3)
+            # khong co gi moi -> tra ve nguyen trang thai
+            st3 = LES.update_state(st2, p)
+            self.assertEqual(st3["offset"], st2["offset"])
+            self.assertEqual(len(st3["buckets"]), 2)
+
+    def test_journal_bi_xoay_vong_thi_RESET_doc_lai_tu_dau(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = self._write(Path(td) / "j.jsonl", self._lines())
+            st = LES.update_state({}, p)
+            self._write(p, [self._lines()[0], self._lines()[1]])     # nho hon -> xoay vong
+            st2 = LES.update_state(st, p)
+            self.assertEqual(st2["resets"], 1)
+            self.assertEqual(st2["n_closed"], 1)
+            self.assertEqual(len(st2["buckets"]), 1)
+
+    def test_dong_dang_ghi_do_khong_duoc_tinh(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "j.jsonl"
+            self._write(p, self._lines())
+            with open(p, "a", encoding="utf-8") as f:
+                f.write('{"event":"CLOSE","pair":"AAA/USDT"')       # dong do dang
+            st = LES.update_state({}, p)
+            self.assertEqual(st["n_closed"], 2)                      # khong tinh dong do
+
+    def test_read_state_save_state_round_trip(self):
+        with tempfile.TemporaryDirectory() as td:
+            c = Path(td) / "cache.json"
+            self.assertEqual(LES.read_state(c), {})
+            self.assertTrue(LES.save_state(c, {"offset": 5, "buckets": {}}))
+            self.assertEqual(LES.read_state(c)["offset"], 5)
+            c.write_text("{ hong", encoding="utf-8")
+            self.assertEqual(LES.read_state(c), {})                  # hong -> rong, khong crash
+
+
 if __name__ == "__main__":
     unittest.main()

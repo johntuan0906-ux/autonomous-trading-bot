@@ -336,6 +336,34 @@ _LESSONS: dict = {"ts": 0.0, "gates": set(), "n": 0, "hits": {}}
 _LESSONS_TTL_SEC = 600.0
 
 
+def _lessons_hint_for(cfg, pay: dict) -> dict:
+    """(15/10) Nhoi BANG CHUNG LICH SU (lien quan) vao payload hoi dong.
+
+    Truoc day hoi dong quyet dinh **MU**: `setup_payload` khong co truong nao ve lessons,
+    nen moi phieu duoc dua ra ma khong thay ket qua cua chinh cac lenh tuong tu truoc do
+    (do duoc `value_r` ~ 0 cho moi model — mot phan vi ly do nay).
+
+    Chan token: toi da 5 muc ngan (xem `lessons.hint`). Thieu du lieu -> tra {} (fail-open:
+    thieu bang chung KHONG duoc phep chan lenh).
+    """
+    try:
+        import json as _json
+        from pathlib import Path as _Pth
+        import lessons as _LES
+        bk = (_LESSONS.get("buckets") if isinstance(_LESSONS, dict) else None) or {}
+        if not bk:
+            p = _Pth(str(getattr(cfg, "lessons_path", "logs/lessons.json")))
+            bk = (_json.loads(p.read_text(encoding="utf-8", errors="replace"))
+                  .get("buckets") or {})
+        h = _LES.hint(bk, strategy=str(pay.get("strategy") or ""),
+                      setup=str(pay.get("setup_type") or pay.get("setup") or ""),
+                      regime=str(pay.get("regime") or ""),
+                      direction=str(pay.get("direction") or ""), max_nodes=5)
+        return {"lessons_hint": h} if h else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def lessons_gate(cfg, *, strat: str, setup: str, regime: str, direction: str) -> dict:
     """To hop dieu kien nay co nam trong danh sach CHAN khong?
 
@@ -472,6 +500,10 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
     except Exception as e:  # noqa: BLE001
         log.warning("AGENTS: payload loi (bo qua): %s", e)
         return
+    try:                       # (15/10) bang chung LICH SU cho hoi dong (da chan token)
+        pay.update(_lessons_hint_for(cfg, pay))
+    except Exception:  # noqa: BLE001
+        pass
 
     use_council = bool(getattr(cfg, "agents_council", False))
     tg_votes = bool(getattr(cfg, "agent_tg_votes", False))

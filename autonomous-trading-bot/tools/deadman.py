@@ -192,7 +192,7 @@ def main(argv: list | None = None) -> int:
         import backup as BK
         action = ("install" if args.install_task else
                   "uninstall" if args.uninstall_task else "status")
-        cmd = '"%s" "%s" --target both' % (sys.executable, Path(__file__).resolve())
+        cmd = '"%s" "%s" --target both' % (BK.hidden_python(), Path(__file__).resolve())
         res = BK.run_schtasks(BK.schtasks_argv(action, TASK_NAME, command=cmd,
                                               sched="MINUTE", mod=args.task_min))
         res.update({"action": action, "task": TASK_NAME, "command": cmd})
@@ -250,4 +250,15 @@ def main(argv: list | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except Exception:      # pythonw: khong co console -> loi phai vao file, khong duoc im
+        import traceback
+        try:
+            with open(ROOT / "logs" / "deadman_task.log", "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + traceback.format_exc() + "\n")
+        except OSError:
+            pass
+        raise SystemExit(1)

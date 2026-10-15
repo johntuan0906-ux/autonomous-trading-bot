@@ -191,6 +191,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Đăng ký backup hằng ngày** (Task Scheduler) | `python tools/backup.py --install-task [--task-time 03:30]` / gỡ: `--uninstall-task` |
 | **Dead-man switch** (báo khi bot NGỪNG) | `python tools/deadman.py [--dry-run] [--json]` — điền `HEALTHCHECKS_URL` vào `.env` để nhận cảnh báo ngoài máy |
 | **Đăng ký dead-man mỗi 15 phút** | `python tools/deadman.py --install-task [--task-min 15]` / gỡ: `--uninstall-task` |
+> ⚠️ Task Scheduler phải gọi **`pythonw.exe`** (không phải `python.exe`), nếu không cứ mỗi chu kỳ sẽ hiện 1 cửa sổ cmd đen. `--install-task` đã tự chọn `pythonw.exe` (`backup.hidden_python()`); vì không có console nên lỗi được ghi vào `logs/backup_task.log` / `logs/deadman_task.log`.
 | **`/evolve`** (rút kỹ năng có tên từ tổ hợp) | `python tools/learn_review.py --dry --evolve` |
 | **`/prune`** (trục xuất tổ hợp cũ khỏi lessons.json) | `python tools/learn_review.py --prune --stale-days 30` |
 | Kiểm chứng 1 model qua gateway | `python -c "from agents import ClineProvider as C; print(C(model='cline-pass/qwen3.7-plus').complete('sys','Tra loi JSON: {\"action\":\"ALLOW\"}'))"` |

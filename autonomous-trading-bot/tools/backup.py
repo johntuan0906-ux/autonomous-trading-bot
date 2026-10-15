@@ -88,9 +88,25 @@ def prune(outdir: Path, name: str, keep: int) -> list:
 TASK_NAME = "ATB-Backup"
 
 
+def hidden_python(exe=None) -> str:
+    """Duong dan python KHONG bat cua so console: `pythonw.exe` (cung thu muc).
+
+    (15/10) Loi that nguoi van hanh bao: cu 15 phut lai hien 1 cua so cmd den
+    `...\\Python312\\python.exe` — do la Task Scheduler chay `ATB-Deadman`/`ATB-Backup`
+    bang `python.exe` (chuong trinh console). `pythonw.exe` khong tao console, va
+    `print()` trong pythonw la no-op nen cac tool nay van ghi file binh thuong.
+    """
+    p = Path(exe or sys.executable)
+    if p.name.lower() == "python.exe":
+        w = p.with_name("pythonw.exe")
+        if w.exists():
+            return str(w)
+    return str(p)
+
+
 def task_command(python_exe=None, script=None, target: str = "both", keep: int = 14) -> str:
     """Lenh Task Scheduler se chay (duong dan TUYET DOI + nhay kep — task chay khac cwd)."""
-    py = python_exe or sys.executable
+    py = python_exe or hidden_python()
     sc = script or (ROOT / "tools" / "backup.py")
     return '"%s" "%s" --target %s --keep %d' % (py, sc, target, int(keep))
 
@@ -212,4 +228,15 @@ def main(argv: list | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except Exception:      # pythonw: khong co console -> loi phai vao file, khong duoc im
+        import traceback
+        try:
+            with open(ROOT / "logs" / "backup_task.log", "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + traceback.format_exc() + "\n")
+        except OSError:
+            pass
+        raise SystemExit(1)

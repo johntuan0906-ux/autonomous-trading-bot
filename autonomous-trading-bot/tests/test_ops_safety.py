@@ -271,6 +271,23 @@ class TestBackupTask(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertIn("khong ton tai", r["out"])
 
+    def test_hidden_python_doi_sang_pythonw_de_khong_bat_popup(self):
+        """(15/10) Cu 15 phut hien 1 cua so cmd den -> task phai goi pythonw.exe."""
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td)
+            py, pyw = d / "python.exe", d / "pythonw.exe"
+            py.write_bytes(b"x")
+            self.assertTrue(BK.hidden_python(py).endswith("python.exe"))   # chua co pythonw
+            pyw.write_bytes(b"x")
+            self.assertTrue(BK.hidden_python(py).endswith("pythonw.exe"))
+            self.assertTrue(BK.hidden_python(pyw).endswith("pythonw.exe"))  # da la pythonw
+            self.assertTrue(BK.hidden_python(d / "python3.exe").endswith("python3.exe"))
+
+    def test_task_command_mac_dinh_dung_pythonw(self):
+        cmd = BK.task_command(script=Path(r"C:\repo\tools\backup.py"))
+        self.assertNotIn("python.exe ", cmd.replace("pythonw.exe", ""))
+        self.assertIn("--target both", cmd)
+
 
 if __name__ == "__main__":
     unittest.main()

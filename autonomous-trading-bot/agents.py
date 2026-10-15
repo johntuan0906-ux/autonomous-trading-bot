@@ -928,6 +928,38 @@ class VscodeLmProvider:
                 "tokens_out": approx_tokens(text)}
 
 
+LOCAL_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "enum": ["ALLOW", "VETO", "NO_OPINION"]},
+        "confidence": {"type": "number"},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "risk_flags": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["action", "confidence"],
+}
+
+
+def json_body(base: dict, mode: str) -> dict:
+    """Them rang buoc JSON vao body theo `mode` (THUAN TUY -> test duoc).
+
+    mode: 'schema' (chat nhat, json_schema) | 'object' (json_object) | 'off'.
+
+    (15/10) Vi sao: model local 3B do duoc `parse=ok` nhung `raw_text` la **vi du JSON
+    lap lai** (no dang "day" dinh dang chu khong phan tich lenh) => phieu rong thong tin
+    va `value_r` am. Rang buoc GIAI MA la cach di truc tiep nhat — `outlines`,
+    `llamafile` (GBNF), `JustVugg/colibri` (c/grammar.h) deu lam dung viec nay.
+    """
+    b = dict(base)
+    if str(mode) == "schema":
+        b["response_format"] = {"type": "json_schema",
+                                "json_schema": {"name": "decision", "strict": True,
+                                                "schema": LOCAL_JSON_SCHEMA}}
+    elif str(mode) == "object":
+        b["response_format"] = {"type": "json_object"}
+    return b
+
+
 class OpenAICompatProvider:
     """Endpoint 'OpenAI-compatible' bat ky (Azure/OpenRouter/Ollama/vLLM...).
 
@@ -936,12 +968,17 @@ class OpenAICompatProvider:
 
     name = "openai_compatible"
 
-    def __init__(self, model: str = "", api_key: str = "", base_url: str = ""):
+    def __init__(self, model: str = "", api_key: str = "", base_url: str = "",
+                 json_mode: bool = False):
         self.model = model or os.getenv("AGENT_COMPAT_MODEL", "")
         self.api_key = (api_key or os.getenv("AGENT_COMPAT_API_KEY")
                         or os.getenv("OPENAI_API_KEY", ""))
         self.base_url = (base_url or os.getenv("AGENT_COMPAT_BASE_URL")
                          or os.getenv("OPENAI_BASE_URL", ""))
+        # (15/10) Chi bat cho model LOCAL (llamafile): ep JSON theo schema de model 3B
+        # khong con "lap lai vi du dinh dang" thay vi tra loi.
+        self.json_mode = bool(json_mode)
+        self.json_mode_used = "off"          # de chan doan: che do nao chay duoc
 
     def complete(self, system: str, user: str, *, timeout: float = 8.0) -> dict:
         if not self.base_url:
@@ -952,13 +989,25 @@ class OpenAICompatProvider:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = "Bearer " + self.api_key
-        r = requests.post(self.base_url.rstrip("/") + "/chat/completions",
-                          headers=headers,
-                          json={"model": self.model, "temperature": 0.0,
-                                "max_tokens": 160,
-                                "messages": [{"role": "system", "content": system},
-                                             {"role": "user", "content": user}]},
-                          timeout=timeout)
+        base = {"model": self.model, "temperature": 0.0, "max_tokens": 160,
+                "messages": [{"role": "system", "content": system},
+                             {"role": "user", "content": user}]}
+        url = self.base_url.rstrip("/") + "/chat/completions"
+        # (15/10) Thu tu GIAM DAN do chat: json_schema -> json_object -> khong rang buoc.
+        # Server cu/khac khong hieu `response_format` se tra 400 -> tu ha cap thay vi
+        # lam hoi dong mat phieu. Loi KHAC 400/404/422 = loi that -> nem ra ngay.
+        modes = ["schema", "object", "off"] if self.json_mode else ["off"]
+        r = None
+        for mode in modes:
+            r = requests.post(url, headers=headers, json=json_body(base, mode),
+                              timeout=timeout)
+            # `getattr`: mot so doi tuong gia lap (test/Proxy) chi co raise_for_status/json.
+            code = int(getattr(r, "status_code", 200) or 200)
+            if code < 400:
+                self.json_mode_used = mode
+                break
+            if code not in (400, 404, 422):
+                r.raise_for_status()
         r.raise_for_status()
         js = r.json()
         usage = js.get("usage") or {}
@@ -2458,7 +2507,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
                    else QwenCliProvider(model=m, bin_path=qw_bin, args=qw_args)
                    if m.startswith(QWEN_PREFIX)
                    else OpenAICompatProvider(model=m[len(LOCAL_PREFIX):],
-                                             base_url=lo_base, api_key=lo_key)
+                                             base_url=lo_base, api_key=lo_key,
+                                             json_mode=True)
                    if m.startswith(LOCAL_PREFIX)
                    else CopilotCliProvider(model=m, bin_path=bin_path, args=args)))
     state_path = str(getattr(cfg, "agent_state_path", STATE_PATH) or STATE_PATH)

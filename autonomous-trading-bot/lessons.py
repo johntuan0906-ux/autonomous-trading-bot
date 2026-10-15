@@ -28,6 +28,8 @@ KEYS_DEFAULT = ("strategy", "setup_type", "market_regime", "direction")
 HUMAN_BEGIN = "<!-- HUMAN -->"
 HUMAN_END = "<!-- /HUMAN -->"
 ARCHIVE_NAME = "lessons_archive.jsonl"
+# (15/10) Bo dem TANG DAN: chi doc phan MOI cua journal (xem `update_state`).
+CACHE_NAME = "lessons_cache.json"
 
 
 def load_closed(journal_path, *, unpaired: str = "mark") -> list:

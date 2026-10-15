@@ -501,5 +501,71 @@ class TestIncrementalLessons(unittest.TestCase):
             self.assertEqual(LES.read_state(c), {})                  # hong -> rong, khong crash
 
 
+class TestLocalJsonConstraint(unittest.TestCase):
+    """(15/10) Rang buoc GIAI MA JSON cho model local (llamafile).
+
+    Bang chung: `raw_text` cua model local la **vi du JSON lap lai** (no "day" dinh dang
+    chu khong phan tich lenh) => phieu rong thong tin, `value_r` am."""
+
+    def _agents(self):
+        import agents as AG
+        return AG
+
+    def test_json_body_ba_che_do(self):
+        AG = self._agents()
+        base = {"model": "x", "temperature": 0.0}
+        self.assertNotIn("response_format", AG.json_body(base, "off"))
+        self.assertEqual(AG.json_body(base, "object")["response_format"],
+                         {"type": "json_object"})
+        sch = AG.json_body(base, "schema")["response_format"]
+        self.assertEqual(sch["type"], "json_schema")
+        self.assertTrue(sch["json_schema"]["strict"])
+        props = sch["json_schema"]["schema"]["properties"]
+        self.assertEqual(props["action"]["enum"], ["ALLOW", "VETO", "NO_OPINION"])
+        self.assertEqual(sch["json_schema"]["schema"]["required"], ["action", "confidence"])
+
+    def test_json_body_khong_sua_dict_goc(self):
+        AG = self._agents()
+        base = {"model": "x"}
+        AG.json_body(base, "schema")
+        self.assertNotIn("response_format", base)          # khong bien doi tham so vao
+
+    def test_che_do_mac_dinh_la_off_va_ha_cap_khi_400(self):
+        AG = self._agents()
+        p = AG.OpenAICompatProvider(model="m", base_url="http://127.0.0.1:9", json_mode=False)
+        self.assertEqual(p.json_mode_used, "off")
+        calls = []
+
+        class R:
+            def __init__(self, code):
+                self.status_code = code
+
+            def raise_for_status(self):
+                if self.status_code >= 400:
+                    raise RuntimeError("HTTP %s" % self.status_code)
+
+            def json(self):
+                return {"choices": [{"message": {"content": '{"action":"ALLOW"}'}}],
+                        "usage": {}}
+
+        import requests as _rq
+        old = _rq.post
+
+        def fake_post(url, headers=None, json=None, timeout=None):
+            calls.append(json.get("response_format"))
+            return R(400 if len(calls) < 3 else 200)       # schema/object bi tu choi
+
+        _rq.post = fake_post
+        try:
+            p2 = AG.OpenAICompatProvider(model="m", base_url="http://127.0.0.1:9",
+                                         json_mode=True)
+            out = p2.complete("s", "u", timeout=1)
+        finally:
+            _rq.post = old
+        self.assertIn("ALLOW", out["text"])
+        self.assertEqual(len(calls), 3)                    # da thu ca 3 che do
+        self.assertEqual(p2.json_mode_used, "off")         # ha cap xuong khong rang buoc
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2056,9 +2056,10 @@ class TestLocalProvider(unittest.TestCase):
         class _FakeCompat:
             name = "openai_compatible"
 
-            def __init__(self, model="", api_key="", base_url=""):
+            def __init__(self, model="", api_key="", base_url="", json_mode=False):
                 made["model"] = model
                 made["base_url"] = base_url
+                made["json_mode"] = json_mode
                 self.model = model
 
             def complete(self, system, user, *, timeout=8.0):
@@ -2070,6 +2071,9 @@ class TestLocalProvider(unittest.TestCase):
                                         models=["local/llama3.2:3b"])
         self.assertEqual(made["model"], "llama3.2:3b", "phai strip tien to local/")
         self.assertEqual(made["base_url"], "http://127.0.0.1:11434/v1")
+        self.assertTrue(made["json_mode"],
+                        "(15/10) model local phai bat rang buoc JSON: do duoc raw_text la "
+                        "vi du JSON lap lai => phieu rong thong tin")
         self.assertEqual(set(res["votes"]), {"local/llama3.2:3b"})
 
     def test_timeout_rieng_cho_model_local(self):

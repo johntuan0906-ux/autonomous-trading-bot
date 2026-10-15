@@ -43,6 +43,8 @@ def main(argv=None) -> int:
                     help="so ngay khong co lenh nao thi coi la CU (mac dinh 30, dung voi --prune)")
     ap.add_argument("--evolve", action="store_true",
                     help="/evolve: in KY NANG rut ra tu cac to hop (co ten, doc duoc)")
+    ap.add_argument("--full", action="store_true",
+                    help="doc lai TOAN BO journal (mac dinh: chi doc phan moi theo bo dem tang dan)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
@@ -56,8 +58,19 @@ def main(argv=None) -> int:
     max_avg_r = float(args.max_avg_r if args.max_avg_r is not None
                       else env.get("LESSONS_MAX_AVG_R", -0.20) or -0.20)
     enforce = str(env.get("LESSONS_ENFORCE", "false")).lower() in ("1", "true", "yes")
-    les = LES.build(journal, cap=args.cap, min_n=min_n, max_avg_r=max_avg_r,
-                    stale_days=(args.stale_days if args.prune else 0.0))
+    les = None
+    cache = base / "logs" / LES.CACHE_NAME
+    sd = args.stale_days if args.prune else 0.0
+    if args.full:
+        les = LES.build(journal, cap=args.cap, min_n=min_n, max_avg_r=max_avg_r,
+                        stale_days=sd)
+        les["incremental"] = None
+    else:
+        st = LES.update_state(LES.read_state(cache), journal)
+        les = LES.build_from_state(st, cap=args.cap, min_n=min_n,
+                                   max_avg_r=max_avg_r, stale_days=sd)
+        if not args.dry:
+            LES.save_state(cache, st)
 
     if args.json:
         import json
@@ -70,6 +83,10 @@ def main(argv=None) -> int:
         print("  to hop theo doi        : %d" % len(les["buckets"]))
         print("  nguong (.env)          : n>=%d, avgR<=%.2f | LESSONS_ENFORCE=%s"
               % (min_n, max_avg_r, enforce))
+        inc = les.get("incremental")
+        print("  che do doc             : %s"
+              % ("TOAN BO (--full)" if not inc else
+                 "tang dan (offset=%s, resets=%s)" % (inc.get("offset"), inc.get("resets"))))
         print("  to hop DANG CHAN       : %d" % len(les["gates"]))
         if args.prune:
             st = les.get("stale") or {}

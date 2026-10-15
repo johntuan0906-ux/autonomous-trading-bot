@@ -6,7 +6,17 @@ from dataclasses import dataclass, field
 
 try:
     from dotenv import load_dotenv  # type: ignore
-    load_dotenv()
+    # (15/10) `ATB_ENV_FILE`: doc `.env` cua INSTANCE KHAC (vd tool chay tu repo chinh
+    # nhung lam viec cho `../atb-live`). Vi sao can: `load_dotenv()` tim `.env` theo
+    # **thu muc cua module nay** (khong theo cwd) => cong cu "cho LIVE" van doc `.env`
+    # repo chinh (`BINANCE_TESTNET=true` + key demo) => `-2015 Invalid API-key`, va bao
+    # cao sai: snapshot cua LIVE ghi `testnet=true` lam `live_guard` **bo qua moi chot
+    # chan** (no tuong dang o testnet). Dat bien nay TRUOC khi import config.
+    _ENV_FILE = os.environ.get("ATB_ENV_FILE", "").strip()
+    if _ENV_FILE:
+        load_dotenv(_ENV_FILE, override=True)     # ghi de: day la chu dinh ro rang
+    else:
+        load_dotenv()
 except Exception:
     pass
 

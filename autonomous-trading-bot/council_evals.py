@@ -42,6 +42,23 @@ def load_recs(journal_path: str) -> list:
     return recs
 
 
+# (15/10) Phieu HAU KIEM (`status=CLOSED` / vai `review`) duoc bo SAU khi lenh da dong
+# => no DA BIET ket qua. Neu tinh vao `value_r`/`veto_precision` thi thien lech nhin truoc
+# (do that: bang diem cu co dong `claude-sonnet-5.5` +0.044 — chinh la model cua agent
+# review). Chi cham diem phieu bo TRUOC khi vao lenh.
+POST_TRADE_STATUS = ("CLOSED", "REVIEW")
+POST_TRADE_ROLES = ("review", "review_agent")
+
+
+def is_pre_trade(rec: dict) -> bool:
+    """Phieu duoc bo TRUOC khi vao lenh? (loai phieu hau kiem) — ham THUAN TUY."""
+    r = rec or {}
+    if str(r.get("status") or "").upper() in POST_TRADE_STATUS:
+        return False
+    role = str(r.get("role") or r.get("agent") or "").lower()
+    return role not in POST_TRADE_ROLES
+
+
 def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
     """Ghep quyet dinh AGENT voi lenh CLOSE dau tien cung symbol/direction trong cua so.
 
@@ -63,6 +80,8 @@ def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
     cases: list = []
     for r in recs:
         if r.get("event") != "AGENT":
+            continue
+        if not is_pre_trade(r):        # bo phieu HAU KIEM (thien lech nhin truoc)
             continue
         act = str(r.get("action") or "").upper()
         if act not in ("ALLOW", "VETO"):

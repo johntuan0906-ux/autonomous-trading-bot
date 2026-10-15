@@ -55,6 +55,38 @@ class TestPairCases(unittest.TestCase):
         self.assertIn("alpha", veto["features"])
         self.assertEqual(veto["features"]["rsi"], 22.0)
 
+    def test_bo_phieu_hau_kiem_khoi_bang_diem(self):
+        """(15/10) Phieu HAU KIEM (review sau khi dong lenh) biet ket qua roi -> neu tinh
+        vao `value_r` thi thien lech nhin truoc. Do that: bang diem cu co dong
+        `claude-sonnet-5.5` (+0.044) — do chinh la model cua agent review.
+        """
+        jp = os.path.join(tempfile.mkdtemp(), "j.jsonl")
+        t0 = 1_700_000_000.0
+        rows = [
+            {"event": "AGENT", "ts": t0, "role": "critic", "status": "COUNCIL",
+             "agent": "critic_agent", "symbol": "SOL/USDT:USDT", "direction": "SHORT",
+             "action": "VETO", "confidence": 0.8, "provider": "cline",
+             "model": "cline-pass/mimo-v2.6-pro"},
+            {"event": "CLOSE", "ts": t0 + 300, "pair": "SOL/USDT:USDT",
+             "direction": "SHORT", "r": -1.0, "won": False},
+            # phieu HAU KIEM: agent review bo phieu SAU khi lenh da dong (status CLOSED)
+            {"event": "AGENT", "ts": t0 + 400, "role": "review", "status": "CLOSED",
+             "agent": "review_agent", "symbol": "SOL/USDT:USDT", "direction": "SHORT",
+             "action": "ALLOW", "confidence": 0.9, "provider": "cline",
+             "model": "claude-sonnet-5.5"},
+        ]
+        with open(jp, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        cases = pair_cases(jp, window_sec=3600)
+        models = [c["model"] for c in cases]
+        self.assertIn("cline-pass/mimo-v2.6-pro", models)
+        self.assertNotIn("claude-sonnet-5.5", models,
+                         "phieu hau kiem phai bi loai (thien lech nhin truoc)")
+        self.assertFalse(CE.is_pre_trade({"role": "review", "status": "CLOSED"}))
+        self.assertFalse(CE.is_pre_trade({"role": "review_agent"}))
+        self.assertTrue(CE.is_pre_trade({"role": "critic", "status": "COUNCIL"}))
+
     def test_khong_ghep_khi_ngoai_cua_so(self):
         jp = _journal(os.path.join(tempfile.mkdtemp(), "j.jsonl"))
         cases = pair_cases(jp, window_sec=60)   # close cach 300s/900s > 60s

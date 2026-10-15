@@ -145,6 +145,12 @@ def main(argv: list | None = None) -> int:
             decs = {k: v for k, v in res.items()
                     if isinstance(v, dict) and "action" in v}
     rep = tally(decs or {})
+    # (15/10) Model DUOC YEU CAU nhung khong tra ve phieu nao (bi `CLINE_SKIP_MODELS` /
+    # `LOCAL_SKIP_MODELS` loai tu trong `_council_models`, hoac provider bi chan) truoc day
+    # **bien mat im lang**: `votes` rong + `abstained` rong => khong ai biet vi sao thieu
+    # phieu (dung lop loi da lam hoi dong "im lang" 48h). In ro ra bang tom tat.
+    rep["missing"] = [m for m in (ms or [])
+                      if m not in {r["model"] for r in rep["rows"]}]
     rep["seconds"] = round(time.time() - t0, 1)
     rep["question"] = args.question
     rep["option_ALLOW"] = args.allow
@@ -194,6 +200,9 @@ def main(argv: list | None = None) -> int:
                            args.veto if rep["verdict"] == "VETO" else "hoa/khong du phieu"))
         if rep.get("journal"):
             print("  journal: %s" % rep["journal"])
+        if rep.get("missing"):
+            print("  KHONG TRA VE PHIEU (%d): %s"
+                  % (len(rep["missing"]), ", ".join(rep["missing"])[:200]))
     return 0
 
 

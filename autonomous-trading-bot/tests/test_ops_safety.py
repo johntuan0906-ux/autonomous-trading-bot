@@ -8,6 +8,7 @@ Khong goi mang, khong chay schtasks, khong spawn tien trinh: moi thu deu tiem du
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import time
@@ -310,6 +311,56 @@ class TestCouncilIgnore(unittest.TestCase):
                          ["claude-sonnet-5.5"])
         self.assertEqual(AG._filter_ignored(d, set()), d)          # khong co gi -> giu het
         self.assertEqual(AG._filter_ignored({}, {"x"}), {})
+
+
+class TestUnpairedJournal(unittest.TestCase):
+    """(15/10) 91 lenh CLOSE khong co OPEN (reason=DUST) tung sinh to hop GIA
+    `? | ? | ? | ?` (n=84, avgR +0.383) va bi xep vao 'NEN UU TIEN'."""
+
+    def _journal(self, td):
+        j = Path(td) / "journal.jsonl"
+        rows = [
+            {"event": "OPEN", "pair": "AAA/USDT", "ts": 1.0,
+             "strategy": "A_TREND_PULLBACK", "setup_type": "BOS_UP",
+             "market_regime": "UPTREND", "direction": "LONG"},
+            {"event": "CLOSE", "pair": "AAA/USDT", "ts": 2.0, "r": 1.0, "won": True,
+             "reason": "TP"},
+            {"event": "CLOSE", "pair": "BBB/USDT", "ts": 3.0, "r": 2.4, "won": True,
+             "reason": "DUST", "direction": "SHORT"},      # khong co OPEN
+        ]
+        j.write_text("\n".join(json.dumps(x) for x in rows) + "\n", encoding="utf-8")
+        return j
+
+    def test_load_closed_danh_dau_lenh_khong_co_open(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = LES.load_closed(self._journal(td))
+            self.assertEqual(len(t), 2)
+            self.assertIsNone(t[0].get("origin"))            # lenh that: khong co nhan
+            self.assertEqual(t[1].get("origin"), "no_open")
+
+    def test_bucket_stats_loai_lenh_khong_co_open(self):
+        with tempfile.TemporaryDirectory() as td:
+            b = LES.bucket_stats(LES.load_closed(self._journal(td)))
+            self.assertEqual(list(b), ["A_TREND_PULLBACK | BOS_UP | UPTREND | LONG"])
+            self.assertNotIn("? | ? | ? | ?", b)             # het to hop gia
+
+    def test_build_dem_rieng_va_khong_tinh_vao_thong_ke(self):
+        with tempfile.TemporaryDirectory() as td:
+            les = LES.build(self._journal(td))
+            self.assertEqual(les["trades"], 1)               # chi lenh co OPEN
+            self.assertEqual(les["unpaired"], 1)             # van duoc DEM RIENG
+            self.assertNotIn("? | ? | ? | ?", les["buckets"])
+
+    def test_unpaired_drop_bo_han_khoi_ket_qua(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = LES.load_closed(self._journal(td), unpaired="drop")
+            self.assertEqual(len(t), 1)
+
+    def test_include_unpaired_giu_hanh_vi_cu_de_doi_chieu(self):
+        with tempfile.TemporaryDirectory() as td:
+            les = LES.build(self._journal(td), include_unpaired=True)
+            self.assertEqual(les["unpaired"], 0)
+            self.assertIn("? | ? | ? | ?", les["buckets"])
 
 
 if __name__ == "__main__":

@@ -65,6 +65,8 @@ def main(argv=None) -> int:
     else:
         print("=== BAI HOC: %s (%s) ===" % (args.target.upper(), journal))
         print("  lenh da dong doc duoc : %d" % les["trades"])
+        print("  loai bo (khong OPEN)  : %d  (DUST / vi the ke thua -> khong the rut bai hoc)"
+              % int(les.get("unpaired") or 0))
         print("  to hop theo doi        : %d" % len(les["buckets"]))
         print("  nguong (.env)          : n>=%d, avgR<=%.2f | LESSONS_ENFORCE=%s"
               % (min_n, max_avg_r, enforce))

@@ -30,11 +30,19 @@ HUMAN_END = "<!-- /HUMAN -->"
 ARCHIVE_NAME = "lessons_archive.jsonl"
 
 
-def load_closed(journal_path) -> list:
+def load_closed(journal_path, *, unpaired: str = "mark") -> list:
     """Doc journal -> danh sach lenh DA DONG kem feature cua lenh OPEN tuong ung.
 
-    Ghep theo cap (pair) kieu FIFO: OPEN truoc, CLOSE sau. OPEN khong co CLOSE (vi the
-    dang mo / journal thieu) bi bo qua — khong suy dien ket qua.
+    Ghep theo cap (pair) kieu FIFO: OPEN truoc, CLOSE sau.
+
+    (15/10) `unpaired` — lenh CLOSE **khong co OPEN** tuong ung. Do duoc that:
+    **91 lenh**, TAT CA deu `reason='DUST'` (don vi the nho / vi the ke thua), vi bot
+    khong mo chung bang tin hieu nen khong co OPEN. Ban cu ghep chung voi `{}` => sinh
+    to hop GIA `? | ? | ? | ?` (n=84, avgR +0.383): chiem cho trong tran `cap=60` va
+    bi xep vao "NEN UU TIEN" — mot tin hieu KHONG CO THAT.
+      "mark" (mac dinh): van tra ve, gan `origin="no_open"` de `bucket_stats` loai;
+      "drop"           : bo han khoi ket qua;
+      "ignore"         : giu hanh vi cu (ghep voi {}) — chi dung khi can doi chieu.
     """
     try:
         lines = Path(journal_path).read_text(encoding="utf-8", errors="replace").splitlines()
@@ -56,11 +64,16 @@ def load_closed(journal_path) -> list:
         elif ev == "CLOSE":
             q = pend.get(pair) or []
             o = q.pop(0) if q else {}
+            if not o and str(unpaired) == "drop":
+                continue
             t = dict(o)
             t.update({k: d.get(k) for k in ("r", "pnl", "won", "reason",
                                             "mfe_r", "partial", "exit_price")})
             t["pair"] = pair
             t["ts_close"] = d.get("ts")
+            if not o and str(unpaired) == "mark":
+                t["origin"] = "no_open"
+                t.setdefault("direction", d.get("direction"))
             out.append(t)
     return out
 
@@ -76,13 +89,19 @@ def key_of(trade: dict, keys=KEYS_DEFAULT) -> str:
     return " | ".join(parts)
 
 
-def bucket_stats(trades: list, keys=KEYS_DEFAULT) -> dict:
+def bucket_stats(trades: list, keys=KEYS_DEFAULT, *,
+                 exclude_origin=("no_open",)) -> dict:
     """Gom lenh theo to hop dieu kien -> {khoa: {n, wins, sum_r, sum_pnl, avg_r, wr, pf}}.
 
     HOP NHAT (merge) theo khoa: khong bao gio tao 2 muc gan giong nhau.
+    (15/10) `exclude_origin`: bo cac lenh khong co OPEN (`origin="no_open"` — 91 lenh
+    DUST). Khong the rut kinh nghiem tu lenh khong biet vi sao vao.
     """
     out: dict = {}
+    skip = {str(x) for x in (exclude_origin or ()) if str(x)}
     for t in trades or []:
+        if str((t or {}).get("origin") or "") in skip:
+            continue
         k = key_of(t, keys)
         b = out.setdefault(k, {"n": 0, "wins": 0, "sum_r": 0.0, "sum_pnl": 0.0,
                                "gross_win": 0.0, "gross_loss": 0.0, "last_ts": 0.0})
@@ -324,19 +343,24 @@ def skills_md(skills: list) -> list:
 
 def build(journal_path, *, keys=KEYS_DEFAULT, cap: int = 60,
           min_n: int = 20, max_avg_r: float = -0.30, stale_days: float = 0.0,
-          now=None) -> dict:
-    """Doc journal -> {trades, buckets, gates, notes, skills, stale, pruned, ts}.
+          now=None, include_unpaired: bool = False) -> dict:
+    """Doc journal -> {trades, unpaired, buckets, gates, notes, skills, stale, pruned, ts}.
 
     `stale_days > 0` -> `/prune`: truc xuat to hop khong con lenh trong N ngay.
+    (15/10) Lenh CLOSE khong co OPEN (91 lenh DUST) bi LOAI khoi thong ke nhung van
+    duoc DEM RIENG o `unpaired` — khong am tham bo qua.
     """
-    trades = load_closed(journal_path)
+    trades = load_closed(journal_path,
+                         unpaired=("ignore" if include_unpaired else "mark"))
+    unpaired = sum(1 for t in (trades or []) if t.get("origin") == "no_open")
     buckets = bucket_stats(trades, keys)
     keep, drop = merge_capped(buckets, cap=cap)
     stale = {}
     if float(stale_days or 0.0) > 0:
         keep, stale = prune_stale(keep, stale_days=stale_days, now=now)
     gates = gate_list(keep, min_n=min_n, max_avg_r=max_avg_r)
-    return {"trades": len(trades), "keys": list(keys), "buckets": keep,
+    return {"trades": len(trades or []) - unpaired, "unpaired": unpaired,
+            "keys": list(keys), "buckets": keep,
             "gates": gates, "notes": notes(keep, gates),
             "skills": evolve(keep),
             "stale": {k: v.get("prune_reason") for k, v in (stale or {}).items()},
@@ -360,7 +384,9 @@ def write_files(les: dict, *, json_path="logs/lessons.json",
              "> Muc do NGUOI viet nam trong 2 marker `<!-- HUMAN -->` se KHONG bi ghi de.",
              "", "## So lieu", "",
              "- So lenh da dong doc duoc: **%d**" % int(les.get("trades") or 0),
-             "- To hop dieu kien dang theo doi: **%d**" % len(les.get("buckets") or {}),
+             "- To hop DIEU KIEN dang theo doi: **%d**" % len(les.get("buckets") or {}),
+             "- Lenh CLOSE khong co OPEN (DUST / ke thua) — DA LOAI khoi thong ke: **%d**"
+             % int(les.get("unpaired") or 0),
              "- To hop DANG CHAN (du mau + ky vong am): **%d**" % len(les.get("gates") or []),
              "", "## Rut kinh nghiem", ""]
     lines += ["- %s" % s if not s.startswith(("NEN", "chua")) else "**%s**" % s

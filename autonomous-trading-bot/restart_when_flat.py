@@ -139,6 +139,21 @@ def make_exchange(cfg):
     return ex
 
 
+def _instance_testnet(root: Path, cfg=None):
+    """`BINANCE_TESTNET` theo `.env` CUA INSTANCE (khong dung `Settings()`).
+
+    (15/10) `Settings()` doc `.env` theo thu muc cua `config.py` => tool chay tu repo chinh
+    ma nham LIVE van bao `testnet=True` trong log (gay hieu nham nghiem trong: tuong dang
+    o demo). Doc thang file `.env` cua instance nhu `tools/restart_bot.py` dang lam.
+    """
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import restart_bot as RB
+        return RB.env_kv(root).get("BINANCE_TESTNET", "?")
+    except Exception:  # noqa: BLE001
+        return getattr(cfg, "testnet", None)
+
+
 def supervisor_pid(root: Path | None = None) -> int:
     """PID supervisor đang chạy (từ `logs/.supervisor.lock`), 0 nếu không có."""
     p = (root or ROOT) / "logs" / ".supervisor.lock"
@@ -236,7 +251,7 @@ def main(argv: list | None = None) -> int:
     syms = env_symbols(root)
     log("theo doi: target=%s dir=%s poll=%ss max=%sh dry_run=%s testnet=%s | cap cua bot=%d"
         % (args.target, root, args.poll, args.max_hours, args.dry_run,
-           getattr(cfg, "testnet", None), len(syms)))
+           _instance_testnet(root, cfg), len(syms)))
     if args.once:
         n = open_positions(ex, syms)
         log("vi the cua BOT dang mo: %s (bo qua lenh mo tay)" % n)

@@ -6,19 +6,41 @@ from dataclasses import dataclass, field
 
 try:
     from dotenv import load_dotenv  # type: ignore
-    # (15/10) `ATB_ENV_FILE`: doc `.env` cua INSTANCE KHAC (vd tool chay tu repo chinh
-    # nhung lam viec cho `../atb-live`). Vi sao can: `load_dotenv()` tim `.env` theo
-    # **thu muc cua module nay** (khong theo cwd) => cong cu "cho LIVE" van doc `.env`
-    # repo chinh (`BINANCE_TESTNET=true` + key demo) => `-2015 Invalid API-key`, va bao
-    # cao sai: snapshot cua LIVE ghi `testnet=true` lam `live_guard` **bo qua moi chot
-    # chan** (no tuong dang o testnet). Dat bien nay TRUOC khi import config.
+except Exception:  # noqa: BLE001
+    load_dotenv = None  # type: ignore
+
+
+def load_instance_env(instance_dir) -> str:
+    """Nạp `.env` của MỘT INSTANCE khác vào tiến trình hiện tại (override=True).
+
+    (15/10) Vì sao cần: `load_dotenv()` tìm `.env` theo **thư mục của module này**
+    (không theo cwd) ⇒ tool chạy từ repo chính nhưng làm việc cho `../atb-live` vẫn dùng
+    `.env` testnet (`BINANCE_TESTNET=true` + key demo) ⇒ `-2015 Invalid API-key`, và báo
+    cáo sai: snapshot của LIVE ghi `testnet=true` khiến `live_guard` **bỏ qua mọi chốt
+    chặn**. Hàm này nạp lại đúng file của instance đích ở thời điểm gọi (không phụ thuộc
+    thứ tự import). Trả đường dẫn file đã nạp ('' nếu không có).
+    """
+    from pathlib import Path as _P
+    p = _P(instance_dir) / ".env"
+    if load_dotenv is None or not p.exists():
+        return ""
+    try:
+        load_dotenv(str(p), override=True)
+        return str(p)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+if load_dotenv is not None:
+    # `ATB_ENV_FILE`: chọn `.env` của instance đích NGAY khi import (xem trên).
     _ENV_FILE = os.environ.get("ATB_ENV_FILE", "").strip()
-    if _ENV_FILE:
-        load_dotenv(_ENV_FILE, override=True)     # ghi de: day la chu dinh ro rang
-    else:
-        load_dotenv()
-except Exception:
-    pass
+    try:
+        if _ENV_FILE:
+            load_dotenv(_ENV_FILE, override=True)   # ghi đè: đây là chỉ định rõ ràng
+        else:
+            load_dotenv()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _get(name: str, default: str = "") -> str:

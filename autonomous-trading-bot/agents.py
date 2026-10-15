@@ -2188,8 +2188,24 @@ def _cline_council_models(cfg) -> list:
     else:
         names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("CLINE_SKIP_MODELS", "").split(",") if m.strip()}
-    return [m if m.startswith(CLINE_PREFIX) else CLINE_PREFIX + m
-            for m in names if m not in skip]
+    return _apply_skip(names, skip, CLINE_PREFIX)
+
+
+def _apply_skip(names: list, skip: set, prefix: str) -> list:
+    """Gan tien to cho ten model + loai theo danh sach SKIP — so khop CA 2 dang ten.
+
+    (15/10) Loi that: `.env` ghi danh sach hoi dong KHONG tien to (`glm-5.3`) con danh
+    sach SKIP CO tien to (`cline-pass/glm-5.3`) => phep so sanh cu (`m not in skip`) luon
+    sai => **danh sach SKIP khong co tac dung**: model da chet van duoc goi moi vong
+    (ton thoi gian + rac journal). Nay so khop ca `m` lan `<prefix>+m`.
+    """
+    out: list = []
+    for m in names:
+        full = m if m.startswith(prefix) else prefix + m
+        if m in skip or full in skip:
+            continue
+        out.append(full)
+    return out
 
 
 def _muse_council_models(cfg) -> list:
@@ -2199,8 +2215,7 @@ def _muse_council_models(cfg) -> list:
         return []
     names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("MUSE_SKIP_MODELS", "").split(",") if m.strip()}
-    return [m if m.startswith(MUSE_PREFIX) else MUSE_PREFIX + m
-            for m in names if m not in skip]
+    return _apply_skip(names, skip, MUSE_PREFIX)
 
 
 def _qwen_council_models(cfg) -> list:
@@ -2210,8 +2225,7 @@ def _qwen_council_models(cfg) -> list:
         return []
     names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("QWEN_SKIP_MODELS", "").split(",") if m.strip()}
-    return [m if m.startswith(QWEN_PREFIX) else QWEN_PREFIX + m
-            for m in names if m not in skip]
+    return _apply_skip(names, skip, QWEN_PREFIX)
 
 
 def _muse_cli_council_models(cfg) -> list:
@@ -2225,8 +2239,7 @@ def _muse_cli_council_models(cfg) -> list:
     names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("MUSE_CLI_SKIP_MODELS", "").split(",")
             if m.strip()}
-    return [m if m.startswith(MUSE_CLI_PREFIX) else MUSE_CLI_PREFIX + m
-            for m in names if m not in skip]
+    return _apply_skip(names, skip, MUSE_CLI_PREFIX)
 
 
 def _local_council_models(cfg) -> list:
@@ -2241,8 +2254,37 @@ def _local_council_models(cfg) -> list:
         return []
     names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("LOCAL_SKIP_MODELS", "").split(",") if m.strip()}
-    return [m if m.startswith(LOCAL_PREFIX) else LOCAL_PREFIX + m
-            for m in names if m not in skip]
+    return _apply_skip(names, skip, LOCAL_PREFIX)
+
+
+def _skipped_council_models(cfg) -> list:
+    """Model co trong cau hinh hoi dong nhung bi danh sach SKIP loai -> [(model, env)].
+
+    (15/10) Vi sao: `_cline_council_models`/`_local_council_models` loai model NGAY khi
+    doc cau hinh => model do khong bao gio vao `decisions` => khong vao `abstained` =>
+    **bien mat im lang** (dung lop loi da lam hoi dong "im lang" 48h: `votes` rong +
+    `abstained` rong, khong ai biet vi sao thieu phieu). Nay chung duoc ghi ro ra.
+    """
+    out: list = []
+    groups = ((getattr(cfg, "agent_council_cline", ""), "CLINE_SKIP_MODELS", CLINE_PREFIX),
+              (getattr(cfg, "agent_council_local", ""), "LOCAL_SKIP_MODELS", LOCAL_PREFIX),
+              (getattr(cfg, "agent_council_qwen", ""), "QWEN_SKIP_MODELS", QWEN_PREFIX),
+              (getattr(cfg, "agent_council_muse", ""), "MUSE_SKIP_MODELS", MUSE_PREFIX),
+              (getattr(cfg, "agent_council_muse_cli", ""), "MUSE_CLI_SKIP_MODELS",
+               MUSE_CLI_PREFIX))
+    for raw, env, prefix in groups:
+        raw = str(raw or "").strip()
+        if not raw or raw.lower() == "all":
+            continue                      # "all" = doc catalog: khong liet ke truoc duoc
+        skip = {m.strip() for m in os.getenv(env, "").split(",") if m.strip()}
+        for m in (x.strip() for x in raw.split(",") if x.strip()):
+            full = m if m.startswith(prefix) else prefix + m
+            # So khop CA 2 dang: `.env` co the ghi `glm-5.3` hoac `cline-pass/glm-5.3`
+            # (danh sach SKIP thuc te dung dang co tien to) — truoc day chi so 1 dang nen
+            # model bi bo qua van khong duoc liet ke ra.
+            if m in skip or full in skip:
+                out.append((full, env))
+    return out
 
 
 def _provider_groups(decisions: dict) -> tuple:
@@ -2634,6 +2676,13 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
 
     stage = (" [ngan sach]" if escalated else "") + (" [2 vong]" if debated else "") \
         + (" [tier-up]" if tier_upgraded else "")
+    # (15/10) Model bi danh sach SKIP loai: ghi vao `abstained` (de `--council-health` va
+    # journal dem du) + kem LY DO rieng. CO Y tinh SAU khi da xong cac vong: khong de chung
+    # lot vao `abstained` som (se bi hoi lai o vong ngan sach/debate -> goi model da chet).
+    skipped = {m: env for m, env in _skipped_council_models(cfg) if m not in decisions}
+    if skipped and log:
+        log.info("COUNCIL: bo qua %d model theo danh sach SKIP: %s", len(skipped),
+                 ", ".join("%s (%s)" % (m, e) for m, e in list(skipped.items())[:6]))
     why = (f"hoi dong {len(names)} model: {n_allow}A / {n_veto}V "
            f"(hoa {len(abstained)}: {', '.join(abstained) or '-'})"
            + stage)
@@ -2641,7 +2690,8 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     if log:
         log.info("MULTI-MODEL COUNCIL role=%s -> %s (%.2f) [%s]", role, action, conf, why)
     return {"votes": {m: d.to_dict() for m, d in votes.items()},
-           "abstained": abstained, "action": action, "confidence": round(conf, 2),
+           "abstained": sorted(set(abstained) | set(skipped)), "skipped": skipped,
+           "action": action, "confidence": round(conf, 2),
            "why": why, "escalated": escalated, "debated": debated,
            "difficulty": diff_score, "start_tier": start_tier,
            "tier_upgraded": tier_upgraded,

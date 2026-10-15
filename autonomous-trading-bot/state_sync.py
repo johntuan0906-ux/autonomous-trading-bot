@@ -498,12 +498,41 @@ def git_commit_push(msg: str) -> dict:
         return {"ok": False, "err": str(e)[:200], "git": git}
 
 
+def target_paths(target: str) -> tuple:
+    """(base, STATE.md, snapshot) của instance — hàm THUẦN TUÝ (test được).
+
+    (15/10) `--target` phải đổi CẢ `.env` đọc vào (`config.load_instance_env`) LẪN nơi
+    ghi, nếu không thì báo cáo của LIVE mang số liệu/cấu hình testnet.
+    """
+    base = ROOT if str(target) == "testnet" else ROOT.parent / "atb-live"
+    return base, base / "STATE.md", base / "logs" / "state_snapshot.json"
+
+
 def main(argv: list | None = None) -> int:
     ap = argparse.ArgumentParser(description="Dong bo STATE.md + (tuy chon) tu dong sang LIVE")
     ap.add_argument("--git", action="store_true", help="commit + push STATE.md len GitHub")
+    ap.add_argument("--target", default="", choices=("", "testnet", "live"),
+                    help="lam viec cho instance nao (mac dinh: thu muc hien tai)")
     ap.add_argument("--auto-live", action="store_true",
                     help="kiem tra cong, tu sang LIVE neu du dieu kien (AUTO_LIVE_ARMED)")
     args = ap.parse_args(argv)
+
+    global STATE_MD, SNAPSHOT, ROOT
+    if args.target:
+        # (15/10) `--target`: doc DUNG `.env` cua instance dich va ghi vao thu muc cua no.
+        # Truoc day khong co: chay tu repo chinh ma nham LIVE => `Settings()` van dung
+        # `.env` testnet (xem `config.load_instance_env`) => snapshot LIVE ghi
+        # `testnet=true` => `live_guard` BO QUA moi chot chan trong bao cao.
+        base, md_p, snap_p = target_paths(args.target)
+        if not base.exists():
+            log("khong thay instance '%s' tai %s" % (args.target, base))
+            return 2
+        from config import load_instance_env
+        env_file = load_instance_env(base)
+        ROOT = base
+        STATE_MD = md_p
+        SNAPSHOT = snap_p
+        log("target=%s | dir=%s | env=%s" % (args.target, base, env_file or "(khong co)"))
 
     from config import Settings
     cfg = Settings()

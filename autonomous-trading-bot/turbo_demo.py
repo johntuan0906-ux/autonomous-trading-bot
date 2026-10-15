@@ -536,9 +536,13 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
                     "provider": _provider_label(mname),
                     "final_action": res.get("action")})
             # Log ca model treo (abstained) de co so lieu day du
+            skipped = res.get("skipped") or {}
             for mname in (res.get("abstained") or []):
+                # (15/10) Model bi danh sach SKIP loai: ghi LY DO that (khong phai "treo").
+                note = ("bo qua: " + str(skipped.get(mname))
+                        if mname in skipped else "treo/loi/het gio")
                 d = Decision(role="critic", agent=mname, action="NO_OPINION",
-                              note="treo/loi/het gio", ts=time.time())
+                              note=note, ts=time.time())
                 layer.log_decision(d, extra={
                     "symbol": sym, "direction": direction,
                     "status": "COUNCIL", "model": mname,

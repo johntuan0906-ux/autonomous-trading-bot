@@ -497,5 +497,50 @@ class TestRestartWhenFlatTarget(unittest.TestCase):
             self.assertEqual(RWF.supervisor_pid(d), 0)      # khong co lock -> 0 (an toan)
 
 
+class TestEnvTheoInstance(unittest.TestCase):
+    """(15/10) Tool chay "cho instance khac" phai doc DUNG `.env` cua instance do.
+
+    Do that: `load_dotenv()` tim `.env` theo thu muc cua `config.py` => tool chay tu repo
+    chinh ma nham `../atb-live` van dung `.env` testnet (key demo + `BINANCE_TESTNET=true`)
+    => `-2015 Invalid API-key`, snapshot LIVE ghi `testnet=true` => `live_guard` BO QUA
+    moi chot chan trong bao cao.
+    """
+
+    def test_load_instance_env_ghi_de_bien_cu(self):
+        import config as CFG
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / ".env"
+            p.write_text("BINANCE_TESTNET=false\nATB_TEST_INSTANCE=live\n", encoding="utf-8")
+            old = os.environ.get("BINANCE_TESTNET")
+            os.environ["BINANCE_TESTNET"] = "true"
+            try:
+                got = CFG.load_instance_env(tmp)
+                self.assertEqual(got, str(p))
+                self.assertEqual(os.environ.get("BINANCE_TESTNET"), "false",
+                                 "phai ghi de: day la chi dinh ro rang")
+                self.assertEqual(os.environ.get("ATB_TEST_INSTANCE"), "live")
+            finally:
+                os.environ.pop("ATB_TEST_INSTANCE", None)
+                if old is None:
+                    os.environ.pop("BINANCE_TESTNET", None)
+                else:
+                    os.environ["BINANCE_TESTNET"] = old
+
+    def test_load_instance_env_thieu_file_thi_khong_lam_gi(self):
+        import config as CFG
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(CFG.load_instance_env(tmp), "")
+
+    def test_state_sync_duong_dan_theo_instance(self):
+        import state_sync as SS
+        base, md, snap = SS.target_paths("testnet")
+        self.assertEqual(base, SS.ROOT)
+        self.assertEqual(md, SS.ROOT / "STATE.md")
+        base2, md2, snap2 = SS.target_paths("live")
+        self.assertEqual(base2.name, "atb-live")
+        self.assertEqual(md2, base2 / "STATE.md")
+        self.assertEqual(snap2, base2 / "logs" / "state_snapshot.json")
+
+
 if __name__ == "__main__":
     unittest.main()

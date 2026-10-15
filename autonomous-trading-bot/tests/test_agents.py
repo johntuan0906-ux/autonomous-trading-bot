@@ -498,6 +498,35 @@ class TestMultiModelCouncil(unittest.TestCase):
         self.assertEqual(res["abstained"], ["model-c"], "model treo phai bi loai, khong tinh phieu")
         self.assertEqual(set(res["votes"]), {"model-a", "model-b"})
 
+    def test_model_bi_danh_sach_skip_hien_dien_trong_abstained(self):
+        """(15/10) Model bị `CLINE_SKIP_MODELS` loại phải HIỆN DIỆN trong `abstained` kèm
+        lý do — trước đây nó bị loại ngay khi đọc cấu hình nên **biến mất im lặng**
+        (`votes` rỗng + `abstained` rỗng, không ai biết vì sao thiếu phiếu)."""
+        import unittest.mock as _mock
+        tmp = tempfile.mkdtemp()
+        cfg = _cfg(agent_state_path=os.path.join(tmp, "state.json"),
+                   agent_council_cline="good,bad")
+        factory = self._factory({"cline-pass/good": {"action": "ALLOW", "confidence": 0.7}})
+        with _mock.patch.dict(os.environ, {"CLINE_SKIP_MODELS": "cline-pass/bad"}):
+            res = A.multi_model_council(cfg, {"symbol": "BTC/USDT:USDT"}, role="critic",
+                                        provider_factory=factory)
+        self.assertEqual(set(res["votes"]), {"cline-pass/good"})
+        self.assertIn("cline-pass/bad", res["abstained"])
+        self.assertEqual(res["skipped"], {"cline-pass/bad": "CLINE_SKIP_MODELS"})
+
+    def test_liet_ke_model_bi_skip(self):
+        import unittest.mock as _mock
+        cfg = _cfg(agent_council_cline="mimo-v2.6-pro,glm-5.3")
+        with _mock.patch.dict(os.environ, {"CLINE_SKIP_MODELS": "cline-pass/glm-5.3"}):
+            self.assertEqual(A._skipped_council_models(cfg),
+                             [("cline-pass/glm-5.3", "CLINE_SKIP_MODELS")])
+
+    def test_all_thi_khong_liet_ke_truoc_duoc(self):
+        import unittest.mock as _mock
+        cfg = _cfg(agent_council_cline="all")
+        with _mock.patch.dict(os.environ, {"CLINE_SKIP_MODELS": "cline-pass/x"}):
+            self.assertEqual(A._skipped_council_models(cfg), [])
+
     def test_khong_co_model_nao_duoc_chon_dai_dien_quorum_quyet_dinh(self):
         tmp = tempfile.mkdtemp()
         models = ["model-a", "model-b", "model-c"]

@@ -2331,6 +2331,33 @@ class _CfgOverride:
         return getattr(self._base, name)
 
 
+def _ignored_models(cfg=None) -> set:
+    """Model bi LOAI khoi phieu hoi dong (van ghi journal de con do luong).
+
+    (15/10) Bang chung: `python tools/council_eval.py --hours 336` do duoc
+    `local/llama3.2-3b-local` value_r = **-1.303** (VETO lenh thang +0.246R, ALLOW lenh
+    thua -1.057R) — phieu cua no lam NGUOC ket qua. Y tuong quorum cua ruflo (loai nut
+    Byzantine) + ky luat autoharness (khong xoa, chi khong tinh): danh sach nay TAT DINH
+    va cong khai trong `.env` (`AGENT_COUNCIL_IGNORE`), khong de AI tu quyet.
+    """
+    raw = str(getattr(cfg, "agent_council_ignore", "") or "")
+    return {m.strip() for m in raw.split(",") if m.strip()}
+
+
+def _filter_ignored(decisions: dict, ignore) -> dict:
+    """Bo cac model trong `ignore`. Khop ca ten co/khong tien to provider."""
+    ign = {str(i) for i in (ignore or ()) if str(i).strip()}
+    if not ign or not decisions:
+        return decisions
+    out = {}
+    for m, d in decisions.items():
+        name = str(m)
+        if any(name == i or name.endswith("/" + i) or i.endswith("/" + name) for i in ign):
+            continue
+        out[m] = d
+    return out
+
+
 def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
                         models: list | None = None, provider_factory=None) -> dict:
     """HOI DONG NHIEU MODEL THAT chay SONG SONG + DEBATE 2 VONG (05/10).
@@ -2478,6 +2505,10 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     _provider_recovering(decisions)                   # (08/10) hoat dong lai -> xoa dau pause
 
     def _tally(decs: dict) -> tuple:
+        # (15/10) Loai model co value_r <= 0 (xem `_ignored_models`): phieu cua chung
+        # van duoc ghi journal de `tools/council_eval.py` do tiep, nhung KHONG tinh vao
+        # ket qua hoi dong.
+        decs = _filter_ignored(decs, _ignored_models(cfg))
         abst = sorted(m for m, d in decs.items() if d.action not in ("ALLOW", "VETO"))
         vts = {m: d for m, d in decs.items() if d.action in ("ALLOW", "VETO")}
         na = sum(1 for d in vts.values() if d.action == "ALLOW")

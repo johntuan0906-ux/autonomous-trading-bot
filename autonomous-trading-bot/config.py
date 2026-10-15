@@ -225,6 +225,11 @@ class Settings:
         default_factory=lambda: _get_bool("AGENTS_COUNCIL_MULTI_MODEL", False))
     agent_council_models: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_MODELS", ""))
+    # (15/10) Model bi LOAI khoi phieu (csv). Bang chung: tools/council_eval.py do duoc
+    # `local/llama3.2-3b-local` value_r = -1.303 => phieu cua no lam nguoc ket qua.
+    # Van ghi journal (de do tiep), chi KHONG tinh vao ket qua hoi dong.
+    agent_council_ignore: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_IGNORE", ""))
     # Model Cline (cline-pass/...) ngoi chung hoi dong voi Copilot CLI: "all" = catalog
     # 14 model (tru CLINE_SKIP_MODELS) | csv | rong = tat. Can CLINE_API_KEY.
     agent_council_cline: str = field(

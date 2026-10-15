@@ -289,5 +289,28 @@ class TestBackupTask(unittest.TestCase):
         self.assertIn("--target both", cmd)
 
 
+class TestCouncilIgnore(unittest.TestCase):
+    """(15/10) Quyet dinh cua hoi dong: loai model value_r <= 0 khoi phieu (khong xoa)."""
+
+    def test_ignored_models_doc_tu_cfg(self):
+        import agents as AG
+
+        class C:
+            agent_council_ignore = "local/llama3.2-3b-local, foo ,"
+
+        self.assertEqual(AG._ignored_models(C()), {"local/llama3.2-3b-local", "foo"})
+        self.assertEqual(AG._ignored_models(object()), set())      # thieu cau hinh -> rong
+
+    def test_filter_ignored_khop_ca_co_tien_to(self):
+        import agents as AG
+        d = {"local/llama3.2-3b-local": 1, "claude-sonnet-5.5": 2}
+        self.assertEqual(list(AG._filter_ignored(d, {"llama3.2-3b-local"})),
+                         ["claude-sonnet-5.5"])       # khop khi ten khong co tien to
+        self.assertEqual(list(AG._filter_ignored(d, {"local/llama3.2-3b-local"})),
+                         ["claude-sonnet-5.5"])
+        self.assertEqual(AG._filter_ignored(d, set()), d)          # khong co gi -> giu het
+        self.assertEqual(AG._filter_ignored({}, {"x"}), {})
+
+
 if __name__ == "__main__":
     unittest.main()

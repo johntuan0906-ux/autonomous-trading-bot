@@ -37,6 +37,12 @@ def main(argv=None) -> int:
                     help="bao cao TAC DONG: cong tiet kiem bao nhieu / bo lo bao nhieu")
     ap.add_argument("--sweep", action="store_true",
                     help="quet nhieu nguong avgR -> chon nguong tot nhat bang so lieu")
+    ap.add_argument("--prune", action="store_true",
+                    help="/prune: truc xuat to hop CU (khong con lenh trong --stale-days)")
+    ap.add_argument("--stale-days", type=float, default=30.0,
+                    help="so ngay khong co lenh nao thi coi la CU (mac dinh 30, dung voi --prune)")
+    ap.add_argument("--evolve", action="store_true",
+                    help="/evolve: in KY NANG rut ra tu cac to hop (co ten, doc duoc)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
@@ -50,7 +56,8 @@ def main(argv=None) -> int:
     max_avg_r = float(args.max_avg_r if args.max_avg_r is not None
                       else env.get("LESSONS_MAX_AVG_R", -0.20) or -0.20)
     enforce = str(env.get("LESSONS_ENFORCE", "false")).lower() in ("1", "true", "yes")
-    les = LES.build(journal, cap=args.cap, min_n=min_n, max_avg_r=max_avg_r)
+    les = LES.build(journal, cap=args.cap, min_n=min_n, max_avg_r=max_avg_r,
+                    stale_days=(args.stale_days if args.prune else 0.0))
 
     if args.json:
         import json
@@ -62,6 +69,17 @@ def main(argv=None) -> int:
         print("  nguong (.env)          : n>=%d, avgR<=%.2f | LESSONS_ENFORCE=%s"
               % (min_n, max_avg_r, enforce))
         print("  to hop DANG CHAN       : %d" % len(les["gates"]))
+        if args.prune:
+            st = les.get("stale") or {}
+            print("  /prune (CU > %.0f ngay)  : truc xuat %d to hop" % (args.stale_days, len(st)))
+            for k, why in list(st.items())[:5]:
+                print("     - %s (%s)" % (k, why))
+        if args.evolve or args.prune:
+            sk = les.get("skills") or []
+            print("  --- KY NANG (/evolve): %d ---" % len(sk))
+            for s in sk:
+                print("    [%-8s] %-46s n=%-3d avgR=%+.3f WR=%.0f%% PnL=%+.2f"
+                      % (s["kind"], s["name"], s["n"], s["avg_r"], s["wr"], s["pnl"]))
         for s in les["notes"]:
             print("  %s" % s)
         if args.sweep:

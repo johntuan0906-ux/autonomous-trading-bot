@@ -303,3 +303,29 @@ Yêu cầu: vừa TESTNET để học vừa LIVE để thực tế nhanh hơn; *
 
 
 
+
+## 15/10 — 4 viec van hanh (lam tron goi)
+
+1. **Supervisor tu chay llamafile** (`run_forever.ensure_llamafile`, goi moi lan restart):
+   do duoc hoi dong chi con `local/llama3.2-3b-local` bo phieu (10 VETO/3h) => server local
+   chet = hoi dong CAM ma khong ai bao. Quyet dinh la ham THUAN TUY (`plan_autostart`),
+   probe `GET /v1/models` (3s), tat bang `LLAMAFILE_AUTOSTART=false`. Dau vet:
+   `logs/turbo_err.log` dong `[llamafile] <hanh dong>`.
+2. **Dead-man switch** `tools/deadman.py` (+ `--install-task`, mac dinh 15 phut): doc CUNG
+   nguon voi `tools/ops.py`. Coi la CHET khi: nhip tim cu / khong co supervisor /
+   kill-switch dang ngung / co loi (bo qua `SKIP_DATA` vi do la hanh vi dung). Co URL
+   Healthchecks thi ping `<url>` (OK) hoac `<url>/fail` (loi); khong co URL thi ghi
+   `logs/deadman.json` + `logs/deadman.log`. Bao tri co chu dinh: `--mute` hoac file
+   `logs/deadman_mute`. Chay that 15/10: bat ngay TESTNET kill-switch tripped.
+3. **`/evolve` + `/prune` cho lessons** (`lessons.py`): `evolve()` rut **KY NANG co ten**
+   (`tranh:` / `uu_tien:`, xep theo |avgR| x n) — ten lay tu KHOA to hop vi bucket chi
+   chua so lieu (loi that: doc truong `strategy/...` tu bucket => luon ra `"?"`).
+   `prune_stale()` truc xuat to hop khong con lenh trong N ngay (ly do luu vao
+   `logs/lessons_archive.jsonl`, khong xoa). Vi `turbo_demo.lessons_gate()` tinh lai gate
+   TU `buckets`, day la cach duy nhat go duoc vong chan cu. CLI:
+   `python tools/learn_review.py --prune --stale-days 30 --evolve`.
+4. **Backup dinh ky**: `python tools/backup.py --install-task` (03:30 hang ngay, go bang
+   `--uninstall-task`) => `backups/atb-<instance>-<ts>.zip` (da kiem chung doc lai; `.gitignore` chan `backups/`).
+
+Watch: TESTNET kill-switch trip lai (6 loi lien tiep, muc 12) — reset demo-only; LIVE co
+1 `LIVE INTERLOCK` trong cua so (xem tiep).

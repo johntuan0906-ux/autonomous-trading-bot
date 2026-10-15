@@ -85,6 +85,47 @@ def prune(outdir: Path, name: str, keep: int) -> list:
     return removed
 
 
+TASK_NAME = "ATB-Backup"
+
+
+def task_command(python_exe=None, script=None, target: str = "both", keep: int = 14) -> str:
+    """Lenh Task Scheduler se chay (duong dan TUYET DOI + nhay kep — task chay khac cwd)."""
+    py = python_exe or sys.executable
+    sc = script or (ROOT / "tools" / "backup.py")
+    return '"%s" "%s" --target %s --keep %d' % (py, sc, target, int(keep))
+
+
+def schtasks_argv(action: str, name: str = TASK_NAME, *, time_str: str = "03:30",
+                  command: str = "", sched: str = "DAILY", mod=None) -> list:
+    """argv cho `schtasks` (ham THUAN TUY -> test duoc, khong chay gi).
+
+    `sched="DAILY"` -> chay luc `time_str`; `sched="MINUTE"` -> moi `mod` phut.
+    """
+    if action == "install":
+        a = ["schtasks", "/Create", "/TN", name, "/SC", sched]
+        if str(sched).upper() == "MINUTE":
+            a += ["/MO", str(int(mod or 15))]
+        else:
+            a += ["/ST", time_str]
+        return a + ["/TR", command, "/F"]
+    if action == "uninstall":
+        return ["schtasks", "/Delete", "/TN", name, "/F"]
+    return ["schtasks", "/Query", "/TN", name]
+
+
+def run_schtasks(argv: list, *, run=None, timeout: float = 60.0) -> dict:
+    """Chay schtasks. `run` tiem duoc (test khong dung den may that)."""
+    import subprocess
+    r = subprocess.run if run is None else run
+    try:
+        p = r(argv, capture_output=True, text=True, timeout=timeout)
+        return {"ok": int(getattr(p, "returncode", 1)) == 0,
+                "code": int(getattr(p, "returncode", 1)),
+                "out": ((getattr(p, "stdout", "") or "") + (getattr(p, "stderr", "") or "")).strip()[:400]}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "code": -1, "out": str(e)[:200]}
+
+
 def make_backup(name: str, base: Path, outdir: Path, *, keep: int = 14,
                 dry_run: bool = False) -> dict:
     """Tao 1 ban sao luu cho 1 instance. Tra dict bao cao (test duoc, khong goi mang)."""
@@ -126,8 +167,29 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--out", default="", help="thu muc dich (mac dinh <repo>/backups)")
     ap.add_argument("--keep", type=int, default=14, help="so ban moi nhat giu lai / instance")
     ap.add_argument("--dry-run", action="store_true", help="chi liet ke file se nen")
+    ap.add_argument("--install-task", action="store_true",
+                    help="dang ky Task Scheduler chay hang ngay (go bang --uninstall-task)")
+    ap.add_argument("--uninstall-task", action="store_true", help="go Task Scheduler")
+    ap.add_argument("--task-status", action="store_true", help="xem task da dang ky chua")
+    ap.add_argument("--task-time", default="03:30", help="gio chay (HH:MM, mac dinh 03:30)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
+
+    if args.install_task or args.uninstall_task or args.task_status:
+        action = ("install" if args.install_task else
+                  "uninstall" if args.uninstall_task else "status")
+        cmd = task_command(target=args.target, keep=args.keep)
+        res = run_schtasks(schtasks_argv(action, time_str=args.task_time, command=cmd))
+        res.update({"action": action, "task": TASK_NAME, "command": cmd})
+        if args.json:
+            print(json.dumps(res, ensure_ascii=False, indent=1))
+        else:
+            print("task %s: %s" % (TASK_NAME, "OK" if res["ok"] else "LOI (%s)" % res["code"]))
+            print("  lenh: %s" % cmd)
+            if res.get("out"):
+                print("  %s" % res["out"].replace("\n", "\n  ")[:300])
+        return 0 if res["ok"] else 1
+
     outdir = Path(args.out) if args.out else (ROOT / "backups")
     reps = [make_backup(n, b, outdir, keep=args.keep, dry_run=args.dry_run)
             for n, b in targets(args.target)]

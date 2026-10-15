@@ -161,6 +161,106 @@ def plan_delay(run_sec: float, prev_delay: float, kill_blocked: bool = False,
     return next_delay(run_sec, prev_delay, base, fast_exit, cap)
 
 
+# ---- (15/10) TU CHAY LLAMAFILE: hoi dong gio chi con model LOCAL bo phieu ------------
+# Do duoc 15/10 (3 gio): 10 VETO / 1 ALLOW — TAT CA tu `local/llama3.2-3b-local`.
+# Model local = llamafile (server 127.0.0.1:8080). Truoc day no chi chay khi co nguoi
+# go tay `tools/llamafile_setup.py --start`; may khoi dong lai / server chet => hoi dong
+# CAM ma khong ai bao (cung lop loi da lam mat 48h phieu).
+MODELS = ROOT / "models"
+LLAMAFILE_AUTOSTART = os.getenv("LLAMAFILE_AUTOSTART", "true").strip().lower() not in (
+    "0", "false", "no", "off")
+LLAMAFILE_PROBE_SEC = float(os.getenv("LLAMAFILE_PROBE_SEC", "3"))
+LLAMAFILE_LOG = ROOT / "logs" / "llamafile_autostart.log"
+_AUTO = object()          # sentinel: "tu tim binary trong models/"
+
+
+def local_base_url(env: dict) -> str:
+    """URL server local ma hoi dong dung ('' = khong dung model local / khong phai local)."""
+    if not str((env or {}).get("AGENT_COUNCIL_LOCAL") or "").strip():
+        return ""
+    base = str((env or {}).get("AGENT_LOCAL_BASE_URL") or "").strip()
+    if not base:
+        return ""
+    if not any(h in base for h in ("127.0.0.1", "localhost", "::1")):
+        return ""            # server o may khac -> khong phai llamafile cua ta
+    return base
+
+
+def llamafile_binary(models_dir=None) -> Path | None:
+    """Binary llamafile trong `models/` (uu tien thin + GGUF, giong tools/llamafile_setup)."""
+    d = MODELS if models_dir is None else Path(models_dir)
+    try:
+        exes = sorted(d.glob("*.exe"))
+        gguf = next(iter(sorted(d.glob("*.gguf"))), None)
+    except OSError:
+        return None
+    thin = next((p for p in exes if "thin" in p.name.lower()), None)
+    if thin is not None and gguf is not None:
+        return thin
+    for p in sorted(list(d.glob("*.llamafile*")) + exes):
+        if "llamafile-" not in p.name.lower():
+            return p
+    return thin
+
+
+def plan_autostart(env: dict, probe_ok: bool, binary_exists: bool,
+                   enabled: bool = True) -> str:
+    """Co can chay llamafile khong? THUAN TUY -> test duoc.
+
+    Tra: skip_disabled | skip_no_local | skip_remote | already_up | skip_no_binary | start
+    """
+    if not enabled:
+        return "skip_disabled"
+    if not str((env or {}).get("AGENT_COUNCIL_LOCAL") or "").strip():
+        return "skip_no_local"
+    if not local_base_url(env):
+        return "skip_remote"
+    if probe_ok:
+        return "already_up"
+    if not binary_exists:
+        return "skip_no_binary"
+    return "start"
+
+
+def probe_local(base: str, timeout: float | None = None) -> bool:
+    """GET <base>/models -> server local con song? Khong bao gio nem loi."""
+    import urllib.request
+    t = LLAMAFILE_PROBE_SEC if timeout is None else float(timeout)
+    try:
+        with urllib.request.urlopen(base.rstrip("/") + "/models", timeout=t) as r:
+            return 200 <= int(getattr(r, "status", 200)) < 300
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def ensure_llamafile(env: dict, *, enabled=None, probe=probe_local, binary=_AUTO,
+                     mark=None) -> str:
+    """Chay llamafile neu can (goi moi lan restart). Tra hanh dong da lam.
+
+    `binary=_AUTO` -> tu tim trong `models/`; truyen `None` = "khong co binary" (test).
+    `probe`/`mark` tiem duoc -> test khong goi mang, khong ghi log that.
+    """
+    mk = _mark if mark is None else mark
+    en = LLAMAFILE_AUTOSTART if enabled is None else bool(enabled)
+    base = local_base_url(env)
+    up = probe(base) if (en and base) else False
+    b = llamafile_binary() if binary is _AUTO else binary
+    action = plan_autostart(env, up, b is not None, en)
+    mk("[llamafile] %s (base=%s, binary=%s)"
+       % (action, base or "-", Path(b).name if b else "-"))
+    if action != "start":
+        return action
+    try:
+        with open(LLAMAFILE_LOG, "a", encoding="utf-8") as lf:
+            subprocess.Popen([PY, str(ROOT / "tools" / "llamafile_setup.py"), "--start"],
+                             cwd=str(ROOT), stdout=lf, stderr=subprocess.STDOUT, **_hide())
+        mk("[llamafile] da spawn --start (log: %s)" % LLAMAFILE_LOG.name)
+    except Exception as e:  # noqa: BLE001
+        mk("[llamafile] spawn LOI: %s" % str(e)[:120])
+        return "spawn_error"
+    return action
+
+
 def _hide() -> dict:
     """kwargs an cua so console cho tien trinh con (12/10: het pop-up taskkill/tasklist)."""
     try:
@@ -270,6 +370,7 @@ def main() -> int:
         while True:
             n += 1
             env = child_env()
+            ensure_llamafile(env)      # (15/10) hoi dong khong duoc cam vi server local chet
             _mark("turbo start #%d (BINANCE_TESTNET=%s, SYMBOLS=%s, MAX_POSITIONS=%s)"
                   % (n, env.get("BINANCE_TESTNET"), env.get("SYMBOLS"),
                      env.get("MAX_POSITIONS")))

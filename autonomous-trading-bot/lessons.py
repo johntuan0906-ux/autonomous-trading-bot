@@ -246,15 +246,100 @@ def best_threshold(rows: list) -> dict:
     return min(rows, key=lambda r: float(r.get("net") or 0.0))
 
 
+def prune_stale(buckets: dict, *, stale_days: float = 30.0, now=None,
+                min_n: int = 1) -> tuple:
+    """Truc xuat to hop CU -> (giu, truc_xuat) — `/prune` (15/10).
+
+    Vi sao: `turbo_demo.lessons_gate()` **tinh lai gate tu `buckets`** trong
+    `logs/lessons.json` (bo qua truong `gates`), nen mot to hop xau tu thang 8 van
+    chan lenh mai. Do duoc: `SKIP_LESSON` ban 11-13 lan/vong ma khong hoc them duoc gi.
+
+    Quy tac: giu neu con lenh trong `stale_days`; truc xuat neu `last_ts` cu hon
+    (hoac `n < min_n`). Muc truc xuat **luu vao kho**, khong xoa.
+    """
+    now = time.time() if now is None else float(now)
+    cut = now - float(stale_days) * 86400.0
+    keep, drop = {}, {}
+    for k, b in (buckets or {}).items():
+        ts = float((b or {}).get("last_ts") or 0.0)
+        if int((b or {}).get("n") or 0) < int(min_n):
+            drop[k] = dict(b, prune_reason="qua it mau (n<%d)" % min_n)
+        elif ts and ts < cut:
+            drop[k] = dict(b, prune_reason="khong con lenh trong %d ngay" % int(stale_days))
+        else:
+            keep[k] = b
+    return keep, drop
+
+
+def _skill_name(b: dict, kind: str) -> str:
+    """Ten doc duoc cho 1 ky nang — lay tu KHOA to hop (bucket chi chua so lieu).
+
+    (15/10) Loi that: ban dau doc `strategy/setup_type/...` tu bucket -> luon ra
+    `"tranh: ?"` vi bucket KHONG co cac truong do; to hop nam trong **khoa** dang
+    `"strategy | setup | regime | huong"` (xem `key_of`).
+    """
+    k = str((b or {}).get("key") or "")
+    parts = [p.strip() for p in k.split("|")]
+    parts = [p for p in parts if p and p not in ("?", "NONE")]
+    return "%s: %s" % (kind, " / ".join(parts) if parts else (k or "?"))
+
+
+def evolve(buckets: dict, *, min_n: int = 5, top: int = 6, keys=KEYS_DEFAULT) -> list:
+    """Gom to hop thanh **KY NANG co ten** (`/evolve`, 15/10).
+
+    Y tuong: thay vi 1 danh sach 60 to hop roi rac, rut ra vai ky nang doc duoc:
+      - `tranh`    : avgR < 0, du mau  -> quy tac "dung vao"
+      - `uu_tien`  : avgR > 0, du mau  -> quy tac "nen vao"
+    Xep hang theo "tac dong" = |avgR| * n (to hop vua xau vua nhieu lenh len truoc).
+    Ham THUAN TUY -> test duoc.
+    """
+    out = []
+    for k, b in (buckets or {}).items():
+        n = int((b or {}).get("n") or 0)
+        if n < int(min_n):
+            continue
+        r = float((b or {}).get("avg_r") or 0.0)
+        if r == 0.0:
+            continue
+        t = dict(b)
+        t["key"] = k
+        t["kind"] = "uu_tien" if r > 0 else "tranh"
+        t["name"] = _skill_name(t, t["kind"])
+        t["impact"] = round(abs(r) * n, 4)
+        out.append(t)
+    out.sort(key=lambda x: -float(x["impact"]))
+    return out[:max(0, int(top))]
+
+
+def skills_md(skills: list) -> list:
+    """Dong markdown cho phan KY NANG trong `LESSONS.md`."""
+    if not skills:
+        return ["(chua du mau de rut ra ky nang nao)"]
+    lines = ["| Ky nang | loai | n | avgR | WR | PnL |", "|---|---|---|---|---|---|"]
+    for s in skills:
+        lines.append("| %s | %s | %d | %+.3f | %.0f%% | %+.2f |"
+                     % (s["name"], s["kind"], s["n"], s["avg_r"], s["wr"], s["pnl"]))
+    return lines
+
+
 def build(journal_path, *, keys=KEYS_DEFAULT, cap: int = 60,
-          min_n: int = 20, max_avg_r: float = -0.30) -> dict:
-    """Doc journal -> {trades, buckets, gates, notes, pruned, ts}."""
+          min_n: int = 20, max_avg_r: float = -0.30, stale_days: float = 0.0,
+          now=None) -> dict:
+    """Doc journal -> {trades, buckets, gates, notes, skills, stale, pruned, ts}.
+
+    `stale_days > 0` -> `/prune`: truc xuat to hop khong con lenh trong N ngay.
+    """
     trades = load_closed(journal_path)
     buckets = bucket_stats(trades, keys)
     keep, drop = merge_capped(buckets, cap=cap)
+    stale = {}
+    if float(stale_days or 0.0) > 0:
+        keep, stale = prune_stale(keep, stale_days=stale_days, now=now)
     gates = gate_list(keep, min_n=min_n, max_avg_r=max_avg_r)
     return {"trades": len(trades), "keys": list(keys), "buckets": keep,
             "gates": gates, "notes": notes(keep, gates),
+            "skills": evolve(keep),
+            "stale": {k: v.get("prune_reason") for k, v in (stale or {}).items()},
             "pruned": list(drop.keys()), "ts": time.time()}
 
 
@@ -280,6 +365,8 @@ def write_files(les: dict, *, json_path="logs/lessons.json",
              "", "## Rut kinh nghiem", ""]
     lines += ["- %s" % s if not s.startswith(("NEN", "chua")) else "**%s**" % s
               for s in (les.get("notes") or [])]
+    lines += ["", "## Ky nang da rut ra (`/evolve`)", ""]
+    lines += skills_md(les.get("skills") or [])
     lines += ["", "## To hop dang chan", ""]
     if les.get("gates"):
         lines += ["| To hop | n | avgR | WR | PnL |", "|---|---|---|---|---|"]
@@ -291,15 +378,23 @@ def write_files(les: dict, *, json_path="logs/lessons.json",
     if les.get("pruned"):
         lines += ["", "_Da truc xuat %d to hop it mau (xem `logs/%s`)._"
                   % (len(les["pruned"]), ARCHIVE_NAME)]
+    if les.get("stale"):
+        lines += ["", "_`/prune`: da truc xuat %d to hop CU (khong con lenh trong N ngay) "
+                  "— xem `logs/%s`._" % (len(les["stale"]), ARCHIVE_NAME)]
     lines += ["", "## Ghi chu cua nguoi van hanh", "", HUMAN_BEGIN, human, HUMAN_END, ""]
     md_path.write_text("\n".join(lines), encoding="utf-8")
     json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(les, ensure_ascii=False, indent=2), encoding="utf-8")
     n_arch = 0
-    if archive_path and les.get("pruned"):
+    if archive_path and (les.get("pruned") or les.get("stale")):
         with open(Path(archive_path), "a", encoding="utf-8") as f:
             for k in les["pruned"]:
-                f.write(json.dumps({"ts": les.get("ts"), "key": k}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"ts": les.get("ts"), "key": k,
+                                    "reason": "it mau"}, ensure_ascii=False) + "\n")
+                n_arch += 1
+            for k, why in (les.get("stale") or {}).items():
+                f.write(json.dumps({"ts": les.get("ts"), "key": k,
+                                    "reason": why}, ensure_ascii=False) + "\n")
                 n_arch += 1
     return {"json": str(json_path), "md": str(md_path), "archived": n_arch,
             "human_kept": bool(human)}

@@ -187,6 +187,12 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Hội đồng đọc tài liệu/diff và cho ý kiến** | `python clinepass_review.py --task strategy_review --bundle none --file <tài liệu>.md --engine clinepass --provider clinepass --model cline-pass/mimo-v2.6-pro --concurrency 3 --output-dir logs/council_review` |
 | Model nào còn chạy được (dò song song, tốn quota) | `python tools/probe_cline.py` — hoặc `python clinepass_review.py --check` |
 | **Chấm điểm TỪNG model hội đồng** (theo kết quả thật) | `python tools/council_eval.py [--target live] [--hours 336] [--min-n 8] [--json]` |
+| **Sao lưu có kiểm chứng** (.env + journal + state) | `python tools/backup.py [--target live] [--keep 14]` → `backups/*.zip` |
+| **Đăng ký backup hằng ngày** (Task Scheduler) | `python tools/backup.py --install-task [--task-time 03:30]` / gỡ: `--uninstall-task` |
+| **Dead-man switch** (báo khi bot NGỪNG) | `python tools/deadman.py [--dry-run] [--json]` — điền `HEALTHCHECKS_URL` vào `.env` để nhận cảnh báo ngoài máy |
+| **Đăng ký dead-man mỗi 15 phút** | `python tools/deadman.py --install-task [--task-min 15]` / gỡ: `--uninstall-task` |
+| **`/evolve`** (rút kỹ năng có tên từ tổ hợp) | `python tools/learn_review.py --dry --evolve` |
+| **`/prune`** (trục xuất tổ hợp cũ khỏi lessons.json) | `python tools/learn_review.py --prune --stale-days 30` |
 | Kiểm chứng 1 model qua gateway | `python -c "from agents import ClineProvider as C; print(C(model='cline-pass/qwen3.7-plus').complete('sys','Tra loi JSON: {\"action\":\"ALLOW\"}'))"` |
 | Quét ngưỡng lessons | `python tools/learn_review.py --target live --sweep` |
 | Đổi model local (llamafile ↔ ollama) | `python tools/switch_local_model.py .env llamafile` |

@@ -20,6 +20,7 @@ import apply_symbols as AS       # noqa: E402
 import ops as OPS                # noqa: E402
 import pick_symbols as PS        # noqa: E402
 import restart_bot as RB         # noqa: E402
+import restart_when_flat as RWF  # noqa: E402
 import winproc as WP             # noqa: E402
 
 
@@ -459,6 +460,41 @@ class TestJournalTail(unittest.TestCase):
             self.assertEqual([r["model"] for r in mod.tail_agents(p, 1)], ["m2"])
             self.assertEqual(mod.tail_agents(Path(td) / "khong-co.jsonl", 5), [])
             self.assertIn("m2", mod.format_row({"model": "m2", "note": "loi provider"}))
+
+
+class TestRestartWhenFlatTarget(unittest.TestCase):
+    """(15/10) `restart_when_flat.py` phai nham DUNG instance.
+
+    Loi that: `ROOT = Path(__file__).parent` co dinh ⇒ chay
+    `python ..\\autonomous-trading-bot\\restart_when_flat.py` tu `atb-live` van doc `.env`
+    va kill supervisor cua **TESTNET** (LIVE khong bao gio duoc ap cau hinh moi; va nguy
+    hon: kill nham instance dang co vi the mo).
+    """
+
+    def test_anh_xa_instance(self):
+        self.assertEqual(RWF.target_dir("testnet"), ROOT)
+        self.assertEqual(RWF.target_dir("LIVE").name, "atb-live")
+
+    def test_target_la_thi_thoat(self):
+        with self.assertRaises(SystemExit):
+            RWF.target_dir("khong-ton-tai")
+
+    def test_doc_cap_theo_thu_muc_instance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / ".env").write_text(
+                "SYMBOLS=A/USDT:USDT,B/USDT:USDT\nEXTRA_SYMBOLS=C/USDT:USDT\n",
+                encoding="utf-8")
+            self.assertEqual(RWF.env_symbols(d),
+                             ["A/USDT:USDT", "B/USDT:USDT", "C/USDT:USDT"])
+
+    def test_vien_journal_do_theo_instance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "logs").mkdir(parents=True)
+            (d / "logs" / "journal.jsonl").write_text(
+                '{"event": "OPEN", "pair": "A"}\n', encoding="utf-8")
+            self.assertEqual(RWF.supervisor_pid(d), 0)      # khong co lock -> 0 (an toan)
 
 
 if __name__ == "__main__":

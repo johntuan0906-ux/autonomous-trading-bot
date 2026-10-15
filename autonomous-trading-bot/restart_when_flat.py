@@ -17,13 +17,30 @@ An toàn:
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+LIVE_DIR = ROOT.parent / "atb-live"
+TARGETS = {"testnet": ROOT, "live": LIVE_DIR}
 LOG = ROOT / "logs" / "restart_when_flat.log"
+
+
+def target_dir(target: str) -> Path:
+    """Thư mục instance ('testnet' -> repo chính, 'live' -> ../atb-live).
+
+    (15/10) LỖI ĐÃ SỬA: trước đây `ROOT = Path(__file__).parent` **cố định** ⇒ chạy
+    `python ..\\autonomous-trading-bot\\restart_when_flat.py` từ `atb-live` vẫn đọc `.env`
+    và kill supervisor của **TESTNET** ⇒ (a) LIVE không bao giờ được áp cấu hình mới,
+    (b) nguy hiểm hơn: kill NHẦM instance khi instance kia đang có vị thế mở.
+    """
+    key = str(target or "testnet").strip().lower()
+    if key not in TARGETS:
+        raise SystemExit("--target chỉ nhận: %s" % ", ".join(sorted(TARGETS)))
+    return TARGETS[key]
 
 
 def log(msg: str) -> None:
@@ -170,27 +187,41 @@ def wait_flat(ex, *, poll: float = 30.0, max_hours: float = 12.0, dry_run: bool 
 
 def main(argv: list | None = None) -> int:
     ap = argparse.ArgumentParser(description="Restart bot khi het vi the")
+    ap.add_argument("--target", default="testnet", choices=sorted(TARGETS),
+                    help="instance can restart (mac dinh testnet)")
     ap.add_argument("--poll", type=float, default=30.0, help="chu ky kiem tra (giay)")
     ap.add_argument("--max-hours", type=float, default=12.0, help="bo cuoc sau N gio")
     ap.add_argument("--dry-run", action="store_true", help="chi bao, khong restart")
     ap.add_argument("--once", action="store_true", help="kiem tra 1 lan roi thoat")
     args = ap.parse_args(argv)
+    global LOG
+    root = target_dir(args.target)
+    LOG = root / "logs" / "restart_when_flat.log"
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:  # noqa: BLE001
         pass
+    # Phai chdir vao instance TRUOC khi doc `Settings()`: `.env` duoc nap theo thu muc
+    # lam viec -> khong chdir thi `testnet`/key cua instance kia bi dung sai.
+    try:
+        os.chdir(root)
+    except OSError as e:
+        log("khong chdir duoc vao %s: %s" % (root, str(e)[:120]))
+        return 2
     from config import Settings
     cfg = Settings()
     ex = make_exchange(cfg)
-    syms = env_symbols()
-    log("theo doi: poll=%ss max=%sh dry_run=%s testnet=%s | cap cua bot=%d"
-        % (args.poll, args.max_hours, args.dry_run, getattr(cfg, "testnet", None), len(syms)))
+    syms = env_symbols(root)
+    log("theo doi: target=%s dir=%s poll=%ss max=%sh dry_run=%s testnet=%s | cap cua bot=%d"
+        % (args.target, root, args.poll, args.max_hours, args.dry_run,
+           getattr(cfg, "testnet", None), len(syms)))
     if args.once:
         n = open_positions(ex, syms)
         log("vi the cua BOT dang mo: %s (bo qua lenh mo tay)" % n)
         return 0 if n == 0 else 1
     res = wait_flat(ex, poll=args.poll, max_hours=args.max_hours, dry_run=args.dry_run,
-                    fetch=lambda e: open_positions(e, syms))
+                    fetch=lambda e: open_positions(e, syms),
+                    do_restart=lambda: restart_bot(root))
     log("ket thuc: %s" % res)
     return 0 if res.get("ok") else 2
 

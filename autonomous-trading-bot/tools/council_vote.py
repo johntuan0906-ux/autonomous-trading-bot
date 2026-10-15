@@ -89,6 +89,8 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--models", default="", help="danh sach model, phay (rong = theo .env)")
     ap.add_argument("--no-journal", action="store_true", help="khong ghi phieu vao journal")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--raw", action="store_true",
+                    help="in nguyen van phan hoi cua hoi dong (chan doan '0 phieu')")
     args = ap.parse_args(argv)
 
     import agents as AG
@@ -120,11 +122,19 @@ def main(argv: list | None = None) -> int:
             object.__setattr__(cfg, k, "")
         object.__setattr__(cfg, "agents_council", True)
         object.__setattr__(cfg, "agents_enabled", True)
+    else:
+        # (15/10) LAY TOAN BO HOI DONG: khong truyen `models` thi `multi_model_council`
+        # tu chon tier theo do kho — payload van hanh do kho ~0.15 -> tier 'lite', va
+        # `AGENT_COUNCIL_SINGLE_BELOW` bat che do SINGLE => chi hoi **1 model**; model
+        # lite dau danh sach lai nam trong `CLINE_SKIP_MODELS` nen bi bo qua => **0 phieu**
+        # (`votes: {}`, `abstained: []`) du log bao "8 model". Quyet dinh van hanh phai
+        # lay y kien ca hoi dong => lay danh sach day du va truyen thang xuong.
+        ms = [m.strip() for m in AG._council_models(cfg) if m.strip()]
     object.__setattr__(cfg, "council_rounds", 1)      # 1 vong: nhanh, du phieu
 
     payload = build_payload(args.question, args.allow, args.veto, args.context)
     t0 = time.time()
-    res = AG.multi_model_council(cfg, payload, role="critic")
+    res = AG.multi_model_council(cfg, payload, role="critic", models=ms or None)
     # (15/10) Loi that: `multi_model_council` tra khoa **`votes`** (khong phai
     # `decisions`) + `action`/`confidence`/`why`. Ban dau chi doc `decisions` =>
     # hoi dong da bo phieu ma tool in ra "0 phieu / NO_OPINION" (bao sai).
@@ -140,6 +150,17 @@ def main(argv: list | None = None) -> int:
     rep["option_ALLOW"] = args.allow
     rep["option_VETO"] = args.veto
     rep["raw_action"] = (res or {}).get("action") if isinstance(res, dict) else None
+    # (15/10) `--raw`: do that co lan hoi dong tra ve **0 phieu** du chay 36s (8 model
+    # duoc bao la con lam viec) => khong the biet nguyen nhan neu chi nhin bang tom tat.
+    # In nguyen van phan hoi (khoa + doan dau) de phan biet: khong co model nao chay,
+    # hay co chay nhung phieu khong duoc ghep vao `votes`.
+    if args.raw:
+        try:
+            rep["raw_keys"] = sorted(str(k) for k in (res or {}).keys()) \
+                if isinstance(res, dict) else ["<khong phai dict>"]
+            rep["raw"] = json.dumps(res, ensure_ascii=False, default=str)[:3000]
+        except Exception as e:  # noqa: BLE001
+            rep["raw"] = "khong dump duoc: %s" % str(e)[:120]
 
     if not args.no_journal and rep["rows"]:
         try:

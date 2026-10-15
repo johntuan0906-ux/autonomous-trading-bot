@@ -27,6 +27,9 @@ ROOT = Path(__file__).resolve().parent
 LIVE_DIR = ROOT.parent / "atb-live"
 TARGETS = {"testnet": ROOT, "live": LIVE_DIR}
 LOG = ROOT / "logs" / "restart_when_flat.log"
+# (15/10) Thu muc instance dang lam viec — `make_exchange()` can biet doc key cua instance
+# nao (mac dinh: repo chinh). `main()` dat lai theo `--target`.
+_ROOT_OVERRIDE: Path | None = None
 
 
 def target_dir(target: str) -> Path:
@@ -101,7 +104,25 @@ def env_symbols(root: Path | None = None) -> list:
 
 
 def make_exchange(cfg):
-    """Client ccxt (đúng endpoint theo cfg.testnet) — CHỈ ĐỌC."""
+    """Client ccxt (đúng endpoint theo cfg.testnet) — CHỈ ĐỌC.
+
+    (15/10) LỖI ĐÃ SỬA: trước đây dùng `state_sync.key_pair(cfg)`, mà hàm đó **ưu tiên
+    cặp `BINANCE_LIVE_API_KEY`/`_SECRET`** nếu đã điền. Đo thật ở LIVE: cặp đó trả
+    `-2015 Invalid API-key, IP, or permissions` ⇒ watcher **không bao giờ** đọc được vị
+    thế ⇒ không bao giờ restart (an toàn nhưng vô dụng: cấu hình mới không được áp).
+    Bot thật giao dịch bằng `BINANCE_API_KEY` — dùng ĐÚNG nguồn đó (`tools/restart_bot.py`
+    đã kiểm chứng đọc được vị thế LIVE).
+    """
+    try:
+        # `restart_bot.py` nam trong `tools/` — va no doc `.env` cua INSTANCE theo duong
+        # dan (khong phu thuoc `Settings()`, xem ghi chu o tren).
+        sys.path.insert(0, str(ROOT / "tools"))
+        import restart_bot as RB
+        ex = RB.exchange_client(ROOT if _ROOT_OVERRIDE is None else _ROOT_OVERRIDE)
+        if ex is not None:
+            return ex
+    except Exception as e:  # noqa: BLE001
+        log("khong dung duoc restart_bot.exchange_client (%s) -> thu key_pair" % str(e)[:80])
     import ccxt
     import state_sync as SS
     key, secret, _src = SS.key_pair(cfg)
@@ -194,9 +215,10 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="chi bao, khong restart")
     ap.add_argument("--once", action="store_true", help="kiem tra 1 lan roi thoat")
     args = ap.parse_args(argv)
-    global LOG
+    global LOG, _ROOT_OVERRIDE
     root = target_dir(args.target)
     LOG = root / "logs" / "restart_when_flat.log"
+    _ROOT_OVERRIDE = root
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:  # noqa: BLE001

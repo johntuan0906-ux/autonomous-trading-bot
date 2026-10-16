@@ -542,5 +542,35 @@ class TestEnvTheoInstance(unittest.TestCase):
         self.assertEqual(snap2, base2 / "logs" / "state_snapshot.json")
 
 
+class TestCapabilities(unittest.TestCase):
+    """(16/10) Manifest nang luc — y tuong tu HKUDS/CLI-Anything: tool phai TU MO TA duoc
+    de agent (hoi dong) kham pha va goi dung, thay vi doan ten."""
+
+    def test_quet_duoc_tool_va_muc_dich(self):
+        import capabilities as CAP
+        items = CAP.scan()
+        names = {i["name"] for i in items}
+        self.assertIn("margin_audit", names)
+        self.assertIn("council_vote", names)
+        one = next(i for i in items if i["name"] == "margin_audit")
+        self.assertTrue(one["documented"], "moi tool phai co docstring (chong 'slop')")
+        self.assertIn("MARGIN", one["purpose"].upper())
+
+    def test_check_phat_hien_tool_thieu_docstring(self):
+        import capabilities as CAP
+        rep = CAP.check([{"name": "a", "purpose": "", "tests": 0, "documented": False},
+                         {"name": "b", "purpose": "co", "tests": 1, "documented": True}])
+        self.assertFalse(rep["ok"])
+        self.assertEqual(rep["missing_doc"], ["a"])
+        self.assertEqual(rep["no_test"], ["a"])
+
+    def test_quet_thu_muc_rong_khong_loi(self):
+        import capabilities as CAP
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "tools").mkdir()
+            self.assertEqual(CAP.scan(root=d, tests_dir=d), [])
+
+
 if __name__ == "__main__":
     unittest.main()

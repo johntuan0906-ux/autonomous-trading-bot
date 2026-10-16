@@ -2398,6 +2398,13 @@ def _tier_for(score: float) -> str:
     return "lite" if score < 0.34 else ("core" if score < 0.67 else "hard")
 
 
+def _is_ignored(name: str, ignore) -> bool:
+    """Ten model co nam trong danh sach IGNORE khong (khop ca dang co/khong tien to)."""
+    n = str(name or "")
+    return any(n == i or n.endswith("/" + i) or i.endswith("/" + n)
+               for i in (ignore or ()) if str(i).strip())
+
+
 def _council_models_by_tier(cfg, tier: str) -> list:
     """Chon model theo do kho.
 
@@ -2405,18 +2412,30 @@ def _council_models_by_tier(cfg, tier: str) -> list:
     - tier 'core'  -> lite + core (bo qua hard): tiet kiem ngay sach ma van du kha nang
     - tier 'lite'  -> chi model lite (flash/mini...): van de de, xu ly nhanh + re
     Tra danh sach model; rong -> toi uu nhat co the (khong bao gio treo).
+
+    (16/10) LOI THAT DA SUA: tier `lite` chi lay model lite/core, ma **moi model Cline
+    dang lam duoc phieu deu bi xep `hard`** (ten chua `pro`/`max`/`plus`) => tier lite chi
+    con model LOCAL — ma local nam trong `AGENT_COUNCIL_IGNORE` => `_tally` loc di =>
+    **0 phieu** ("hoi dong 1 model: 0A / 0V (hoa 0: -)"). Do that o LIVE 16/10 (round 248):
+    hoi dong IM LANG tren duong vao lenh vi phan lon setup co do kho thap -> tier lite.
+    Nay: loai model bi IGNORE **truoc** khi chon, va neu con < 2 model thi mo rong dan.
     """
     all_models = _council_models(cfg)
     if tier == "hard":
         return all_models
+    ign = _ignored_models(cfg)
     tiers = {m: model_tier(m) for m in all_models}
     if tier == "core":
         picked = [m for m, t in tiers.items() if t in ("lite", "core")]
     else:  # lite
         picked = [m for m, t in tiers.items() if t == "lite"]
+    picked = [m for m in picked if not _is_ignored(m, ign)]
     # fallback: neu tier do qua it model -> mo rong dan len (tranh hoi dong rong/treo)
-    if not picked:
-        picked = [m for m, t in tiers.items() if t in ("lite", "core")]
+    if len(picked) < 2:
+        picked = [m for m, t in tiers.items()
+                  if t in ("lite", "core") and not _is_ignored(m, ign)]
+    if len(picked) < 2:
+        picked = [m for m in all_models if not _is_ignored(m, ign)]
     if not picked:
         picked = all_models
     return picked

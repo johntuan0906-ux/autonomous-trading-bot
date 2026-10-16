@@ -567,5 +567,53 @@ class TestLocalJsonConstraint(unittest.TestCase):
         self.assertEqual(p2.json_mode_used, "off")         # ha cap xuong khong rang buoc
 
 
+class TestMarginType(unittest.TestCase):
+    """(16/10) `MARGIN_TYPE=ISOLATED`: tach margin tung vi the truoc khi vao lenh.
+
+    Hoi dong canh bao (phieu VETO cua `qwen3.7-plus`): tai khoan LIVE nho ma co vi the
+    CROSS do NGUOI DUNG mo => chieu margin chung voi vi the cua bot, trong khi phep tinh
+    rui ro cua bot khong biet no ton tai.
+    """
+
+    def _ex(self, client):
+        from exchange import BinanceFutures
+        ex = object.__new__(BinanceFutures)    # khong chay __init__ (khong goi mang)
+        ex._client = client
+        ex.dry_run = False
+        return ex
+
+    def test_dat_duoc_isolated(self):
+        calls = []
+
+        class C:
+            def set_margin_mode(self, mode, sym):
+                calls.append((mode, sym))
+
+        ex = self._ex(C())
+        self.assertTrue(ex.set_margin_mode("BTC/USDT:USDT", "isolated"))
+        self.assertEqual(calls, [("isolated", "BTC/USDT:USDT")])
+
+    def test_4046_dang_dung_roi_thi_coi_nhu_thanh_cong(self):
+        class C:
+            def set_margin_mode(self, mode, sym):
+                raise RuntimeError(
+                    'binance {"code":-4046,"msg":"No need to change margin type."}')
+
+        self.assertTrue(self._ex(C()).set_margin_mode("BTC/USDT:USDT", "ISOLATED"))
+
+    def test_loi_khac_tra_False_khong_nem(self):
+        class C:
+            def set_margin_mode(self, mode, sym):
+                raise RuntimeError('binance {"code":-4047,"msg":"Margin type cannot be '
+                                   'changed if there exists position."}')
+
+        self.assertFalse(self._ex(C()).set_margin_mode("BTC/USDT:USDT", "ISOLATED"),
+                         "fail-open: khong doi duoc thi bot van vao lenh nhu cu")
+
+    def test_mode_khong_hop_le_hoac_thieu_client(self):
+        self.assertFalse(self._ex(None).set_margin_mode("BTC/USDT:USDT", "hedge"))
+        self.assertFalse(self._ex(None).set_margin_mode("BTC/USDT:USDT", "ISOLATED"))
+
+
 if __name__ == "__main__":
     unittest.main()

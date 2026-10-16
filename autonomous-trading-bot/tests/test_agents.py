@@ -527,6 +527,28 @@ class TestMultiModelCouncil(unittest.TestCase):
         with _mock.patch.dict(os.environ, {"CLINE_SKIP_MODELS": "cline-pass/x"}):
             self.assertEqual(A._skipped_council_models(cfg), [])
 
+    def test_tier_lite_khong_tra_ve_model_bi_ignore(self):
+        """(16/10) Tier `lite` KHONG duoc tra ve model nam trong `AGENT_COUNCIL_IGNORE`.
+
+        Do that o LIVE: moi model Cline dang lam duoc phieu deu bi xep tier `hard`
+        (ten chua pro/max/plus) => tier lite chi con model local (bi IGNORE) => `_tally`
+        loc di => **0 phieu** ("hoi dong 1 model: 0A / 0V") => hoi dong im lang tren
+        duong vao lenh.
+        """
+        cfg = _cfg(agent_council_cline="mimo-v2.6-pro,qwen3.7-max",
+                   agent_council_local="llama3.2-3b-local",
+                   agent_local_base_url="http://127.0.0.1:11434/v1",
+                   agent_council_ignore="local/llama3.2-3b-local")
+        names = A._council_models_by_tier(cfg, "lite")
+        self.assertIn("cline-pass/mimo-v2.6-pro", names)
+        self.assertNotIn("local/llama3.2-3b-local", names)
+        self.assertGreaterEqual(len(names), 2)
+
+    def test_tier_lite_van_tra_du_model_khi_khong_co_ignore(self):
+        cfg = _cfg(agent_council_cline="mimo-v2.6-pro,qwen3.7-max")
+        names = A._council_models_by_tier(cfg, "lite")
+        self.assertEqual(set(names), {"cline-pass/mimo-v2.6-pro", "cline-pass/qwen3.7-max"})
+
     def test_khong_co_model_nao_duoc_chon_dai_dien_quorum_quyet_dinh(self):
         tmp = tempfile.mkdtemp()
         models = ["model-a", "model-b", "model-c"]

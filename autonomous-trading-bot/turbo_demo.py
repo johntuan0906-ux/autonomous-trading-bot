@@ -727,6 +727,9 @@ def agent_vote_review(cfg, sym: str, direction: str, r_multiple: float, won: boo
     _agent_submit(_job)
 
 
+_MARGIN_DONE: dict = {}   # (16/10) cap -> margin type da dat trong phien (tranh goi lai)
+
+
 def turbo_round(bot: TradingBot) -> list[dict]:
     """Moi cap chua co vi the -> tu danh gia doc lap -> mo lenh neu dat alpha."""
     cfg = bot.cfg
@@ -999,6 +1002,16 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                                       % (_notional, float(cfg.min_notional_usdt))})
             continue
         try:
+            # (16/10) MARGIN_TYPE=ISOLATED: tach margin tung vi the (xem
+            # `exchange.set_margin_mode`). Phai dat khi cap CON PHANG (ngay truoc lenh).
+            _mode = str(getattr(cfg, "margin_type", "") or "").strip().upper()
+            if _mode in ("ISOLATED", "CROSS") and _MARGIN_DONE.get(sym) != _mode:
+                if bot.exchange.set_margin_mode(sym, _mode):
+                    _MARGIN_DONE[sym] = _mode
+                    log.info("MARGIN %s -> %s (dat truoc khi vao lenh)", sym, _mode)
+                else:
+                    log.warning("MARGIN %s: KHONG doi duoc sang %s (cap con vi the/lenh cho?)"
+                                " -> tiep tuc voi che do hien tai", sym, _mode)
             bot.exchange.set_leverage(sym, cfg.leverage)
             entry_res = bot.exchange.market_entry(sym, direction, qty)
             # Bypass MAX_POSITIONS: ghi thang vao portfolio (van cam trung symbol)

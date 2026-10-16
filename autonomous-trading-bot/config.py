@@ -177,6 +177,10 @@ class Settings:
     # `BTW/USDT:USDT,SOL/USDT:USDT` (nhan ca 2 dang ten).
     adopt_skip_symbols: str = field(
         default_factory=lambda: _get("ADOPT_SKIP_SYMBOLS", ""))
+    # (16/10) 'ISOLATED' = tach margin tung vi the (dat ngay truoc khi vao lenh) de vi the
+    # do NGUOI DUNG/bot khac mo o che do CROSS khong keo vi the cua bot vao thanh ly.
+    # Rong = khong doi (giu nguyen che do san dang co).
+    margin_type: str = field(default_factory=lambda: _get("MARGIN_TYPE", ""))
     round_timeout_sec: int = field(default_factory=lambda: _get_int("ROUND_TIMEOUT_SEC", 90))
     socket_timeout_sec: int = field(default_factory=lambda: _get_int("SOCKET_TIMEOUT_SEC", 20))
     risk_state_path: str = field(default_factory=lambda: _get("RISK_STATE_PATH", "logs/risk_state.json"))

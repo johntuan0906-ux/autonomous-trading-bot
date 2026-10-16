@@ -256,6 +256,33 @@ class BinanceFutures:
         except Exception:
             pass
 
+    def set_margin_mode(self, symbol: str, mode: str = "ISOLATED") -> bool:
+        """Dat margin type cho 1 cap (ISOLATED/CROSS) — goi NGAY TRUOC khi vao lenh.
+
+        (16/10) Vi sao: hoi dong (phieu VETO cua `qwen3.7-plus`) canh bao tai khoan LIVE
+        chi ~41 USDT ma dang co vi the **CROSS** do NGUOI DUNG mo (`BTW`) => vi the do
+        **chieu margin chung** voi vi the cua bot, trong khi phep tinh rui ro cua bot
+        khong biet no ton tai. Isolated tach margin tung vi the => vi the nguoi dung
+        khong the keo vi the cua bot vao thanh ly (va nguoc lai).
+
+        LUU Y: Binance CHI cho doi khi cap do KHONG con vi the va KHONG con lenh cho =>
+        vi vay phai goi luc cap con phang (ngay truoc lenh vao). `-4046` = dang dung roi.
+        KHONG nem loi (fail-open): khong doi duoc thi bot van vao lenh nhu cu.
+        """
+        mode = str(mode or "").strip().upper()
+        if mode not in ("ISOLATED", "CROSS"):
+            return False
+        if self._client is None or self.dry_run:
+            return False
+        try:
+            self._client.set_margin_mode(mode.lower(), symbol)
+            return True
+        except Exception as e:  # noqa: BLE001
+            msg = str(e)
+            if "-4046" in msg or "No need to change" in msg:
+                return True                       # da o dung che do mong muon
+            return False
+
     def market_entry(self, symbol: str, direction: str, qty: float,
                      cid: str | None = None) -> dict:
         side = "buy" if direction == "LONG" else "sell"

@@ -37,6 +37,7 @@ from managed_state import save as ms_save
 from trade_mgmt import record_protection
 from portfolio import Position, can_add_risk, planned_risk_usd
 from position_sync import adopt as adopt_positions
+import entries_gate
 from ranking import Candidate, composite_alpha, sentiment_veto
 from reconcile import reconcile as reconcile_journal
 from risk import atr_levels, load_state as load_risk_state, position_size
@@ -733,6 +734,13 @@ _MARGIN_DONE: dict = {}   # (16/10) cap -> margin type da dat trong phien (tranh
 def turbo_round(bot: TradingBot) -> list[dict]:
     """Moi cap chua co vi the -> tu danh gia doc lap -> mo lenh neu dat alpha."""
     cfg = bot.cfg
+    # (16/10) Cong tam dung vao lenh: doc LAI MOI VONG (xem `entries_gate`). Vi the dang mo
+    # VAN duoc quan ly (manage_open_positions chay o vong khac) — chi khong mo lenh MOI.
+    _paused, _why = entries_gate.paused(cfg)
+    if _paused:
+        log.warning("ENTRIES PAUSED: %s -> bo qua vong danh gia (khong mo lenh moi)", _why)
+        heartbeat({"phase": "entries_paused", "reason": _why[:120]})
+        return [{"symbol": "-", "status": "PAUSED", "reason": _why}]
     syms = active_symbols(cfg)  # SYMBOLS + EXTRA_SYMBOLS (env) — giu nguong mo lenh nguyen
     bot._max_atr_pct = 0.0  # P0-2: ATR% lon nhat trong vong -> cho kill-switch bien dong
     senti = bot.sentiment.get(cfg.cryptopanic_token)

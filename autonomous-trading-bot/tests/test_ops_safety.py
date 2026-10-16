@@ -615,5 +615,51 @@ class TestMarginType(unittest.TestCase):
         self.assertFalse(self._ex(None).set_margin_mode("BTC/USDT:USDT", "ISOLATED"))
 
 
+class TestEntriesGate(unittest.TestCase):
+    """(16/10) Cong tam dung vao lenh — file trang thai, doc lai moi vong (khong restart).
+
+    Yeu cau nguoi van hanh: cho vi the `BTW` dong -> chuyen Isolated -> moi vao lenh khac.
+    """
+
+    def test_mac_dinh_khong_tam_dung(self):
+        import entries_gate as EG
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "logs" / "entries_pause.json"
+            self.assertEqual(EG.paused(path=p), (False, ""))
+            self.assertEqual(EG.read(path=p), {})
+
+    def test_pause_roi_resume(self):
+        import entries_gate as EG
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "logs" / "entries_pause.json"
+            EG.pause("cho BTW dong", path=p)
+            ok, why = EG.paused(path=p)
+            self.assertTrue(ok)
+            self.assertIn("BTW", why)
+            EG.resume(path=p, why="xong")
+            self.assertEqual(EG.paused(path=p), (False, ""))
+
+    def test_file_hong_thi_coi_nhu_khong_tam_dung(self):
+        import entries_gate as EG
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "entries_pause.json"
+            p.write_text("{ khong-phai-json", encoding="utf-8")
+            self.assertEqual(EG.paused(path=p), (False, ""), "fail-open")
+
+    def test_turbo_round_khong_vao_lenh_khi_tam_dung(self):
+        import unittest.mock as _mock
+        import entries_gate as EG
+        from types import SimpleNamespace
+        import turbo_demo as TD
+        with tempfile.TemporaryDirectory() as tmp:
+            gate = Path(tmp) / "logs" / "entries_pause.json"
+            EG.pause("cho BTW dong", path=gate)
+            bot = SimpleNamespace(cfg=SimpleNamespace(entries_pause_path=str(gate)))
+            with _mock.patch.object(TD, "heartbeat", lambda rec: None):
+                res = TD.turbo_round(bot)
+            self.assertEqual(res[0]["status"], "PAUSED")
+            self.assertIn("BTW", res[0]["reason"])
+
+
 if __name__ == "__main__":
     unittest.main()

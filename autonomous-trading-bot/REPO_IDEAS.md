@@ -260,41 +260,6 @@ memory-persistence hooks, strategic-compact.
 
 ## 13. (16/10) Đọc 2 repo người vận hành gửi — áp dụng được gì
 
-### 13.1 `HKUDS/CLI-Anything` (Apache-2.0, 53.2k★) — "Making ALL Software Agent-Native"
-
-**Cốt lõi:** mỗi ứng dụng được đóng gói thành **một CLI đầy đủ chức năng** + thư mục
-`agent-harness/` **có test riêng** (GIMP 107 test, Blender 208, Inkscape 202…), kèm
-`cli-hub-matrix` (ma trận năng lực), `cli-hub-meta-skill` (skill dạy agent *cách* chọn
-đúng CLI), và nhiều "cửa" cài đặt cho từng agent (`claude-plugin`, `cursor-plugin`,
-`codex-skill`, `.claude-plugin`, `.cursor-plugin`). Triết lý: **không có "đường tắt" riêng
-cho agent** — agent dùng đúng bề mặt CLI của sản phẩm, nên hành vi kiểm chứng được.
-
-| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
-|---|---|---|
-| **Mỗi năng lực = 1 lệnh tự mô tả + harness test riêng** | **ĐÃ LÀM 16/10**: `tools/capabilities.py` quét `tools/*.py` → bảng `tool → mục đích → ví dụ → số test tham chiếu`, có `--json` cho agent và `--check` cho CI (tool thiếu docstring ⇒ fail). Đo được: 23 tool, nhiều tool còn 0 test tham chiếu | P1 (đã làm) |
-| **"Meta-skill" dạy agent chọn đúng công cụ** | Hội đồng hiện chỉ *cố vấn*, không tự gọi được công cụ. Bước 2: đưa manifest (`capabilities.py --json`) vào **prompt của agent review/council** để nó đề xuất *lệnh cụ thể* (`python tools/…`) thay vì lời khuyên chung | P2 |
-| **Ma trận năng lực + đếm test như chỉ số chất lượng** | Thêm vào `harness_audit.py` một dòng "tool nào chưa có test" (đã có dữ liệu từ `capabilities.check`) → buộc bổ sung test theo thời gian | P2 |
-| **Nhiều "cửa" cài đặt cho nhiều agent** | Dự án đã có `AGENTS.md`/`CONTEXT.md` cho agent; có thể thêm `skills/` cho Cline/Copilot CLI đọc (cùng nội dung, khác định dạng) | P3 |
-
-### 13.2 `miqdadbadjuber/anti-slop` (MIT, 6.2k★) — bộ luật lọc "slop" của AI
-
-**Cốt lõi:** là **bộ lọc, không phải style guide**: `rules/` đánh số, `skills/*/SKILL.md`
-**tham chiếu luật theo số** (không chép lại ⇒ thêm skill không đổi lõi), CLI + cài bằng
-`npx antislop-ai`, cấu hình dùng chung `%APPDATA%\antislop\settings.json`, có **catalogue
-mọi mẫu lỗi sinh tự động từ chính các skill và được kiểm trong CI**. Câu chốt của repo:
-*"antislop is a filter, not magic."*
-
-| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
-|---|---|---|
-| **Luật đánh số + skill tham chiếu, không chép lại** | `CONTEXT.md` đã là "bảng lớp lỗi" đánh số theo ngày; nên **đặt mã cho từng lớp lỗi** (vd `E-COUNCIL-SILENT`) để test/commit trỏ tới mã đó thay vì mô tả dài | P2 |
-| **Catalogue sinh tự động + kiểm trong CI** | Viết `tools/bug_catalog.py`: đọc `CONTEXT.md` → sinh `BUGS.md` (mã, ngày, triệu chứng, cách sửa, test nào chốt) + `--check` bắt mỗi lớp lỗi phải có **ít nhất 1 test** nhắc mã đó | P1 (đề xuất) |
-| **Lọc "slop" ở đầu ra của LLM** | Phiếu hội đồng có thể "rỗng thông tin" (lý do chung chung, không số liệu). Thêm **bộ lọc tất định** ở `parse_decision`: lý do không có số/mã cặp ⇒ `note+="slop"`, ghi journal để `council_eval` đo **tỷ lệ slop theo model** (đúng tinh thần "filter, not style guide") | P1 (đề xuất) |
-| **Cấm "slop" trong tài liệu công cụ** | **ĐÃ LÀM 16/10**: `capabilities.py --check` buộc mọi tool có docstring (không có tool "vô danh"); cùng tinh thần với `prompt_guard.py` (lọc chỉ thị lạ trong payload) | P2 (đã làm) |
-
-**Ghi chú:** cả hai repo đều không phải công cụ giao dịch — giá trị áp dụng nằm ở **kỷ luật
-đóng gói năng lực + lọc đầu ra**, đúng chỗ dự án đang yếu: hội đồng nói được nhưng *không
-tự gọi được công cụ*, và phiếu có thể rỗng thông tin mà không ai đo.
-
 |---|---|---|
 | **`/evolve`** — gom instinct thành skill | `lessons.py` chính là "instinct": thêm `tools/evolve_lessons.py` gom lesson cùng chủ đề thành **skill có tên** + đề xuất đổi ngưỡng (vẫn qua cổng tất định `AGENT_AUTO_APPLY`) | **P1** |
 | **`/prune`** — xoá instinct hết hạn | Lesson cũ không tái hiện (>60 ngày) ⇒ archive, tránh `SKIP_LESSON` chặn oan (đang bắn 11–13 lần/vòng) | **P1** |
@@ -372,6 +337,43 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 
 
 ---
+
+## 13. (16/10) Đọc 2 repo người vận hành gửi — áp dụng được gì
+
+### 13.1 `HKUDS/CLI-Anything` (Apache-2.0, 53.2k★) — "Making ALL Software Agent-Native"
+
+**Cốt lõi:** mỗi ứng dụng được đóng gói thành **một CLI đầy đủ chức năng** + thư mục
+`agent-harness/` **có test riêng** (GIMP 107 test, Blender 208, Inkscape 202…), kèm
+`cli-hub-matrix` (ma trận năng lực), `cli-hub-meta-skill` (skill dạy agent *cách* chọn
+đúng CLI), và nhiều "cửa" cài đặt cho từng agent (`claude-plugin`, `cursor-plugin`,
+`codex-skill`, `.claude-plugin`, `.cursor-plugin`). Triết lý: **không có "đường tắt" riêng
+cho agent** — agent dùng đúng bề mặt CLI của sản phẩm, nên hành vi kiểm chứng được.
+
+| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|
+| **Mỗi năng lực = 1 lệnh tự mô tả + harness test riêng** | **ĐÃ LÀM 16/10**: `tools/capabilities.py` quét `tools/*.py` → bảng `tool → mục đích → ví dụ → số test tham chiếu`, có `--json` cho agent và `--check` cho CI (tool thiếu docstring ⇒ fail). Đo được: 23 tool, nhiều tool còn 0 test tham chiếu | P1 (đã làm) |
+| **"Meta-skill" dạy agent chọn đúng công cụ** | Hội đồng hiện chỉ *cố vấn*, không tự gọi được công cụ. Bước 2: đưa manifest (`capabilities.py --json`) vào **prompt của agent review/council** để nó đề xuất *lệnh cụ thể* (`python tools/…`) thay vì lời khuyên chung | P2 |
+| **Ma trận năng lực + đếm test như chỉ số chất lượng** | Thêm vào `harness_audit.py` một dòng "tool nào chưa có test" (đã có dữ liệu từ `capabilities.check`) → buộc bổ sung test theo thời gian | P2 |
+| **Nhiều "cửa" cài đặt cho nhiều agent** | Dự án đã có `AGENTS.md`/`CONTEXT.md` cho agent; có thể thêm `skills/` cho Cline/Copilot CLI đọc (cùng nội dung, khác định dạng) | P3 |
+
+### 13.2 `miqdadbadjuber/anti-slop` (MIT, 6.2k★) — bộ luật lọc "slop" của AI
+
+**Cốt lõi:** là **bộ lọc, không phải style guide**: `rules/` đánh số, `skills/*/SKILL.md`
+**tham chiếu luật theo số** (không chép lại ⇒ thêm skill không đổi lõi), CLI + cài bằng
+`npx antislop-ai`, cấu hình dùng chung `%APPDATA%\antislop\settings.json`, có **catalogue
+mọi mẫu lỗi sinh tự động từ chính các skill và được kiểm trong CI**. Câu chốt của repo:
+*"antislop is a filter, not magic."*
+
+| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|
+| **Luật đánh số + skill tham chiếu, không chép lại** | `CONTEXT.md` đã là "bảng lớp lỗi" đánh số theo ngày; nên **đặt mã cho từng lớp lỗi** (vd `E-COUNCIL-SILENT`) để test/commit trỏ tới mã đó thay vì mô tả dài | P2 |
+| **Catalogue sinh tự động + kiểm trong CI** | Viết `tools/bug_catalog.py`: đọc `CONTEXT.md` → sinh `BUGS.md` (mã, ngày, triệu chứng, cách sửa, test nào chốt) + `--check` bắt mỗi lớp lỗi phải có **ít nhất 1 test** nhắc mã đó | P1 (đề xuất) |
+| **Lọc "slop" ở đầu ra của LLM** | Phiếu hội đồng có thể "rỗng thông tin" (lý do chung chung, không số liệu). Thêm **bộ lọc tất định** ở `parse_decision`: lý do không có số/mã cặp ⇒ `note+="slop"`, ghi journal để `council_eval` đo **tỷ lệ slop theo model** (đúng tinh thần "filter, not style guide") | P1 (đề xuất) |
+| **Cấm "slop" trong tài liệu công cụ** | **ĐÃ LÀM 16/10**: `capabilities.py --check` buộc mọi tool có docstring (không có tool "vô danh"); cùng tinh thần với `prompt_guard.py` (lọc chỉ thị lạ trong payload) | P2 (đã làm) |
+
+**Ghi chú:** cả hai repo đều không phải công cụ giao dịch — giá trị áp dụng nằm ở **kỷ luật
+đóng gói năng lực + lọc đầu ra**, đúng chỗ dự án đang yếu: hội đồng nói được nhưng *không
+tự gọi được công cụ*, và phiếu có thể rỗng thông tin mà không ai đo.
 
 ## 14. (18/10) Đọc 2 repo + blueprint "agentic SDLC" của người vận hành
 

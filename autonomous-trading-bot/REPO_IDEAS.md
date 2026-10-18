@@ -287,7 +287,7 @@ OpenViking (AGPL ⇒ chỉ lấy ý tưởng, không nhúng).
 
 ---
 
-## 14. Rà 5 repo harness/memory (13/10, đợt 2)
+## 13. Rà 5 repo harness/memory (13/10, đợt 2)
 
 | # | Repo | Cốt lõi | Áp dụng cho dự án | Ưu tiên |
 |---|---|---|---|---|
@@ -335,9 +335,9 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 
 ---
 
-## 15. (16/10) Đọc 2 repo người vận hành gửi — áp dụng được gì
+## 14. (16/10) Đọc 2 repo người vận hành gửi — áp dụng được gì
 
-### 15.1 `HKUDS/CLI-Anything` (Apache-2.0, 53.2k★) — "Making ALL Software Agent-Native"
+### 14.1 `HKUDS/CLI-Anything` (Apache-2.0, 53.2k★) — "Making ALL Software Agent-Native"
 
 **Cốt lõi:** mỗi ứng dụng được đóng gói thành **một CLI đầy đủ chức năng** + thư mục
 `agent-harness/` **có test riêng** (GIMP 107 test, Blender 208, Inkscape 202…), kèm
@@ -353,7 +353,7 @@ cho agent** — agent dùng đúng bề mặt CLI của sản phẩm, nên hành
 | **Ma trận năng lực + đếm test như chỉ số chất lượng** | Thêm vào `harness_audit.py` một dòng "tool nào chưa có test" (đã có dữ liệu từ `capabilities.check`) → buộc bổ sung test theo thời gian | P2 |
 | **Nhiều "cửa" cài đặt cho nhiều agent** | Dự án đã có `AGENTS.md`/`CONTEXT.md` cho agent; có thể thêm `skills/` cho Cline/Copilot CLI đọc (cùng nội dung, khác định dạng) | P3 |
 
-### 15.2 `miqdadbadjuber/anti-slop` (MIT, 6.2k★) — bộ luật lọc "slop" của AI
+### 14.2 `miqdadbadjuber/anti-slop` (MIT, 6.2k★) — bộ luật lọc "slop" của AI
 
 **Cốt lõi:** là **bộ lọc, không phải style guide**: `rules/` đánh số, `skills/*/SKILL.md`
 **tham chiếu luật theo số** (không chép lại ⇒ thêm skill không đổi lõi), CLI + cài bằng
@@ -372,9 +372,9 @@ mọi mẫu lỗi sinh tự động từ chính các skill và được kiểm t
 đóng gói năng lực + lọc đầu ra**, đúng chỗ dự án đang yếu: hội đồng nói được nhưng *không
 tự gọi được công cụ*, và phiếu có thể rỗng thông tin mà không ai đo.
 
-## 16. (18/10) Đọc 2 repo + blueprint "agentic SDLC" của người vận hành
+## 15. (18/10) Đọc 2 repo + blueprint "agentic SDLC" của người vận hành
 
-### 16.1 `Mintplex-Labs/anything-llm` (MIT, 67.3k★) — knowledge layer local-first
+### 15.1 `Mintplex-Labs/anything-llm` (MIT, 67.3k★) — knowledge layer local-first
 
 **Cốt lõi:** "Stop renting your intelligence" — ứng dụng RAG/agent chạy **local**: workspace
 tách theo chủ đề, collector nạp tài liệu, vector DB tự chọn, agent + **MCP**, đa người dùng
@@ -388,7 +388,7 @@ và **không gửi nội dung**.
 | **MCP để agent tự gọi công cụ** | Bọc các tool vận hành thành MCP server để client LLM điều khiển được bot — đích đến mà `capabilities.py --json` mới là bước 1 | P2 |
 | **Đa người dùng + phân quyền** | Thêm **mã hoá vai** cho lệnh nguy hiểm (`restart_bot --reset`, `MARGIN_TYPE`) để agent không tự ý gọi | P3 |
 
-### 16.2 `Open-Makers/ai-coding-agents-orchestrator` (Go, MIT) — workflow graph có cổng người
+### 15.2 `Open-Makers/ai-coding-agents-orchestrator` (Go, MIT) — workflow graph có cổng người
 
 **Cốt lõi:** pipeline **Negotiate → Decompose → Implement (TDD) → Quality Review → Fix → Done**
 với **cổng phê duyệt của người trước khi viết code**; vai PM (trọng tài) · QA · UX · Security ·
@@ -402,7 +402,7 @@ vòng lặp; artifact trong `.orchestrator/`; "recall project memory" trước k
 | **Trọng tài + vòng lặp quality-gate có trần** | Hội đồng đã có `arbiter` + escalate/debate 2 vòng + trần ngân sách ✓; bổ sung: ghi rõ **vì sao trọng tài chọn** khi phiếu sát nút | P2 |
 | **Artifact chuẩn hoá mỗi lần chạy** | Mỗi quyết định vận hành sinh 1 artifact `logs/ops/<ts>-<slug>.md` (bối cảnh → phiếu → hành động → kết quả) | P2 |
 
-### 16.3 Blueprint của người vận hành — bản dịch sang dự án này
+### 15.3 Blueprint của người vận hành — bản dịch sang dự án này
 
 | Điểm trong blueprint | Tương ứng ở đây | Việc cần làm |
 |---|---|---|

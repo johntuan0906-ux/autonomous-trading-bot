@@ -1326,15 +1326,6 @@ def main() -> None:
     # P0-2: nap kill-switch da luu -> restart/supervisor KHONG con reset duoc lenh ngung
     load_risk_state(cfg.risk_state_path, bot.kill,
                     warn=lambda m: log.warning("%s", m))
-    # Phase 5: INTERLOCK LIVE — chan cung khi chua du dieu kien sang tien that
-    # (LIVE_CONFIRM, n>=50, PF>=1.2, risk<=2%, lev<=10, kill-switch sach).
-    # Dat TRUOC reconcile/adopt de khong ton tien API khi cau hinh chua hop le.
-    if not cfg.testnet:
-        _lg = live_guard_enforce(cfg, log=log)
-        if not _lg["ok"]:
-            msg = "LIVE interlock chan: " + "; ".join(_lg["blockers"])
-            tg(cfg, fmt_kill(msg))
-            return
     syms0 = active_symbols(cfg)
     # P0-reconcile: doi chieu journal voi FILL THAT tren san -> ghi bu CLOSE bi thieu
     # (chay CA KHI kill-switch dang ngung: ghi bu chi la so lieu, khong phai giao dich).
@@ -1348,6 +1339,12 @@ def main() -> None:
                          f"-> da ghi bu tu fill san (n/PF se dung hon).")
         except Exception as e:  # noqa: BLE001
             log.warning("reconcile journal loi (bo qua, khong anh huong trade): %s", e)
+    # (18/10) LOI THAT DA SUA — THU TU: kill-switch phai xu ly TRUOC interlock LIVE.
+    # `live_guard` coi "kill-switch dang tripped" la MOT BLOCKER => interlock `return` ngay
+    # => bot THOAT, supervisor restart moi 300s => **VONG LAP CRASH** (do that 18/10: lan
+    # #254, log 2.6MB) va KHONG BAO GIO vao duoc che do monitor-only (tuc la khong con ai
+    # theo doi vi the/bao ve SL). Nay: tripped -> monitor-only (song, van quan ly, tu phat
+    # hien khi nguoi van hanh go lenh ngung); het blocker khac moi xet interlock.
     if bot.kill.tripped and getattr(cfg, "kill_monitor_only", True):
         # (02/10) Truoc day: `return` ngay -> vi the con tren san bi bo quen (khong SL tren
         # san vi demo chan -4045, cung khong co monitor mem). Nay: CHI QUAN LY, khong mo moi.
@@ -1357,6 +1354,15 @@ def main() -> None:
             return          # van bi chan (hoac monitor loi) -> thoat, supervisor quyet dinh
         # nguoi van hanh da `risk.py --reset` -> roi xuong vong lap trade BINH THUONG
         log.info("kill-switch da duoc go -> bat dau trade binh thuong")
+    # Phase 5: INTERLOCK LIVE — chan cung khi chua du dieu kien sang tien that
+    # (LIVE_CONFIRM, n>=50, PF>=1.2, risk<=2%, lev<=10, kill-switch sach).
+    # Dat TRUOC reconcile/adopt de khong ton tien API khi cau hinh chua hop le.
+    if not cfg.testnet:
+        _lg = live_guard_enforce(cfg, log=log)
+        if not _lg["ok"]:
+            msg = "LIVE interlock chan: " + "; ".join(_lg["blockers"])
+            tg(cfg, fmt_kill(msg))
+            return
     if bot.kill.tripped:
         log.info("TURBO QUET %d cap: %s (dang ngung boi kill-switch -> khong trade)",
                  len(syms0), list(syms0))

@@ -107,15 +107,19 @@ def council_decide(instance_dir: Path, question: str, allow: str, veto: str,
                            timeout=1200, **_hide())
     except Exception as e:  # noqa: BLE001
         return {"verdict": None, "err": str(e)[:160]}
-    for line in reversed((p.stdout or "").splitlines()):
-        s = line.strip()
-        if s.startswith("{") and s.endswith("}"):
-            try:
-                d = json.loads(s)
-                return {"verdict": str(d.get("verdict") or ""), "n": d.get("n")}
-            except Exception:  # noqa: BLE001
-                continue
-    return {"verdict": None, "err": (p.stdout or p.stderr or "")[-160:]}
+    # (17/10) LOI THAT DA SUA: `--json` in JSON **nhieu dong** => tim `{...}` tren 1 dong
+    # KHONG bao gio khop => verdict rong => tool hieu sai thanh VETO ("hoi dong KHONG cho mo
+    # lai") du hoi dong da ALLOW. Nay lay tu `{` dau tien den `}` cuoi cung.
+    out = p.stdout or ""
+    i, j = out.find("{"), out.rfind("}")
+    if i >= 0 and j > i:
+        try:
+            d = json.loads(out[i:j + 1])
+            return {"verdict": str(d.get("verdict") or ""), "n": d.get("n"),
+                    "n_allow": d.get("n_allow"), "n_veto": d.get("n_veto")}
+        except Exception as e:  # noqa: BLE001
+            return {"verdict": None, "err": "json: %s" % str(e)[:120]}
+    return {"verdict": None, "err": (out or p.stderr or "")[-160:]}
 
 
 def main(argv: list | None = None) -> int:
@@ -196,9 +200,16 @@ def main(argv: list | None = None) -> int:
                                "verdict": verdict})
             return 3
         if (time.time() - t0) >= float(args.max_hours) * 3600.0:
-            log(d, "het thoi gian cho (%sh) -> thoat, VAN tam dung" % args.max_hours)
-            journal_append(d, {"status": "PAUSE_TIMEOUT", "symbol": args.symbol})
-            return 2
+            # (17/10) LOI THAT: truoc day het gio la thoat NGAY, ke ca khi vi the da dong
+            # trong luc cho => buoc Isolated KHONG BAO GIO chay, cong tam dung ket vinh vien
+            # (do that: watcher thoat 16:19 17/10 khi BTW con mo; den 18:0x moi dong => bot
+            # bi khoa ~26h, 716 vong PAUSED). Nay: da phang thi LAM TIEP buoc Isolated.
+            if qty is not None and qty <= 0:
+                log(d, "het thoi gian cho NHUNG cap da PHANG -> lam tiep buoc Isolated")
+            else:
+                log(d, "het thoi gian cho (%sh) -> thoat, VAN tam dung" % args.max_hours)
+                journal_append(d, {"status": "PAUSE_TIMEOUT", "symbol": args.symbol})
+                return 2
         time.sleep(max(5.0, float(args.poll)))
 
 

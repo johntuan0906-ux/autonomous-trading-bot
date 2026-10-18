@@ -370,3 +370,54 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 25. ~~**P1 (mới, 13/10)** Map lại alias hội đồng → id gateway ClinePass~~ — **ĐÃ LÀM**: `model_aliases.py` (map 15 alias → id thật) + `ClineProvider` gửi id gateway + `max_tokens=300`; kiểm chứng qua code bot thấy phiếu thật; `kimi-k3`/`glm-5.3` (gateway 500) đã vào `CLINE_SKIP_MODELS`.
 26. **P2** Hội đồng chạy **rất chậm** (14 model × 2 vòng > 10 phút khi test tay): cân nhắc giảm còn 5–6 model hoặc hạ `COUNCIL_ROUNDS=1` cho các vòng bình thường.
 
+
+---
+
+## 14. (18/10) Đọc 2 repo + blueprint "agentic SDLC" của người vận hành
+
+### 14.1 `Mintplex-Labs/anything-llm` (MIT, 67.3k★) — knowledge layer local-first
+
+**Cốt lõi:** "Stop renting your intelligence" — ứng dụng RAG/agent chạy **local**: workspace
+tách theo chủ đề, collector nạp tài liệu, vector DB tự chọn, agent + **MCP**, đa người dùng
+(admin/manager/user), **citation** cho câu trả lời, API cho developer; telemetry mặc định tắt
+và **không gửi nội dung**.
+
+| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|
+| **Citation/provenance cho tri thức** | `lessons.py` trả "tổ hợp X thua n lần" nhưng **không nói bằng chứng nào**. Thêm `evidence` mỗi bucket (`n`, `first_ts`, `last_ts`, 3 `sample_ts`) → in ra `LESSONS.md`; hội đồng trích bài học phải kèm mã bằng chứng ⇒ trả lời được "logic này ở đâu ra" | P1 (đề xuất) |
+| **Workspace theo ngữ cảnh** | Đã tách kho theo instance (TESTNET/LIVE) + theo vai; bước sau: tách **theo chế độ thị trường** (trend/range) để `lessons.hint()` lấy đúng ngữ cảnh | P2 |
+| **MCP để agent tự gọi công cụ** | Bọc các tool vận hành thành MCP server để client LLM điều khiển được bot — đích đến mà `capabilities.py --json` mới là bước 1 | P2 |
+| **Đa người dùng + phân quyền** | Thêm **mã hoá vai** cho lệnh nguy hiểm (`restart_bot --reset`, `MARGIN_TYPE`) để agent không tự ý gọi | P3 |
+
+### 14.2 `Open-Makers/ai-coding-agents-orchestrator` (Go, MIT) — workflow graph có cổng người
+
+**Cốt lõi:** pipeline **Negotiate → Decompose → Implement (TDD) → Quality Review → Fix → Done**
+với **cổng phê duyệt của người trước khi viết code**; vai PM (trọng tài) · QA · UX · Security ·
+Coder; **beads** = sub-task bền vững ⇒ **resume được** khi đứt; **quality-gate loop** có trần
+vòng lặp; artifact trong `.orchestrator/`; "recall project memory" trước khi làm; headless cho CI.
+
+| Ý tưởng | Áp dụng cho dự án | Ưu tiên |
+|---|---|---|
+| **Beads — việc bền vững, resume được** | Việc vận hành của ta đang là *hành động rời* ⇒ hôm nay trả giá: watcher chờ BTW **hết 24h rồi thoát**, cổng khoá thêm ~2h (đã vá "đã phẳng thì làm tiếp", nhưng **hàng đợi bền vững** mới là gốc: `logs/ops_queue.json` + `resume`) | P1 (đề xuất) |
+| **Cổng phê duyệt của người trước hành động nguy hiểm** | Bổ sung **hàng đợi câu hỏi** (`ops_questions.json`): bot/agent đặt câu hỏi → hiện ở `tools/ops.py` + Telegram → **chỉ chặn đúng hành động đó** tới khi có trả lời | P1 (đề xuất) |
+| **Trọng tài + vòng lặp quality-gate có trần** | Hội đồng đã có `arbiter` + escalate/debate 2 vòng + trần ngân sách ✓; bổ sung: ghi rõ **vì sao trọng tài chọn** khi phiếu sát nút | P2 |
+| **Artifact chuẩn hoá mỗi lần chạy** | Mỗi quyết định vận hành sinh 1 artifact `logs/ops/<ts>-<slug>.md` (bối cảnh → phiếu → hành động → kết quả) | P2 |
+
+### 14.3 Blueprint của người vận hành — bản dịch sang dự án này
+
+| Điểm trong blueprint | Tương ứng ở đây | Việc cần làm |
+|---|---|---|
+| **Knowledge warehouse chuẩn chỉ** (vì ít người can thiệp) | `lessons.py` + `lessons.json` + knowledge tree + `LESSONS_ENFORCE` | Thêm **provenance (mã bằng chứng)** + `tools/bug_catalog.py` (mã lớp lỗi ↔ test) như §13.2 |
+| **Verification: testing · eval · traceability · observability** | 950 test · `council_eval` · `harness_audit` · `ops.py`/metrics · journal | **Mắt xích thiếu lớn nhất: TRACE theo từng lệnh** ("vì sao bot mở lệnh này?") ⇒ `tools/trace_trade.py`: in chuỗi signal → learner → lessons → phiếu hội đồng → size/risk → order → bảo vệ → đóng → bài học, kèm id/thời điểm |
+| **"Honeycomb": graph business logic + call graph để sinh test** | `tests/` theo module, **chưa có graph** hành vi ↔ mã | Bản dịch nhỏ: `capabilities.py --json` (đã làm) + `bug_catalog.py`; xa hơn: graph `hành vi → hàm → test` |
+| **Supervisor/lead + agent theo vai, handoff qua Jira/Confluence** | Hội đồng nhiều vai + `arbiter`; handoff của ta là journal + Telegram + `entries_gate` | Thêm **hàng đợi câu hỏi có resume** (14.2) = tương đương "nhắn lên Jira rồi chờ confirm" |
+| **Nỗi lo 1: chất lượng code không bằng tự review** | Test bắt buộc trước commit + `capabilities --check` + `harness_audit` | Giữ kỷ luật; thêm luật "mỗi lớp lỗi phải có test chốt" (§13.2) |
+| **Nỗi lo 2: "first brain" mất kiểm soát tri thức** | Đúng ca **"phiếu hội đồng bị nuốt"** và **"tier lite ⇒ 0 phiếu"**: hệ thống chạy mà *không ai biết nó quyết thế nào* | `trace_trade.py` + provenance + `event=OPS` cho mọi đổi trạng thái (đã có) |
+
+**Đã làm ngay trong phiên này (từ 2 repo + blueprint):** `entries_gate` (cổng tạm dừng đọc lại
+mỗi vòng, có vết journal) · `tools/wait_btw_isolate.py` (chờ → Isolated → hội đồng quyết →
+resume) · `tools/capabilities.py` (manifest năng lực) · sửa **thứ tự interlock ⇒ hết vòng lặp
+crash** (kill-switch ⇒ monitor-only, tự resume khi gỡ) · `RECONCILE` tự ghi bù lệnh đóng thiếu.
+**P1 kế tiếp:** `trace_trade.py` · provenance cho lessons · `ops_queue.json` +
+`ops_questions.json` · `bug_catalog.py`.
+

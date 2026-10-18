@@ -2300,6 +2300,25 @@ def _provider_groups(decisions: dict) -> tuple:
             (lo, "local"), (co, "copilot"))
 
 
+_BILLING_HINTS = ("402", "payment required", "quota exceeded", "insufficient", "billing",
+                  "credit")
+
+
+def _billing_error(decisions: dict, models: list) -> str:
+    """Dau hieu LOI THANH TOAN/HET CREDIT trong phieu abstain? -> chuoi khop dau tien.
+
+    (18/10) Do that: gateway Cline tra `402 Payment Required` cho MOI model => hoi dong goi
+    5 model moi vong roi tat ca deu abstain, va `pause` 30 phut vo nghia (loi thanh toan
+    KHONG tu het). Nen chan DAI + bao nguoi van hanh biet dung viec can lam.
+    """
+    for m in models:
+        note = str(getattr(decisions.get(m), "note", "") or "").lower()
+        for h in _BILLING_HINTS:
+            if h in note:
+                return h
+    return ""
+
+
 def _mark_provider_exhausted(decisions: dict, log=None, cfg=None) -> None:
     """(05/10) Toan bo model CUNG provider deu abstain -> danh dau provider 'exhausted'.
 
@@ -2316,6 +2335,17 @@ def _mark_provider_exhausted(decisions: dict, log=None, cfg=None) -> None:
             str(getattr(decisions.get(m), "action", "?")) not in ("ALLOW", "VETO")
             for m in models)
         if all_abst:
+            hint = _billing_error(decisions, models)
+            if hint:
+                # Loi thanh toan/het credit: cho DAI (khong tu het) + noi ro viec can lam.
+                bill_sec = _f(getattr(cfg, "agent_provider_billing_pause_sec", 43200.0), 43200.0)
+                _PROVIDER_BLOCKED[tag] = f"pause:{time.time() + max(60.0, bill_sec)}"
+                if log:
+                    log.error("COUNCIL: provider '%s' loi THANH TOAN/HET CREDIT (%s) -> chan %d gio. "
+                              "NGUOI VAN HANH: nap credit hoac doi provider "
+                              "(AGENT_COUNCIL_CLINE / AGENT_PROVIDER).",
+                              tag, hint, int(max(60.0, bill_sec) // 3600))
+                continue
             if _PROVIDER_PAUSED_BEFORE.get(tag):
                 _PROVIDER_BLOCKED[tag] = True
                 _PROVIDER_PAUSED_BEFORE.pop(tag, None)

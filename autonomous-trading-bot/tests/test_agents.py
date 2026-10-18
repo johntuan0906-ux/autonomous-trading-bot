@@ -998,6 +998,61 @@ class TestNhanProviderTheoTienTo(unittest.TestCase):
 
 
 
+class TestProviderLoiThanhToan(unittest.TestCase):
+    """(18/10) Loi THANH TOAN/HET CREDIT phai chan DAI + bao nguoi van hanh.
+
+    Do that o LIVE: gateway Cline tra `402 Payment Required` cho moi model => hoi dong goi
+    5 model moi vong roi tat ca abstain; `pause` 30 phut vo nghia vi loi thanh toan khong
+    tu het (agent_state: `disabled_by.cline = "loi lien tiep 9 lan (... 402 ...)"`).
+    """
+
+    def _dec(self, note: str):
+        return A.Decision(role="critic", agent="m", action="NO_OPINION", note=note)
+
+    def test_nhan_dien_loi_thanh_toan(self):
+        self.assertEqual(A._billing_error({"m1": self._dec("loi provider: 402 Client Error: "
+                                                           "Payment Required")}, ["m1"]), "402")
+        self.assertEqual(A._billing_error({"m1": self._dec("quota exceeded")}, ["m1"]),
+                         "quota exceeded")
+        self.assertEqual(A._billing_error({"m1": self._dec("treo/loi/het gio")}, ["m1"]), "")
+
+    def test_chan_dai_khi_loi_thanh_toan(self):
+        from types import SimpleNamespace
+        A._PROVIDER_BLOCKED.clear()
+        A._PROVIDER_PAUSED_BEFORE.clear()
+        try:
+            cfg = SimpleNamespace(agent_provider_pause_sec=1800.0,
+                                  agent_provider_billing_pause_sec=43200.0)
+            decs = {"cline-pass/a": self._dec("402 Payment Required"),
+                    "cline-pass/b": self._dec("402 Payment Required")}
+            A._mark_provider_exhausted(decs, log=None, cfg=cfg)
+            blk = A._PROVIDER_BLOCKED.get("cline")
+            self.assertTrue(str(blk).startswith("pause:"), "phai la pause co thoi han")
+            until = float(str(blk).split(":", 1)[1])
+            self.assertGreater(until - __import__("time").time(), 11 * 3600,
+                               "loi thanh toan phai chan >= 11 gio (khong phai 30 phut)")
+        finally:
+            A._PROVIDER_BLOCKED.clear()
+            A._PROVIDER_PAUSED_BEFORE.clear()
+
+    def test_loi_thuong_van_pause_ngan(self):
+        from types import SimpleNamespace
+        A._PROVIDER_BLOCKED.clear()
+        A._PROVIDER_PAUSED_BEFORE.clear()
+        try:
+            cfg = SimpleNamespace(agent_provider_pause_sec=1800.0,
+                                  agent_provider_billing_pause_sec=43200.0)
+            decs = {"cline-pass/a": self._dec("treo/loi/het gio"),
+                    "cline-pass/b": self._dec("treo/loi/het gio")}
+            A._mark_provider_exhausted(decs, log=None, cfg=cfg)
+            until = float(str(A._PROVIDER_BLOCKED["cline"]).split(":", 1)[1])
+            self.assertLess(until - __import__("time").time(), 3600,
+                            "loi thuong chi pause ngan (mac dinh 30 phut)")
+        finally:
+            A._PROVIDER_BLOCKED.clear()
+            A._PROVIDER_PAUSED_BEFORE.clear()
+
+
 if __name__ == "__main__":
     unittest.main()
 

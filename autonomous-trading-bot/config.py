@@ -181,6 +181,11 @@ class Settings:
     # do NGUOI DUNG/bot khac mo o che do CROSS khong keo vi the cua bot vao thanh ly.
     # Rong = khong doi (giu nguyen che do san dang co).
     margin_type: str = field(default_factory=lambda: _get("MARGIN_TYPE", ""))
+    # (18/10) Provider loi THANH TOAN/het credit (vd Cline `402 Payment Required`) -> chan
+    # DAI (mac dinh 12 gio) thay vi pause 30 phut: loi thanh toan KHONG tu het, thu lai chi
+    # ton 5 cuoc goi moi vong + rac journal.
+    agent_provider_billing_pause_sec: float = field(
+        default_factory=lambda: _get_float("AGENT_PROVIDER_BILLING_PAUSE_SEC", 43200.0))
     round_timeout_sec: int = field(default_factory=lambda: _get_int("ROUND_TIMEOUT_SEC", 90))
     socket_timeout_sec: int = field(default_factory=lambda: _get_int("SOCKET_TIMEOUT_SEC", 20))
     risk_state_path: str = field(default_factory=lambda: _get("RISK_STATE_PATH", "logs/risk_state.json"))

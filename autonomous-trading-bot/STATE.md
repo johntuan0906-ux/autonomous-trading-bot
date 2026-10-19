@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 19/10/2026 23:57:35 · commit `7d4a9b7`
+- **Cập nhật**: 20/10/2026 00:58:25 · commit `146f408`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `102556` · round `1` · nhịp tim cách đây 0.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `73272` · round `1` · nhịp tim cách đây 0.1s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
-- **Kill-switch**: ⚠️ TRIPPED — 9 consecutive API errors
+- **Kill-switch**: ⚠️ TRIPPED — 10 consecutive API errors
 
-## Hiệu suất (journal: 3058 lệnh đóng, WR 47.25%, E(R) 1.1364, PnL -784.98$)
+## Hiệu suất (journal: 3074 lệnh đóng, WR 47.04%, E(R) 1.1361, PnL -795.56$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2463 | 45.59 | 5.601 | 0.816 | 1.4107 | -666.03 |
-| 14 ngày | 2829 | 45.95 | 5.02 | 0.819 | 1.2246 | -811.07 |
-| 30 ngày | 3058 | 47.25 | 4.799 | 0.843 | 1.1364 | -784.98 |
+| 7 ngày | 2471 | 45.2 | 5.588 | 0.804 | 1.4116 | -712.4 |
+| 14 ngày | 2845 | 45.73 | 5.016 | 0.818 | 1.2237 | -821.65 |
+| 30 ngày | 3074 | 47.04 | 4.796 | 0.841 | 1.1361 | -795.56 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.816 < 1.1; PF($) cua so 14 ngay = 0.819 < 1.1; PF($) cua so 30 ngay = 0.843 < 1.1; kill-switch dang TRIPPED (9 consecutive API errors) — chay `python risk.py --reset`
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.804 < 1.1; PF($) cua so 14 ngay = 0.818 < 1.1; PF($) cua so 30 ngay = 0.841 < 1.1; kill-switch dang TRIPPED (10 consecutive API errors) — chay `python risk.py --reset`
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 

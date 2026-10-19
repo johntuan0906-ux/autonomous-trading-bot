@@ -235,6 +235,59 @@ def norm(s: str) -> str:
     return _strip_accents(s).lower()
 
 
+def graph(catalog=None, tests_dir=None) -> dict:
+    """So do `hanh vi -> file -> test` (nodes/edges) — ban dich nho cua "honeycomb" (§15.3).
+
+    Vi sao: REPO_IDEAS ghi "chua co graph hanh vi <-> ma". Du lieu DA CO ngay trong danh muc
+    nay (bug -> file -> test) => sinh duoc so do ma KHONG phai khai bao tay (khong lech thuc te).
+    """
+    idx = test_index(tests_dir)
+    nodes: dict = {}
+    edges: list = []
+
+    def nid(prefix: str, name: str) -> str:
+        return prefix + re.sub(r"\W+", "_", str(name)).strip("_")
+
+    for c in (CLASSES if catalog is None else catalog):
+        b = nid("", c.get("code"))            # "B-021" -> "B_021"
+        nodes[b] = {"id": b, "kind": "behavior", "label": "%s %s" % (c.get("code"), c.get("title"))}
+        for f in (c.get("files") or []):
+            fn = nid("F_", f)
+            nodes[fn] = {"id": fn, "kind": "file", "label": f}
+            edges.append([b, fn])
+            for t in (c.get("tests") or []):
+                tn = nid("T_", t)
+                ok = t in idx["refs"] or t in idx["files"]
+                nodes[tn] = {"id": tn, "kind": "test", "label": t, "exists": ok}
+                edges.append([fn, tn])
+    return {"nodes": sorted(nodes.values(), key=lambda x: x["id"]), "edges": edges,
+            "n_behavior": sum(1 for n in nodes.values() if n["kind"] == "behavior"),
+            "n_file": sum(1 for n in nodes.values() if n["kind"] == "file"),
+            "n_test": sum(1 for n in nodes.values() if n["kind"] == "test")}
+
+
+def graph_md(catalog=None, tests_dir=None) -> list:
+    """So do dang Mermaid (dan duoc vao tai lieu/PR) + bang 'hanh vi -> test'."""
+    g = graph(catalog, tests_dir)
+    out = ["```mermaid", "graph LR"]
+    for n in g["nodes"]:
+        if n["kind"] == "behavior":
+            out.append('  %s["%s"]' % (n["id"], str(n["label"])[:46]))
+    for e in g["edges"]:
+        a, b = e
+        if a.startswith("B_"):
+            out.append("  %s --> %s" % (a, b))
+    out += ["```", "", "| Hanh vi (lop loi) | File | Test chot |", "|---|---|---|"]
+    for c in (CLASSES if catalog is None else catalog):
+        out.append("| %s %s | %s | %s |"
+                   % (c.get("code"), str(c.get("title"))[:60],
+                      ", ".join("`%s`" % f for f in (c.get("files") or [])),
+                      "<br>".join("`%s`" % t for t in (c.get("tests") or []))))
+    out += ["", "_Sinh tu `tools/bug_catalog.py --graph` (%d hanh vi / %d file / %d test)._"
+            % (g["n_behavior"], g["n_file"], g["n_test"])]
+    return out
+
+
 def test_index(tests_dir=None) -> dict:
     """Doc `tests/` -> {'refs': {...}, 'files': {...}} (refs dang `file.py::Class::test`)."""
     d = Path(tests_dir or (ROOT / "tests"))
@@ -333,9 +386,18 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--kind", default="", help="loc theo loai: %s" % ", ".join(KINDS))
     ap.add_argument("--code", default="", help="chi tiet 1 ma (vd B-003)")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--graph", action="store_true",
+                    help="so do 'hanh vi -> file -> test' (mermaid + bang)")
     ap.add_argument("--check", action="store_true",
                     help="xac minh moi test duoc dan CO THAT (exit 1 neu thieu)")
     args = ap.parse_args(argv)
+
+    if args.graph:
+        if args.json:
+            print(json.dumps(graph(), ensure_ascii=False, indent=1))
+        else:
+            print("\n".join(graph_md()))
+        return 0
 
     if args.check:
         rep = check()

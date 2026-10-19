@@ -434,3 +434,11 @@ crash** (kill-switch ⇒ monitor-only, tự resume khi gỡ) · `RECONCILE` tự
 **Còn lại (P2):** graph `hành vi → hàm → test`; 10 tool trong manifest chưa có test
 (`python tools/capabilities.py --check` liệt kê).
 
+**(19/10) — P2 đã làm phần khả thi (không cần khai báo tay, sinh từ dữ liệu thật):**
+- **Graph `hành vi → file → test`**: `python tools/bug_catalog.py --graph` (Mermaid + bảng;
+  nguồn là chính danh mục lớp lỗi nên không thể lệch thực tế). Hiện: **21 hành vi · 20 file · 36 test**.
+- **26/26 tool có test** — `python tools/capabilities.py --check` = OK, `khong duoc test: khong co`
+  (trước đó 10 tool không được test).
+- **Bug catalog 21 lớp lỗi ↔ 36 test chốt** (`--check` báo khi test bị xoá/đổi tên) + lớp lỗi mới
+  **B-021**: tiến trình test ghi đè `logs/heartbeat.json` của instance THẬT (pid 28000 không tồn tại).
+

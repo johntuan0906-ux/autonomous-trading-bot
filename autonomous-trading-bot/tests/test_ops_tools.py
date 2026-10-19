@@ -896,5 +896,38 @@ class TestTraceTrade(unittest.TestCase):
 
 
 
+class TestBugCatalogGraph(unittest.TestCase):
+    """(19/10) So do 'hanh vi -> file -> test' (ban dich nho cua 'honeycomb', REPO_IDEAS §15.3).
+
+    Du lieu lay tu chinh danh muc (bug -> file -> test) nen so do KHONG the lech thuc te.
+    """
+
+    def setUp(self):
+        import bug_catalog as BC
+        self.BC = BC
+
+    def test_graph_co_mermaid_va_bang(self):
+        md = "\n".join(self.BC.graph_md())
+        self.assertIn("```mermaid", md)
+        self.assertIn("graph LR", md)
+        self.assertIn("| Hanh vi (lop loi) | File | Test chot |", md)
+        self.assertIn("B-021", md)
+
+    def test_graph_moi_hanh_vi_co_file_va_test(self):
+        g = self.BC.graph()
+        self.assertGreaterEqual(g["n_behavior"], 15)
+        self.assertGreaterEqual(g["n_test"], 20)
+        kinds = {n["id"]: n["kind"] for n in g["nodes"]}
+        for c in self.BC.CLASSES:
+            b = str(c["code"]).replace("-", "_")
+            self.assertEqual(kinds.get(b), "behavior", b)
+            files = [e[1] for e in g["edges"] if e[0] == b]
+            self.assertTrue(files, "%s khong co file" % c["code"])
+            for f in files:
+                self.assertEqual(kinds.get(f), "file")
+                self.assertTrue([e[1] for e in g["edges"] if e[0] == f],
+                                "%s: file %s khong co test" % (c["code"], f))
+
+
 if __name__ == "__main__":
     unittest.main()

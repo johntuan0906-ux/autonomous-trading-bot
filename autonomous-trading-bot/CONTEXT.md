@@ -17,6 +17,8 @@ python live_ready.py                 # còn thiếu cổng nào để sang LIVE
 python monitor_report.py --days 7    # hiệu suất thật từ journal
 python status.py                     # bot có sống? ví? vị thế? learner?
 python agents.py --authority         # hội đồng AI đã có quyền chặn lệnh chưa
+python tools/ops_queue.py resume     # ĐANG CHỜ người vận hành trả lời gì? (mỗi instance)
+python tools/bug_catalog.py --check  # lớp lỗi cũ còn test chốt không (mất test = mất chốt)
 git log --oneline -10                # vừa thay đổi gì
 python tools/apply_symbols.py --target both --dry-run   # xem danh sách cặp sẽ áp
 ```

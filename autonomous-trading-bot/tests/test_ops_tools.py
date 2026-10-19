@@ -750,5 +750,69 @@ class TestBugCatalog(unittest.TestCase):
 
 
 
+class TestOpsQueue(unittest.TestCase):
+    """(19/10) Hang doi cau hoi cho nguoi van hanh — phai RESUME duoc qua phien.
+
+    Lop loi B-008: TESTNET ket pause 3.6 ngay vi khong co cho nao ghi "dang cho nguoi
+    van hanh tra loi gi". Phien AI moi doc `logs/ops_questions.json` la biet ngay.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.o = Path(self.tmp.name) / "logs" / "ops_questions.json"
+        self.d = Path(self.tmp.name) / "logs" / "ops_queue.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_them_va_danh_so_tang_dan(self):
+        import ops_queue as OQ
+        a = OQ.add("cau 1?", why="vi sao", options=["a", "b"], priority="high",
+                   open_path=self.o, now=lambda: 100.0)
+        b = OQ.add("cau 2?", open_path=self.o, now=lambda: 200.0)
+        self.assertEqual((a["id"], b["id"]), (1, 2))
+        self.assertEqual([x["id"] for x in OQ.open_items(open_path=self.o)], [1, 2])
+        self.assertEqual(OQ.add("cau 3?", priority="khong-hop-le",
+                                open_path=self.o)["priority"], "normal")
+
+    def test_tra_loi_chuyen_sang_lich_su(self):
+        import ops_queue as OQ
+        OQ.add("cau 1?", open_path=self.o, now=lambda: 0.0)
+        r = OQ.answer(1, "dong y", open_path=self.o, done_path=self.d, now=lambda: 50.0)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(OQ.open_items(open_path=self.o), [])
+        done = OQ.done_items(done_path=self.d)
+        self.assertEqual(done[0]["answer"], "dong y")
+        self.assertEqual(done[0]["answered_by"], "nguoi van hanh")
+        self.assertEqual(done[0]["status"], "ANSWERED")
+        self.assertFalse(OQ.answer(99, "x", open_path=self.o, done_path=self.d)["ok"])
+
+    def test_cau_hoi_qua_lau_duoc_bao(self):
+        import ops_queue as OQ
+        OQ.add("cu?", open_path=self.o, now=lambda: 0.0)
+        OQ.add("moi?", open_path=self.o, now=lambda: 100000.0)
+        items = OQ.open_items(open_path=self.o)
+        # kiem tra tai thoi diem 100000 + 1h: "cu?" da 28.8h, "moi?" moi 1h
+        old = OQ.stale(items, stale_hours=24, now=lambda: 100000.0 + 3600)
+        self.assertEqual([x["question"] for x in old], ["cu?"])
+
+    def test_resume_doc_duoc_cho_phien_moi(self):
+        import ops_queue as OQ
+        OQ.add("cau 1?", why="vi sao", options=["a"], priority="blocker",
+               open_path=self.o, now=lambda: 0.0)
+        txt = "\n".join(OQ.resume_text(OQ.open_items(open_path=self.o), now=lambda: 3600.0))
+        self.assertIn("cau 1?", txt)
+        self.assertIn("vi sao", txt)
+        self.assertIn("blocker", txt)
+        self.assertIn("TRONG", "\n".join(OQ.resume_text([], now=lambda: 0.0)))
+
+    def test_file_hong_thi_coi_nhu_trong(self):
+        import ops_queue as OQ
+        self.o.parent.mkdir(parents=True, exist_ok=True)
+        self.o.write_text("{hong", encoding="utf-8")
+        self.assertEqual(OQ.open_items(open_path=self.o), [])
+
+
+
 if __name__ == "__main__":
     unittest.main()

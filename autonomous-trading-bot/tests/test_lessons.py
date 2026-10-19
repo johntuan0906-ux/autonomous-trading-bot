@@ -300,5 +300,69 @@ class TestImpact(unittest.TestCase):
         self.assertEqual(len(imp["near"]), 1, "b nam trong danh sach theo doi")
 
 
+class TestProvenance(unittest.TestCase):
+    """(19/10) Moi ket luan trong LESSONS.md phai TRUY NGUOC duoc ve lenh cu the.
+
+    Vi sao: `LESSONS.md` chan lenh that (n>=20, avgR am) — neu khong truy nguoc duoc thi
+    khong ai kiem chung duoc ket luan, va mot to hop GIA (nhu B-012 `? | ? | ? | ?`) co the
+    lang le chien cho trong tran. Yeu cau tu REPO_IDEAS §15.3 ("knowledge warehouse chuan chi").
+    """
+
+    def _journal(self, d, rows):
+        p = Path(d) / "j.jsonl"
+        p.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+        return p
+
+    def test_ma_bang_chung_on_dinh_va_ngan(self):
+        a = LES.evidence_code("X | Y")
+        self.assertEqual(a, LES.evidence_code("X | Y"))          # on dinh
+        self.assertNotEqual(a, LES.evidence_code("X | Z"))
+        self.assertTrue(a.startswith("EV-"))
+        self.assertEqual(len(a), 9)
+
+    def test_bang_chung_dem_dung_va_co_mau_lenh(self):
+        rows = []
+        for i, r in enumerate((0.5, -1.0, -0.2)):
+            rows.append({"ts": 100.0 + i, "event": "OPEN", "pair": "A/USDT:USDT",
+                         "strategy": "S1", "setup_type": "BOS_UP",
+                         "market_regime": "COMPRESSION", "direction": "LONG"})
+            rows.append({"ts": 200.0 + i * 86400.0, "event": "CLOSE", "pair": "A/USDT:USDT",
+                         "r": r, "pnl": r * 10, "won": r > 0, "reason": "SL"})
+        with tempfile.TemporaryDirectory() as d:
+            ev = LES.evidence(self._journal(d, rows), "S1 | BOS_UP | COMPRESSION | LONG")
+        self.assertEqual(ev["n"], 3)
+        self.assertEqual((ev["wins"], ev["losses"]), (1, 2))
+        self.assertEqual(ev["avg_r"], round((0.5 - 1.0 - 0.2) / 3, 4))
+        self.assertEqual(ev["worst"][0]["r"], -1.0)               # te nhat truoc
+        self.assertEqual(ev["best"][0]["r"], 0.5)
+        self.assertGreater(ev["span_days"], 0)
+        self.assertTrue(ev["code"].startswith("EV-"))
+
+    def test_lenh_khong_co_open_khong_tinh_vao_bang_chung(self):
+        """DUST (CLOSE khong OPEN) khong duoc tao bang chung gia (lop loi B-012)."""
+        rows = [{"ts": 1.0, "event": "CLOSE", "pair": "A/USDT:USDT", "r": 5.0, "won": True}]
+        with tempfile.TemporaryDirectory() as d:
+            ev = LES.evidence(self._journal(d, rows), "? | ? | ? | ?")
+        self.assertEqual(ev["n"], 0)
+        self.assertIsNone(ev["avg_r"])
+
+    def test_gate_co_ma_va_LESSONS_md_in_ra_ma(self):
+        buckets = {"S1 | BOS_UP | X | LONG": {
+            "n": 25, "avg_r": -0.4, "wr": 20.0, "pnl": -30.0, "wins": 5,
+            "sum_r": -10.0, "sum_pnl": -30.0, "gross_win": 0.0, "gross_loss": 30.0,
+            "last_ts": 0.0}}
+        gates = LES.gate_list(buckets, min_n=20, max_avg_r=-0.30)
+        self.assertTrue(gates[0]["code"].startswith("EV-"))
+        les = {"trades": 25, "unpaired": 0, "keys": list(LES.KEYS_DEFAULT),
+               "buckets": buckets, "gates": gates, "notes": [], "skills": [],
+               "stale": {}, "pruned": [], "ts": 0.0}
+        with tempfile.TemporaryDirectory() as d:
+            LES.write_files(les, json_path=Path(d) / "l.json", md_path=Path(d) / "LESSONS.md")
+            md = (Path(d) / "LESSONS.md").read_text(encoding="utf-8")
+        self.assertIn(gates[0]["code"], md)
+        self.assertIn("trace_trade.py --key", md)
+
+
+
 if __name__ == "__main__":
     unittest.main()

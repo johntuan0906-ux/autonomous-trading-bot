@@ -814,5 +814,87 @@ class TestOpsQueue(unittest.TestCase):
 
 
 
+class TestTraceTrade(unittest.TestCase):
+    """(19/10) Trace 1 lenh: phieu hoi dong nao thuoc lenh nao, lenh thuoc bai hoc nao.
+
+    Day la mat xich THIEU LON NHAT theo REPO_IDEAS §15.3: journal + bang diem model + lessons
+    deu co, nhung khong cho nao tra loi duoc "lenh nay vi sao vao, ai dong y".
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = Path(self.tmp.name)
+        self.j = self.d / "journal.jsonl"
+        rows = [
+            {"ts": 1000.0, "event": "OPEN", "pair": "SOL/USDT:USDT", "direction": "LONG",
+             "timeframe": "15m", "strategy": "S1", "setup_type": "BOS_UP",
+             "market_regime": "COMPRESSION", "alpha": 0.2, "score100": 12.0, "qty": 10,
+             "risk_pct": 0.25, "risk_usdt": 0.1, "entry": 100.0, "sl": 99.0, "tp": 102.0,
+             "rr": 2.0, "leverage": 8},
+            {"ts": 1100.0, "event": "AGENT", "status": "COUNCIL", "symbol": "SOL/USDT:USDT",
+             "model": "cline-pass/a", "action": "VETO", "confidence": 0.8,
+             "reasons": ["regime xau"]},
+            {"ts": 1200.0, "event": "AGENT", "status": "COUNCIL", "symbol": "ETH/USDT:USDT",
+             "model": "cline-pass/b", "action": "ALLOW", "confidence": 0.7,
+             "reasons": ["cap khac"]},
+            {"ts": 1300.0, "event": "CLOSE", "pair": "SOL/USDT:USDT", "r": -1.0, "pnl": -0.1,
+             "won": False, "reason": "SL", "mfe_r": 0.2},
+            {"ts": 1400.0, "event": "AGENT", "status": "CLOSED", "symbol": "SOL/USDT:USDT",
+             "model": "review_agent", "action": "VETO", "reasons": ["SL qua hep"]},
+        ]
+        self.j.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+        self.les = self.d / "lessons.json"
+        self.les.write_text(json.dumps({
+            "buckets": {"S1 | BOS_UP | COMPRESSION | LONG":
+                        {"n": 25, "avg_r": -0.4, "wr": 20.0, "pnl": -30.0}},
+            "gates": [{"key": "S1 | BOS_UP | COMPRESSION | LONG", "n": 25, "avg_r": -0.4}],
+        }), encoding="utf-8")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_tim_lenh_theo_cap_va_moc_thoi_gian(self):
+        import trace_trade as TT
+        self.assertEqual(TT.norm_pair("SOL"), "SOL/USDT:USDT")
+        tr = TT.find_trades(self.j, pair="SOL")
+        self.assertEqual(len(tr), 1)
+        self.assertEqual(tr[0]["pair"], "SOL/USDT:USDT")
+        self.assertEqual(TT.find_trades(self.j, pair="sol/usdt:usdt")[0]["r"], -1.0)
+        self.assertEqual(len(TT.find_trades(self.j, ts=1000.0)), 1)
+        self.assertEqual(TT.find_trades(self.j, pair="BTC"), [])
+
+    def test_gom_dung_phieu_cua_cap_trong_cua_so(self):
+        import trace_trade as TT
+        t = TT.find_trades(self.j, pair="SOL")[0]
+        tr = TT.trace(self.j, t, window_min=20)
+        self.assertEqual([v["model"] for v in tr["votes"]], ["cline-pass/a"])   # khong lay ETH
+        self.assertEqual([r["model"] for r in tr["reviews"]], ["review_agent"])
+        # phieu cach qua xa (ngoai cua so) thi KHONG thuoc lenh nay
+        far = self.j.read_text(encoding="utf-8") + "\n" + json.dumps(
+            {"ts": 5000.0, "event": "AGENT", "status": "COUNCIL", "symbol": "SOL/USDT:USDT",
+             "model": "cline-pass/xa", "action": "VETO", "reasons": ["qua xa"]})
+        self.j.write_text(far, encoding="utf-8")
+        t2 = TT.find_trades(self.j, pair="SOL")[0]
+        self.assertEqual([v["model"] for v in TT.trace(self.j, t2, window_min=20)["votes"]],
+                         ["cline-pass/a"])
+
+    def test_bucket_va_gate_cua_lenh(self):
+        import trace_trade as TT
+        t = TT.find_trades(self.j, pair="SOL")[0]
+        bk = TT.bucket_of(t, self.les)
+        self.assertTrue(bk["gated"])
+        self.assertEqual(bk["n"], 25)
+        self.assertTrue(bk["code"].startswith("EV-"))
+
+    def test_chuoi_trace_in_du_muc(self):
+        import trace_trade as TT
+        t = TT.find_trades(self.j, pair="SOL")[0]
+        txt = "\n".join(TT.fmt_trace(TT.trace(self.j, t), TT.bucket_of(t, self.les)))
+        for want in ("VAO LENH", "HOI DONG", "DONG LENH", "BAI HOC", "DANG CHAN",
+                     "trace_trade.py --key"):
+            self.assertIn(want, txt)
+
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -157,6 +157,52 @@ def _finalize(b: dict) -> dict:
     return b
 
 
+def evidence_code(key: str) -> str:
+    """Ma bang chung ON DINH cho 1 to hop dieu kien (vd `EV-3F2A9C`).
+
+    (19/10, REPO_IDEAS §15.3 "knowledge warehouse chuan chi"): de tham chieu 1 ket luan
+    (`B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG`) trong CONTEXT.md / tin nhan / phieu hoi
+    dong bang 1 ma NGAN, tra cuu lai duoc — thay vi chep lai chuoi khoa (de go sai).
+    """
+    import hashlib
+    return "EV-%s" % hashlib.sha1(str(key or "").encode("utf-8")).hexdigest()[:6].upper()
+
+
+def evidence(journal_path, key: str, *, keys=KEYS_DEFAULT, limit: int = 3) -> dict:
+    """BANG CHUNG that cho 1 to hop: n, thang/thua, avg_r, pnl, moc thoi gian, mau lenh.
+
+    Doc lai tu JOURNAL (nguon su that) chu KHONG lay tu `lessons.json` — de moi con so trong
+    `LESSONS.md` luon TRUY NGUOC duoc ve tung lenh cu the (yeu cau provenance, 19/10).
+    Tra kem `worst`/`best`: ke ca lenh TOT NHAT cung am thi ket luan "nên chặn" mới vững.
+    """
+    rows = [t for t in load_closed(journal_path)
+            if str((t or {}).get("origin") or "") != "no_open"
+            and key_of(t, keys) == str(key)]
+
+    def _f(x, k):
+        try:
+            return float((x or {}).get(k) or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    n = len(rows)
+    wins = sum(1 for t in rows if (t or {}).get("won"))
+    sum_r = sum(_f(t, "r") for t in rows)
+    pnl = sum(_f(t, "pnl") for t in rows)
+    ts = [_f(t, "ts_close") or _f(t, "ts") for t in rows]
+    samp = lambda xs: [{"ts": _f(t, "ts_close") or _f(t, "ts"), "r": round(_f(t, "r"), 4),  # noqa: E731
+                        "pnl": round(_f(t, "pnl"), 4), "won": bool((t or {}).get("won")),
+                        "reason": (t or {}).get("reason")}
+                       for t in xs]
+    by_r = sorted(rows, key=lambda t: _f(t, "r"))
+    return {"key": str(key), "code": evidence_code(key), "n": n, "wins": wins,
+            "losses": n - wins, "avg_r": round(sum_r / n, 4) if n else None,
+            "pnl": round(pnl, 4), "first_ts": min(ts) if ts else 0.0,
+            "last_ts": max(ts) if ts else 0.0,
+            "span_days": round((max(ts) - min(ts)) / 86400.0, 2) if len(ts) > 1 else 0.0,
+            "worst": samp(by_r[:limit]), "best": samp(list(reversed(by_r[-limit:])))}
+
+
 def gate_list(buckets: dict, *, min_n: int = 20, max_avg_r: float = -0.30) -> list:
     """To hop CAN CHAN: du mau (n >= min_n) VA ky vong am (avg_r <= max_avg_r).
 
@@ -170,7 +216,8 @@ def gate_list(buckets: dict, *, min_n: int = 20, max_avg_r: float = -0.30) -> li
         if float(b.get("avg_r") or 0.0) > float(max_avg_r):
             continue
         out.append({"key": k, "n": b["n"], "avg_r": b["avg_r"],
-                    "pnl": b.get("pnl", 0.0), "wr": b.get("wr", 0.0)})
+                    "pnl": b.get("pnl", 0.0), "wr": b.get("wr", 0.0),
+                    "code": evidence_code(k)})
     return sorted(out, key=lambda x: x["avg_r"])
 
 
@@ -632,10 +679,14 @@ def write_files(les: dict, *, json_path="logs/lessons.json",
     lines += skills_md(les.get("skills") or [])
     lines += ["", "## To hop dang chan", ""]
     if les.get("gates"):
-        lines += ["| To hop | n | avgR | WR | PnL |", "|---|---|---|---|---|"]
+        lines += ["| Mã | To hop | n | avgR | WR | PnL |", "|---|---|---|---|---|---|"]
         for g in les["gates"]:
-            lines.append("| %s | %d | %+.3f | %.0f%% | %+.2f |"
-                         % (g["key"], g["n"], g["avg_r"], g["wr"], g["pnl"]))
+            lines.append("| %s | %s | %d | %+.3f | %.0f%% | %+.2f |"
+                         % (g.get("code") or evidence_code(g.get("key", "")),
+                            g["key"], g["n"], g["avg_r"], g["wr"], g["pnl"]))
+        lines += ["", "_Truy nguoc bang chung cua 1 ma (vd `%s`):_"
+                  " `python tools/trace_trade.py --key \"<to hop>\"`"
+                  % (les["gates"][0].get("code") or evidence_code(les["gates"][0]["key"]))]
     else:
         lines.append("(chua co to hop nao du mau + ky vong am)")
     if les.get("pruned"):

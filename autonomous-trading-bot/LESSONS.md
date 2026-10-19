@@ -5,6 +5,118 @@
 
 ## So lieu
 
+- So lenh da dong doc duoc: **852**
+- To hop DIEU KIEN dang theo doi: **34**
+- Lenh CLOSE khong co OPEN (DUST / ke thua) â€” DA LOAI khoi thong ke: **92**
+- To hop DANG CHAN (du mau + ky vong am): **5**
+
+## Rut kinh nghiem
+
+**NEN TRANH (ky vong am):**
+-   - NONE | NONE | BREAKOUT | LONG: n=6 avgR=-0.448 WR=33% PnL=-26.85
+-   - NONE | BOS_UP | UPTREND | LONG: n=13 avgR=-0.267 WR=31% PnL=-31.69
+-   - NONE | BOS_DOWN | COMPRESSION | SHORT: n=10 avgR=-0.252 WR=60% PnL=-12.42
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT: n=22 avgR=-0.247 WR=36% PnL=-48.68  [DANG CHAN]
+-   - NONE | NONE | SIDEWAY | SHORT: n=18 avgR=-0.244 WR=44% PnL=-43.88
+-   - NONE | BOS_DOWN | UPTREND | LONG: n=13 avgR=-0.194 WR=54% PnL=-25.25
+-   - B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG: n=16 avgR=-0.177 WR=44% PnL=-27.87
+-   - NONE | BOS_UP | DOWNTREND | SHORT: n=23 avgR=-0.162 WR=39% PnL=-26.86  [DANG CHAN]
+**NEN UU TIEN (ky vong duong):**
+-   - B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT: n=31 avgR=+0.433 WR=94% PnL=+134.35
+-   - NONE | NONE | BREAKDOWN | SHORT: n=7 avgR=+0.415 WR=86% PnL=+29.03
+-   - B_BREAKOUT_RETEST | BOS_DOWN | SIDEWAY | SHORT: n=6 avgR=+0.305 WR=83% PnL=+18.40
+-   - NONE | BOS_DOWN | DOWNTREND | SHORT: n=8 avgR=+0.193 WR=75% PnL=+15.47
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | LONG: n=7 avgR=+0.171 WR=71% PnL=+11.96
+-   - NONE | BOS_UP | COMPRESSION | LONG: n=11 avgR=+0.132 WR=46% PnL=+14.55
+-   - D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT: n=17 avgR=+0.112 WR=82% PnL=+3.80
+-   - B_BREAKOUT_RETEST | BOS_DOWN | BREAKDOWN | SHORT: n=81 avgR=+0.109 WR=62% PnL=+86.83
+
+## Ky nang da rut ra (`/evolve`)
+
+| Ky nang | loai | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / DOWNTREND / SHORT | uu_tien | 31 | +0.433 | 94% | +134.35 |
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / BREAKDOWN / SHORT | uu_tien | 81 | +0.109 | 62% | +86.83 |
+| uu_tien: COMPRESSION / SHORT | uu_tien | 159 | +0.050 | 64% | +75.30 |
+| tranh: DOWNTREND / SHORT | tranh | 123 | -0.053 | 55% | -58.02 |
+| tranh: D_RANGE_REVERSAL / COMPRESSION / SHORT | tranh | 22 | -0.247 | 36% | -48.68 |
+| tranh: SIDEWAY / SHORT | tranh | 18 | -0.244 | 44% | -43.88 |
+
+## To hop dang chan
+
+| Mã | To hop | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| EV-2677E0 | D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT | 22 | -0.247 | 36% | -48.68 |
+| EV-2BB958 | NONE | BOS_UP | DOWNTREND | SHORT | 23 | -0.162 | 39% | -26.86 |
+| EV-509F50 | B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT | 30 | -0.095 | 57% | -14.69 |
+| EV-517508 | B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG | 23 | -0.083 | 61% | -18.96 |
+| EV-C3375C | NONE | NONE | DOWNTREND | SHORT | 123 | -0.053 | 55% | -58.02 |
+
+_Truy nguoc bang chung cua 1 ma (vd `EV-2677E0`):_ `python tools/trace_trade.py --key "<to hop>"`
+
+## Ghi chu cua nguoi van hanh
+
+<!-- HUMAN -->
+` se KHONG bi ghi de.
+
+## So lieu
+
+- So lenh da dong doc duoc: **852**
+- To hop DIEU KIEN dang theo doi: **34**
+- Lenh CLOSE khong co OPEN (DUST / ke thua) â€” DA LOAI khoi thong ke: **92**
+- To hop DANG CHAN (du mau + ky vong am): **5**
+
+## Rut kinh nghiem
+
+**NEN TRANH (ky vong am):**
+-   - NONE | NONE | BREAKOUT | LONG: n=6 avgR=-0.448 WR=33% PnL=-26.85
+-   - NONE | BOS_UP | UPTREND | LONG: n=13 avgR=-0.267 WR=31% PnL=-31.69
+-   - NONE | BOS_DOWN | COMPRESSION | SHORT: n=10 avgR=-0.252 WR=60% PnL=-12.42
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT: n=22 avgR=-0.247 WR=36% PnL=-48.68  [DANG CHAN]
+-   - NONE | NONE | SIDEWAY | SHORT: n=18 avgR=-0.244 WR=44% PnL=-43.88
+-   - NONE | BOS_DOWN | UPTREND | LONG: n=13 avgR=-0.194 WR=54% PnL=-25.25
+-   - B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG: n=16 avgR=-0.177 WR=44% PnL=-27.87
+-   - NONE | BOS_UP | DOWNTREND | SHORT: n=23 avgR=-0.162 WR=39% PnL=-26.86  [DANG CHAN]
+**NEN UU TIEN (ky vong duong):**
+-   - B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT: n=31 avgR=+0.433 WR=94% PnL=+134.35
+-   - NONE | NONE | BREAKDOWN | SHORT: n=7 avgR=+0.415 WR=86% PnL=+29.03
+-   - B_BREAKOUT_RETEST | BOS_DOWN | SIDEWAY | SHORT: n=6 avgR=+0.305 WR=83% PnL=+18.40
+-   - NONE | BOS_DOWN | DOWNTREND | SHORT: n=8 avgR=+0.193 WR=75% PnL=+15.47
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | LONG: n=7 avgR=+0.171 WR=71% PnL=+11.96
+-   - NONE | BOS_UP | COMPRESSION | LONG: n=11 avgR=+0.132 WR=46% PnL=+14.55
+-   - D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT: n=17 avgR=+0.112 WR=82% PnL=+3.80
+-   - B_BREAKOUT_RETEST | BOS_DOWN | BREAKDOWN | SHORT: n=81 avgR=+0.109 WR=62% PnL=+86.83
+
+## Ky nang da rut ra (`/evolve`)
+
+| Ky nang | loai | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / DOWNTREND / SHORT | uu_tien | 31 | +0.433 | 94% | +134.35 |
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / BREAKDOWN / SHORT | uu_tien | 81 | +0.109 | 62% | +86.83 |
+| uu_tien: COMPRESSION / SHORT | uu_tien | 159 | +0.050 | 64% | +75.30 |
+| tranh: DOWNTREND / SHORT | tranh | 123 | -0.053 | 55% | -58.02 |
+| tranh: D_RANGE_REVERSAL / COMPRESSION / SHORT | tranh | 22 | -0.247 | 36% | -48.68 |
+| tranh: SIDEWAY / SHORT | tranh | 18 | -0.244 | 44% | -43.88 |
+
+## To hop dang chan
+
+| Mã | To hop | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| EV-2677E0 | D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT | 22 | -0.247 | 36% | -48.68 |
+| EV-2BB958 | NONE | BOS_UP | DOWNTREND | SHORT | 23 | -0.162 | 39% | -26.86 |
+| EV-509F50 | B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT | 30 | -0.095 | 57% | -14.69 |
+| EV-517508 | B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG | 23 | -0.083 | 61% | -18.96 |
+| EV-C3375C | NONE | NONE | DOWNTREND | SHORT | 123 | -0.053 | 55% | -58.02 |
+
+_Truy nguoc bang chung cua 1 ma (vd `EV-2677E0`):_ `python tools/trace_trade.py --key "<to hop>"`
+
+## Ghi chu cua nguoi van hanh
+
+<!-- HUMAN -->
+` se KHONG bi ghi de.
+
+## So lieu
+
 - So lenh da dong doc duoc: **834**
 - To hop DIEU KIEN dang theo doi: **34**
 - Lenh CLOSE khong co OPEN (DUST / ke thua) â€” DA LOAI khoi thong ke: **91**

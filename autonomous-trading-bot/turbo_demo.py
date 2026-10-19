@@ -14,6 +14,7 @@ import logging
 import os
 import socket
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -80,14 +81,41 @@ _HEARTBEAT = Path(__file__).resolve().parent / "logs" / "heartbeat.json"
 # throttle qua PROTECT_CHECK_SEC (khong con dung PROTECT_RETRY_EVERY theo so vong).
 
 
-def heartbeat(extra: dict | None = None) -> None:
-    """Ghi nhip tim nguyen tu (tmp + os.replace). Loi -> im lang (khong lam chet bot)."""
+def heartbeat(extra: dict | None = None, path=None) -> None:
+    """Ghi nhip tim nguyen tu (tmp + os.replace). Loi -> im lang (khong lam chet bot).
+
+    (19/10) LOP LOI B-021 — ban cu LUON ghi vao `_HEARTBEAT` (state cua instance THAT).
+    Test nao chay nhanh `monitor_only_loop` (`tests/test_p0_safety.py::TestMonitorOnly`) se
+    **GHI DE nhip tim that** bang pid cua tien trinh test: do that 19/10 = `pid 28000`
+    (khong ton tai) + `round 2` => `ops.py`, `deadman`, `harness_audit`, `STATE.md` doc phai
+    so lieu MA, va watchdog co the bi danh lua la bot van song.
+
+    Nay co 3 lop:
+      1. `path` truyen vao (test/tool chi dinh file rieng);
+      2. bien `ATB_HEARTBEAT_PATH` (dat trong setUp cua test);
+      3. dang chay duoi test runner (`unittest`/pytest) ma khong chi dinh => TU DONG ghi vao
+         file tam — KHONG BAO GIO cham vao state that.
+    """
     try:
-        _HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
-        tmp = str(_HEARTBEAT) + ".tmp"
+        raw = str(path or os.getenv("ATB_HEARTBEAT_PATH") or "").strip()
+        if raw:
+            p = Path(raw)
+        else:
+            argv0 = str(sys.argv[0] or "").lower()      # `-m unittest` => ...\unittest\__main__.py
+            # (19/10) `unittest.__main__` KHONG duoc dang ky trong sys.modules o Python 3.12
+            # => doc `__main__.__file__` (chay `-m unittest` thi file nay nam trong ...\unittest\).
+            main_file = str(getattr(sys.modules.get("__main__"), "__file__", "") or "").lower()
+            under_test = ("unittest" in main_file or "pytest" in main_file
+                          or "unittest" in argv0 or "pytest" in argv0
+                          or bool(os.getenv("PYTEST_CURRENT_TEST"))
+                          or bool(os.getenv("ATB_UNDER_TEST")))
+            p = (Path(tempfile.gettempdir()) / "atb_heartbeat_test.json"
+                 if under_test else _HEARTBEAT)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = str(p) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"ts": time.time(), "pid": os.getpid(), **(extra or {})}, f)
-        os.replace(tmp, _HEARTBEAT)
+        os.replace(tmp, p)
     except Exception:
         pass
 

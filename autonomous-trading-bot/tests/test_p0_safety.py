@@ -954,9 +954,19 @@ class TestMonitorOnly(unittest.TestCase):
         # tuong nhu "hang" va lam cham ca suite). Moi thu khac giu nguyen.
         self._real_tg = td.tg
         td.tg = lambda *a, **k: None
+        # (19/10) LOP LOI B-021: nhip tim KHONG duoc ghi vao `logs/heartbeat.json` cua
+        # instance THAT (do that: pid 28000 khong ton tai + round 2 => ops/deadman/STATE.md
+        # doc phai so lieu MA). Chi dinh file tam cho ca class nay.
+        self._hb_tmp = tempfile.mkdtemp()
+        self._old_hb = os.environ.get("ATB_HEARTBEAT_PATH")
+        os.environ["ATB_HEARTBEAT_PATH"] = os.path.join(self._hb_tmp, "heartbeat.json")
 
     def tearDown(self):
         td.tg = self._real_tg
+        if self._old_hb is None:
+            os.environ.pop("ATB_HEARTBEAT_PATH", None)
+        else:
+            os.environ["ATB_HEARTBEAT_PATH"] = self._old_hb
 
     def _cfg(self, tmp):
         return cfg(dry_run=False, adopt_positions=False, poll_interval_sec=0,
@@ -1502,6 +1512,53 @@ class TestDonViTheMa(unittest.TestCase):
         self.assertIn("SOL/USDT:USDT", bot.portfolio.positions,
                       "khong doc duoc trang thai san -> KHONG duoc xoa (fail-safe)")
         self.assertNotIn("SOL/USDT:USDT", rep["stale"])
+
+class TestHeartbeatKhongGhiStateThat(unittest.TestCase):
+    """(19/10) Lop loi B-021: TIEN TRINH TEST khong duoc ghi `logs/heartbeat.json` THAT.
+
+    Do that: chay suite xong, `logs/heartbeat.json` cua TESTNET bi thay bang
+    `{"pid": 28000, "round": 2, "phase": "monitor_only"}` — pid 28000 KHONG ton tai.
+    Hau qua: `ops.py`/`deadman`/`harness_audit`/`STATE.md` doc phai so lieu MA va watchdog
+    co the bi danh lua la bot van song (hoac nguoc lai: nhip tim tuoi => khong restart).
+    """
+
+    def test_duoi_test_runner_thi_tu_dong_ghi_file_tam(self):
+        old = os.environ.pop("ATB_HEARTBEAT_PATH", None)
+        real = Path(td._HEARTBEAT)
+        before = real.read_bytes() if real.exists() else None
+        try:
+            td.heartbeat({"phase": "guard"})          # khong chi dinh path, dang chay unittest
+            after = real.read_bytes() if real.exists() else None
+        finally:
+            if old is not None:
+                os.environ["ATB_HEARTBEAT_PATH"] = old
+        self.assertEqual(before, after, "test KHONG duoc ghi logs/heartbeat.json that")
+        p = Path(tempfile.gettempdir()) / "atb_heartbeat_test.json"
+        self.assertTrue(p.exists(), "phai ghi vao file tam khi chay duoi test runner")
+        self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["phase"], "guard")
+
+    def test_chi_dinh_path_thi_ghi_dung_do(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "hb.json"
+            td.heartbeat({"round": 7, "phase": "end"}, path=p)
+            rec = json.loads(p.read_text(encoding="utf-8"))
+        self.assertEqual(rec["round"], 7)
+        self.assertEqual(rec["pid"], os.getpid())
+        self.assertIn("ts", rec)
+
+    def test_env_ATB_HEARTBEAT_PATH_duoc_ton_trong(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "hb2.json"
+            old = os.environ.get("ATB_HEARTBEAT_PATH")
+            os.environ["ATB_HEARTBEAT_PATH"] = str(p)
+            try:
+                td.heartbeat({"phase": "env"})
+            finally:
+                if old is None:
+                    os.environ.pop("ATB_HEARTBEAT_PATH", None)
+                else:
+                    os.environ["ATB_HEARTBEAT_PATH"] = old
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["phase"], "env")
 
 
 

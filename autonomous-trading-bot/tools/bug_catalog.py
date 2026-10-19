@@ -211,6 +211,16 @@ CLASSES = [
         "tests": ["test_ops_tools.py::TestCapabilities::test_quet_duoc_tool_va_muc_dich",
                   "test_ops_tools.py::TestCapabilities::test_check_phat_hien_tool_thieu_docstring"],
     },
+    {
+        "code": "B-021", "kind": "im-lang", "seen": "19/10/2026",
+        "title": "TIEN TRINH TEST ghi de STATE cua instance THAT (nhip tim ma)",
+        "symptom": "`logs/heartbeat.json` = `{\"pid\": 28000, \"round\": 2, \"phase\": \"monitor_only\"}` nhung pid 28000 KHONG ton tai; chay suite xong `ops.py`/`STATE.md`/`deadman` doc phai so lieu MA",
+        "guard": "`turbo_demo.heartbeat(path=None)` nhan `path`/`ATB_HEARTBEAT_PATH`; dang chay duoi test runner (`__main__.__file__` chua `unittest`/`pytest`) thi TU DONG ghi vao file tam — khong bao gio cham state that",
+        "files": ["turbo_demo.py", "tests/test_p0_safety.py"],
+        "tests": ["test_p0_safety.py::TestHeartbeatKhongGhiStateThat::test_duoi_test_runner_thi_tu_dong_ghi_file_tam",
+                  "test_p0_safety.py::TestHeartbeatKhongGhiStateThat::test_chi_dinh_path_thi_ghi_dung_do",
+                  "test_p0_safety.py::TestMonitorOnly::test_kill_cleared_doc_state"],
+    },
 ]
 
 

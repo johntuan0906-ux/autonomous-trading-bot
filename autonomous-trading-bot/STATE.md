@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 19/10/2026 20:30:15 · commit `c755de4`
+- **Cập nhật**: 19/10/2026 21:15:15 · commit `e927f5a`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `102136` · round `None` · nhịp tim cách đây 4.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `29548` · round `1` · nhịp tim cách đây 0.1s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
-- **Kill-switch**: bình thường
+- **Kill-switch**: ⚠️ TRIPPED — 6 consecutive API errors
 
-## Hiệu suất (journal: 2818 lệnh đóng, WR 48.65%, E(R) 1.0316, PnL -640.87$)
+## Hiệu suất (journal: 3010 lệnh đóng, WR 47.91%, E(R) 1.1056, PnL -752.3$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2228 | 47.17 | 5.354 | 0.834 | 1.3034 | -547.59 |
-| 14 ngày | 2613 | 47.38 | 4.749 | 0.844 | 1.1115 | -651.26 |
-| 30 ngày | 2818 | 48.65 | 4.53 | 0.862 | 1.0316 | -640.87 |
+| 7 ngày | 2420 | 46.36 | 5.469 | 0.815 | 1.3739 | -659.02 |
+| 14 ngày | 2794 | 46.53 | 4.914 | 0.826 | 1.19 | -765.65 |
+| 30 ngày | 3010 | 47.91 | 4.695 | 0.847 | 1.1056 | -752.3 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.834 < 1.1; PF($) cua so 14 ngay = 0.844 < 1.1; PF($) cua so 30 ngay = 0.862 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.815 < 1.1; PF($) cua so 14 ngay = 0.826 < 1.1; PF($) cua so 30 ngay = 0.847 < 1.1; kill-switch dang TRIPPED (6 consecutive API errors) — chay `python risk.py --reset`
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,26 +39,9 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (16)
+## Vị thế đang quản lý (0)
 
-| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
-|---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | LONG | 59808.0 | 0.0041240999999999995 | 0.00401 | 0.00422 | False | False | 0.0 |
-| ADA/USDT:USDT | SHORT | 719.0 | 0.2205 | 0.218169 | 0.216155 | True | True | 1.841 |
-| AIN/USDT:USDT | LONG | 1877.0 | 0.04109 | 0.04102 | 0.04284 | False | False | 0.0 |
-| APE/USDT:USDT | SHORT | 1586.0 | 0.1427 | 0.145934 | 0.140565 | False | False | 0.0 |
-| AR/USDT:USDT | LONG | 56.5 | 3.874 | 3.829762 | 3.984595 | False | False | 0.09 |
-| ARB/USDT:USDT | LONG | 893.4 | 0.19899999999999998 | 0.193396 | 0.20321 | False | False | 0.0 |
-| AVAX/USDT:USDT | SHORT | 31.0 | 9.776 | 9.740432 | 9.57884 | True | True | 0.951 |
-| AXL/USDT:USDT | LONG | 1155.3 | 0.0578 | 0.056298 | 0.060505 | False | False | 0.266 |
-| AXS/USDT:USDT | SHORT | 186.0 | 1.007 | 1.00792 | 0.9837 | False | False | 0.0 |
-| BANK/USDT:USDT | SHORT | 12135.0 | 0.02632 | 0.026272999999999998 | 0.025805 | True | True | 0.777 |
-| BAT/USDT:USDT | SHORT | 295.3 | 0.1812 | 0.187912 | 0.173765 | False | False | 0.0 |
-| BNB/USDT:USDT | LONG | 1.21 | 727.33 | 724.749348 | 732.20663 | False | False | 0.0 |
-| CKB/USDT:USDT | LONG | 125000.0 | 0.001499 | 0.001457 | 0.00152 | False | False | 0.0 |
-| DASH/USDT:USDT | SHORT | 2.814 | 49.32 | 49.380334 | 47.839165 | False | False | 0.0 |
-| ENA/USDT:USDT | SHORT | 624.0 | 0.19069999999999998 | 0.189794 | 0.182465 | False | False | 0.0 |
-| ETHFI/USDT:USDT | LONG | 269.5 | 0.7058376994434137 | 0.68348 | 0.714 | False | False | 0.0 |
+_không có vị thế nào trong `managed_state.json`_
 
 ---
 

@@ -100,6 +100,8 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--models", default="", help="danh sach model, phay (rong = theo .env)")
     ap.add_argument("--no-journal", action="store_true", help="khong ghi phieu vao journal")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--no-clean", action="store_true",
+                    help="khong don terminal rac cua VS Code sau khi hoi dong xong")
     ap.add_argument("--raw", action="store_true",
                     help="in nguyen van phan hoi cua hoi dong (chan doan '0 phieu')")
     args = ap.parse_args(argv)
@@ -213,6 +215,20 @@ def main(argv: list | None = None) -> int:
         if rep.get("missing"):
             print("  KHONG TRA VE PHIEU (%d): %s"
                   % (len(rep["missing"]), ", ".join(rep["missing"])[:200]))
+    # (19/10) DON TERMINAL RAC ngay sau khi hoi dong xong — dung y nguoi van hanh: "moi khi
+    # hoi hoi dong thi tu don". Vi sao can: Cline tao **1 terminal moi cho moi lan chay lenh**
+    # va khong tu dong (do that 19/10: 112 shell = 1138 MB RAM). `terminal_hygiene` chi xoa
+    # shell RANH co parent la `Code.exe` va bo qua cay tien trinh dang chay => khong cat ngang
+    # gi. Moi loi deu bi nuot (day la tool phu, khong duoc lam hong ket qua hoi dong).
+    if not args.no_clean:
+        try:
+            import terminal_hygiene as _TH
+            _r = _TH.run_once(dry_run=False)
+            if _r.get("killed"):
+                print("  terminal: da don %d shell rac (~%.0f MB)"
+                      % (_r["killed"], _r.get("freed_mb") or 0))
+        except Exception as e:  # noqa: BLE001
+            print("  terminal: bo qua don dep (%s)" % str(e)[:80])
     return 0
 
 

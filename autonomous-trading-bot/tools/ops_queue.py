@@ -115,8 +115,19 @@ def answer(qid: int, answer_text: str, *, by: str = "nguoi van hanh", cfg=None,
     hist.append(found)
     ok1 = _write_list(o, items)
     ok2 = _write_list(d, hist)
+    # (19/10) Hook: sinh ARTIFACT cho quyet dinh nay (muc 16 — MetaGPT/Dify/LangGraph).
+    # Best-effort: loi o day KHONG duoc lam hong ket qua tra loi. Phieu hoi dong duoc lay
+    # tu journal theo dung cau hoi (xem `tools/ops_artifact.py`).
+    art = {}
+    if ok1 and ok2:
+        try:
+            import ops_artifact as _OA
+            art = _OA.from_queue(found["id"], done_path=d, open_path=o)
+        except Exception:  # noqa: BLE001
+            art = {}
     return {"ok": ok1 and ok2, "id": found["id"], "question": found["question"],
-            "answer": found["answer"], "open_left": len(items)}
+            "answer": found["answer"], "open_left": len(items),
+            "artifact": art.get("path") if art.get("ok") else None}
 
 
 def stale(items: list, *, stale_hours: float = 24.0, now=None) -> list:

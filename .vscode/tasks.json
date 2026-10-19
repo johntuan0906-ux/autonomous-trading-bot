@@ -5,95 +5,252 @@
       "label": "Ops: bao cao 2 instance",
       "type": "shell",
       "command": "python",
-      "args": ["tools/ops.py", "--minutes", "7"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/ops.py",
+        "--minutes",
+        "7"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "close": true
+      },
       "detail": "1 lenh thay cho Get-Content -Tail: vong quet, loi, kill-switch, vi the"
     },
     {
       "label": "Ops: restart LIVE (reset + cho phang)",
       "type": "shell",
       "command": "python",
-      "args": ["tools/restart_bot.py", "--target", "live", "--reset", "--wait-flat"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/restart_bot.py",
+        "--target",
+        "live",
+        "--reset",
+        "--wait-flat"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      },
       "detail": "Dung -> cho het vi the -> xoa risk_state -> chay lai (an cua so)"
     },
     {
       "label": "Ops: restart TESTNET (reset)",
       "type": "shell",
       "command": "python",
-      "args": ["tools/restart_bot.py", "--target", "testnet", "--reset"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/restart_bot.py",
+        "--target",
+        "testnet",
+        "--reset"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
     },
     {
       "label": "Ops: restart CA HAI (reset, lech 90s)",
       "type": "shell",
       "command": "python",
-      "args": ["tools/restart_bot.py", "--target", "both", "--reset", "--stagger", "90"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/restart_bot.py",
+        "--target",
+        "both",
+        "--reset",
+        "--stagger",
+        "90"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
     },
     {
       "label": "Cap: xem top 40 cho LIVE (dry-run)",
       "type": "shell",
       "command": "python",
-      "args": ["tools/pick_symbols.py", "--target", "live", "--top", "40", "--dry-run"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/pick_symbols.py",
+        "--target",
+        "live",
+        "--top",
+        "40",
+        "--dry-run"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
     },
     {
       "label": "Cap: nap danh sach vao .env (both)",
       "type": "shell",
       "command": "python",
-      "args": ["tools/apply_symbols.py", "--target", "both"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/apply_symbols.py",
+        "--target",
+        "both"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
     },
     {
       "label": "Test: toan bo suite (1005 test)",
       "type": "shell",
       "command": "python",
-      "args": ["-m", "unittest", "discover", "-s", "tests", "-t", "."],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
-      "group": { "kind": "test", "isDefault": true },
+      "args": [
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-t",
+        "."
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
     },
     {
       "label": "Kiem tra: lop loi con test chot khong",
       "type": "shell",
       "command": "python",
-      "args": ["tools/bug_catalog.py", "--check"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/bug_catalog.py",
+        "--check"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      },
       "detail": "Moi lop loi phai con test chot (mat test = mat chot chan)"
     },
     {
       "label": "Kiem tra: dang cho nguoi van hanh tra loi gi",
       "type": "shell",
       "command": "python",
-      "args": ["tools/ops_queue.py", "resume"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/ops_queue.py",
+        "resume"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
     },
     {
       "label": "Kiem tra: trace 1 lenh (hoi cap)",
       "type": "shell",
       "command": "python",
-      "args": ["tools/trace_trade.py", "--pair", "${input:symbol}", "--last", "1"],
-      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "args": [
+        "tools/trace_trade.py",
+        "--pair",
+        "${input:symbol}",
+        "--last",
+        "1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "dedicated" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
+    },
+    {
+      "label": "Cline: don terminal rac (1 lan)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/terminal_hygiene.py"
+      ],
+      "options": {
+        "cwd": "/autonomous-trading-bot"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      },
+      "detail": "Xoa shell RANH cua VS Code (Cline tao 1 terminal moi lan chay lenh)"
+    },
+    {
+      "label": "Cline: theo doi don terminal (nen)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/terminal_hygiene.py",
+        "--watch",
+        "--interval",
+        "120",
+        "--quiet"
+      ],
+      "options": {
+        "cwd": "/autonomous-trading-bot"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
+      "detail": "Chay nen: cu 2 phut don terminal rac 1 lan"
     }
   ],
   "inputs": [

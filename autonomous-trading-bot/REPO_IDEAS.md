@@ -344,6 +344,67 @@ pentagi (Docker/Go/React). **Chỉ lấy ý tưởng**: cả hai.
 `cli-hub-matrix` (ma trận năng lực), `cli-hub-meta-skill` (skill dạy agent *cách* chọn
 đúng CLI), và nhiều "cửa" cài đặt cho từng agent (`claude-plugin`, `cursor-plugin`,
 `codex-skill`, `.claude-plugin`, `.cursor-plugin`). Triết lý: **không có "đường tắt" riêng
+
+---
+
+## 16. (19/10) Đọc 7 repo người vận hành gửi — áp dụng được gì
+
+**Bối cảnh**: người vận hành gửi 7 repo (**AutoGPT, LangChain, Dify, MetaGPT, AutoGen, CrewAI,
+LangGraph**). Hội đồng đọc + bỏ phiếu: **1 ALLOW / 4 VETO** việc làm `council_replay` ngay
+(4 model VETO vì **tốn credit mỗi lần chạy**) ⇒ chọn việc **rẻ hơn** là artifact mỗi quyết định
+vận hành (đã làm: `tools/ops_artifact.py` + hook trong `ops_queue.answer`). Nguyên tắc: **mượn
+CƠ CHẾ, không mượn HẠ TẦNG** — dự án chạy 1 máy, 2 instance, ưu tiên `file + CLI`.
+
+### 16.1 Bảng cơ chế → dự án (đã có gì / còn thiếu gì)
+
+| Repo | Cơ chế đáng học | Ở dự án này | Việc cần làm |
+|---|---|---|---|
+| **LangGraph** | graph state + **durable execution** (checkpoint → resume) | `journal` + `managed_state.json` + `reconcile` + `entries_gate` (pause có hạn) = bản thủ công, đủ dùng | P3 (chỉ làm nếu cần "chạy lại từ checkpoint" 1 vòng quét) |
+| | **interrupt / human-in-the-loop** (dừng chờ người) | `tools/ops_queue.py` (`ops_questions.json` + `ops_queue.json`, resume qua phiên) + `entries_gate` | **P2**: đẩy câu hỏi ra Telegram để không phải mở máy |
+| | **time travel / replay** | chưa có | P2 nhưng **hội đồng VETO làm ngay** (tốn credit) — xem `council_replay` ở §16.3 |
+| **LangChain** | runnable + **structured output** + retry/fallback | `agents.parse_decision` + `missing_models` + `shadow` | đã đủ |
+| | **lọc "slop"** ở đầu ra LLM | chưa tất định hoá | **P2**: lý do không có số/mã bằng chứng ⇒ gắn nhãn `slop` để `council_eval` đo |
+| | callbacks/tracing | mọi quyết định ghi `journal` + `tools/trace_trade.py` | đã đủ |
+| **AutoGen** ⚠️**ARCHIVED** | **termination conditions** (max turns / budget) | `AGENT_DAILY_CALLS(_HARD)` + `BUDGET` + trần 2 vòng debate | đã đủ — **không dùng repo** (Microsoft archive, chuyển sang Agent Framework) |
+| | group chat manager chọn người nói | hội đồng bỏ phiếu song song + `arbiter` + tie-break 1-3 | đã đủ |
+| **CrewAI** | task có **expected_output** + **guardrails** | guard **tất định** (kill-switch, `can_add_risk`, `entries_gate`) — mạnh hơn guardrail mềm của LLM | đã đủ |
+| | hierarchical process (manager giao việc) | `arbiter` + escalate/debate | đã đủ |
+| | memory (short/long/entity) | `lessons.py` + `LESSONS.md` (có provenance `EV-xxxxxx`) | đã đủ |
+| **MetaGPT** | **artifact chuẩn hoá mỗi bước** | **ĐÃ LÀM 19/10**: `tools/ops_artifact.py` → `logs/ops/<ts>-<slug>.md` (bối cảnh → phiếu hội đồng → quyết định → hành động → kết quả) | ✅ xong |
+| | **executable feedback** (chạy test, nuôi lỗi ngược lại) | `bug_catalog` (22 lớp lỗi ↔ 41 test chốt) + `lessons` từ journal | **P2**: sinh lesson từ **LỖI vận hành** (`-2022`, `ORDER_FAILED`, `SKIP_MAX_POS`…) chứ không chỉ từ lệnh đóng |
+| | token/cost accounting | journal có `cost_usd`, `tokens_in/out`; `AGENT_DAILY_BUDGET_USD` | P3: báo cáo chi phí/ngày |
+| **AutoGPT** | **"actions that need attention"** | `tools/ops_queue.py` + `tools/ops.py` (`--check` quá 24h) | đã đủ |
+| | **benchmark harness** (agbenchmark) | `tools/harness_audit.py` (chấm điểm setup) + suite 1024 test | P2: benchmark **hồi quy cho hội đồng** = chính `council_replay` (đang bị VETO vì chi phí) |
+| | run history + cost dashboard | `STATE.md`, `logs/state_snapshot.json`, journal | P3 |
+| **Dify** | workflow node + **human approval node** | `entries_gate` (cổng có hạn) + `ops_queue` (câu hỏi chờ người) | đã đủ |
+| | observability/LLMOps + **annotation/dataset** | `tools/council_evals.py` (đối chiếu phiếu cũ với kết quả thật) | **P2**: dataset nhỏ để chấm điểm hội đồng theo thời gian |
+| | API-first (backend-as-a-service) | mỗi năng lực = 1 lệnh CLI + `tools/capabilities.py --json` (28 tool) | P3: MCP server (§15.2) |
+
+### 16.2 Đã làm ngay trong phiên 19/10 (đúng phán quyết hội đồng 1-4)
+
+- **`tools/ops_artifact.py`** — mỗi quyết định vận hành sinh 1 file `logs/ops/<ts>-<slug>.md`:
+  bối cảnh → **bảng phiếu hội đồng** (tự lấy từ `journal` theo đúng câu hỏi) → quyết định →
+  hành động đã làm → kết quả kiểm chứng → mục truy vết. **18 test** (`tests/test_ops_artifact.py`),
+  `--from-queue <id>`, `--list`, `--council-question` (khi câu hỏi hỏi hội đồng khác chữ với
+  câu hỏi trong hàng đợi). **Hook**: `ops_queue.answer` tự sinh artifact sau khi trả lời.
+  Đã backfill 5 quyết định thật của ngày 19/10 (parity TESTNET 3-1; bỏ root trùng 5-0;
+  7 repo 1-4; LIVE 24h; credit) — chi phí LLM = **0**.
+- **`tools/terminal_hygiene.py`** — dọn shell rác của VS Code (Cline tạo 1 terminal mỗi lần chạy
+  lệnh, đo được **112 shell = 1138 MB**): 3 lớp an toàn (chỉ shell của `Code.exe`, chỉ shell
+  **rảnh**, bỏ qua cây tiến trình đang chạy), `--watch` để chạy nền. **Tự động gọi ở cuối
+  `council_vote.py`** ⇒ *mỗi lần hỏi hội đồng là terminal rác được dọn*. 18 test.
+
+### 16.3 Điều KHÔNG nên copy (ghi lại để khỏi bàn lại)
+
+1. **AutoGen đã ARCHIVED** (Microsoft chuyển sang Microsoft Agent Framework) ⇒ không đưa vào kiến trúc.
+2. **Dify / AutoGPT platform** kéo theo server + Postgres + Redis + worker ⇒ không phù hợp máy 1 người.
+   Chỉ mượn khái niệm (human approval node, run history, annotation).
+3. **`council_replay`** (LangGraph time-travel + agbenchmark + CrewAI replay): **hội đồng VETO
+   làm ngay** (4/5 phiếu) vì mỗi lần chạy tốn credit mà chưa có ngân sách riêng. Điều kiện mở lại:
+   có `AGENT_DAILY_BUDGET_USD` dư **hoặc** chạy với `--models` chỉ 2-3 model rẻ (local llama + 1-2 model gateway).
+4. **Vector DB / RAG cho "memory"**: dự án đã có `lessons` + `graph_memory` + journal; thêm embedding
+   store là tăng hạ tầng mà chưa có bằng chứng cần (§10 đã kết luận tương tự).
+
 cho agent** — agent dùng đúng bề mặt CLI của sản phẩm, nên hành vi kiểm chứng được.
 
 | Ý tưởng | Áp dụng cho dự án | Ưu tiên |

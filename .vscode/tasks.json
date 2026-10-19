@@ -1,0 +1,107 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Ops: bao cao 2 instance",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/ops.py", "--minutes", "7"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "detail": "1 lenh thay cho Get-Content -Tail: vong quet, loi, kill-switch, vi the"
+    },
+    {
+      "label": "Ops: restart LIVE (reset + cho phang)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/restart_bot.py", "--target", "live", "--reset", "--wait-flat"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "detail": "Dung -> cho het vi the -> xoa risk_state -> chay lai (an cua so)"
+    },
+    {
+      "label": "Ops: restart TESTNET (reset)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/restart_bot.py", "--target", "testnet", "--reset"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Ops: restart CA HAI (reset, lech 90s)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/restart_bot.py", "--target", "both", "--reset", "--stagger", "90"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Cap: xem top 40 cho LIVE (dry-run)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/pick_symbols.py", "--target", "live", "--top", "40", "--dry-run"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Cap: nap danh sach vao .env (both)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/apply_symbols.py", "--target", "both"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Test: toan bo suite (1005 test)",
+      "type": "shell",
+      "command": "python",
+      "args": ["-m", "unittest", "discover", "-s", "tests", "-t", "."],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Kiem tra: lop loi con test chot khong",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/bug_catalog.py", "--check"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "detail": "Moi lop loi phai con test chot (mat test = mat chot chan)"
+    },
+    {
+      "label": "Kiem tra: dang cho nguoi van hanh tra loi gi",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/ops_queue.py", "resume"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Kiem tra: trace 1 lenh (hoi cap)",
+      "type": "shell",
+      "command": "python",
+      "args": ["tools/trace_trade.py", "--pair", "${input:symbol}", "--last", "1"],
+      "options": { "cwd": "${workspaceFolder}/autonomous-trading-bot" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "symbol",
+      "type": "promptString",
+      "description": "Cap can trace (vd SOL hoac SOL/USDT:USDT)",
+      "default": "SOL"
+    }
+  ]
+}

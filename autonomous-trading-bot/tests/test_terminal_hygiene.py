@@ -117,6 +117,22 @@ class TestRunOnce(unittest.TestCase):
         rep = TH.run_once(dry_run=True, rows=rows, protect_extra=[11])
         self.assertEqual(rep["found"], 0)
 
+    def test_duoi_nguong_min_thi_khong_don(self):
+        """`--min-shells 5`: 2 shell rac ⇒ KHONG xoa (moi lan xoa sinh 1 thong bao VS Code)."""
+        rows = [_row("Code.exe", CODE, 1), _row("powershell.exe", 11, CODE),
+                _row("powershell.exe", 12, CODE)]
+        rep = TH.run_once(dry_run=False, rows=rows, kill=False, min_shells=5)
+        self.assertEqual(rep["found"], 2)
+        self.assertTrue(rep["below_min"])
+        self.assertEqual(rep["killed"], 0)
+
+    def test_dat_nguong_thi_don(self):
+        rows = [_row("Code.exe", CODE, 1)] + [_row("powershell.exe", 20 + i, CODE)
+                                             for i in range(5)]
+        rep = TH.run_once(dry_run=False, rows=rows, kill=False, min_shells=5)
+        self.assertEqual(rep["found"], 5)
+        self.assertFalse(rep["below_min"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -239,7 +239,9 @@
         "--watch",
         "--interval",
         "120",
-        "--quiet"
+        "--quiet",
+        "--min-shells",
+        "5"
       ],
       "options": {
         "cwd": "/autonomous-trading-bot"

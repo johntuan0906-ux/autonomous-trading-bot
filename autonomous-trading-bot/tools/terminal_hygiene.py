@@ -136,20 +136,26 @@ def kill_pids(pids, timeout: float = 25.0) -> int:
     return len(pids)
 
 
-def run_once(dry_run: bool = False, protect_extra=(), rows=None, kill=True) -> dict:
-    """1 lan don: tra `{found, killed, freed_mb, shells}`.
+def run_once(dry_run: bool = False, protect_extra=(), rows=None, kill=True,
+             min_shells: int = 1) -> dict:
+    """1 lan don: tra `{found, killed, freed_mb, below_min, shells}`.
 
     `rows` de test (khong goi PowerShell); `kill=False` de chi do luong.
+    `min_shells`: chi DỌN khi co it nhat N shell rac (mac dinh 1). Dat 5 cho che do nen
+    de khong xoa lat nhat (moi lan xoa deu sinh 1 thong bao "terminal process terminated"
+    cua VS Code — xem `terminal.integrated.showExitAlert`).
     """
     rows = list_processes() if rows is None else rows
     protect = ancestors_of(os.getpid(), rows)
     protect |= {int(x) for x in (protect_extra or [])}
     shells = pick_idle_shells(rows, protect=protect)
     freed = round(sum(float(s.get("mb") or 0) for s in shells), 1)
+    below = len(shells) < max(1, int(min_shells or 1))
     killed = 0
-    if shells and not dry_run and kill:
+    if shells and not dry_run and kill and not below:
         killed = kill_pids([s["pid"] for s in shells])
-    return {"found": len(shells), "killed": killed, "freed_mb": freed, "shells": shells}
+    return {"found": len(shells), "killed": killed, "freed_mb": freed,
+            "below_min": below, "shells": shells}
 
 
 def main(argv: list | None = None) -> int:
@@ -160,11 +166,14 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--protect-pid", action="append", type=int, default=[],
                     help="them pid can bao ve (lap lai duoc)")
     ap.add_argument("--quiet", action="store_true", help="chi in khi co viec lam")
+    ap.add_argument("--min-shells", type=int, default=1,
+                    help="chi don khi co it nhat N shell rac (dat 5 cho che do nen)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
     def _once() -> dict:
-        rep = run_once(dry_run=args.dry_run, protect_extra=args.protect_pid)
+        rep = run_once(dry_run=args.dry_run, protect_extra=args.protect_pid,
+                       min_shells=args.min_shells)
         if args.json:
             print(json.dumps(rep, ensure_ascii=False))
         elif rep["found"] and not args.quiet:

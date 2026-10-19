@@ -19,12 +19,16 @@ import argparse
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LIVE_DIR = ROOT.parent / "atb-live"
 LEVELS = ("OK", "WARN", "FAIL")
 MARK = {"OK": "  ", "WARN": "??", "FAIL": "!!"}
+# (19/10) So model toi thieu phai TRA PHIEU trong 48h de coi hoi dong la "dang song".
+# Duoi nguong nay thi moi ket luan ve veto/allow la vo nghia (xem AGENTS.md).
+MIN_COUNCIL_MODELS = 3
 
 
 def read_env(path: Path) -> dict:
@@ -76,6 +80,47 @@ def journal_balance(path: Path) -> dict:
     except OSError:
         return {"open": 0, "close": 0, "orphan": 0}
     return {"open": o, "close": c, "orphan": max(0, o - c)}
+
+
+def council_models(path: Path, hours: float = 48.0, now=None) -> dict:
+    """So MODEL khac nhau THUC SU tra phieu hoi dong trong `hours` gio.
+
+    Tra `{n, models, votes}`. Doc tu `logs/journal.jsonl` (cac dong `status=COUNCIL`
+    co `model`) — CUNG nguon voi `agents.py --council-health`, khong goi mang.
+
+    (19/10) Lop loi "hoi dong IM LANG" (da gap that: 402 het credit, provider 500,
+    tier `lite` => 0 phieu): truoc day `harness_audit` chi doc `AGENT_VETO_SOURCE`
+    nen van bao OK trong khi **khong model nao tra phieu** => moi ket luan ve veto
+    la vo nghia (AGENTS.md canh bao dung ca nay). Dong thieu/hong `ts` duoc TINH
+    (fail-open: khong vi 1 dong hong ma bao dong gia).
+    """
+    t0 = float(now() if callable(now) else time.time()) - float(hours) * 3600.0
+    models: set = set()
+    votes = 0
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return {"n": 0, "models": [], "votes": 0}
+    for ln in lines:
+        if "COUNCIL" not in ln:
+            continue
+        try:
+            d = json.loads(ln)
+        except ValueError:
+            continue
+        if not isinstance(d, dict) or str(d.get("status") or "").upper() != "COUNCIL":
+            continue
+        try:
+            ts = float(d.get("ts") or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        if ts and ts < t0:
+            continue
+        m = str(d.get("model") or "").strip()
+        if m:
+            models.add(m)
+            votes += 1
+    return {"n": len(models), "models": sorted(models), "votes": votes}
 
 
 def hash_py(d: Path, names) -> dict:
@@ -169,7 +214,6 @@ def _chk_core(checks: list, base: Path, label: str) -> dict:
     hb = logs / "heartbeat.json"
     if hb.exists():
         try:
-            import time
             d = json.loads(hb.read_text(encoding="utf-8"))
             age = time.time() - float(d.get("ts") or 0)
             add(checks, "OK" if age < 600 else "FAIL", "heartbeat",
@@ -245,6 +289,27 @@ def _chk_config(checks: list, env: dict, label: str) -> None:
         add(checks, "OK", "council-veto", "hoi dong o che do SHADOW (chi co van)")
 
 
+def _chk_council(checks: list, logs: Path) -> None:
+    """Nhom 3: hoi dong co THUC SU tra phieu khong (48h) — chong lop loi "im lang".
+
+    Khong co phieu => bot van chay nhung **quyet dinh dua tren hoi dong la vo nghia**
+    (va `council_vote`/`trace_trade` se in "0 phieu"). Canh bao thay vi FAIL vi bot
+    van an toan: veto dang o che do SHADOW.
+    """
+    rep = council_models(logs / "journal.jsonl")
+    if rep["n"] >= MIN_COUNCIL_MODELS:
+        add(checks, "OK", "council-models",
+            "%d model tra phieu / 48h (%d phieu)" % (rep["n"], rep["votes"]))
+    elif rep["n"]:
+        add(checks, "WARN", "council-models",
+            "chi %d model tra phieu / 48h — hoi dong mo mong" % rep["n"],
+            "python agents.py --council-health --hours 48")
+    else:
+        add(checks, "WARN", "council-models",
+            "hoi dong IM LANG 48h (0 phieu) — moi ket luan ve veto la vo nghia",
+            "python agents.py --council-health --hours 48")
+
+
 def audit_one(base: Path, label: str, *, with_exchange: bool = False) -> dict:
     """Cham diem 1 instance. Tra {label, checks, summary, dir}."""
     checks: list = []
@@ -255,6 +320,7 @@ def audit_one(base: Path, label: str, *, with_exchange: bool = False) -> dict:
                 "dir": str(base)}
     env = _chk_core(checks, base, label)
     _chk_config(checks, env, label)
+    _chk_council(checks, base / "logs")
     _chk_local_model(checks, env)
     if with_exchange:
         _chk_protection(checks, env, label)

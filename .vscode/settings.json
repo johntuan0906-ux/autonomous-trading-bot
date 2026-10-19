@@ -38,6 +38,7 @@
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
   "python.testing.unittestArgs": ["-v", "-s", "autonomous-trading-bot/tests", "-t", "autonomous-trading-bot", "-p", "test_*.py"],
+  "terminal.integrated.enablePersistentSessions": false,
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true
 }

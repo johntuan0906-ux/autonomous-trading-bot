@@ -5,6 +5,7 @@ khong SL/TP. Cong cu nay gom viec do thanh 1 lenh co diem so + cach sua.
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -64,6 +65,91 @@ class TestJournalBalance(unittest.TestCase):
 
     def test_file_khong_ton_tai(self):
         self.assertEqual(HA.journal_balance(Path("khong/co.jsonl"))["open"], 0)
+
+
+class TestCouncilModels(unittest.TestCase):
+    """(19/10) Lop loi "hoi dong IM LANG": harness bao OK trong khi 0 model tra phieu.
+
+    Truoc day `harness_audit` chi doc `AGENT_VETO_SOURCE` => 402 het credit / provider
+    500 / tier `lite` lam hoi dong cam trong nhieu gio ma diem van 100/100.
+    """
+
+    NOW = 1_800_000_000.0
+
+    @staticmethod
+    def _journal(d, rows) -> Path:
+        """Ghi journal gia: `rows` = [(ts, model), ...] (`ts=None` => thieu khoa ts)."""
+        p = Path(d) / "journal.jsonl"
+        lines = []
+        for ts, model in rows:
+            obj = {"event": "AGENT", "status": "COUNCIL", "action": "VETO",
+                   "model": model}
+            if ts is not None:
+                obj["ts"] = ts
+            lines.append(json.dumps(obj, ensure_ascii=False))
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return p
+
+    def test_dem_model_trong_cua_so(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._journal(d, [(self.NOW - 60, "m1"), (self.NOW - 60, "m1"),
+                                  (self.NOW - 60, "m2"), (self.NOW - 60, "m3")])
+            r = HA.council_models(p, now=lambda: self.NOW)
+        self.assertEqual(r["n"], 3, "3 model khac nhau")
+        self.assertEqual(r["votes"], 4)
+        self.assertEqual(r["models"], ["m1", "m2", "m3"])
+
+    def test_bo_qua_phieu_qua_cu(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._journal(d, [(self.NOW - 72 * 3600, "m1"), (self.NOW - 60, "m2")])
+            r = HA.council_models(p, hours=48, now=lambda: self.NOW)
+        self.assertEqual(r["n"], 1, "phieu 72h truoc phai bi bo qua")
+
+    def test_dong_thieu_ts_van_tinh(self):
+        """Fail-open: dong thieu/hong `ts` KHONG duoc lam mat phieu (tranh bao dong gia)."""
+        with tempfile.TemporaryDirectory() as d:
+            p = self._journal(d, [(None, "m1"), (self.NOW - 60, "m2")])
+            r = HA.council_models(p, now=lambda: self.NOW)
+        self.assertEqual(r["n"], 2)
+
+    def test_dong_hong_khong_lam_sap(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "journal.jsonl"
+            p.write_text('{hong json\n{"status": "COUNCIL", "model": "m1", "ts": %f}\n'
+                         'khong-phai-json\n' % self.NOW, encoding="utf-8")
+            r = HA.council_models(p, now=lambda: self.NOW)
+        self.assertEqual(r["n"], 1)
+
+    def test_thieu_file_thi_0_phieu(self):
+        r = HA.council_models(Path("khong/co/journal.jsonl"))
+        self.assertEqual((r["n"], r["votes"]), (0, 0))
+
+    def test_im_lang_thi_canh_bao(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "journal.jsonl").write_text('{"event": "OPEN"}\n', encoding="utf-8")
+            checks: list = []
+            HA._chk_council(checks, Path(d))
+        self.assertEqual(checks[0]["level"], "WARN")
+        self.assertIn("IM LANG", checks[0]["detail"])
+        self.assertIn("council-health", checks[0]["fix"], "phai co cach sua cu the")
+
+    def test_du_3_model_thi_OK(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._journal(d, [(self.NOW, m) for m in ("m1", "m2", "m3")])
+            Path(d, "journal.jsonl").write_text(p.read_text(encoding="utf-8"),
+                                                encoding="utf-8")
+            checks: list = []
+            HA._chk_council(checks, Path(d))
+        self.assertEqual(checks[0]["level"], "OK", checks[0])
+
+    def test_1_model_thi_WARN(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._journal(d, [(self.NOW, "m1")])
+            Path(d, "journal.jsonl").write_text(p.read_text(encoding="utf-8"),
+                                                encoding="utf-8")
+            checks: list = []
+            HA._chk_council(checks, Path(d))
+        self.assertEqual(checks[0]["level"], "WARN")
 
 
 class TestDiemSo(unittest.TestCase):

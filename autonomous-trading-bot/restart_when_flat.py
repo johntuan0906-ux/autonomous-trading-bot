@@ -5,9 +5,15 @@
     python restart_when_flat.py --max-hours 12  # tu bo cuoc sau N gio (mac dinh 12)
     python restart_when_flat.py --dry-run       # chi bao, KHONG restart
     python restart_when_flat.py --once          # kiem tra 1 lan roi thoat
+    python restart_when_flat.py --pause-entries-hours 24   # het vi the => TAM DUNG vao lenh 24h
 
 Vì sao cần: muốn áp code/cấu hình mới (vd throttle log RE-ARM, đổi SYMBOLS) mà **KHÔNG cắt
 ngang vị thế đang mở**. Chạy NỀN:  `pythonw restart_when_flat.py`
+
+(19/10) `--pause-entries-hours N`: phiếu hội đồng LIVE **4-0 VETO** việc resume ngay sau khi
+hết vị thế (kill-switch vừa trip 2 lần, 6/7 lệnh lỗ, chưa qua 24h nguội). Cờ này ghi
+`logs/entries_pause.json` (CÓ HẠN — hết hạn tự mở lại, xem `entries_gate`) TRƯỚC khi restart:
+bot vẫn quản lý vị thế/SL/TP + học bài, chỉ KHÔNG mở lệnh mới cho tới khi hết hạn.
 
 An toàn:
 - Chỉ restart khi sàn **xác nhận 0 vị thế** (không bỏ quên vị thế nào).
@@ -194,10 +200,30 @@ def restart_bot(root: Path | None = None) -> dict:
         return {"ok": False, "err": str(e)[:160], "killed_pid": pid}
 
 
+def pause_entries(root: Path, hours: float, reason: str, now=None) -> dict:
+    """Bật CỔNG TẠM DỪNG vào lệnh (CÓ HẠN) cho instance `root` — dùng `entries_gate`.
+
+    (19/10) Vì sao: phiếu hội đồng LIVE 4-0 VETO việc resume ngay khi hết vị thế ⇒ hết vị
+    thế thì phải PAUSE (chờ 24h nguội), KHÔNG được tự mở lệnh mới. Ghi trực tiếp file của
+    instance (`root/logs/entries_pause.json`) để không phụ thuộc cwd; hết hạn tự mở lại.
+    """
+    try:
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        import entries_gate as EG
+        return EG.pause(str(reason), path=root / "logs" / "entries_pause.json",
+                        hours=hours, now=now, by="restart_when_flat")
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "err": str(e)[:160]}
+
+
 def wait_flat(ex, *, poll: float = 30.0, max_hours: float = 12.0, dry_run: bool = False,
               now=time.time, sleep=time.sleep, fetch=open_positions,
-              do_restart=restart_bot) -> dict:
-    """Chờ tới khi hết vị thế rồi restart. Trả `{ok, checks, n_open|err}`."""
+              do_restart=restart_bot, pause_entries_fn=None, pause_hours: float = 0.0) -> dict:
+    """Chờ tới khi hết vị thế rồi (tuỳ chọn) TẠM DỪNG vào lệnh rồi restart.
+
+    Trả `{ok, checks, n_open|err}`; thêm `pause` nếu có tạm dừng.
+    """
     t0 = now()
     checks = 0
     while True:
@@ -209,10 +235,18 @@ def wait_flat(ex, *, poll: float = 30.0, max_hours: float = 12.0, dry_run: bool 
             log("HET VI THE -> %s" % ("(dry-run) se restart" if dry_run else "restart bot"))
             if dry_run:
                 return {"ok": True, "checks": checks, "n_open": 0, "dry_run": True}
+            out = {"ok": True, "checks": checks, "n_open": 0}
+            # (19/10) Phieu hoi dong: het vi the thi TAM DUNG vao lenh (co han) TRUOC khi
+            # restart — neu ghi that bai thi VAN restart (bot chay tiep la mac dinh cu).
+            if pause_hours and pause_entries_fn is not None:
+                pr = pause_entries_fn()
+                out["pause"] = pr
+                log("TAM DUNG vao lenh moi %.1fh: %s" % (pause_hours, pr))
             res = do_restart()
             log("ket qua restart: %s" % res)
-            return {"ok": bool(res.get("ok")), "checks": checks, "n_open": 0,
-                    "restart": res}
+            out["restart"] = res
+            out["ok"] = bool(res.get("ok"))
+            return out
         else:
             log("%d vi the dang mo -> cho them" % n)
         if (now() - t0) >= float(max_hours) * 3600.0:
@@ -229,6 +263,10 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--max-hours", type=float, default=12.0, help="bo cuoc sau N gio")
     ap.add_argument("--dry-run", action="store_true", help="chi bao, khong restart")
     ap.add_argument("--once", action="store_true", help="kiem tra 1 lan roi thoat")
+    ap.add_argument("--pause-entries-hours", type=float, default=0.0,
+                    help="sau khi het vi the: TAM DUNG vao lenh moi trong N gio (0 = khong)")
+    ap.add_argument("--pause-entries-reason", default="",
+                    help="ly do tam dung (ghi vao logs/entries_pause.json)")
     args = ap.parse_args(argv)
     global LOG, _ROOT_OVERRIDE
     root = target_dir(args.target)
@@ -252,13 +290,21 @@ def main(argv: list | None = None) -> int:
     log("theo doi: target=%s dir=%s poll=%ss max=%sh dry_run=%s testnet=%s | cap cua bot=%d"
         % (args.target, root, args.poll, args.max_hours, args.dry_run,
            _instance_testnet(root, cfg), len(syms)))
+    if args.pause_entries_hours:
+        log("se TAM DUNG vao lenh moi %.1fh khi het vi the (ly do: %s)"
+            % (args.pause_entries_hours, args.pause_entries_reason or "restart_when_flat"))
     if args.once:
         n = open_positions(ex, syms)
         log("vi the cua BOT dang mo: %s (bo qua lenh mo tay)" % n)
         return 0 if n == 0 else 1
     res = wait_flat(ex, poll=args.poll, max_hours=args.max_hours, dry_run=args.dry_run,
                     fetch=lambda e: open_positions(e, syms),
-                    do_restart=lambda: restart_bot(root))
+                    do_restart=lambda: restart_bot(root),
+                    pause_hours=args.pause_entries_hours,
+                    pause_entries_fn=(lambda: pause_entries(
+                        root, args.pause_entries_hours,
+                        args.pause_entries_reason or
+                        "restart_when_flat: het vi the, tam dung vao lenh moi (co han)")))
     log("ket thuc: %s" % res)
     return 0 if res.get("ok") else 2
 

@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import apply_symbols as AS       # noqa: E402
+import entries_gate as EG        # noqa: E402
 import ops as OPS                # noqa: E402
 import pick_symbols as PS        # noqa: E402
 import restart_bot as RB         # noqa: E402
@@ -495,6 +496,100 @@ class TestRestartWhenFlatTarget(unittest.TestCase):
             (d / "logs" / "journal.jsonl").write_text(
                 '{"event": "OPEN", "pair": "A"}\n', encoding="utf-8")
             self.assertEqual(RWF.supervisor_pid(d), 0)      # khong co lock -> 0 (an toan)
+
+
+class TestEntriesGateExpiry(unittest.TestCase):
+    """(19/10) Cong tam dung vao lenh phai CO HAN va TU MO LAI khi het han.
+
+    Vi sao: lop loi da gap THAT — "tam dung roi quen mo lai" (BTW 16-18/10 phai viet
+    watcher rieng; TESTNET ket pause 3.6 ngay vi `tripped` khong tu xoa). Phieu hoi dong
+    LIVE 4-0 VETO: het vi the thi pause 24h nguoi — nguoi van hanh khong the tin vao tri nho.
+    """
+
+    def test_het_han_thi_tu_mo_lai(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "logs" / "entries_pause.json"
+            t0 = 1_000_000.0
+            EG.pause("cho 24h nguoi", path=p, hours=24, now=lambda: t0)
+            self.assertTrue(EG.paused(path=p, now=lambda: t0 + 60)[0])
+            self.assertTrue(EG.paused(path=p, now=lambda: t0 + 23 * 3600)[0])
+            ok, why = EG.paused(path=p, now=lambda: t0 + 25 * 3600)
+            self.assertFalse(ok)
+            self.assertIn("het han", why)
+            # da ghi vet vao file => lan sau KHONG con tam dung
+            self.assertFalse(EG.paused(path=p, now=lambda: t0 + 26 * 3600)[0])
+            self.assertFalse(json.loads(p.read_text(encoding="utf-8"))["paused"])
+
+    def test_khong_co_han_thi_vo_thoi_han(self):
+        """Hanh vi cu (16/10) khong doi: `pause()` khong `hours` => tam dung toi khi mo tay."""
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "entries_pause.json"
+            EG.pause("khong co han", path=p, now=lambda: 0.0)
+            self.assertTrue(EG.paused(path=p, now=lambda: 10 ** 9)[0])
+
+    def test_until_hong_thi_van_tam_dung(self):
+        """Fail-safe: `until` khong phai so => KHONG duoc tu mo lai."""
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "entries_pause.json"
+            p.write_text(json.dumps({"paused": True, "reason": "x", "until": "mai"}),
+                         encoding="utf-8")
+            self.assertTrue(EG.paused(path=p, now=lambda: 10 ** 9)[0])
+
+    def test_file_hong_van_la_fail_open(self):
+        """File hong = chua tung tam dung (giu nguyen hanh vi cu, khong doi)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "entries_pause.json"
+            p.write_text("{hong", encoding="utf-8")
+            self.assertFalse(EG.paused(path=p)[0])
+
+
+class TestRestartWhenFlatPause(unittest.TestCase):
+    """(19/10) `--pause-entries-hours`: het vi the => TAM DUNG (co han) ROI MOI restart.
+
+    Phieu hoi dong LIVE 4-0 VETO viec resume ngay: bot phai dung mo lenh moi trong khi
+    van quan ly vi the + hoc bai. Thu tu quan trong: pause TRUOC, restart SAU.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self._log = RWF.LOG
+        RWF.LOG = Path(self.tmp.name) / "restart_when_flat.log"
+
+    def tearDown(self):
+        RWF.LOG = self._log
+        self.tmp.cleanup()
+
+    def test_pause_truoc_khi_restart(self):
+        calls = []
+        res = RWF.wait_flat(None, poll=0.01, max_hours=1, fetch=lambda e: 0,
+                            do_restart=lambda: (calls.append("restart"), {"ok": True})[1],
+                            pause_hours=24,
+                            pause_entries_fn=lambda: (calls.append("pause"),
+                                                      {"ok": True})[1])
+        self.assertEqual(calls, ["pause", "restart"])
+        self.assertTrue(res["ok"])
+        self.assertTrue(res["pause"]["ok"])
+
+    def test_mac_dinh_khong_pause(self):
+        calls = []
+        RWF.wait_flat(None, poll=0.01, max_hours=1, fetch=lambda e: 0,
+                      do_restart=lambda: (calls.append("restart"), {"ok": True})[1])
+        self.assertEqual(calls, ["restart"])
+
+    def test_pause_ghi_dung_file_instance(self):
+        d = Path(self.tmp.name) / "instance"
+        r = RWF.pause_entries(d, 24, "vi du", now=lambda: 500.0)
+        self.assertTrue(r["ok"], r)
+        p = d / "logs" / "entries_pause.json"
+        self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["by"],
+                         "restart_when_flat")     # ghi vet AI bat cong
+        self.assertTrue(EG.paused(path=p, now=lambda: 600.0)[0])
+        self.assertFalse(EG.paused(path=p, now=lambda: 500.0 + 25 * 3600)[0])
+        # het han thi TU MO LAI va ghi ro AI mo (provenance)
+        rec = json.loads(p.read_text(encoding="utf-8"))
+        self.assertEqual(rec["by"], "entries_gate")
+        self.assertEqual(rec["reason"], "het han tam dung")
+
 
 
 class TestEnvTheoInstance(unittest.TestCase):

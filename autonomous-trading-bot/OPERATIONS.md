@@ -199,5 +199,13 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Đổi model local (llamafile ↔ ollama) | `python tools/switch_local_model.py .env llamafile` |
 | Metrics cho Prometheus | `python tools/ops.py --prom` → `logs/metrics.prom` |
 | Model local không cần daemon | `python tools/llamafile_setup.py --check` |
-| Test toàn bộ | `python -m unittest discover -s tests` (**690 test**) |
+| **Vì sao bot mở/đóng 1 lệnh** (chuỗi đầy đủ) | `python tools/trace_trade.py --pair SOL [--last 3] [--json]` |
+| **Truy ngược bằng chứng 1 tổ hợp** (mã `EV-xxxxxx`) | `python tools/trace_trade.py --key "B_BREAKOUT_RETEST \| BOS_UP \| COMPRESSION \| LONG"` |
+| **Đang chờ người vận hành trả lời gì** | `python tools/ops_queue.py resume` (mỗi instance) |
+| Thêm/trả lời câu hỏi vận hành | `python tools/ops_queue.py add "..." --why "..." --option a --option b` · `answer <id> "..."` |
+| Câu hỏi bị bỏ quên > 24h (CI/kiểm tra) | `python tools/ops_queue.py --check` |
+| **Lớp lỗi cũ còn test chốt không** | `python tools/bug_catalog.py --check` (mất test = mất chốt chặn) |
+| Tra lớp lỗi theo triệu chứng | `python tools/bug_catalog.py --grep "hội đồng"` · `--code B-011` |
+| Manifest năng lực tool (cho agent) | `python tools/capabilities.py [--json] [--check]` |
+| Test toàn bộ | `python -m unittest discover -s tests -t .` (**1000 test**) |
 | Đẩy code | `tools\git-sync.cmd "mo ta"` |

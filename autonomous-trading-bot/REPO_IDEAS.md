@@ -420,3 +420,17 @@ crash** (kill-switch ⇒ monitor-only, tự resume khi gỡ) · `RECONCILE` tự
 **P1 kế tiếp:** `trace_trade.py` · provenance cho lessons · `ops_queue.json` +
 `ops_questions.json` · `bug_catalog.py`.
 
+**(19/10) — CẢ 4 VIỆC P1 ĐÃ XONG** (mỗi việc có test chốt, xem `tools/bug_catalog.py --check`):
+- `tools/trace_trade.py` — chuỗi "vì sao vào/đóng lệnh" (feature → phiếu hội đồng → review →
+  bài học + **mã bằng chứng**), `--key "<tổ hợp>"` truy ngược bằng chứng từ journal.
+- **provenance cho lessons**: `lessons.evidence_code()` (`EV-xxxxxx`, ổn định) +
+  `lessons.evidence(journal, key)` (n/avgR/mốc thời gian/lệnh tệ nhất–tốt nhất) +
+  cột **Mã** trong `LESSONS.md`.
+- `tools/ops_queue.py` — hàng đợi câu hỏi cho người vận hành, **resume được qua phiên**
+  (`logs/ops_questions.json` + `logs/ops_queue.json`), `--check` báo câu hỏi quá 24h.
+- `tools/bug_catalog.py` — **20 lớp lỗi ↔ 33 test chốt**, `--check` báo khi test bị xoá/đổi tên
+  (mất chốt chặn = lớp lỗi cũ có thể quay lại mà không ai biết).
+
+**Còn lại (P2):** graph `hành vi → hàm → test`; 10 tool trong manifest chưa có test
+(`python tools/capabilities.py --check` liệt kê).
+

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""test_council_evals.py — shadow A/B + eval dataset tu journal (08/10/2026)."""
+"""test_council_evals.py — shadow A/B + eval dataset tu journal (08/10/2026).
+
+Bao phu ca CLI `tools/council_eval.py` (bang diem model: value_r / veto_precision / Brier) —
+`tools/capabilities.py` tim test theo TEN tool nen can dong nay de manifest khong bao thieu.
+"""
 from __future__ import annotations
 
 import json

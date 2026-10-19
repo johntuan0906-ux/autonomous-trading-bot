@@ -66,6 +66,19 @@ def _get_bool(name: str, default: bool) -> bool:
     return v in ("1", "true", "yes", "y", "on")
 
 
+def _default_turbo_bypass() -> bool:
+    """(19/10) `turbo_demo` co duoc BO QUA `MAX_POSITIONS` khong? — mac dinh: chi o DEMO.
+
+    Vi sao: `turbo_demo.py` (mo song song nhieu cap de thu mau nhanh) **bo qua
+    `MAX_POSITIONS`** va `run_forever.py` chay CHINH script do cho CA HAI instance ⇒
+    tren LIVE `MAX_POSITIONS=1` trong `.env` la **chot gia** (do that 19/10: LIVE 8 vi
+    the, TESTNET 14 vi the du dat 1). Nay: DEMO ⇒ bo qua (giu toc do thu mau);
+    LIVE ⇒ TON TRONG `MAX_POSITIONS`, muon bo qua phai BAT TAY bang
+    `TURBO_BYPASS_MAX_POSITIONS=true` (khong khuyen nghi).
+    """
+    return _get_bool("TURBO_BYPASS_MAX_POSITIONS", _get_bool("BINANCE_TESTNET", True))
+
+
 _KMO_WARNED = False
 
 
@@ -140,6 +153,9 @@ class Settings:
     min_alpha_score: float = field(default_factory=lambda: _get_float("MIN_ALPHA_SCORE", 0.35))
     min_edge: float = field(default_factory=lambda: _get_float("MIN_EDGE", 0.10))
     max_positions: int = field(default_factory=lambda: _get_int("MAX_POSITIONS", 1))
+    # (19/10) Bo qua `MAX_POSITIONS` (xem `_default_turbo_bypass`): DEMO = co, LIVE = KHONG.
+    turbo_bypass_max_positions: bool = field(
+        default_factory=lambda: _default_turbo_bypass())
     allow_hedge_opposite: bool = field(default_factory=lambda: _get_bool("ALLOW_HEDGE_OPPOSITE", False))
 
     # Risk / ATR                       (sweep best: SL 2.0, TP 5.0 -> PF 1.242 PASS, E +0.0756R)

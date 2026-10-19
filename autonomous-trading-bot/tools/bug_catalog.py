@@ -221,6 +221,18 @@ CLASSES = [
                   "test_p0_safety.py::TestHeartbeatKhongGhiStateThat::test_chi_dinh_path_thi_ghi_dung_do",
                   "test_p0_safety.py::TestMonitorOnly::test_kill_cleared_doc_state"],
     },
+    {
+        "code": "B-022", "kind": "cau-hinh", "seen": "19/10/2026",
+        "title": "`MAX_POSITIONS` la \"chot gia\" tren LIVE: `turbo_demo` bo qua VO DIEU KIEN",
+        "symptom": "`.env` dat `MAX_POSITIONS=1` nhung LIVE co **8** vi the, TESTNET **14** vi the (do that 19/10 15:03); nguoi van hanh + hoi dong tuong da gioi han concurrency 1",
+        "guard": "`turbo_demo.max_positions_block()` chan som tren LIVE (`SKIP_MAX_POS`); mac dinh `TURBO_BYPASS_MAX_POSITIONS` = DEMO-moi-bo-qua (`config._default_turbo_bypass`); thu pham chan that su con lai la `MAX_TOTAL_RISK_PCT` + kill-switch",
+        "files": ["turbo_demo.py", "config.py", "run_forever.py"],
+        "tests": ["test_turbo_gate.py::TestMaxPositionsBlock::test_live_het_slot_thi_chan",
+                  "test_turbo_gate.py::TestMaxPositionsBlock::test_demo_thi_bo_qua",
+                  "test_turbo_gate.py::TestMaxPositionsBlock::test_thieu_thuoc_tinh_thi_ton_trong_gioi_han",
+                  "test_turbo_gate.py::TestMacDinhTheoCheDo::test_live_mac_dinh_ton_trong",
+                  "test_turbo_gate.py::TestMacDinhTheoCheDo::test_demo_mac_dinh_bo_qua"],
+    },
 ]
 
 

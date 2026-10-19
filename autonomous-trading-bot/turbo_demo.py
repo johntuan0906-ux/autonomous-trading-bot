@@ -2,7 +2,9 @@
 (BTC/ETH/SOL) de test song song tat ca 4 cap — chi dung tren demo!
 
 Chay: python turbo_demo.py [--rounds N]  (mac dinh chay lien tuc 20s/vong)
-Logic: giong bot.step() nhung bo qua gioi han MAX_POSITIONS=1,
+Logic: giong bot.step() nhung BO QUA gioi han MAX_POSITIONS — CHI o DEMO (xem
+`max_positions_block()`: tren LIVE TON TRONG `MAX_POSITIONS`, bat tay bang
+`TURBO_BYPASS_MAX_POSITIONS=true`),
 van giu: sentiment veto (KHONG noi), ATR SL/TP R:R=1:2, quantize qty, check margin.
 Log day: song song hoa fetch 4 cap + cache BTC regime + het-vong bao Telegram.
 """
@@ -79,6 +81,32 @@ _HEARTBEAT = Path(__file__).resolve().parent / "logs" / "heartbeat.json"
 # P0-fix (01/10 -> 02/10): demo tra -4045 theo kieu "han ngach" -> vi the co the mo ra
 # ma khong co SL/TP tren san. Doi soat lai MOI VONG cho cap nao chua xac nhan du bao ve,
 # throttle qua PROTECT_CHECK_SEC (khong con dung PROTECT_RETRY_EVERY theo so vong).
+
+
+def max_positions_block(cfg, positions, symbol: str, bypass=None) -> tuple[bool, str]:
+    """(bi CHAN?, ly do) khi `turbo_demo` sap mo 1 lenh moi — chot `MAX_POSITIONS`.
+
+    (19/10) LOP LOI "chot gia": `turbo_demo` bo qua `MAX_POSITIONS` **vo dieu kien**
+    (docstring ghi "chi dung tren demo!" nhung `run_forever.py` chay CHINH script nay
+    cho CA HAI instance) ⇒ tren LIVE `MAX_POSITIONS=1` trong `.env` **khong co tac dung**
+    (do that 19/10: LIVE 8 vi the, TESTNET 14 vi the du dat 1; thu pham that su chan la
+    `MAX_TOTAL_RISK_PCT`). Nay:
+      - DEMO (hoac `TURBO_BYPASS_MAX_POSITIONS=true`): bo qua nhu cu — giu toc do thu mau;
+      - LIVE: TON TRONG `MAX_POSITIONS`, tra ly do ro rang (`SKIP_MAX_POS`).
+
+    Ham THUAN TUY (khong goi mang/san) -> test duoc. `bypass=None` ⇒ doc tu `cfg`;
+    thieu thuoc tinh ⇒ False (fail-safe: tren LIVE thi TON TRONG gioi han).
+    """
+    if bypass is None:
+        bypass = bool(getattr(cfg, "turbo_bypass_max_positions", False))
+    if bypass:
+        return False, ""
+    limit = int(getattr(cfg, "max_positions", 1) or 1)
+    n_open = len(positions or {})
+    if n_open >= limit:
+        return True, ("max positions %d reached (%d dang mo) — MAX_POSITIONS duoc "
+                      "TON TRONG tren LIVE (DEMO moi bo qua)" % (limit, n_open))
+    return False, ""
 
 
 def heartbeat(extra: dict | None = None, path=None) -> None:
@@ -1014,6 +1042,13 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             results.append({"symbol": sym, "status": "SKIP_MARGIN",
                             "need": round(need, 2), "free": round(float(free_margin), 2),
                             "reason": "het margin kha dung, giu vi the hien tai"})
+            continue
+        # (19/10) Chot `MAX_POSITIONS`: turbo_demo bo qua o DEMO, nhung TON TRONG tren LIVE
+        # (truoc day bo qua VO DIEU KIEN ⇒ `MAX_POSITIONS=1` tren LIVE la chot gia: do that
+        # 19/10 LIVE 8 vi the / TESTNET 14 vi the). Chan SOM de khong ton vong quet + ro log.
+        _blocked, _why_block = max_positions_block(cfg, bot.portfolio.positions, sym)
+        if _blocked:
+            results.append({"symbol": sym, "status": "SKIP_MAX_POS", "reason": _why_block})
             continue
         # P0-6: tran TONG risk danh muc. 4 cap crypto tuong quan ~1 -> 4 vi the 1%
         # KHONG phai 4 canh bac doc lap ma la mot canh bac 4%, vuot tran lo ngay 2%.

@@ -1,0 +1,51 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "//": "Mo bang: File > Open Workspace from File... > atb.code-workspace. CHI 1 root duy nhat =>",
+    "//2": "het hien 2 lan 'autonomous-trading-bot', het index trung, search nhanh hon.",
+    "files.watcherExclude": {
+      "**/logs/**": true,
+      "**/__pycache__/**": true,
+      "**/backups/**": true,
+      "**/*.zip": true,
+      "**/models/**": true
+    },
+    "search.exclude": {
+      "**/logs": true,
+      "**/backups": true,
+      "**/__pycache__": true,
+      "**/vendor": true,
+      "**/node_modules": true,
+      "**/models": true,
+      "**/*.min.js": true
+    },
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true
+    },
+    "python.analysis.exclude": [
+      "**/logs",
+      "**/backups",
+      "**/vendor",
+      "**/models",
+      "**/binance_futures_ai_bot",
+      "**/Multi_AI_Agent/vendor",
+      "**/__pycache__"
+    ],
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestArgs": [
+      "-v",
+      "-s",
+      "autonomous-trading-bot/tests",
+      "-t",
+      "autonomous-trading-bot",
+      "-p",
+      "test_*.py"
+    ]
+  }
+}

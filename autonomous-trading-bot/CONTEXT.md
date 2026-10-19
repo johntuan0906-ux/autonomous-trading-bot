@@ -10,6 +10,8 @@
 
 **Đang chạy 2 instance SONG SONG** (từ 11/10): repo chính = **TESTNET** (demo, học), `../atb-live/` = **LIVE** (tiền thật ~19.7 USDT). Mỗi instance có `logs/`, `.env`, kill-switch RIÊNG; code dùng chung (sync bằng robocopy `*.py tools tests`). Cả hai quét **458 cặp** (nạp 522 → lọc sàn → ban BTC vĩnh viễn; danh sách trong `.env` `SYMBOLS` do `tools/apply_symbols.py` giữ, luôn trừ `logs/banned_pairs.json` của từng instance).
 
+**Cấu trúc thư mục — tránh mở TRÙNG (19/10)**: **repo root = `c:\Users\User\.vscode\Projects`** (chỉ có **MỘT** `.git` ở đây, branch `test-ai-agents`, remote `autonomous-trading-bot.git`); **code bot nằm trong `autonomous-trading-bot/`** (TESTNET chạy ở đây), **LIVE ở `atb-live/`** (bị `.gitignore`). Vì vậy **ĐỪNG** mở `autonomous-trading-bot/` như một root workspace riêng — VS Code sẽ hiện **2 lần cùng một cây** (đúng như đã gặp), index/watch trùng ⇒ search chậm + kết quả trùng, agent đọc trùng (`CONTEXT.md` vs `autonomous-trading-bot/CONTEXT.md`). Mở đúng bằng **`atb.code-workspace`** (1 root) hoặc chính thư mục `Projects`; `.vscode/settings.json` đã loại `logs/`, `backups/`, `__pycache__`, `vendor`, `models` khỏi watcher/search/Pylance. Kiểm chứng nhanh: `git -C <thư-mục> rev-parse --show-toplevel` (phải ra `...\Projects`).
+
 Đọc theo thứ tự: **CONTEXT.md (file này) → `OPERATIONS.md` (vận hành hằng ngày: 3 lệnh, shell, restart an toàn) → `STATE.md` → AGENTS.md → README.md mục 13–15 → `REPO_IDEAS.md` (9 repo tham khảo + việc áp dụng)**. Sau đó chạy:
 
 ```bash

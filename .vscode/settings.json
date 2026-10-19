@@ -1,0 +1,43 @@
+{
+  "//": "Cau hinh cho REPO ROOT (Projects). Bot nam trong autonomous-trading-bot/, LIVE o atb-live/ (gitignored).",
+  "//2": "Muc dich: (1) KHONG index/watch thu muc log/backup/vendor (rat lon, ghi lien tuc) => tim kiem nhanh, khong trung lap;",
+  "//3": "(2) tranh mo thu muc con nhu mot ROOT rieng (gay hien 2 lan 'autonomous-trading-bot' va doc trung).",
+  "files.watcherExclude": {
+    "**/logs/**": true,
+    "**/__pycache__/**": true,
+    "**/backups/**": true,
+    "**/*.zip": true,
+    "**/models/**": true,
+    "**/output/**": true
+  },
+  "search.exclude": {
+    "**/logs": true,
+    "**/backups": true,
+    "**/__pycache__": true,
+    "**/vendor": true,
+    "**/node_modules": true,
+    "**/models": true,
+    "**/*.min.js": true,
+    "**/glow_signals.json": true,
+    "**/retrieval_log.jsonl": true,
+    "**/bench_results.json": true
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+  "python.analysis.exclude": [
+    "**/logs",
+    "**/backups",
+    "**/vendor",
+    "**/models",
+    "**/binance_futures_ai_bot",
+    "**/Multi_AI_Agent/vendor",
+    "**/__pycache__"
+  ],
+  "python.testing.unittestEnabled": true,
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestArgs": ["-v", "-s", "autonomous-trading-bot/tests", "-t", "autonomous-trading-bot", "-p", "test_*.py"],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

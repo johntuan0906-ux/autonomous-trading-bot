@@ -74,6 +74,17 @@ def tally(results: dict) -> dict:
             "n": len(rows), "verdict": verdict}
 
 
+def missing_models(requested, rows) -> list:
+    """Model DUOC YEU CAU nhung KHONG tra ve phieu nao (giu nguyen thu tu yeu cau).
+
+    (19/10) Lop loi B-011: `muse-spark-1.3-contributor` probe tra JSON hop le nhung **3/3
+    lan deu vao `abstained`** => hoi dong "6 model" thuc chat chi 5, ma truoc day khong ai
+    biet. Nguyen tac: danh sach liet ke = so model THUC SU bo phieu.
+    """
+    have = {str((r or {}).get("model")) for r in (rows or [])}
+    return [str(m) for m in (requested or []) if str(m) not in have]
+
+
 def main(argv: list | None = None) -> int:
     for _s in (sys.stdout, sys.stderr):
         try:
@@ -149,8 +160,7 @@ def main(argv: list | None = None) -> int:
     # `LOCAL_SKIP_MODELS` loai tu trong `_council_models`, hoac provider bi chan) truoc day
     # **bien mat im lang**: `votes` rong + `abstained` rong => khong ai biet vi sao thieu
     # phieu (dung lop loi da lam hoi dong "im lang" 48h). In ro ra bang tom tat.
-    rep["missing"] = [m for m in (ms or [])
-                      if m not in {r["model"] for r in rep["rows"]}]
+    rep["missing"] = missing_models(ms, rep["rows"])
     rep["seconds"] = round(time.time() - t0, 1)
     rep["question"] = args.question
     rep["option_ALLOW"] = args.allow

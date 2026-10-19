@@ -553,10 +553,13 @@ class TestRestartWhenFlatPause(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self._log = RWF.LOG
+        self._logfn = RWF.log
         RWF.LOG = Path(self.tmp.name) / "restart_when_flat.log"
+        RWF.log = lambda msg: None          # test khong can in ra man hinh
 
     def tearDown(self):
         RWF.LOG = self._log
+        RWF.log = self._logfn
         self.tmp.cleanup()
 
     def test_pause_truoc_khi_restart(self):
@@ -665,6 +668,86 @@ class TestCapabilities(unittest.TestCase):
             d = Path(tmp)
             (d / "tools").mkdir()
             self.assertEqual(CAP.scan(root=d, tests_dir=d), [])
+
+
+class TestCouncilVoteReport(unittest.TestCase):
+    """(19/10) Lop loi B-011: model duoc LIET KE nhung khong bo phieu phai duoc bao RO.
+
+    Do that: `muse-spark-1.3-contributor` probe tra JSON hop le nhung 3/3 lan deu vao
+    `abstained` => hoi dong "6 model" thuc chat chi 5. Khong duoc de viec nay im lang
+    (dung lop loi da lam hoi dong "im lang" 48h).
+    """
+
+    def test_model_khong_tra_phieu_duoc_bao_ro(self):
+        import council_vote as CV
+        rows = [{"model": "cline-pass/a", "action": "ALLOW"},
+                {"model": "cline-pass/b", "action": "VETO"}]
+        ms = ["cline-pass/a", "cline-pass/b", "cline-pass/muse-spark", "local/x"]
+        self.assertEqual(CV.missing_models(ms, rows),
+                         ["cline-pass/muse-spark", "local/x"])
+        self.assertEqual(CV.missing_models(ms, ms and [{"model": m} for m in ms]), [])
+
+    def test_hoa_phieu_la_no_opinion(self):
+        """Hoa KHONG duoc doc thanh dong thuan (B-018) — quyet dinh thuoc ve nguoi van hanh."""
+        import council_vote as CV
+        rep = CV.tally({"m1": {"action": "ALLOW"}, "m2": {"action": "VETO"}})
+        self.assertEqual(rep["verdict"], "NO_OPINION")
+        self.assertEqual((rep["n_allow"], rep["n_veto"], rep["n_abstain"]), (1, 1, 0))
+        self.assertEqual(CV.tally({"m1": {"action": "VETO"}, "m2": {"action": "ALLOW"},
+                                   "m3": {"action": "VETO"}})["verdict"], "VETO")
+
+
+class TestBugCatalog(unittest.TestCase):
+    """(19/10) Danh muc lop loi <-> test: "moi lop loi phai co test chot" phai KIEM TRA DUOC.
+
+    Vi sao: sua 1 lop loi roi ve sau vo tinh xoa/doi ten test => mat chot chan ma khong ai
+    biet. `--check` doc `tests/` va bao test bi thieu.
+    """
+
+    def setUp(self):
+        import bug_catalog as BC
+        self.BC = BC
+
+    def test_moi_muc_du_truong_va_ma_khong_trung(self):
+        codes = [c["code"] for c in self.BC.CLASSES]
+        self.assertEqual(len(codes), len(set(codes)), "ma lop loi bi trung")
+        for c in self.BC.CLASSES:
+            for k in ("code", "kind", "title", "symptom", "guard", "files", "tests"):
+                self.assertTrue(c.get(k), "%s thieu truong %s" % (c.get("code"), k))
+            self.assertIn(c["kind"], self.BC.KINDS)
+
+    def test_check_tren_repo_that_phai_OK(self):
+        """Chot chan that: MOI test duoc dan trong danh muc phai TON TAI trong `tests/`."""
+        rep = self.BC.check()
+        self.assertEqual(rep["missing"], [], "test bi thieu: %s" % rep["missing"])
+        self.assertEqual(rep["no_test"], [])
+        self.assertTrue(rep["ok"])
+        self.assertGreaterEqual(rep["n"], 15)
+        self.assertGreaterEqual(rep["pinned"], 20)
+
+    def test_check_bao_thieu_khi_test_bien_mat(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "test_ops_tools.py").write_text("class A:\n    def test_x(self):\n        pass\n",
+                                                 encoding="utf-8")
+            rep = self.BC.check([{"code": "B-999", "tests": ["test_ops_tools.py::A::test_khong_co"]}],
+                                tests_dir=d)
+            self.assertFalse(rep["ok"])
+            self.assertEqual(rep["missing"], ["B-999 -> test_ops_tools.py::A::test_khong_co"])
+            rep2 = self.BC.check([{"code": "B-998", "tests": []}], tests_dir=d)
+            self.assertEqual(rep2["no_test"], ["B-998"])
+
+    def test_tim_khong_dau(self):
+        self.assertIn("B-009", [c["code"] for c in self.BC.find(text="tam dung")])
+        self.assertIn("B-011", [c["code"] for c in self.BC.find(text="probe")])
+        self.assertEqual(self.BC.find(text="zzz-khong-co-gi"), [])
+
+    def test_chi_tiet_in_ra_test(self):
+        c = self.BC.find(text="B-001")[0]
+        txt = "\n".join(self.BC.detail(c))
+        self.assertIn("Test chot", txt)
+        self.assertIn(c["tests"][0], txt)
+
 
 
 if __name__ == "__main__":

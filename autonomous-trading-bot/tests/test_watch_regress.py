@@ -147,6 +147,22 @@ class TestState(unittest.TestCase):
         self.path.write_text("{khong-phai-json", encoding="utf-8")
         self.assertEqual(WR.load_state(self.path), {})
 
+    def test_touch_state_ghi_vet_lan_kiem_tra(self):
+        """Phai chung minh duoc watcher CON CHAY (last_check) — khong chi khi co vi pham."""
+        rep = {"ts": 555.0, "ok": True, "problems": [], "regressions": []}
+        st = WR.touch_state(rep, state={}, path=self.path)
+        self.assertEqual(st["last_check"], 555.0)
+        self.assertTrue(st["last_ok"])
+        saved = WR.load_state(self.path)
+        self.assertEqual(saved["last_check"], 555.0)
+        self.assertEqual(saved["last_problems"], [])
+
+    def test_touch_state_ghi_ca_van_de(self):
+        rep = {"ts": 7.0, "ok": False, "problems": ["LIVE: nhip tim cu"], "regressions": ["B-023"]}
+        st = WR.touch_state(rep, state={}, path=self.path)
+        self.assertEqual(st["last_problems"], ["LIVE: nhip tim cu", "B-023"])
+        self.assertFalse(st["last_ok"])
+
 
 class TestNotify(unittest.TestCase):
     def _rep(self) -> dict:

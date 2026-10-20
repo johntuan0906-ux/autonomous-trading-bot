@@ -274,6 +274,22 @@ def build_report(*, dirs=None, baseline=None, minutes: float = 7.0, pids=None,
     return {"ts": time.time(), "pids": len(pids), "instances": inst, **v}
 
 
+def touch_state(rep: dict, state=None, path=None) -> dict:
+    """Ghi VET lan kiem tra (`last_check`, `last_ok`, `last_problems`) vao state.
+
+    Vi sao can: neu chi ghi khi CO vi pham thi khong co cach nao chung minh watcher
+    **thuc su dang chay** (task Scheduler chet im lang cung deu khong ai biet) — dung lop
+    loi "im lang" cua du an. Nhin `last_check` la biet no con song va moi may phut.
+    """
+    st = dict(state if state is not None else load_state(path))
+    st["last_check"] = float((rep or {}).get("ts") or time.time())
+    st["last_ok"] = bool((rep or {}).get("ok"))
+    st["last_problems"] = (list((rep or {}).get("problems") or [])
+                           + list((rep or {}).get("regressions") or []))
+    st["saved"] = save_state(st, path)
+    return st
+
+
 def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None,
            cooldown_s: float = 3600.0) -> dict:
     """Bao DONG khi co tai phat: ghi vet + cau hoi van hanh.
@@ -428,9 +444,12 @@ def main(argv=None) -> int:
     def once() -> dict:
         st = load_state()
         rep = build_report(dirs=dirs, baseline=st, minutes=args.minutes)
+        st = touch_state(rep, state=st)          # vet lan kiem tra (chung minh con chay)
         if not args.no_notify and rep["regressions"]:
             import ops_queue as OQ
             rep["notify"] = notify(rep, state=st, enqueue=OQ.add)
+        else:
+            rep["state_saved"] = st.get("saved")
         return rep
 
     if not args.watch:

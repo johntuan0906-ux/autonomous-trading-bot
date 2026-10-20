@@ -48,8 +48,12 @@ MAX_HB_SEC = 900.0
 TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 
 # Lop loi DA VA can theo doi tai phat (them vao day khi va lop loi moi).
+# LUU Y mau: dung `"code":-2022` (dang JSON cua LOI tu san), KHONG dung `-2022` tran —
+# vi chinh dong INFO THANH CONG cua ban va cung co chuoi `-2022`
+# (`INFO CLOSE X: san tu choi reduceOnly (-2022) -> da dong bang qty THAT...`)
+# ⇒ neu de rong se tu bao dong gia moi lan bot dong lenh dung.
 SIGNATURES = (
-    {"code": "B-023", "pattern": "-2022",
+    {"code": "B-023", "pattern": '"code":-2022',
      "title": "`-2022` reduceOnly bi san tu choi / vi the da dong (exchange.close_position)"},
 )
 TASK_NAME = "ATB-WatchRegress"
@@ -270,21 +274,31 @@ def build_report(*, dirs=None, baseline=None, minutes: float = 7.0, pids=None,
     return {"ts": time.time(), "pids": len(pids), "instances": inst, **v}
 
 
-def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None) -> dict:
-    """Bao DONG khi co tai phat: ghi vet + cau hoi van hanh (moi instance/code 1 lan).
+def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None,
+           cooldown_s: float = 3600.0) -> dict:
+    """Bao DONG khi co tai phat: ghi vet + cau hoi van hanh.
+
+    Chong SPAM nhung KHONG im lang vinh vien: bao lai khi so lan tai phat **tang len**
+    VA da qua `cooldown_s` (mac dinh 1h) ke tu lan bao truoc. (Ban dau chi bao 1 lan
+    duy nhat ⇒ mot bao dong GIA se lam tat moi canh bao that ve sau — do that 20/10.)
 
     `enqueue` tiem duoc (test khong dung den `ops_queue` that). Tra {sent, state}.
     """
     st = dict(state if state is not None else load_state(path))
     done = dict(st.get("notified") or {})
+    now_t = float(now() if callable(now) else (now or time.time()))
     sent: list = []
     for i in rep.get("instances") or []:
         for code, s in (i.get("sightings") or {}).items():
             if int((s or {}).get("n") or 0) <= 0:
                 continue
             key = "%s/%s" % (i.get("name"), code)
-            if done.get(key):
-                continue
+            prev = done.get(key) or {}
+            if isinstance(prev, dict) and prev:
+                prev_n = int(prev.get("n") or 0)
+                prev_ts = float(prev.get("ts") or 0.0)
+                if int(s["n"]) <= prev_n or (now_t - prev_ts) < float(cooldown_s):
+                    continue
             why = ("Tai phat %s (%s) tai %s: %d lan, lan cuoi %s. Mau: %s"
                    % (code, s.get("pattern"), i.get("name"), s["n"],
                       time.strftime("%Y-%m-%d %H:%M:%S",
@@ -299,7 +313,7 @@ def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None) -> dict:
                               % (code, i.get("name")), why=why,
                               options=["dieu tra ngay", "tam chap nhan + theo doi them"],
                               priority="high")
-            done[key] = float(now() if callable(now) else (now or time.time()))
+            done[key] = {"ts": now_t, "n": int(s["n"])}
             sent.append({"key": key, "record": rec})
     st["notified"] = done
     st["saved"] = save_state(st, path)

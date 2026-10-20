@@ -62,6 +62,21 @@ class TestScanText(unittest.TestCase):
     def test_dong_khong_timestamp_bi_bo_qua(self):
         self.assertEqual(WR.scan_text(["-2022 rac khong timestamp"], "-2022")["n"], 0)
 
+    def test_dong_INFO_THANH_CONG_khong_bi_tinh_la_tai_phat(self):
+        """Mau phai la `"code":-2022` (JSON loi cua san), khong phai `-2022` tran.
+
+        Do that 20/10: de mau `-2022` ⇒ tu bao dong gia moi lan bot dong lenh DUNG
+        (dong INFO `... san tu choi reduceOnly (-2022) -> da dong bang qty THAT ...`).
+        """
+        pat = [s["pattern"] for s in WR.SIGNATURES if s["code"] == "B-023"][0]
+        self.assertIn('"code":-2022', pat)
+        line_ok = ('2026-10-20 12:09:36 INFO CLOSE CKB/USDT:USDT: san tu choi '
+                   '`reduceOnly` (-2022) -> da dong bang qty THAT cua san (125000.0)')
+        line_err = '2026-10-20 12:09:36 WARNING close X failed: binance {"code":-2022,"msg":"ReduceOnly Order is rejected."}'
+        self.assertEqual(WR.scan_text([line_ok], pat)["n"], 0,
+                         "dong INFO thanh cong KHONG duoc tinh la tai phat")
+        self.assertEqual(WR.scan_text([line_err], pat)["n"], 1)
+
 
 class TestHealth(unittest.TestCase):
     def _rep(self, **kw) -> dict:
@@ -155,6 +170,23 @@ class TestNotify(unittest.TestCase):
         self.assertEqual(calls[0][1]["priority"], "high")
         r2 = WR.notify(self._rep(), state=r1["state"], enqueue=fake_add, path=st_path)
         self.assertEqual(r2["sent"], [], "da bao roi -> khong bao lai (khong spam)")
+
+    def test_tai_phat_TANG_LEN_thi_bao_lai_sau_cooldown(self):
+        """Khong duoc im lang vinh vien: so lan tang + qua cooldown ⇒ bao lai."""
+        st_path = Path(tempfile.mkdtemp()) / "regress_watch.json"
+        calls: list = []
+        r1 = WR.notify(self._rep(), state={}, now=lambda: 1000.0, path=st_path,
+                       enqueue=lambda q, **k: calls.append(q) or {"ok": True})
+        self.assertEqual(len(r1["sent"]), 1)
+        rep2 = self._rep()
+        rep2["instances"][0]["sightings"]["B-023"]["n"] = 5
+        r2 = WR.notify(rep2, state=r1["state"], now=lambda: 1000.0 + 60, path=st_path,
+                       enqueue=lambda q, **k: calls.append(q) or {"ok": True})
+        self.assertEqual(r2["sent"], [], "so lan tang nhung CHUA qua cooldown -> chua bao")
+        r3 = WR.notify(rep2, state=r2["state"], now=lambda: 1000.0 + 7200, path=st_path,
+                       enqueue=lambda q, **k: calls.append(q) or {"ok": True})
+        self.assertEqual(len(r3["sent"]), 1, "qua cooldown + so lan tang -> phai bao lai")
+        self.assertEqual(len(calls), 2)
 
     def test_khong_co_tai_phat_thi_khong_bao(self):
         st_path = Path(tempfile.mkdtemp()) / "regress_watch.json"

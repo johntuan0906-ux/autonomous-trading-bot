@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/10/2026 11:41:28 · commit `67b0bcd`
+- **Cập nhật**: 20/10/2026 12:11:28 · commit `a15e0f3`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `95036` · round `23` · nhịp tim cách đây 25.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3311.25 USDT
+- **Bot**: pid `95036` · round `30` · nhịp tim cách đây 85.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3307.78 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3240 lệnh đóng, WR 45.28%, E(R) 1.3563, PnL -964.18$)
+## Hiệu suất (journal: 3249 lệnh đóng, WR 45.15%, E(R) 1.3522, PnL -975.16$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2549 | 42.13 | 6.463 | 0.723 | 1.7129 | -1062.97 |
-| 14 ngày | 3011 | 43.91 | 5.752 | 0.796 | 1.4559 | -990.27 |
-| 30 ngày | 3240 | 45.28 | 5.505 | 0.821 | 1.3563 | -964.18 |
+| 7 ngày | 2558 | 41.99 | 6.446 | 0.721 | 1.7065 | -1073.96 |
+| 14 ngày | 3020 | 43.77 | 5.739 | 0.795 | 1.4512 | -1001.25 |
+| 30 ngày | 3249 | 45.15 | 5.493 | 0.819 | 1.3522 | -975.16 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.723 < 1.1; PF($) cua so 14 ngay = 0.796 < 1.1; PF($) cua so 30 ngay = 0.821 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.721 < 1.1; PF($) cua so 14 ngay = 0.795 < 1.1; PF($) cua so 30 ngay = 0.819 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,7 +39,7 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (7)
+## Vị thế đang quản lý (5)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
@@ -48,8 +48,6 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | AXL/USDT:USDT | LONG | 1155.3 | 0.0578 | 0.053816 | 0.05656 | False | False | 0.0 |
 | BANK/USDT:USDT | SHORT | 1.0 | 0.026310000000000004 | 0.026532 | 0.025895 | False | False | 0.0 |
 | BAT/USDT:USDT | SHORT | 295.3 | 0.1812 | 0.205164 | 0.1656 | False | False | 0.0 |
-| CKB/USDT:USDT | LONG | 125000.0 | 0.001499 | 0.00146 | 0.001523 | False | False | 0.154 |
-| ETHFI/USDT:USDT | LONG | 269.5 | 0.7058376994434137 | 0.685696 | 0.71336 | False | False | 0.0 |
 
 ---
 

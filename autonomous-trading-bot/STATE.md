@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/10/2026 10:41:27 · commit `3da61f7`
+- **Cập nhật**: 20/10/2026 11:11:27 · commit `5928adf`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `95036` · round `8` · nhịp tim cách đây 24.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3315.42 USDT
+- **Bot**: pid `95036` · round `15` · nhịp tim cách đây 140.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3313.72 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3227 lệnh đóng, WR 45.46%, E(R) 1.3631, PnL -964.18$)
+## Hiệu suất (journal: 3232 lệnh đóng, WR 45.39%, E(R) 1.3604, PnL -964.18$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2546 | 42.26 | 6.481 | 0.719 | 1.7181 | -1085.63 |
-| 14 ngày | 2998 | 44.1 | 5.78 | 0.796 | 1.4637 | -990.27 |
-| 30 ngày | 3227 | 45.46 | 5.53 | 0.821 | 1.3631 | -964.18 |
+| 7 ngày | 2541 | 42.27 | 6.483 | 0.723 | 1.7193 | -1062.97 |
+| 14 ngày | 3003 | 44.02 | 5.768 | 0.796 | 1.4606 | -990.27 |
+| 30 ngày | 3232 | 45.39 | 5.519 | 0.821 | 1.3604 | -964.18 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.719 < 1.1; PF($) cua so 14 ngay = 0.796 < 1.1; PF($) cua so 30 ngay = 0.821 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.723 < 1.1; PF($) cua so 14 ngay = 0.796 < 1.1; PF($) cua so 30 ngay = 0.821 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -46,9 +46,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | AIN/USDT:USDT | LONG | 1877.0 | 0.04109 | 0.033678 | 0.042785 | False | False | 0.0 |
 | AR/USDT:USDT | LONG | 56.5 | 3.8779999999999997 | 3.75318 | 3.89955 | False | False | 0.0 |
 | AXL/USDT:USDT | LONG | 1155.3 | 0.0578 | 0.053816 | 0.05656 | False | False | 0.0 |
+| BANK/USDT:USDT | SHORT | 1.0 | 0.026310000000000004 | 0.026532 | 0.025895 | False | False | 0.0 |
 | BAT/USDT:USDT | SHORT | 295.3 | 0.1812 | 0.205164 | 0.1656 | False | False | 0.0 |
-| CKB/USDT:USDT | LONG | 125000.0 | 0.001499 | 0.00146 | 0.001523 | False | False | 0.077 |
-| DASH/USDT:USDT | SHORT | 2.814 | 49.32 | 51.132386 | 48.569035 | False | False | 0.0 |
+| CKB/USDT:USDT | LONG | 125000.0 | 0.001499 | 0.00146 | 0.001523 | False | False | 0.154 |
 | ETHFI/USDT:USDT | LONG | 269.5 | 0.7058376994434137 | 0.685696 | 0.71336 | False | False | 0.0 |
 
 ---

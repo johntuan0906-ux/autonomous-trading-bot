@@ -9,6 +9,7 @@ from exchange import BinanceFutures
 from indicators import technical_score
 from journal import log_trade
 from portfolio import PortfolioManager, Position
+from position_sync import add_dust_skip
 from ranking import Candidate, rank_markets, sentiment_veto
 from risk import KillSwitch, atr_levels, position_size
 from sentiment import SentimentCache
@@ -17,6 +18,8 @@ from trade_mgmt import (ManagedTrade, new_trade, manage_trade, trade_result,
 
 log = logging.getLogger("bot")
 SENT_REVERSAL = 0.7
+# (20/10) B-024: so lan toi da thu dong mot vi the "bui" truoc khi BO QUAN LY.
+DUST_MAX_FAILS = 3
 
 
 class TradingBot:
@@ -34,6 +37,8 @@ class TradingBot:
         self.equity = self.cfg.balance_usdt
         self.managed: dict[str, ManagedTrade] = {}  # sym -> trang thai partial/BE/trail
         self.last_exits: dict[str, dict] = {}  # sym -> {reason, r, won, pnl} cho journal/learner
+        # (20/10) B-024: sym -> so lan LIEN TIEP khong dong duoc vi the bui (het nguong ⇒ bo quan ly)
+        self.dust_fail: dict[str, int] = {}
 
     def step(self, candles_provider=None) -> dict:
         if self.kill.tripped:
@@ -239,6 +244,12 @@ class TradingBot:
         except Exception:  # noqa: BLE001
             left = None
         if left is None or abs(float(left)) <= 0:
+            self.dust_fail.pop(sym, None)          # dong duoc / da dong -> xoa bo dem
+            return
+        n = int(self.dust_fail.get(sym, 0)) + 1
+        self.dust_fail[sym] = n
+        if n >= DUST_MAX_FAILS:
+            self._dust_give_up(sym, abs(float(left)), n)
             return
         # San TU CHOI dong vi the bui -> tra vi the ve so sach de khong bi bo roi.
         self.portfolio.positions[sym] = pos
@@ -250,9 +261,32 @@ class TradingBot:
         except Exception as e:  # noqa: BLE001
             log.error("DUST %s: san tu choi dong VA khong arm duoc bao ve: %s",
                       sym, str(e)[:120])
-        log.error("DUST %s qty=%g: san TU CHOI dong (notional qua nho) -> GIU LAI "
-                  "vi the + da arm lai bao ve; can xu ly tay (dong bang lenh "
-                  "reduce-only/positionSide hoac gop lenh).", sym, abs(float(left)))
+        log.error("DUST %s qty=%g: san TU CHOI dong (notional qua nho) lan %d/%d -> GIU LAI "
+                  "vi the + da arm lai bao ve; se BO QUAN LY neu con that bai.",
+                  sym, abs(float(left)), n, DUST_MAX_FAILS)
+
+    def _dust_give_up(self, sym: str, left: float, tries: int) -> None:
+        """B-024: vi the bui KHONG THE dong ⇒ BO QUAN LY (1 lan bao, khong lap mai).
+
+        Do that 20/10 (TESTNET, BANK): vi the **1 hop dong** = 0.026 USDT trong khi san yeu
+        cau toi thieu **5 USDT** ⇒ khong lenh MARKET/LIMIT nao dong duoc. Bot cu giu lai nen
+        moi ~4 phut lai "dong that bai" ⇒ ghi 1 dong CLOSE GIA vao journal (lam sai WR/PF)
+        + arm lai SL/TP (ton han ngach stop-order) — **log ON ma vo dung, mai mai**.
+
+        Nay: ghi symbol vao `logs/dust_skip.json`, bo khoi so sach, bao 1 lan. Vong `adopt`
+        sau bo qua symbol do (khong keo lai) — vi the van nam tren san voi gia tri ~0 va
+        KHONG con lam rac journal/re-arm. Muon theo doi lai: xoa symbol khoi file do.
+        """
+        self.portfolio.positions.pop(sym, None)
+        self.managed.pop(sym, None)
+        self.dust_fail.pop(sym, None)
+        why = ("vi the bui khong the dong: qty=%g, notional < minNotional cua san; "
+               "that bai %d lan" % (left, tries))
+        res = add_dust_skip(sym, why=why)
+        log.warning("DUST %s qty=%g: KHONG THE DONG (%d lan that bai) -> BO QUAN LY "
+                    "(ghi vao %s). Vi the van nam tren san (gia tri ~0); tu day khong con "
+                    "lam rac journal/re-arm moi vong. Bo bang: xoa symbol khoi file do.",
+                    sym, left, tries, res.get("path") or "(ghi file LOI)")
 
     def _scan_and_maybe_open(self, candles_provider=None) -> dict:
         cfg = self.cfg

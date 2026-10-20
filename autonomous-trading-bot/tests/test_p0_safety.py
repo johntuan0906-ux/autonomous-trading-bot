@@ -1654,6 +1654,90 @@ class TestHeartbeatKhongGhiStateThat(unittest.TestCase):
                     os.environ["ATB_HEARTBEAT_PATH"] = old
             self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["phase"], "env")
 
+class TestViTheBuiChet(unittest.TestCase):
+    """(20/10) B-024: vi the bui **KHONG THE dong** ⇒ phai BO QUAN LY, khong lap mai.
+
+    Do that 20/10 (TESTNET, BANK): vi the 1 hop dong = 0.026 USDT, san yeu cau toi thieu
+    5 USDT ⇒ khong lenh nao dong duoc. Bot cu giu lai nen moi ~4 phut lai "dong that bai"
+    ⇒ 1 dong CLOSE GIA vao journal (sai WR/PF) + arm lai SL/TP (ton han ngach stop-order),
+    **mai mai**. Yeu cau: sau `DUST_MAX_FAILS` lan ⇒ ghi `logs/dust_skip.json` + bo so sach
+    + bao 1 lan; vong `adopt` sau bo qua symbol do.
+    """
+
+    SYM = "BANK/USDT:USDT"
+
+    def _bot(self, ex):
+        from unittest import mock
+        bot = TradingBot(cfg(dry_run=False, sl_atr_mult=2.0, tp_atr_mult=5.0,
+                             min_notional_usdt=20.0), exchange=ex)
+        bot.sentiment.get = mock.Mock(return_value=mock.Mock(score=0.0))
+        return bot
+
+    def _dust_bot(self, ex):
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 0.1,
+                                                     98.0, 200.0)
+        t = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        t.qty, t.partial_done, t.booked_pnl = 0.1, True, 3.0
+        bot.managed[self.SYM] = t
+        return bot
+
+    def _tmp_skip(self) -> Path:
+        p = Path(tempfile.mkdtemp()) / "dust_skip.json"
+        old = os.environ.get("ATB_DUST_SKIP_PATH")
+        os.environ["ATB_DUST_SKIP_PATH"] = str(p)
+        self.addCleanup(lambda: (os.environ.__setitem__("ATB_DUST_SKIP_PATH", old)
+                                 if old is not None
+                                 else os.environ.pop("ATB_DUST_SKIP_PATH", None)))
+        return p
+
+    def _round(self, bot):
+        from unittest import mock
+        with mock.patch.object(botmod, "log_trade", lambda **kw: None):
+            return bot._monitor(candles_provider=lambda s: pd.DataFrame({"close": [100.0]}))
+
+    def test_that_bai_lap_lai_thi_bo_quan_ly_va_ghi_file(self):
+        skip = self._tmp_skip()
+        ex = FakeExchange(landing=0.1)        # san VAN giu vi the (khong dong duoc)
+        bot = self._dust_bot(ex)
+        for i in range(1, botmod.DUST_MAX_FAILS):
+            self._round(bot)
+            self.assertIn(self.SYM, bot.portfolio.positions,
+                          "lan %d: chua het nguong -> van giu de thu lai" % i)
+            self.assertFalse(skip.exists(), "chua het nguong -> chua ghi file")
+        self._round(bot)
+        self.assertNotIn(self.SYM, bot.portfolio.positions,
+                         "het nguong -> BO QUAN LY (khong lap mai)")
+        self.assertNotIn(self.SYM, bot.managed)
+        self.assertEqual(bot.dust_fail, {}, "xoa bo dem sau khi bo quan ly")
+        data = json.loads(skip.read_text(encoding="utf-8"))
+        self.assertIn(self.SYM, data["symbols"])
+        self.assertIn("khong the dong", data["why"][self.SYM])
+
+    def test_dong_duoc_thi_khong_ghi_gi_va_xoa_bo_dem(self):
+        skip = self._tmp_skip()
+        ex = FakeExchange(landing=0.0)        # san xac nhan da dong
+        bot = self._dust_bot(ex)
+        self._round(bot)
+        self.assertNotIn(self.SYM, bot.portfolio.positions)
+        self.assertEqual(bot.dust_fail, {})
+        self.assertFalse(skip.exists(), "dong duoc -> KHONG duoc ghi vao danh sach bo")
+
+    def test_adopt_bo_qua_symbol_da_bo_quan_ly(self):
+        self._tmp_skip()
+        position_sync.add_dust_skip(self.SYM, why="notional 0.03 < 5")
+        ex = FakeExchange()
+        bot = TradingBot(cfg(dry_run=False, adopt_positions=True), exchange=ex)
+        rows = [{"symbol": self.SYM, "side": "long", "contracts": 1.0, "entryPrice": 0.026},
+                {"symbol": "SOL/USDT:USDT", "side": "long", "contracts": 2.0,
+                 "entryPrice": 100.0}]
+        rep = position_sync.adopt(bot, rows, atr_fn=lambda s: {"price": 100.0, "atr": 2.0})
+        self.assertIn(self.SYM, rep["ignored"], "symbol da bo quan ly phai duoc bo qua")
+        self.assertNotIn(self.SYM, rep["adopted"])
+        self.assertIn("SOL/USDT:USDT", rep["adopted"], "cac cap khac van adopt binh thuong")
+
+
+
 
 
 

@@ -66,6 +66,64 @@ def _sym_in_ignore(sym: str, ignore: set) -> bool:
     return bool(ignore) and (s in ignore or s.split("/")[0] in ignore)
 
 
+# ---- B-024: vi the "bui CHET" (khong the dong) — ghi lai de khoi lap lai moi vong ----
+
+DUST_SKIP_PATH = "logs/dust_skip.json"
+
+
+def dust_skip_path(path=None):
+    """Duong dan file danh sach vi the bui da BO QUAN LY (mac dinh `logs/dust_skip.json`)."""
+    import os
+    from pathlib import Path
+    return Path(str(path or os.environ.get("ATB_DUST_SKIP_PATH") or DUST_SKIP_PATH))
+
+
+def load_dust_skip(path=None) -> set:
+    """Tap symbol da bo quan ly vi khong the dong (qty qua nho so voi minNotional cua san).
+
+    Doc loi/thieu file -> set() rong (fail-open: khong chan gi).
+    """
+    import json
+    try:
+        data = json.loads(dust_skip_path(path).read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return set()
+    items = data.get("symbols") if isinstance(data, dict) else data
+    return {str(s).strip().upper() for s in (items or []) if str(s).strip()}
+
+
+def add_dust_skip(sym: str, why: str = "", path=None, now=None) -> dict:
+    """Ghi 1 symbol vao danh sach bo quan ly (nguyen tu). Tra bao cao."""
+    import json
+    import time
+    from pathlib import Path
+    p = dust_skip_path(path)
+    sym = str(sym or "").strip().upper()
+    if not sym:
+        return {"ok": False, "error": "thieu symbol"}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        data = {}
+    if not isinstance(data, dict):
+        data = {"symbols": list(data or [])}
+    syms = [str(s).upper() for s in (data.get("symbols") or [])]
+    why_map = dict(data.get("why") or {})
+    if sym not in syms:
+        syms.append(sym)
+    why_map[sym] = str(why)[:200]
+    data.update({"symbols": syms, "why": why_map,
+                 "updated": float(now() if callable(now) else (now or time.time()))})
+    try:
+        Path(p).parent.mkdir(parents=True, exist_ok=True)
+        tmp = Path(str(p) + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(p)
+        return {"ok": True, "path": str(p), "symbols": syms}
+    except OSError as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:160]}
+
+
 def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=()) -> dict:
     """Gan vi the san vao `bot.portfolio` + `bot.managed`; arm lai SL/TP khi can.
 
@@ -81,6 +139,13 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=()) 
     rep: dict = {"adopted": [], "armed": [], "unarmed": [], "unmanaged": [],
                  "skipped": [], "errors": [], "stale": [], "ignored": []}
     ignore = {str(s).strip().upper() for s in (skip_symbols or ()) if str(s).strip()}
+    # (20/10) B-024: vi the bui "CHET" (notional < 5 USDT ⇒ san khong cho dong bang bat ky
+    # lenh nao) da duoc bot BO QUAN LY ⇒ phai bo qua o day nua, neu khong moi vong adopt lai
+    # keo no vao so sach ⇒ lap lai nghi thuc "dong that bai" mai mai (rac journal + re-arm).
+    dust_skip = load_dust_skip()
+    if dust_skip:
+        ignore |= dust_skip
+        rep["dust_skip"] = sorted(dust_skip)
     for p in normalize(rows):
         sym, d, qty, entry = p["symbol"], p["direction"], p["qty"], p["entry"]
         if _sym_in_ignore(sym, ignore):

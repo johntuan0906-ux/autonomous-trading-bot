@@ -253,6 +253,47 @@
         "panel": "dedicated"
       },
       "detail": "Chay nen: cu 2 phut don terminal rac 1 lan"
+    },
+    {
+      "label": "Kiem tra: tai phat lop loi da va (2 instance)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/watch_regress.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "close": true
+      },
+      "detail": "2 tien trinh (supervisor + con) con song? '-2022' co tai xuat hien ke tu moc da va?"
+    },
+    {
+      "label": "Cline: theo doi tai phat + tien trinh (nen)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/watch_regress.py",
+        "--watch",
+        "--interval",
+        "300",
+        "--quiet"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
+      "detail": "Chay nen: moi 5 phut kiem tra 2 tien trinh + tai phat lop loi da va (chi in khi CO van de)"
     }
   ],
   "inputs": [

@@ -246,6 +246,16 @@ CLASSES = [
                   "test_p0_safety.py::TestBotSafety::test_close_vi_the_LAT_CHIEU_thi_bao_DONG_nhung_khong_crash",
                   "test_p0_safety.py::TestDonViTheMa::test_doc_qty_theo_DUNG_PHIA_cua_vi_the"],
     },
+    {
+        "code": "B-024", "kind": "im-lang", "seen": "20/10/2026",
+        "title": "Vi the bui KHONG THE dong: lap lai nghi thuc that bai MOI VONG, mai mai",
+        "symptom": "`ERROR DUST BANK/USDT:USDT qty=1: san TU CHOI dong (notional qua nho) -> GIU LAI vi the` moi ~4 phut (do that 20/10: vi the **1 hop dong = 0.026 USDT** trong khi san yeu cau toi thieu **5 USDT** ⇒ khong lenh MARKET/LIMIT nao dong duoc); moi vong con ghi 1 dong **CLOSE GIA** vao journal (lam sai WR/PF) + arm lai SL/TP (ton han ngach stop-order)",
+        "guard": "`bot._dust_give_up()`: dem so lan that bai (`dust_fail`, `DUST_MAX_FAILS=3`) ⇒ ghi symbol vao `logs/dust_skip.json` + bo khoi so sach + bao **1 lan**; `position_sync.adopt` bo qua symbol trong file do (khong keo lai moi vong/restart). Muon theo doi lai: xoa symbol khoi file",
+        "files": ["bot.py", "position_sync.py"],
+        "tests": ["test_p0_safety.py::TestViTheBuiChet::test_that_bai_lap_lai_thi_bo_quan_ly_va_ghi_file",
+                  "test_p0_safety.py::TestViTheBuiChet::test_dong_duoc_thi_khong_ghi_gi_va_xoa_bo_dem",
+                  "test_p0_safety.py::TestViTheBuiChet::test_adopt_bo_qua_symbol_da_bo_quan_ly"],
+    },
 ]
 
 

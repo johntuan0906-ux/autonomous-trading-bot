@@ -13,9 +13,20 @@ from exchange import BinanceFutures
 
 
 class FakeClient:
-    def __init__(self, dual: bool = False, raise_on_dual: bool = False):
+    def __init__(self, dual: bool = False, raise_on_dual: bool = False,
+                 close_error: str | None = None, rows: list | None = None,
+                 positions_error: str | None = None,
+                 ro_only_error: bool = False, after_rows: list | None = None,
+                 positions_error_after: int | None = None):
         self.dual = dual
         self.raise_on_dual = raise_on_dual
+        self.close_error = close_error          # nem loi khi dat lenh MARKET (= dong lenh)
+        self.ro_only_error = ro_only_error      # ... nhung CHI khi co `reduceOnly`
+        self.rows = rows if rows is not None else []
+        self.after_rows = after_rows            # vi the SAU khi dat duoc lenh dong
+        self.positions_error = positions_error
+        self.positions_error_after = positions_error_after   # loi tu lan doc thu N
+        self.positions_calls = 0
         self.calls: list = []
         self.options: dict = {}
 
@@ -26,7 +37,20 @@ class FakeClient:
 
     def create_market_order(self, symbol, side, qty, params=None):
         self.calls.append(("market", symbol, side, qty, params))
+        if self.close_error and (not self.ro_only_error or "reduceOnly" in (params or {})):
+            raise RuntimeError(self.close_error)
+        if self.after_rows is not None:
+            self.rows = list(self.after_rows)   # san cap nhat vi the sau khi khop
         return {"id": "x"}
+
+    def fetch_positions(self, symbols=None):
+        self.positions_calls += 1
+        if self.positions_error:
+            raise RuntimeError(self.positions_error)
+        if (self.positions_error_after is not None
+                and self.positions_calls >= self.positions_error_after):
+            raise RuntimeError("mang loi (lan doc thu %d)" % self.positions_calls)
+        return list(self.rows)
 
     def create_order(self, symbol, otype, side, qty, params=None):
         self.calls.append((otype, symbol, side, qty, params))
@@ -101,6 +125,147 @@ class TestHedgeMode(unittest.TestCase):
         ex._client = FakeClient(dual=True)
         out = ex.market_entry("SOL/USDT:USDT", "LONG", 1.0)
         self.assertTrue(out.get("dry_run"))
+
+
+class TestCloseDaDong2022(unittest.TestCase):
+    """(20/10) `-2022 ReduceOnly Order is rejected` — xu ly TUONG MINH.
+
+    DO THAT tren API (demo, 20/10) — 3 su that quyet dinh cach va:
+
+      1. `reduceOnly=True` MARKET bi tu choi **VO DIEU KIEN** (qty=1 tren vi the 31 hop
+         dong VAN bi tu choi) ⇒ 157 lan `-2022`/ngay, 13 lan `monitor ... failed` ⇒
+         **kill-switch TRIP oan** "7 consecutive API errors" 09:06, va `_flatten` dong
+         16 vi the ma khong dong duoc vi the nao (san van giu du 16).
+      2. `closePosition=true` cho MARKET cung khong dung duoc: `-4136`.
+      3. Lenh MARKET **khong reduceOnly** voi qty DUNG BANG vi the that ⇒ FILLED (31 -> 0).
+
+    Vi vay: gap `-2022` ⇒ doc lai vi the cua DUNG PHIA; qty=0 ⇒ `already_closed`; con vi the
+    ⇒ dong lai bang qty that (khong reduceOnly, KHONG vuot qua y dinh dong) + doc lai de
+    bat `left_over`/`flipped`. Khong doc duoc ⇒ **nem loi nhu cu** (khong doan).
+    """
+
+    SYM = "SOL/USDT:USDT"
+    ERR = 'binance {"code":-2022,"msg":"ReduceOnly Order is rejected."}'
+
+    def _ex(self, **kw) -> BinanceFutures:
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=False)
+        ex._client = FakeClient(**kw)
+        ex._public = ex._client
+        return ex
+
+    def _rows(self, qty: float, side: str = "long") -> list:
+        return [{"symbol": self.SYM, "side": side, "contracts": qty}]
+
+    def test_2022_va_vi_the_da_ve_0_thi_coi_nhu_da_dong(self):
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(0))
+        out = ex.close_position(self.SYM, "LONG", 1.0)
+        self.assertTrue(out.get("already_closed"), "qty=0 ⇒ coi nhu da dong")
+        self.assertEqual(out.get("left_qty"), 0.0)
+        self.assertIn("-2022", out.get("reason", ""))
+        self.assertEqual(len(ex._client.calls), 1, "qty=0 thi khong gui lenh nao nua")
+
+    def test_2022_con_vi_the_thi_dong_lai_bang_qty_that_khong_reduceOnly(self):
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(31.0),
+                      after_rows=[])
+        out = ex.close_position(self.SYM, "LONG", 31.0)
+        self.assertTrue(out.get("closed_without_reduce_only"))
+        self.assertEqual(out.get("qty"), 31.0)
+        self.assertEqual(out.get("left_qty"), 0.0)
+        last = ex._client.calls[-1]
+        self.assertEqual(last[0], "market")
+        self.assertNotIn("reduceOnly", last[4], "lan 2 KHONG duoc dung reduceOnly")
+        self.assertEqual(last[3], 31.0, "qty phai BANG vi the that tren san")
+
+    def test_dong_lai_KHONG_vuot_qua_y_dinh_dong(self):
+        """Chot 50% (PARTIAL) khong duoc bien thanh dong HET vi the."""
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(10.0),
+                      after_rows=self._rows(5.0))
+        out = ex.close_position(self.SYM, "LONG", 5.0)
+        self.assertEqual(out.get("qty"), 5.0, "yeu cau 5 -> gui 5 (khong phai 10)")
+        self.assertEqual(out.get("left_qty"), 5.0)
+
+    def test_dong_lai_KHONG_vuot_qua_vi_the_that(self):
+        """So sach lech (noi 10, san chi co 3) -> chi duoc dong 3."""
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(3.0),
+                      after_rows=[])
+        out = ex.close_position(self.SYM, "LONG", 10.0)
+        self.assertEqual(out.get("qty"), 3.0)
+
+    def test_con_du_thi_bao_left_over(self):
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(10.0),
+                      after_rows=self._rows(2.0))
+        out = ex.close_position(self.SYM, "LONG", 10.0)
+        self.assertEqual(out.get("left_over"), 2.0, "phai bao con du de vong sau xu ly")
+
+    def test_phat_hien_vi_the_LAT_CHIEU(self):
+        """SL khop DUNG LUC gui lenh ⇒ lenh mo nguoc chieu: phai bao `flipped`."""
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(10.0),
+                      after_rows=self._rows(10.0, side="short"))
+        out = ex.close_position(self.SYM, "LONG", 10.0)
+        self.assertEqual(out.get("flipped"), "SHORT")
+        self.assertEqual(out.get("flipped_qty"), 10.0)
+
+    def test_doc_lai_loi_thi_ghi_verify_failed_chu_khong_crash(self):
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(10.0),
+                      positions_error_after=2)          # lan doc thu 2 (sau khi dong) loi
+        out = ex.close_position(self.SYM, "LONG", 10.0)
+        self.assertTrue(out.get("closed_without_reduce_only"))
+        self.assertTrue(out.get("verify_failed"), "khong xac minh duoc thi phai noi ro")
+
+    def test_memo_chi_thu_reduceOnly_MOT_lan(self):
+        """Da biet san tu choi ⇒ lan dong sau khong ton 1 request chac chan that bai."""
+        ex = self._ex(ro_only_error=True, close_error=self.ERR, rows=self._rows(5.0),
+                      after_rows=[])
+        ex.close_position(self.SYM, "LONG", 5.0)
+        n1 = len(ex._client.calls)
+        self.assertEqual(n1, 2, "lan dau: 1 lenh that bai + 1 lenh thanh cong")
+        ex._client.rows = self._rows(5.0)
+        ex.close_position(self.SYM, "LONG", 5.0)
+        self.assertEqual(len(ex._client.calls) - n1, 1,
+                         "lan sau: di thang duong qty chinh xac (1 lenh)")
+        self.assertNotIn("reduceOnly", ex._client.calls[-1][4])
+
+    def test_loi_khac_thi_van_nem_loi_va_khong_doc_vi_the(self):
+        ex = self._ex(close_error='binance {"code":-2019,"msg":"Margin is insufficient."}')
+        with self.assertRaises(RuntimeError):
+            ex.close_position(self.SYM, "LONG", 1.0)
+        self.assertEqual(ex._client.positions_calls, 0,
+                         "chi -2022 moi phai doc lai vi the")
+
+    def test_khong_doc_duoc_vi_the_thi_van_nem_loi(self):
+        ex = self._ex(close_error=self.ERR, positions_error="mang loi")
+        with self.assertRaises(RuntimeError):
+            ex.close_position(self.SYM, "LONG", 1.0)
+
+    def test_hedge_chi_tin_dong_cua_DUNG_PHIA(self):
+        """HEDGE: 2 dong LONG/SHORT cung symbol ⇒ phai doc dung phia cua lenh dong.
+
+        Doc nham phia = tuong "da dong" trong khi vi the VAN nam tren san ⇒ vi the
+        mo coi khong SL/TP.
+        """
+        ex = self._ex(dual=True, close_error=self.ERR, rows=self._rows(0.7, side="short"))
+        self.assertEqual(ex.position_qty(self.SYM, direction="LONG"), 0.0)
+        self.assertTrue(ex.close_position(self.SYM, "LONG", 1.0).get("already_closed"),
+                        "phia LONG phang (chi con SHORT cua nguoi dung) ⇒ da dong")
+        # HEDGE: phia TA con vi the ⇒ dong lai bang qty that, van giu positionSide
+        ex2 = self._ex(dual=True, rows=self._rows(0.7), after_rows=[])
+        ex2.close_position(self.SYM, "LONG", 0.7)
+        call = ex2._client.calls[-1]
+        self.assertEqual(call[3], 0.7)
+        self.assertEqual(call[4].get("positionSide"), "LONG")
+        self.assertNotIn("reduceOnly", call[4])
+
+    def test_one_way_lech_phia_thi_khong_ket_luan(self):
+        """ONE-WAY chi co 1 vi the cho 1 cap ⇒ doc ra LECH phia = bat thuong ⇒ None."""
+        ex = self._ex(rows=[{"symbol": self.SYM, "side": "short", "contracts": 0.7}])
+        self.assertIsNone(ex.position_qty(self.SYM, direction="LONG"),
+                          "khong duoc ket luan 'da dong' khi du lieu lech phia")
+
+    def test_position_qty_khong_chi_dinh_phia_giu_hanh_vi_cu(self):
+        ex = self._ex(rows=[{"symbol": self.SYM, "side": "short", "contracts": 0.7}])
+        self.assertEqual(ex.position_qty(self.SYM), 0.7)
+        self.assertEqual(self._ex(rows=[]).position_qty(self.SYM), 0.0,
+                         "khong co dong nao ⇒ phang")
 
 
 class TestTuneSession(unittest.TestCase):

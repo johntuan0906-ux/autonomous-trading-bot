@@ -32,6 +32,34 @@ def _cid(tag: str) -> str:
     return ("glow" + t + str(int(time.time() * 1000)) + secrets.token_hex(3))[:36]
 
 
+def is_reduce_only_rejected(err) -> bool:
+    """Loi `-2022 ReduceOnly Order is rejected` (= vi the da dong TRUOC do)?
+
+    Vi sao can (19/10, tai dien 20/10): khi SL/TP dat TREN SAN khop truoc, vi the ve 0
+    ngay tai thoi diem bot gui lenh dong ⇒ san tu choi lenh giam vi the bang `-2022`.
+    Day KHONG phai loi he thong ma la "dua nhau ve dich": phai xu ly tuong minh.
+    """
+    s = str(err or "")
+    return "-2022" in s or "ReduceOnly Order is rejected" in s
+
+
+def _row_side(p) -> str | None:
+    """`LONG`/`SHORT` cua 1 dong vi the ccxt (None = khong doc duoc phia)."""
+    d = p or {}
+    s = str(d.get("side") or "").upper()
+    if s not in ("LONG", "SHORT"):
+        s = str((d.get("info") or {}).get("positionSide") or "").upper()
+    return s if s in ("LONG", "SHORT") else None
+
+
+def _row_qty(p) -> float | None:
+    """So hop dong cua 1 dong vi the (None = du lieu hong)."""
+    try:
+        return abs(float((p or {}).get("contracts") or 0))
+    except (TypeError, ValueError):
+        return None
+
+
 def to_ccxt_symbol(raw: str) -> str:
     """`AEROUSDT` -> `AERO/USDT:USDT` (giu nguyen neu da dung dang ccxt)."""
     s = str(raw or "")
@@ -72,6 +100,10 @@ class BinanceFutures:
         self._public = None
         self.last_error: str = ""   # loi cuoi cung khi doc/ghi (de chan doan -2015...)
         self._hedge: bool | None = None   # None = chua do; xem hedge_mode()
+        # (20/10) San co the TU CHOI `reduceOnly` cho lenh MARKET (`-2022`; do that tren
+        # demo: qty=1 tren vi the 31 hop dong van bi tu choi). Ghi nho trong phien de lan
+        # dong sau di thang duong "qty chinh xac" (xem `close_position`/`_close_exact`).
+        self._ro_market_rejected: bool = False
         try:
             import ccxt  # type: ignore
             self._public = ccxt.binance({"options": {"defaultType": "future"},
@@ -336,16 +368,93 @@ class BinanceFutures:
 
     def close_position(self, symbol: str, direction: str, qty: float,
                        cid: str | None = None) -> dict:
+        """Dong vi the bang lenh MARKET.
+
+        (20/10) `-2022 ReduceOnly Order is rejected` — DO THAT tren API THAT:
+
+          1. `reduceOnly=True` MARKET bi tu choi **VO DIEU KIEN** (ca khi qty=1 tren vi the
+             31 hop dong) ⇒ day la ly do that cua "hang chuc lan -2022/ngay" (20/10:
+             **157 lan**, 13 lan `monitor ... failed` ⇒ **kill-switch TRIP oan** "7
+             consecutive API errors" luc 09:06, roi `_flatten` dong 16 vi the ma KHONG
+             dong duoc vi the nao ⇒ so sach sach trong khi san van giu 16 vi the).
+          2. `closePosition=true` cung KHONG dung duoc cho MARKET: `-4136 Target strategy
+             invalid for orderType MARKET,closePosition true`.
+          3. Cach DUY NHAT dong duoc: lenh MARKET **khong `reduceOnly`** voi qty DUNG BANG
+             vi the that (do lai tu san) — da kiem chung: FILLED, vi the 31 -> 0.
+          4. Neu vi the da ve 0 (SL/TP tren san khop TRUOC khi bot kip dong) ⇒ `-2022`
+             va day **khong phai loi**: tra `already_closed` (coi nhu DA DONG).
+
+        Vi vay: thu `reduceOnly` truoc (an toan nhat, dung duoc o moi truong cho phep);
+        gap `-2022` ⇒ chuyen sang `_close_exact()` (qty lay TU SAN, khong reduceOnly, va
+        DOC LAI sau khi dong de bat truong hop vi the lat chieu).
+        """
         side = "sell" if direction == "LONG" else "buy"
         if self._client is None or self.dry_run:
             return {"symbol": symbol, "side": side, "qty": qty, "dry_run": True}
-        params: dict = {"newClientOrderId": cid or _cid("close")}
         ps = self._pos_side(direction)
+        params: dict = {"newClientOrderId": cid or _cid("close")}
         if ps:
             params.update(ps)          # HEDGE: positionSide thay cho reduceOnly
-        else:
+        elif not self._ro_market_rejected:
             params["reduceOnly"] = True
-        return self._client.create_market_order(symbol, side, qty, params=params)
+        else:
+            # Da biet san tu choi `reduceOnly` cho MARKET (memo trong phien) -> di thang
+            # duong "qty chinh xac", khong ton 1 request chac chan that bai moi lan dong.
+            return self._close_exact(symbol, direction, side, qty, ps, None)
+        try:
+            return self._client.create_market_order(symbol, side, qty, params=params)
+        except Exception as e:  # noqa: BLE001
+            if not is_reduce_only_rejected(e):
+                raise
+            self._ro_market_rejected = True
+            return self._close_exact(symbol, direction, side, qty, ps, e)
+
+    def _close_exact(self, symbol: str, direction: str, side: str, qty: float,
+                     ps: dict, err) -> dict:
+        """Dong vi the khi `reduceOnly` khong dung duoc (hoac vua bi tu choi `-2022`).
+
+        AN TOAN (vi sao khong the "lat chieu"): qty lay **tu san** (`position_qty` theo
+        DUNG phia) va `q2 = min(quantize(qty_san), qty_yeu_cau)` — lenh chi co the GIAM
+        vi the, khong bao gio lon hon vi the dang co. Sau khi gui, DOC LAI:
+        `left_qty` > 0 ⇒ bao con du (so sach lech); phia KIA co vi the ⇒ `flipped`
+        (SL dong dung luc gui ⇒ lenh mo nguoc chieu) — vong `adopt` ke tiep se nhan va
+        arm bao ve, KHONG tu dong ban tiep (tranh "ping-pong" lenh).
+        """
+        left = self.position_qty(symbol, direction=direction)
+        if left is None:
+            raise err if err is not None else RuntimeError(
+                "khong doc duoc vi the %s -> khong doan de dong" % symbol)
+        if left <= 0:
+            return {"symbol": symbol, "side": side, "qty": qty,
+                    "already_closed": True, "left_qty": left,
+                    "reason": str(err)[:200] if err is not None else ""}
+        want = min(float(left), float(qty))
+        q2 = self.quantize_qty(symbol, want) or want
+        if q2 > want:
+            q2 = want                  # khong bao gio gui lon hon y dinh/vi the
+        if q2 <= 0:
+            raise err if err is not None else RuntimeError("qty dong <= 0 cho %s" % symbol)
+        params = {"newClientOrderId": _cid("clr")}
+        params.update(ps)
+        out = self._client.create_market_order(symbol, side, q2, params=params)
+        res = dict(out) if isinstance(out, dict) else {"order": out}
+        after = self.position_qty(symbol, direction=direction)
+        res.update({"qty": q2, "closed_without_reduce_only": True, "left_qty": after,
+                    "reduce_only_error": str(err)[:200] if err is not None else ""})
+        if after is None:
+            res["verify_failed"] = True
+        elif after > 0:
+            res["left_over"] = after
+        # Vi the LAT CHIEU chi co the xay ra o ONE-WAY (HEDGE: lenh co `positionSide`
+        # chi tac dong len DUNG phia, khong the lat). Khi do phia KIA co vi the ⇒ lenh
+        # cua ta da mo nguoc chieu (SL khop dung luc gui) ⇒ bao DONG.
+        if not self.hedge_mode() and (after is None or after <= 0):
+            other = "SHORT" if str(direction).upper() == "LONG" else "LONG"
+            opp = self.position_qty(symbol, direction=other)
+            if opp:
+                res["flipped"] = other
+                res["flipped_qty"] = opp
+        return res
 
     # ---- P0-1/P0-5: doc trang thai THAT tren san -------------------------------
 
@@ -431,15 +540,43 @@ class BinanceFutures:
         except Exception:
             return []
 
-    def position_qty(self, symbol: str) -> float | None:
-        """So hop dong dang mo THUC TE. None = khong doc duoc (khac 0.0 = da dong)."""
+    def position_qty(self, symbol: str, direction: str | None = None) -> float | None:
+        """So hop dong dang mo THUC TE. None = khong doc duoc (khac 0.0 = da dong).
+
+        `direction` (20/10): tai khoan HEDGE co **2 dong LONG/SHORT cho CUNG symbol** —
+        khong chi dinh phia thi "dong dau tien khop symbol" co the la **phia KIA**.
+        Ket luan sai phia ("vi the da dong") => bot xoa vi the khoi so sach trong khi
+        san van giu ⇒ **vi the mo coi khong SL/TP**. Vi vay moi cho can ket luan
+        "da dong hay chua" PHAI truyen `direction`.
+
+        Tra None khi: khong doc duoc (mang loi / du lieu hong) HOAC khong the ket luan
+        phia (ONE-WAY ma dong tra ve LECH phia). Tra 0.0 khi san xac nhan khong con
+        vi the phia do.
+        """
         if self._client is None or self.dry_run:
             return None
+        want = str(direction).upper() if direction else None
         try:
-            for p in self._client.fetch_positions([symbol]):
-                if str(p.get("symbol")) == symbol:
-                    return abs(float(p.get("contracts") or 0))
-        except Exception:
+            rows = [p for p in (self._client.fetch_positions([symbol]) or [])
+                    if str((p or {}).get("symbol")) == symbol]
+        except Exception:  # noqa: BLE001
+            return None
+        hedge = self.hedge_mode()
+        unknown = False
+        ambiguous = False
+        for p in rows:
+            side = _row_side(p)
+            if side is None:
+                unknown = True
+                continue
+            if want is None or side == want:
+                return _row_qty(p)
+            if not hedge:
+                # ONE-WAY: chi co 1 vi the cho 1 cap -> dong lech phia la bat thuong.
+                ambiguous = True
+        if want is None:
+            return None if unknown else 0.0
+        if ambiguous or unknown:
             return None
         return 0.0
 

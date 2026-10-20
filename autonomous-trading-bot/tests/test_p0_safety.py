@@ -69,7 +69,7 @@ class FakeExchange:
     """Exchange gia: ghi lai moi loi goi de assert DUNG THU TU / DUNG THAM SO."""
 
     def __init__(self, balance=5000.0, rows=None, prot=None, landing=None,
-                 entry_raises=False, arm_boom=False):
+                 entry_raises=False, arm_boom=False, close_already=False, close_extra=None):
         self.dry_run = False
         self.balance = balance
         self.rows = rows or []
@@ -77,6 +77,8 @@ class FakeExchange:
         self.landing = landing          # position_qty() tra ve (None = khong doc duoc)
         self.entry_raises = entry_raises
         self.arm_boom = arm_boom        # stop_tp_orders nem loi (vd demo -4045)
+        self.close_already = close_already   # close_position tra `already_closed` (-2022)
+        self.close_extra = close_extra or {}  # them truong vao ket qua close_position
         self.calls: list = []
 
     def _log(self, name, **kw):
@@ -110,7 +112,13 @@ class FakeExchange:
 
     def close_position(self, s, d, q, cid=None):
         self._log("close_position", qty=q)
-        return {"id": "close-1"}
+        if self.close_already:
+            # `-2022`: SL tren san da khop truoc ⇒ vi the ve 0 (xem exchange.close_position)
+            return {"symbol": s, "qty": q, "already_closed": True, "left_qty": 0.0,
+                    "reason": 'binance {"code":-2022,"msg":"ReduceOnly Order is rejected."}'}
+        out = {"id": "close-1"}
+        out.update(self.close_extra)
+        return out
 
     def cancel_symbol_orders(self, s):
         self._log("cancel_symbol_orders")
@@ -120,8 +128,8 @@ class FakeExchange:
         self._log("fetch_positions")
         return self.rows
 
-    def position_qty(self, s):
-        self._log("position_qty")
+    def position_qty(self, s, direction=None):
+        self._log("position_qty", direction=direction)
         return self.landing
 
     def fetch_protection(self, s):
@@ -1426,6 +1434,77 @@ class TestBotSafety(unittest.TestCase):
                          "dong lenh phai huy lenh treo con lai")
         self.assertEqual(bot.portfolio.positions, {})
 
+    # ---- (20/10) `-2022 ReduceOnly Order is rejected` = vi the DA DONG TRUOC do ----
+
+    def test_close_2022_coi_nhu_da_dong_va_van_don_lenh_treo(self):
+        """SL/TP dat TREN SAN khop truoc khi bot kip gui lenh dong ⇒ `-2022`.
+
+        Truoc day: WARNING `close X failed: ... -2022` + vi the con lai tren so sach
+        them 1 vong (doi `reconcile` vong sau don). Nay: coi nhu DA DONG, khong canh bao.
+        """
+        ex = FakeExchange(close_already=True)
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 1.0,
+                                                     98.0, 110.0)
+        bot._close(self.SYM, "test")
+        self.assertEqual(len(ex.named("close_position")), 1)
+        self.assertEqual(len(ex.named("cancel_symbol_orders")), 1,
+                         "vi the da dong nhung van phai don lenh treo con lai")
+        self.assertEqual(bot.portfolio.positions, {})
+
+    def test_partial_gap_2022_thi_ghi_CLOSE_nhu_SL_va_khong_trip_kill_switch(self):
+        """Nhanh PARTIAL gap `-2022`: phai ghi nhan nhu 1 lan dong THAT (SL).
+
+        Truoc day loi nay roi vao `except` cua `_monitor` ⇒ `monitor ... failed` +
+        `kill.register_error()` (**trip kill-switch oan** sau vai lan) + vi the van nam
+        trong so sach ⇒ journal thieu dong CLOSE (WR/PF sai).
+        """
+        from unittest import mock
+        ex = FakeExchange(close_already=True)
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        recs: list = []
+        with mock.patch.object(botmod, "log_trade", lambda **kw: recs.append(kw)):
+            closed = bot._monitor(candles_provider=lambda s: pd.DataFrame({"close": [110.0]}))
+        self.assertEqual(closed.get(self.SYM), "SL",
+                         "vi the da dong tren san ⇒ coi nhu dong that (SL)")
+        self.assertNotIn(self.SYM, bot.portfolio.positions)
+        self.assertNotIn(self.SYM, bot.managed)
+        self.assertEqual([r["event"] for r in recs], ["CLOSE"], "phai ghi DUNG 1 dong CLOSE")
+        self.assertEqual(recs[0]["reason"], "SL")
+        self.assertEqual(bot.last_exits[self.SYM]["reason"], "SL")
+        self.assertFalse(bot.kill.tripped,
+                         "da xu ly tuong minh ⇒ KHONG duoc tinh la loi API")
+
+    def test_close_dong_lai_bang_qty_that_thi_khong_bao_loi(self):
+        """San tu choi `reduceOnly` ⇒ `exchange` dong lai bang qty THAT cua san.
+
+        Do that 20/10: `reduceOnly=True` MARKET bi tu choi vo dieu kien ⇒ bot phai coi
+        day la duong BINH THUONG (khong WARNING, khong `register_error` ⇒ khong trip
+        kill-switch oan nhu 09:06).
+        """
+        ex = FakeExchange(close_extra={"closed_without_reduce_only": True, "qty": 31.0,
+                                       "left_qty": 0.0})
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 31.0,
+                                                     98.0, 110.0)
+        bot._close(self.SYM, "test")
+        self.assertEqual(bot.portfolio.positions, {})
+        self.assertEqual(len(ex.named("cancel_symbol_orders")), 1)
+
+    def test_close_vi_the_LAT_CHIEU_thi_bao_DONG_nhung_khong_crash(self):
+        """SL khop dung luc gui lenh ⇒ lenh mo nguoc chieu: bao DONG, khong nem loi."""
+        ex = FakeExchange(close_extra={"flipped": "SHORT", "flipped_qty": 5.0,
+                                       "left_qty": 0.0})
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 5.0,
+                                                     98.0, 110.0)
+        bot._close(self.SYM, "test")
+        self.assertEqual(bot.portfolio.positions, {})
+        self.assertEqual(len(ex.named("cancel_symbol_orders")), 1)
+
     def test_equity_tach_khoi_balance_tran_size(self):
         """BALANCE_USDT=1000 la tran size, KHONG phai tai san -> DD phai dung equity."""
         ex = FakeExchange(balance=4974.0)
@@ -1475,8 +1554,8 @@ class _ExMapQty(FakeExchange):
         super().__init__(**kw)
         self.qmap = qmap
 
-    def position_qty(self, s):
-        self._log("position_qty")
+    def position_qty(self, s, direction=None):
+        self._log("position_qty", direction=direction)
         return self.qmap.get(s)
 
 
@@ -1512,6 +1591,21 @@ class TestDonViTheMa(unittest.TestCase):
         self.assertIn("SOL/USDT:USDT", bot.portfolio.positions,
                       "khong doc duoc trang thai san -> KHONG duoc xoa (fail-safe)")
         self.assertNotIn("SOL/USDT:USDT", rep["stale"])
+
+    def test_doc_qty_theo_DUNG_PHIA_cua_vi_the(self):
+        """(20/10) HEDGE: 2 dong LONG/SHORT cho CUNG symbol ⇒ phai doc dung phia.
+
+        Doc nham phia = tuong "da dong" trong khi vi the VAN nam tren san ⇒ xoa khoi
+        so sach ⇒ **vi the mo coi khong SL/TP**.
+        """
+        ex = _ExMapQty({"SOL/USDT:USDT": 0.0})
+        bot = self._bot(ex)
+        bot.portfolio.positions["SOL/USDT:USDT"] = Position(
+            "SOL/USDT:USDT", "SHORT", 100.0, 1.0, 102.0, 90.0)
+        position_sync.adopt(bot, [], atr_fn=lambda s: {"price": 100.0, "atr": 2.0})
+        dirs = [c[1].get("direction") for c in ex.named("position_qty")]
+        self.assertIn("SHORT", dirs,
+                      "phai hoi san theo dung phia SHORT cua vi the trong so sach")
 
 class TestHeartbeatKhongGhiStateThat(unittest.TestCase):
     """(19/10) Lop loi B-021: TIEN TRINH TEST khong duoc ghi `logs/heartbeat.json` THAT.

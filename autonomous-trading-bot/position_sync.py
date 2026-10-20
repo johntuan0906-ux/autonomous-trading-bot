@@ -169,8 +169,12 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=()) 
     for sym in list(getattr(getattr(bot, "portfolio", None), "positions", {}) or {}):
         if sym in keep:
             continue
+        _pos = (getattr(bot, "portfolio", None).positions or {}).get(sym)
         try:
-            q = ex.position_qty(sym) if hasattr(ex, "position_qty") else None
+            # (20/10) Doc DUNG PHIA cua vi the dang giu trong so sach: HEDGE co 2 dong
+            # LONG/SHORT cho CUNG symbol, doc nham phia ⇒ xoa vi the dang MO tren san.
+            q = (ex.position_qty(sym, direction=getattr(_pos, "direction", None))
+                 if hasattr(ex, "position_qty") else None)
         except Exception:  # noqa: BLE001
             q = None
         if q is not None and abs(float(q)) == 0:

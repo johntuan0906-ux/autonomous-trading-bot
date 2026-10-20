@@ -74,8 +74,23 @@ class TradingBot:
 
                 if act == "PARTIAL" and mg["close_qty"] > 0:
                     q = self.exchange.quantize_qty(sym, mg["close_qty"])
+                    res_c = None
                     if q > 0:
-                        self.exchange.close_position(sym, pos.direction, q)
+                        res_c = self.exchange.close_position(sym, pos.direction, q)
+                    if isinstance(res_c, dict) and res_c.get("already_closed"):
+                        # (20/10) `-2022`: san bao vi the DA DONG (SL tren san khop TRUOC
+                        # khi bot kip chot 50%) ⇒ KHONG phai loi: ghi nhan 1 lan dong THAT
+                        # (SL) roi thoat. Truoc day nhanh nay roi vao `except` duoi ⇒
+                        # `monitor ... failed` + `kill.register_error()` (**trip kill-switch
+                        # oan** sau vai lan) + vi the con nam trong so sach them 1 vong.
+                        log.warning("PARTIAL %s: san tra -2022 (vi the da dong truoc, "
+                                    "qty con lai=%s) -> ghi CLOSE nhu SL",
+                                    sym, res_c.get("left_qty"))
+                        err = self._record_exit(sym, mt, price, "SL")
+                        if err:
+                            return err
+                        closed[sym] = "SL"
+                        continue
                     pos.qty = mt.qty
                     pos.sl = float(mg["new_sl"] or pos.sl)
                     # P0-5: qty da doi -> phai arm lai SL/TP theo qty CON LAI
@@ -109,26 +124,11 @@ class TradingBot:
 
                 if act in ("EXIT_SL", "EXIT_TP"):
                     reason = "TP" if act == "EXIT_TP" else "SL"
-                    res = trade_result(mt, reason, price)
-                    # Ghi lai ket qua (R thuc) cho journal + thong ke strategy + kill-switch
-                    self.last_exits[sym] = {"reason": reason, "r": res["r"],
-                                            "won": res["won"], "pnl": res["pnl"],
-                                            "partial": res.get("partial_done"),
-                                            "mfe_r": res.get("mfe_r"),
-                                            "direction": mt.direction,
-                                            "ts": time.time()}
-                    if self.kill.register_close(bool(res["won"]), self.balance,
-                                                pnl=res.get("pnl")):
-                        self._flatten("kill-switch: thua lien tiep")
-                        return {"_error": self.kill.reason}
-                    self._close(sym, f"{reason} @ {price} pnl={res['pnl']} R={res['r']}")
-                    # Journal CLOSE (muc 17): ghi R/won/pnl -> monitor_report tinh WR/PF
-                    log_trade(event="CLOSE", pair=sym, direction=mt.direction,
-                              timeframe=self.cfg.timeframe, entry=mt.entry,
-                              qty=mt.init_qty, exit_price=price, r=res["r"],
-                              won=bool(res["won"]), pnl=res["pnl"], reason=reason,
-                              partial=res.get("partial_done"), mfe_r=res.get("mfe_r"))
-                    closed[sym] = "TP" if res["won"] else reason
+                    err = self._record_exit(sym, mt, price, reason)
+                    if err:
+                        return err
+                    closed[sym] = ("TP" if self.last_exits.get(sym, {}).get("won")
+                                   else reason)
                     continue
 
                 s = self.sentiment.get(self.cfg.cryptopanic_token).score
@@ -149,6 +149,37 @@ class TradingBot:
                     self._flatten("api errors")
                     return {"_error": "api errors"}
         return closed
+
+    def _record_exit(self, sym: str, mt: ManagedTrade, price: float,
+                     reason: str) -> dict | None:
+        """Ghi nhan MOT lan dong vi the THAT: last_exits + kill-switch + dong tren san
+        + journal CLOSE (muc 17: R/won/pnl -> monitor_report tinh WR/PF).
+
+        Tra `{"_error": ...}` neu kill-switch trip ngay tai lenh nay, nguoc lai None.
+
+        (20/10) Tach ra de dung CHUNG cho MOI duong dong: EXIT_SL/EXIT_TP va truong hop
+        `-2022` (san bao vi the da dong TRUOC khi bot kip chot 50%) — truoc day 2 duong
+        nay ghi nhan khac nhau nen de lech journal.
+        """
+        res = trade_result(mt, reason, price)
+        # Ghi lai ket qua (R thuc) cho journal + thong ke strategy + kill-switch
+        self.last_exits[sym] = {"reason": reason, "r": res["r"],
+                                "won": res["won"], "pnl": res["pnl"],
+                                "partial": res.get("partial_done"),
+                                "mfe_r": res.get("mfe_r"),
+                                "direction": mt.direction,
+                                "ts": time.time()}
+        if self.kill.register_close(bool(res["won"]), self.balance,
+                                    pnl=res.get("pnl")):
+            self._flatten("kill-switch: thua lien tiep")
+            return {"_error": self.kill.reason}
+        self._close(sym, f"{reason} @ {price} pnl={res['pnl']} R={res['r']}")
+        log_trade(event="CLOSE", pair=sym, direction=mt.direction,
+                  timeframe=self.cfg.timeframe, entry=mt.entry,
+                  qty=mt.init_qty, exit_price=price, r=res["r"],
+                  won=bool(res["won"]), pnl=res["pnl"], reason=reason,
+                  partial=res.get("partial_done"), mfe_r=res.get("mfe_r"))
+        return None
 
     def _managed_for(self, sym: str, pos: Position) -> ManagedTrade:
         """Lay (hoac tao) trang thai quan ly lenh cho 1 vi the dang mo.
@@ -201,7 +232,9 @@ class TradingBot:
         self._close(sym, f"DUST qty={mt.qty:g} < minNotional @ {price}")
         # Xac nhan lai voi SAN: dong duoc chua? (None = khong doc duoc -> tin bot)
         try:
-            left = (self.exchange.position_qty(sym)
+            # (20/10) Doc DUNG PHIA: HEDGE co 2 dong LONG/SHORT cho CUNG symbol —
+            # doc nham phia ⇒ tuong "da dong" trong khi vi the VAN nam tren san.
+            left = (self.exchange.position_qty(sym, direction=pos.direction)
                     if hasattr(self.exchange, "position_qty") else None)
         except Exception:  # noqa: BLE001
             left = None
@@ -327,7 +360,27 @@ class TradingBot:
         self.managed.pop(symbol, None)  # ket thuc chu ky quan ly partial/BE/trail
         if pos:
             try:
-                self.exchange.close_position(symbol, pos.direction, pos.qty)
+                _r = self.exchange.close_position(symbol, pos.direction, pos.qty)
+                if isinstance(_r, dict) and _r.get("already_closed"):
+                    # (20/10) `-2022`: SL/TP dat TREN SAN da khop truoc khi bot kip gui
+                    # lenh dong ⇒ vi the ve 0. Khong con WARNING + khong doi vong sau
+                    # `reconcile` don nua (xem `exchange.close_position`).
+                    log.info("CLOSE %s: san bao vi the DA DONG truoc (-2022, qty con lai=%s)"
+                             " -> coi nhu da dong", symbol, _r.get("left_qty"))
+                elif isinstance(_r, dict) and _r.get("closed_without_reduce_only"):
+                    # San tu choi `reduceOnly` ⇒ dong bang qty THAT lay tu san (20/10).
+                    log.info("CLOSE %s: san tu choi `reduceOnly` (-2022) -> da dong bang "
+                             "qty THAT cua san (%s)", symbol, _r.get("qty"))
+                if isinstance(_r, dict) and _r.get("flipped"):
+                    # SL khop DUNG LUC gui lenh ⇒ lenh mo nguoc chieu: phai bao DONG
+                    # (vong `adopt` ke tiep se nhan vi the nay va arm bao ve).
+                    log.error("CLOSE %s: VI THE LAT CHIEU sau khi dong (con %s %s tren san)"
+                              " -> vong sau adopt se arm bao ve; kiem tra tay neu lap lai",
+                              symbol, _r.get("flipped_qty"), _r.get("flipped"))
+                if isinstance(_r, dict) and _r.get("left_over"):
+                    log.warning("CLOSE %s: san van con %s hop dong sau khi dong (so sach "
+                                "lech) -> vong sau adopt/reconcile xu ly", symbol,
+                                _r.get("left_over"))
             except Exception as e:  # noqa: BLE001
                 log.warning("close %s failed: %s", symbol, e)
             # P0-5: don sach lenh treo con lai — neu khong, STOP/TP cu se kich hoat

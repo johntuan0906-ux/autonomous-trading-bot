@@ -31,6 +31,13 @@ COUNT_PATTERNS = ("FETCH_TIMEOUT", "DATA_FAIL", "Connection pool is full",
                   "ORDER_FAILED", "OPENED", "REJECTED",
                   "qua han",        # canh bao fetch qua ROUND_TIMEOUT (tieng Viet)
                   "SKIP_DATA",      # du lieu xau bi bo qua (khong phai loi nang)
+                  # (20/10) `-2022 ReduceOnly Order is rejected`: san TU CHOI `reduceOnly`
+                  # cho lenh MARKET (do that: qty=1 tren vi the 31 hop dong van bi tu choi).
+                  # Da xu ly tuong minh trong `exchange.close_position` (doc lai vi the ⇒
+                  # `already_closed`, hoac dong lai bang qty THAT khong reduceOnly) nen no
+                  # KHONG con duoc ghi ra log loi. Neu con xuat hien ⇒ **ca duong du phong
+                  # cung that bai** (vi the co the dang MO COI) ⇒ phai nguoi xem.
+                  "-2022",
                   )
 STATUS_RE = re.compile(r"'status': '([A-Z_]+)'")
 

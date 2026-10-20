@@ -233,6 +233,19 @@ CLASSES = [
                   "test_turbo_gate.py::TestMacDinhTheoCheDo::test_live_mac_dinh_ton_trong",
                   "test_turbo_gate.py::TestMacDinhTheoCheDo::test_demo_mac_dinh_bo_qua"],
     },
+    {
+        "code": "B-023", "kind": "rui-ro", "seen": "20/10/2026",
+        "title": "`-2022 ReduceOnly Order is rejected`: san tu choi `reduceOnly` cho lenh MARKET",
+        "symptom": "`close X failed: ... -2022` + `monitor X failed: ... -2022` hang chuc lan/ngay (**157 lan** ngay 20/10) ⇒ `kill.register_error()` ⇒ **kill-switch TRIP OAN** ('7 consecutive API errors', 09:06 20/10); `_flatten` sau do dong 16 vi the ma **KHONG dong duoc vi the nao** ⇒ so sach SACH trong khi san van giu du 16 vi the (vi the mo coi — chi con bao ve da arm truoc do)",
+        "guard": "`exchange.close_position`: gap `-2022` ⇒ doc lai vi the THAT **cua DUNG PHIA** (`position_qty(..., direction=...)` — HEDGE co 2 dong LONG/SHORT cung symbol); qty=0 ⇒ `already_closed` (coi nhu DA DONG); con vi the ⇒ `_close_exact()` gui lai MARKET **KHONG `reduceOnly`** voi `qty = min(qty_san, qty_yeu_cau)`. DO THAT (demo, 20/10): `reduceOnly=True` MARKET bi tu choi VO DIEU KIEN (qty=1 tren vi the 31 hop dong VAN bi tu choi); `closePosition=true` cung khong dung duoc cho MARKET (`-4136 Target strategy invalid for orderType MARKET`); chi lenh khong reduceOnly + qty dung vi the moi FILLED. Sau khi dong: DOC LAI ⇒ bao `left_over`/`flipped`; khong doc duoc ⇒ `verify_failed`. Memo `_ro_market_rejected` (khong ton 1 request chac chan that bai moi lan dong)",
+        "files": ["exchange.py", "bot.py", "position_sync.py", "tools/ops.py"],
+        "tests": ["test_exchange_hedge.py::TestCloseDaDong2022",
+                  "test_p0_safety.py::TestBotSafety::test_close_2022_coi_nhu_da_dong_va_van_don_lenh_treo",
+                  "test_p0_safety.py::TestBotSafety::test_partial_gap_2022_thi_ghi_CLOSE_nhu_SL_va_khong_trip_kill_switch",
+                  "test_p0_safety.py::TestBotSafety::test_close_dong_lai_bang_qty_that_thi_khong_bao_loi",
+                  "test_p0_safety.py::TestBotSafety::test_close_vi_the_LAT_CHIEU_thi_bao_DONG_nhung_khong_crash",
+                  "test_p0_safety.py::TestDonViTheMa::test_doc_qty_theo_DUNG_PHIA_cua_vi_the"],
+    },
 ]
 
 

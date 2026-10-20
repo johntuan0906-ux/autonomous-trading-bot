@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/10/2026 12:24:11 · commit `2bb4492`
+- **Cập nhật**: 20/10/2026 12:54:12 · commit `d476a59`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `5180` · round `None` · nhịp tim cách đây 3.4s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `5180` · round `8` · nhịp tim cách đây 41.5s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3252 lệnh đóng, WR 45.11%, E(R) 1.3511, PnL -975.16$)
+## Hiệu suất (journal: 3255 lệnh đóng, WR 45.07%, E(R) 1.35, PnL -975.16$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2561 | 41.94 | 6.446 | 0.721 | 1.7046 | -1073.96 |
-| 14 ngày | 3023 | 43.73 | 5.739 | 0.795 | 1.4498 | -1001.25 |
-| 30 ngày | 3252 | 45.11 | 5.493 | 0.819 | 1.3511 | -975.16 |
+| 7 ngày | 2564 | 41.89 | 6.446 | 0.721 | 1.7028 | -1073.96 |
+| 14 ngày | 3026 | 43.69 | 5.74 | 0.795 | 1.4486 | -1001.25 |
+| 30 ngày | 3255 | 45.07 | 5.494 | 0.819 | 1.35 | -975.16 |
 
 ## Cổng sang LIVE
 
@@ -39,14 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (5)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | AIN/USDT:USDT | LONG | 1877.0 | 0.04109 | 0.033678 | 0.042785 | False | False | 0.0 |
 | AR/USDT:USDT | LONG | 56.5 | 3.8779999999999997 | 3.75318 | 3.89955 | False | False | 0.0 |
 | AXL/USDT:USDT | LONG | 1155.3 | 0.0578 | 0.053816 | 0.05656 | False | False | 0.0 |
-| BANK/USDT:USDT | SHORT | 1.0 | 0.026310000000000004 | 0.026532 | 0.025895 | False | False | 0.0 |
 | BAT/USDT:USDT | SHORT | 295.3 | 0.1812 | 0.205164 | 0.1656 | False | False | 0.0 |
 
 ---

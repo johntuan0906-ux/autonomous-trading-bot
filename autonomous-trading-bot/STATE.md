@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/10/2026 17:54:15 · commit `9c14a16`
+- **Cập nhật**: 20/10/2026 18:24:15 · commit `4ec2599`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `49940` · round `25` · nhịp tim cách đây 34.9s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `49940` · round `35` · nhịp tim cách đây 35.1s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: ⚠️ TRIPPED — daily loss 2.06% >= 2.0%
 
@@ -13,7 +13,7 @@
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2643 | 41.77 | 6.287 | 0.717 | 1.6508 | -1109.74 |
+| 7 ngày | 2640 | 41.74 | 6.294 | 0.717 | 1.6528 | -1104.54 |
 | 14 ngày | 3105 | 43.54 | 5.619 | 0.79 | 1.4107 | -1037.04 |
 | 30 ngày | 3334 | 44.9 | 5.385 | 0.815 | 1.317 | -1010.95 |
 

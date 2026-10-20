@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/10/2026 12:11:28 · commit `a15e0f3`
+- **Cập nhật**: 20/10/2026 12:24:11 · commit `2bb4492`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `95036` · round `30` · nhịp tim cách đây 85.7s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3307.78 USDT
+- **Bot**: pid `5180` · round `None` · nhịp tim cách đây 3.4s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3249 lệnh đóng, WR 45.15%, E(R) 1.3522, PnL -975.16$)
+## Hiệu suất (journal: 3252 lệnh đóng, WR 45.11%, E(R) 1.3511, PnL -975.16$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2558 | 41.99 | 6.446 | 0.721 | 1.7065 | -1073.96 |
-| 14 ngày | 3020 | 43.77 | 5.739 | 0.795 | 1.4512 | -1001.25 |
-| 30 ngày | 3249 | 45.15 | 5.493 | 0.819 | 1.3522 | -975.16 |
+| 7 ngày | 2561 | 41.94 | 6.446 | 0.721 | 1.7046 | -1073.96 |
+| 14 ngày | 3023 | 43.73 | 5.739 | 0.795 | 1.4498 | -1001.25 |
+| 30 ngày | 3252 | 45.11 | 5.493 | 0.819 | 1.3511 | -975.16 |
 
 ## Cổng sang LIVE
 
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 

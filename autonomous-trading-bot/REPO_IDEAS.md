@@ -503,3 +503,50 @@ crash** (kill-switch ⇒ monitor-only, tự resume khi gỡ) · `RECONCILE` tự
 - **Bug catalog 21 lớp lỗi ↔ 36 test chốt** (`--check` báo khi test bị xoá/đổi tên) + lớp lỗi mới
   **B-021**: tiến trình test ghi đè `logs/heartbeat.json` của instance THẬT (pid 28000 không tồn tại).
 
+## 17. (21/10) Đọc `abhixdd/ghgrab` — công cụ TUI tải file từ Git forge: áp dụng được gì
+
+**Nó là gì:** CLI + TUI viết bằng Rust (`tokio` + `ratatui`) để *duyệt và tải từng file/thư mục*
+từ GitHub/GitLab/Codeberg/Gitea/Forgejo mà không phải `git clone`; có tải release theo
+OS/arch, LFS, preview file, và **2 bề mặt cho agent**: `ghgrab agent tree|download` (JSON) +
+`ghgrab mcp` (MCP server stdio). Không liên quan nghiệp vụ giao dịch.
+
+| Mục trong ghgrab | Bản chất | Với dự án này | Trạng thái |
+|---|---|---|---|
+| `Config::validate_path` + `Config::save` (kiểm tra thư mục cha/tồn tại/quyền ghi **trước** khi lưu) | Ghi cấu hình an toàn | Đối chiếu ⇒ phát hiện **5 chỗ ghi file trạng thái TRỰC TIẾP** (`.env`, `entries_pause.json`, `state.json`, `deadman.json`, artifact) ⇒ mất điện giữa lúc ghi là file cắt ngang | **ĐÃ ÁP DỤNG**: `atomic.py` (tmp → `fsync` → `os.replace`, retry khi Windows khoá file) + 6 call site + 10 test |
+| Đọc/ghi state hỏng thì thế nào | — | `entries_gate.read()` trả `{}` cho **mọi** lỗi ⇒ file hỏng = bot **tự mở lại vào lệnh** trong khi người vận hành tưởng đang tạm dừng | **ĐÃ SỬA**: fail-safe (tạm dừng 6h rồi tự mở + ghi lại file hợp lệ) + 2 test |
+| `truncated` trong response `agent tree` (API cắt bớt thì nói rõ) | Không im lặng cắt dữ liệu | Ta đã có: `watch_regress.read_tail_lines()` trả `(dòng, bị_cắt)`; `trace_trade --lines` | Đã có, không cần làm |
+| `AgentEnvelope { api_version, ok, command, data, error{code,message} }` | Hợp đồng JSON ổn định cho agent/CI | 23 tool đã có `--json` nhưng **mỗi tool một kiểu** (`ok`/`err`/`error`/`status`); agent phải đoán | **ĐỀ XUẤT P2** (xem dưới) |
+| `max_bytes` khi preview file (mặc định 8 KB) | Chặn phình context của agent | Đã có ở chỗ đọc log; riêng đọc journal vẫn theo số dòng, chưa có trần byte | P3 (thêm `--max-bytes` nếu cần) |
+| `--token AUTO\|GH\|NONE` (tự lấy token, hoặc **tắt hẳn** xác thực) | Công tắc "không dùng credential" tường minh | Tương đương `DRY_RUN`/`--no-network`; hiện chưa có cờ chung "cấm gọi mạng" cho tool | P3 |
+| `Credentials::new_for_url` + `Platform` enum (1 client cho 5 forge) | Trừu tượng đa nhà cung cấp | Chỉ có nghĩa khi thêm sàn thứ 2 (Bybit/OKX); hiện `exchange.py` đã gom Binance spot/futures/demo/live | P3 (khi cần) |
+| `Downloader` song song `Semaphore(jobs=4)` | Giới hạn đồng thời | Ta quét symbol tuần tự + rate limit sẵn; song song hoá làm tăng rủi ro `-1003` | Không áp dụng |
+| MCP server stdio (7 tool: `repo_tree`, `read_file`, `read_file_preview`, `list_releases`, `repo_info`, `search_repos`, `download_*`) | Cho AI ngoài (Cursor/Claude) gọi vào | Máy này giữ **KEY LIVE**; mở MCP = thêm bề mặt tấn công + nguy cơ lộ equity/journal. Nếu làm: chỉ read-only (`status`, `ops`, `journal tail`), `--no-keys`, chỉ stdio | **KHÔNG làm ngay** — cần hội đồng biểu quyết |
+| `theme.toml` (thiếu key nào rơi về mặc định) / `log_error()` ghi file riêng, không làm chết app | Cấu hình khoan dung + lỗi không giết tiến trình | Ta đã theo đúng: `config.py` có default cho mọi biến, `ops` bắt lỗi im lặng | Đã có |
+| Đóng gói đa hệ (cargo/pip/npm/nix/AUR) + readthedocs | Phân phối | 1 máy, 2 instance, không phát hành | Không áp dụng |
+
+**Đã làm ngay trong phiên (đều là sửa lỗi, không phải tính năng):**
+1. `atomic.py` — một chỗ duy nhất để ghi file trạng thái nguyên tử; `fsync` trước `replace`
+   (nhiều "atomic write" quên `fsync` nên mất điện vẫn mất dữ liệu); retry `PermissionError`
+   cho Windows (AV/indexer giữ handle).
+2. Áp cho: `entries_gate`, `state_sync.go_live` (`.env` + `.bak-live` + `.live_flipped`),
+   `run_forever` (nhịp tim + lock pid), `tools/deadman`, `tools/ops_artifact`, `tools/ops_queue`.
+3. `entries_gate.read()` → **fail-safe** khi file hỏng (6h tự hết hạn, tự ghi lại file hợp lệ)
+   thay vì fail-open. Đây là lỗi *im lặng* đúng nghĩa: bot vào lệnh trong khi người vận hành
+   tin rằng đã tạm dừng.
+
+**Phiếu hội đồng (21/10) — MCP server read-only: 1 ALLOW / 3 VETO ⇒ VETO.** Lý do của 3 phiếu
+VETO: máy này giữ KEY LIVE trong `.env`, thêm một tiến trình MCP thường trực = thêm bề mặt tấn
+công/lộ dữ liệu mà lợi ích chỉ là "hỏi trạng thái từ IDE khác"; ta đã có `tools/ops.py --json`
+cho agent nội bộ. Không dựng MCP.
+
+**Cần quyết (ghi vào `logs/ops_questions.json` nếu người vận hành muốn):**
+- **P2 — Hợp đồng JSON chung** cho 23 tool: `{api_version, ok, command, data, error{code,message}}`.
+  Lợi: hội đồng/agent đọc kết quả tool không cần regex, `bug_catalog` kiểm được schema.
+  Hại: sửa 23 tool + test (rủi ro trung bình, không đụng đường tiền).
+- **P2 — MCP read-only**: chỉ khi người vận hành thật sự muốn dùng Cursor/Claude Desktop để
+  hỏi trạng thái bot; phải khoá cứng `--no-keys`, không có tool nào đặt/huỷ lệnh.
+
+**Ghi chú kỹ thuật:** `download.rs` của ghgrab dùng `fs::write` trần (không tmp+rename) — tức
+là **ta đang chặt hơn họ** ở khoản bền vững dữ liệu; thứ đáng học từ họ là *kiểm tra đích
+trước khi ghi* và *hợp đồng JSON cho agent*, không phải cách tải file.
+

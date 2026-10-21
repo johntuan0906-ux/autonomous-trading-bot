@@ -60,7 +60,8 @@ class TestInstanceEnv(unittest.TestCase):
         keys = {str(r.get("key")) for r in (rep.get("rows") or [])}
         self.assertIn("BINANCE_TESTNET", keys)
         self.assertIn("LIVE_CONFIRM", keys)
-        self.assertTrue(str(rep.get("root") or "").endswith("autonomous-trading-bot"))
+        self.assertEqual(Path(str(rep.get("root") or "")).resolve(), ROOT.resolve(),
+                         "report() phai doc dung goc repo (ten thu muc co the la atb-live)")
         self.assertTrue(all("overridden_by_os" in r for r in rep["rows"]))
 
 

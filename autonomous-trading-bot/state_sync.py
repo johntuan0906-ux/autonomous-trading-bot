@@ -34,6 +34,8 @@ import sys
 import time
 from pathlib import Path
 
+import atomic
+
 try:  # đọc cùng .env với runtime
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
@@ -410,13 +412,14 @@ def go_live(cfg, reason: str, env_path=None, tier: dict | None = None) -> dict:
     new = set_env_values(text, upd)
     backup = path.with_name(path.name + ".bak-live")
     try:
-        backup.write_text(text, encoding="utf-8")
-        path.write_text(new, encoding="utf-8")
-        FLIP_MARKER.parent.mkdir(parents=True, exist_ok=True)
-        FLIP_MARKER.write_text(json.dumps({"ts": time.time(), "reason": reason,
-                                           "tier": tier.get("name"),
-                                           "updates": upd}, ensure_ascii=False),
-                               encoding="utf-8")
+        # (21/10) Ghi NGUYEN TU (tmp -> fsync -> replace): mat dien giua luc ghi `.env` thi
+        # file bi cat ngang => bot KHONG khoi dong duoc (va trong file con KEY API).
+        # Backup ghi TRUOC, roi moi thay file chinh.
+        atomic.write_text_atomic(backup, text)
+        atomic.write_text_atomic(path, new)
+        atomic.write_json_atomic(FLIP_MARKER,
+                                 {"ts": time.time(), "reason": reason,
+                                  "tier": tier.get("name"), "updates": upd})
     except OSError as e:
         return {"ok": False, "err": "khong ghi duoc: %s" % e}
     return {"ok": True, "updates": upd, "backup": str(backup), "tier": tier.get("name")}

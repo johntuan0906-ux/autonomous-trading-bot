@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import ops as OPS          # noqa: E402
 import harness_audit as HA  # noqa: E402
+import atomic              # noqa: E402
 
 MUTE_FILE = ROOT / "logs" / "deadman_mute"
 TASK_NAME = "ATB-Deadman"
@@ -149,8 +150,9 @@ def save_state(rec: dict, *, state=STATE, log=LOG) -> dict:
     """Ghi `logs/deadman.json` (may doc) + 1 dong `logs/deadman.log` (nguoi doc)."""
     rep = {"state": "", "log": ""}
     try:
-        Path(state).parent.mkdir(parents=True, exist_ok=True)
-        Path(state).write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+        # (21/10) Nguyên tử: deadman đọc file này để quyết định báo động; file cắt ngang
+        # ⇒ tưởng "không có dữ liệu" và bỏ qua đúng lúc cần báo.
+        atomic.write_json_atomic(state, rec, indent=1)
         rep["state"] = str(state)
     except OSError as e:
         rep["state_error"] = str(e)[:100]

@@ -16,6 +16,8 @@ import sys
 import time
 from pathlib import Path
 
+import atomic
+
 ROOT = Path(__file__).resolve().parent
 PY = sys.executable
 try:                       # doc WATCHDOG_SEC... tu .env (giong config.py)
@@ -88,7 +90,9 @@ def touch_heartbeat(path=None) -> None:
             d = {}
         d["ts"] = time.time()
         d.setdefault("phase", "supervisor_touch")
-        p.write_text(json.dumps(d), encoding="utf-8")
+        # (21/10) Nguyên tử: file bị cắt ngang ⇒ supervisor/deadman đọc ra {} và tưởng bot
+        # đã chết ⇒ restart loop. Ghi tmp + replace để KHÔNG BAO GIỜ có file nửa vời.
+        atomic.write_json_atomic(p, d, indent=None)
     except OSError:
         pass
 
@@ -299,7 +303,10 @@ def _acquire_lock() -> bool:
             old = 0
         if old and _pid_alive(old) and old != os.getpid():
             return False
-    LOCK.write_text(str(os.getpid()))
+    try:
+        atomic.write_text_atomic(LOCK, str(os.getpid()))
+    except OSError:
+        LOCK.write_text(str(os.getpid()))     # fallback: van hon khong co lock
     return True
 
 

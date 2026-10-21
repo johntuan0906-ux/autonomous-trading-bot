@@ -535,12 +535,18 @@ class TestEntriesGateExpiry(unittest.TestCase):
                          encoding="utf-8")
             self.assertTrue(EG.paused(path=p, now=lambda: 10 ** 9)[0])
 
-    def test_file_hong_van_la_fail_open(self):
-        """File hong = chua tung tam dung (giu nguyen hanh vi cu, khong doi)."""
+    def test_file_hong_thi_tam_dung_an_toan(self):
+        """(21/10) File hong ⇒ FAIL-SAFE (tam dung 6h), KHONG con fail-open.
+
+        Truoc: tra `{}` ⇒ bot tu mo lai vao lenh trong khi nguoi van hanh tuong dang
+        tam dung (file bi cat ngang khi mat dien luc ghi). Sau grace 6h tu mo lai.
+        """
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "entries_pause.json"
             p.write_text("{hong", encoding="utf-8")
-            self.assertFalse(EG.paused(path=p)[0])
+            ok, why = EG.paused(path=p)
+            self.assertTrue(ok)
+            self.assertIn("hong", why)
 
 
 class TestRestartWhenFlatPause(unittest.TestCase):

@@ -256,6 +256,28 @@ CLASSES = [
                   "test_p0_safety.py::TestViTheBuiChet::test_dong_duoc_thi_khong_ghi_gi_va_xoa_bo_dem",
                   "test_p0_safety.py::TestViTheBuiChet::test_adopt_bo_qua_symbol_da_bo_quan_ly"],
     },
+    {
+        "code": "B-025", "kind": "im-lang", "seen": "21/10/2026",
+        "title": "File trang thai ghi KHONG nguyen tu — mat dien giua luc ghi la file bi cat ngang",
+        "symptom": "`.env` (chua KEY API), `logs/entries_pause.json`, `logs/state.json`, `logs/deadman.json`, artifact quyet dinh deu ghi bang `Path.write_text()` tran: mat dien/kill giua luc ghi ⇒ file hong. Voi `.env` thi bot **khong khoi dong duoc**; voi `state.json` thi supervisor/deadman doc ra `{}` ⇒ tuong bot chet ⇒ restart loop; artifact hong = mat vet quyet dinh",
+        "guard": "`atomic.py`: ghi file tam CUNG THU MUC -> `flush` + `os.fsync` (xuong dia TRUOC khi doi ten) -> `os.replace` co retry `PermissionError` (Windows: AV/indexer giu handle). Loi ⇒ **file cu giu nguyen**, file tam duoc don. Ap cho `entries_gate`, `state_sync.go_live`, `run_forever` (nhip tim + lock), `tools/deadman`, `tools/ops_artifact`, `tools/ops_queue`",
+        "files": ["atomic.py", "entries_gate.py", "state_sync.py", "run_forever.py",
+                  "tools/deadman.py", "tools/ops_artifact.py", "tools/ops_queue.py"],
+        "tests": ["test_atomic_write.py::TestWriteTextAtomic::test_loi_khi_replace_thi_giu_nguyen_file_cu",
+                  "test_atomic_write.py::TestWriteTextAtomic::test_retry_khi_bi_khoa_tam_thoi",
+                  "test_atomic_write.py::TestWriteTextAtomic::test_file_tam_nam_cung_thu_muc",
+                  "test_atomic_write.py::TestWriteJsonAtomic::test_roundtrip_giu_chu_viet_va_indent"],
+    },
+    {
+        "code": "B-026", "kind": "im-lang", "seen": "21/10/2026",
+        "title": "`entries_pause.json` hong ⇒ bot TU MO LAI vao lenh (fail-open) trong khi nguoi van hanh tuong dang tam dung",
+        "symptom": "`entries_gate.read()` tra `{}` cho MOI loi (ke ca JSON hong) ⇒ `paused()` = False. File bi cat ngang (B-025), sua tay, hoac o dia loi ⇒ **cong tam dung bien mat trong im lang**, bot vao lenh moi. Chinh docstring module ghi 'file hong => VAN tam dung' nhung code lam nguoc lai",
+        "guard": "`entries_gate.read()` phan biet: khong co file ⇒ `{}` (khong tam dung); co file nhung JSON hong ⇒ **FAIL-SAFE**: tra ban ghi `paused=True`, `corrupt=True`, `until = mtime + CORRUPT_GRACE_H (6h)` ⇒ `paused()` bao dang tam dung; qua 6h tu goi `resume()` ghi lai file hop le (khong khoa vinh vien)",
+        "files": ["entries_gate.py"],
+        "tests": ["test_ops_safety.py::TestEntriesGate::test_file_hong_thi_tam_dung_an_toan",
+                  "test_ops_safety.py::TestEntriesGate::test_file_hong_tu_het_han_sau_grace",
+                  "test_ops_tools.py::TestEntriesGateExpiry::test_file_hong_thi_tam_dung_an_toan"],
+    },
 ]
 
 

@@ -190,6 +190,7 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 | `agents.py` | hội đồng LLM, `agent_authority()`, `veto_decision()`, CLI `--authority/--ab-report/--eval-dataset` |
 | `risk.py` / `portfolio.py` / `live_guard.py` / `live_ready.py` | rủi ro, danh mục, cổng LIVE (cứng / chặt hơn) |
 | `journal.py` + `logs/journal.jsonl` | sổ mọi lệnh OPEN/CLOSE (có `feats`, `news_score`, `strategy`) |
+| `atomic.py` | **ghi file trạng thái NGUYÊN TỬ** (tmp → `fsync` → `os.replace`, retry khi Windows khóa file) — mọi file state phải đi qua đây (B-025) |
 | `monitor_report.py` | báo cáo WR/PF theo cửa sổ, đọc từ journal |
 | `run_forever.py` | supervisor (tự restart, backoff, watchdog nhịp tim) |
 | `tools/` | `muse.cmd`, `muse-nosandbox.cmd`, `git-sync.cmd` |

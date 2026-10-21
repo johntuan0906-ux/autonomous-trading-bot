@@ -639,13 +639,32 @@ class TestEntriesGate(unittest.TestCase):
             EG.resume(path=p, why="xong")
             self.assertEqual(EG.paused(path=p), (False, ""))
 
-    def test_file_hong_thi_coi_nhu_khong_tam_dung(self):
+    def test_file_hong_thi_tam_dung_an_toan(self):
+        """(21/10) File trạng thái hỏng ⇒ **FAIL-SAFE** (coi như đang tạm dừng).
+
+        Trước 21/10 hàm `read()` trả `{}` cho MỌI lỗi ⇒ bot **tự mở lại vào lệnh** trong
+        khi người vận hành tưởng đang tạm dừng (file bị cắt ngang khi mất điện lúc ghi).
+        """
         import entries_gate as EG
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "entries_pause.json"
             p.write_text("{ khong-phai-json", encoding="utf-8")
-            self.assertEqual(EG.paused(path=p), (False, ""), "fail-open")
+            ok, why = EG.paused(path=p)
+            self.assertTrue(ok, "file hong phai coi nhu DANG tam dung")
+            self.assertIn("hong", why)
 
+    def test_file_hong_tu_het_han_sau_grace(self):
+        """Không khoá vĩnh viễn: quá `CORRUPT_GRACE_H` giờ ⇒ tự mở lại + ghi file hợp lệ."""
+        import os
+        import entries_gate as EG
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "entries_pause.json"
+            p.write_text("{ hong", encoding="utf-8")
+            old = time.time() - (EG.CORRUPT_GRACE_H + 1) * 3600.0
+            os.utime(p, (old, old))
+            self.assertFalse(EG.paused(path=p)[0], "qua grace phai tu mo lai")
+            self.assertFalse(bool(EG.read(path=p).get("corrupt")),
+                             "sau grace phai ghi lai file hop le")
     def test_turbo_round_khong_vao_lenh_khi_tam_dung(self):
         import unittest.mock as _mock
         import entries_gate as EG

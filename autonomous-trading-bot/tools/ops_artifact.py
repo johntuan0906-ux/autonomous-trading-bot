@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import json
+import sys
 import time
 import unicodedata
 from pathlib import Path
@@ -28,6 +29,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ART_DIR = "logs/ops"
 QUEUE_DONE = "logs/ops_queue.json"
+
+sys.path.insert(0, str(ROOT))
+import atomic  # noqa: E402
 QUEUE_OPEN = "logs/ops_questions.json"
 JOURNAL = "logs/journal.jsonl"
 
@@ -172,8 +176,8 @@ def write_artifact(rec: dict, outdir=ART_DIR) -> dict:
     p = artifact_path(outdir, float(rec.get("ts") or time.time()),
                       str(rec.get("question") or ""))
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(render(rec), encoding="utf-8")
+        # (21/10) Nguyên tử: artifact là bằng chứng của quyết định; file cắt ngang = mất vết.
+        atomic.write_text_atomic(p, render(rec))
         return {"ok": True, "path": str(p), "n_votes": len(rec.get("votes") or [])}
     except OSError as e:
         return {"ok": False, "err": str(e)[:160], "path": str(p),

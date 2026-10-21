@@ -27,6 +27,9 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+import atomic  # noqa: E402
+
 OPEN_PATH = "logs/ops_questions.json"
 DONE_PATH = "logs/ops_queue.json"
 PRIORITIES = ("low", "normal", "high", "blocker")
@@ -49,12 +52,9 @@ def _read_list(p: Path) -> list:
 
 
 def _write_list(p: Path, items: list) -> bool:
-    """Ghi nguyen tu (tmp + replace) — khong lam hong file khi crash."""
+    """Ghi nguyen tu (tmp + fsync + replace) — khong lam hong file khi crash."""
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(p.suffix + ".tmp")
-        tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(p)
+        atomic.write_json_atomic(p, items, indent=1)
         return True
     except OSError:
         return False

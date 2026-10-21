@@ -23,7 +23,14 @@ import json
 import time
 from pathlib import Path
 
+import atomic
+
 DEFAULT_PATH = "logs/entries_pause.json"
+
+#: File trang thai hong (JSON khong doc duoc) ⇒ coi nhu DANG tam dung bao nhieu gio.
+#: Du dai de nguoi van hanh kip nhin thay, du ngan de khong bi khoa vinh vien.
+CORRUPT_GRACE_H = 6.0
+
 
 
 def path_for(cfg=None, path=None) -> Path:
@@ -34,13 +41,39 @@ def path_for(cfg=None, path=None) -> Path:
 
 
 def read(cfg=None, path=None) -> dict:
-    """Doc file trang thai; loi/thieu -> {} (coi nhu KHONG tam dung = fail-open)."""
+    """Doc file trang thai.
+
+    - Khong co file          -> `{}` (binh thuong: khong tam dung).
+    - Doc loi (quyen/khoa)   -> `{}` (khong phai loi noi dung).
+    - Co file nhung JSON hong -> **FAIL-SAFE**: tra ban ghi "dang tam dung" voi
+      `until = mtime + 6h`.
+
+    Vi sao doi (21/10): truoc day file hong cung tra `{}` ⇒ bot **tu mo lai vao lenh**
+    trong khi nguoi van hanh tuong dang tam dung (file bi cat ngang khi mat dien dung
+    luc ghi — da va bang `atomic`, nhung van phai fail-safe). Tu dong het han sau
+    `CORRUPT_GRACE_H` gio (lan `paused()` sau do goi `resume()` ghi file moi) nen khong
+    bao gio bi khoa vinh vien.
+    """
     p = path_for(cfg, path)
     try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        return d if isinstance(d, dict) else {}
-    except Exception:  # noqa: BLE001
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return {}
+    except OSError:
+        return {}
+    try:
+        d = json.loads(text)
+    except Exception:  # noqa: BLE001
+        d = None
+    if isinstance(d, dict):
+        return d
+    try:
+        mtime = p.stat().st_mtime
+    except OSError:
+        mtime = time.time()
+    return {"paused": True, "corrupt": True,
+            "reason": "file trang thai hong (JSON khong doc duoc) — tam dung an toan",
+            "until": mtime + CORRUPT_GRACE_H * 3600.0}
 
 
 def paused(cfg=None, path=None, now=None) -> tuple:
@@ -67,8 +100,7 @@ def paused(cfg=None, path=None, now=None) -> tuple:
 
 def _write(p: Path, rec: dict) -> dict:
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+        atomic.write_json_atomic(p, rec, indent=1)
         return {"ok": True, "path": str(p), **rec}
     except OSError as e:
         return {"ok": False, "err": str(e)[:160], **rec}

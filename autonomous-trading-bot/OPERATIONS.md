@@ -179,7 +179,8 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Hội đồng chạy nền: bật gọi LLM thật (có trần) | `python tools/council_daemon.py --once --live --max-usd-day 0.6 --max-topics 3` |
 | Hội đồng chạy nền: cài/bỏ task 15 phút | `python tools/council_daemon.py --install-task` · `--uninstall-task` |
 | Hội đồng nền cho LIVE (task riêng) | `cd atb-live; python tools/council_daemon.py --install-task --task-name ATB-Council-Live` |
-| Sổ thay đổi harness (bằng chứng) | `python tools/harness_ledger.py --list` · `--check` · `--add --kind prompt --change "..." --evidence "B-023"` |
+| Sổ thay đổi harness (bằng chứng) | `python tools/harness_ledger.py --list` · `--check` · `--add --kind prompt --change "..." --evidence "B-023"` · `--decide H-20261021-003 --decision rejected --evidence "probe ..."` |
+| Đo A/B một thay đổi harness (0 đồng nếu chưa `--live`) | `python tools/council_probe.py --cases logs/probe_cases.json` · thêm `--live` để đo thật (≈0,02 USD/lần) |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |

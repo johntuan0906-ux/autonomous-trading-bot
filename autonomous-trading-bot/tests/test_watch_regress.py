@@ -282,6 +282,37 @@ class TestListPidsAnCuaSo(unittest.TestCase):
             self.assertIn("startupinfo", kw)
 
 
+class TestHoiDongNen(unittest.TestCase):
+    """(21/10) Watcher phải đọc nhịp tim HỘI ĐỒNG NỀN: 'bị chặn' ≠ 'im lặng'."""
+
+    def _rep(self, **kw):
+        base = {"pid": 1, "supervisor_pid": 2, "hb_age_s": 1.0}
+        base.update(kw)
+        return base
+
+    def test_khong_lap_thi_khong_bao(self):
+        self.assertEqual(WR.health("TESTNET", self._rep()), [])
+
+    def test_nhip_tim_hoi_dong_tuoi_thi_khong_bao(self):
+        rep = self._rep(council_installed=True, council_hb_age_s=120.0)
+        self.assertEqual(WR.health("TESTNET", rep), [])
+
+    def test_nhip_tim_hoi_dong_cu_thi_bao(self):
+        rep = self._rep(council_installed=True, council_hb_age_s=5000.0)
+        bad = WR.health("TESTNET", rep)
+        self.assertTrue(any("hoi dong NEN im lang" in b for b in bad), bad)
+
+    def test_bi_chan_nhung_con_nhip_thi_khong_bao(self):
+        rep = self._rep(council_installed=True, council_hb_age_s=60.0,
+                        council_blocked=True, council_mode="cycles_blocked")
+        self.assertEqual(WR.health("TESTNET", rep), [])
+
+    def test_co_file_nhung_thieu_moc_thoi_gian(self):
+        rep = self._rep(council_installed=True, council_hb_age_s=None)
+        self.assertTrue(any("KHONG doc duoc moc thoi gian" in b
+                            for b in WR.health("TESTNET", rep)))
+
+
 class TestReadTailLines(unittest.TestCase):
     def test_cat_bot_dong_dau_khi_bi_gioi_han(self):
         p = Path(tempfile.mkdtemp()) / "log.txt"

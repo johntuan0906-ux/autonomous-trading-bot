@@ -352,6 +352,15 @@ class TestRunCycle(unittest.TestCase):
             self.assertEqual(called, [])
             self.assertFalse(rep["results"][0].get("fallback_used"))
 
+    def test_nhip_tim_ghi_model_da_dung(self):
+        """Nhịp tim phải nói rõ ĐÃ DÙNG MODEL NÀO (nhất là khi `models: auto`)."""
+        with tempfile.TemporaryDirectory() as t:
+            e = _ready(Path(t), self.NOW)
+            CD.run_cycle(now=self.NOW, live=True, council_fn=lambda p: {},
+                         models_hint=["m1", "m2"], **e.kwargs())
+            hb = json.loads(e.hb.read_text(encoding="utf-8"))
+            self.assertEqual(hb["models"], ["m1", "m2"], "phai chung minh da dung model nao")
+
     def test_nguon_khong_dung_toi_duong_tien(self):
         """Hoi dong nen CHI duoc de xuat: khong import exchange/bot, khong dung key."""
         src = Path(CD.__file__).read_text(encoding="utf-8")
@@ -456,6 +465,32 @@ class TestKindCooldown(unittest.TestCase):
                                   kind_seen={"perf": now - 7 * 3600},
                                   kind_cooldown_s={"perf": 6 * 3600.0})
         self.assertEqual(len(keep), 1)
+
+
+class TestChonModel(unittest.TestCase):
+    """Chọn model chính theo SỐ ĐO (không đoán) — `mimo` thiếu phiếu 2 lần liên tiếp."""
+
+    def test_chon_rate_thap_nhat_trong_nhom_du_mau(self):
+        health = {"per_model": {
+            "tot": {"n": 60, "rate": 0.02},
+            "kha": {"n": 40, "rate": 0.10},
+            "te": {"n": 70, "rate": 0.55},
+            "it-mau": {"n": 2, "rate": 0.0},
+        }}
+        self.assertEqual(CD.choose_models(health, k=2), ["tot", "kha"])
+
+    def test_loai_model_dead_va_thieu_mau(self):
+        health = {"per_model": {"dead": {"n": 100, "rate": 0.9},
+                                "it": {"n": 3, "rate": 0.0}}}
+        self.assertEqual(CD.choose_models(health, k=2), [])
+
+    def test_health_rong_thi_tra_rong(self):
+        self.assertEqual(CD.choose_models({}, k=2), [])
+        self.assertEqual(CD.choose_models(None, k=2), [])
+
+    def test_cung_rate_thi_uu_tien_mau_lon_hon(self):
+        health = {"per_model": {"a": {"n": 10, "rate": 0.1}, "b": {"n": 90, "rate": 0.1}}}
+        self.assertEqual(CD.choose_models(health, k=1), ["b"])
 
 
 class TestParseModels(unittest.TestCase):

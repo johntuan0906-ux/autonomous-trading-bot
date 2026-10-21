@@ -39,8 +39,12 @@ def build_payload(question: str, allow: str, veto: str, context=(), extra=None) 
         "option_VETO": str(veto),
         "context": [str(c) for c in (context or [])],
         "instruction": ("Day KHONG phai lenh giao dich ma la QUYET DINH VAN HANH. "
-                        "Tra ve ALLOW neu chon option_ALLOW, VETO neu chon option_VETO, "
-                        "NO_OPINION neu thieu thong tin. Ghi ly do ngan gon."),
+                        "Tra ve ALLOW neu ban chon phuong an: \"%s\". "
+                        "Tra ve VETO neu ban chon phuong an: \"%s\". "
+                        "NO_OPINION neu thieu thong tin. "
+                        "Ly do viet NGAN va PHAI KHOP voi phieu da chon — khong duoc viet "
+                        "ly do ung ho phuong an NGUOC LAI voi phieu."
+                        % (allow, veto)),
         **(extra or {}),
     }
 

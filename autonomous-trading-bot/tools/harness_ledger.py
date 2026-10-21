@@ -101,6 +101,45 @@ def add(kind: str, change: str, evidence: str = "", *, decision: str = "proposed
     return {"ok": True, "record": rec}
 
 
+def decide(rid: str, decision: str, *, evidence: str = "", note: str = "", by: str = "agent",
+           path=PATH, now=None) -> dict:
+    """Chot quyet dinh cho 1 muc da ghi (theo `id`): giu `history` de khong mat vet cu.
+
+    Vi sao co: mot de xuat co the duoc DO roi moi chot (vd `proposed` -> `rejected` sau khi
+    do bang `council_probe`). Neu chi them dong moi thi muc cu van nam `proposed` va
+    `--check` bao "treo qua 7 ngay" mai — bao dong gia.
+    """
+    d = str(decision or "").strip().lower()
+    if d not in DECISIONS:
+        return {"ok": False, "err": "decision khong hop le: %r" % decision}
+    rows = read_all(path)
+    hit = None
+    for r in rows:
+        if str(r.get("id")) == str(rid):
+            hit = r
+            break
+    if hit is None:
+        return {"ok": False, "err": "khong tim thay id %r" % rid}
+    now_t = float(now if now is not None else time.time())
+    hist = list(hit.get("history") or [])
+    hist.append({"ts": now_t, "decision": hit.get("decision"), "by": hit.get("by"),
+                 "evidence": hit.get("evidence")})
+    hit["history"] = hist
+    hit["decision"] = d
+    if evidence:
+        hit["evidence"] = str(evidence)[:600]
+    if note:
+        hit["note"] = str(note)[:400]
+    hit["by"] = str(by or "agent")[:60]
+    hit["decided_at"] = now_t
+    try:
+        atomic.write_text_atomic(
+            path, "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n")
+    except OSError as e:
+        return {"ok": False, "err": "khong ghi duoc: %s" % str(e)[:160]}
+    return {"ok": True, "record": hit}
+
+
 def check(rows=None, *, now=None, stale_days: float = STALE_DAYS) -> dict:
     """Tim thay doi THIEU bang chung hoac treo qua lau. Tra {ok, problems, n}."""
     rows = read_all() if rows is None else list(rows)
@@ -140,11 +179,25 @@ def main(argv=None) -> int:
     ap.add_argument("--decision", choices=DECISIONS, default="proposed")
     ap.add_argument("--by", default="agent")
     ap.add_argument("--note", default="")
+    ap.add_argument("--decide", metavar="ID", help="chot quyet dinh cho muc da ghi")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--limit", type=int, default=20)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
+
+    if args.decide:
+        r = decide(args.decide, args.decision, evidence=args.evidence, note=args.note,
+                   by=args.by)
+        if args.json:
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        elif r["ok"]:
+            rec = r["record"]
+            print("%s -> %s (giu %d muc lich su)"
+                  % (rec["id"], rec["decision"], len(rec.get("history") or [])))
+        else:
+            print("LOI: %s" % r["err"])
+        return 0 if r["ok"] else 1
 
     if args.add:
         r = add(args.kind or "", args.change, args.evidence, decision=args.decision,

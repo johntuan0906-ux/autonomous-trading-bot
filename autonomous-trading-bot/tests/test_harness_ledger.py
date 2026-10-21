@@ -87,5 +87,43 @@ class TestCheck(unittest.TestCase):
         self.assertIn("kind la", HL.check(rows, now=10.0)["problems"][0])
 
 
+class TestDecide(unittest.TestCase):
+    """Chốt quyết định cho mục đã ghi (giữ lịch sử) — tránh `--check` báo 'treo' giả."""
+
+    def test_chot_rejected_va_giu_lich_su(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            rid = HL.add("prompt", "nhan DOI/GIU", "chua do", path=p, now=1.0)["record"]["id"]
+            r = HL.decide(rid, "rejected", evidence="probe A/B: B tut xuong NO_OPINION",
+                          note="hoan tac", path=p, now=2.0)
+            self.assertTrue(r["ok"])
+            rec = r["record"]
+            self.assertEqual(rec["decision"], "rejected")
+            self.assertEqual(len(rec["history"]), 1)
+            self.assertEqual(rec["history"][0]["decision"], "proposed")
+            self.assertIn("probe", rec["evidence"])
+
+    def test_khong_tim_thay_id(self):
+        with tempfile.TemporaryDirectory() as t:
+            r = HL.decide("H-99999999-999", "rejected", path=Path(t) / "l.jsonl")
+            self.assertFalse(r["ok"])
+            self.assertIn("khong tim thay", r["err"])
+
+    def test_decision_sai_thi_tu_choi(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            rid = HL.add("prompt", "x", path=p, now=1.0)["record"]["id"]
+            self.assertFalse(HL.decide(rid, "bua", path=p)["ok"])
+
+    def test_sau_khi_chot_thi_check_khong_bao_treo(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            rid = HL.add("prompt", "x", path=p, now=0.0)["record"]["id"]
+            HL.decide(rid, "rejected", evidence="da do", path=p, now=1.0)
+            rows = HL.read_all(p)
+            rep = HL.check(rows, now=30 * 86400.0)
+            self.assertTrue(rep["ok"], rep["problems"])
+
+
 if __name__ == "__main__":
     unittest.main()

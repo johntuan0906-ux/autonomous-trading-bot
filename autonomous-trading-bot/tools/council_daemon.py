@@ -337,13 +337,17 @@ def build_agenda(*, state=None, now=None, journal_path=JOURNAL_PATH, ops_path=OP
 
     drift = risk_drift(env_path)
     if drift:
+        # (22/10) Do bang `council_probe` (A/B): nhan "DOI:/GIU:" KHONG lam phieu ro hon —
+        # 1 model doi tu VETO sang ALLOW, ket luan tut tu VETO xuong NO_OPINION. Nen giu
+        # nguyen cau chu don gian (ban A) va de `build_payload` noi ro nghia phieu.
         topics.append(_topic(
             "risk:daily-vs-trade", "risk", "high",
-            "Cau hinh rui ro: %d lenh thua lien tiep la trip kill-switch (risk %.2f%%/lenh, "
-            "tran ngay %.2f%%) — co can nang tran ngay?" % (drift["losses_to_trip"],
-                                                            drift["per"], drift["day"]),
+            "Tran lo NGAY hien tai %.2f%% chi chiu duoc %d lenh thua lien tiep (moi lenh rui ro "
+            "%.2f%%) — co doi tran khong?"
+            % (drift["day"], drift["losses_to_trip"], drift["per"]),
             "nang MAX_DAILY_LOSS_PCT de chiu duoc >= 3 lenh thua",
-            "giu nguyen (chap nhan phai reset kill-switch sau 2 lenh thua)",
+            "giu nguyen (chap nhan phai reset kill-switch sau %d lenh thua)"
+            % drift["losses_to_trip"],
             ["tran ngay / risk moi lenh = %.2f (lam tron len: %d)"
              % (drift["ratio"], drift["losses_to_trip"]),
              "tran tong %.2f%%, risk/lenh %.2f%%" % (drift["total"], drift["per"])]))
@@ -452,13 +456,50 @@ def parse_models(text) -> list:
     return [m.strip() for m in str(text or "").split(",") if m.strip()]
 
 
+def choose_models(health, *, k: int = 2, min_n: int = 8, max_rate: float = 0.35) -> list:
+    """Chon model CHINH theo SO DO: uu tien ty le tra phieu tot (abstain thap), mau du lon.
+
+    (21/10) Do that: `mimo-v2.6-pro` thieu phieu 2 lan lien tiep ⇒ phai goi du phong moi du
+    2 phieu. Thay vi doan, doc `agents.council_health()` (per_model: n/abstain/rate) roi chon
+    model co `rate` thap nhat trong nhom du mau; model "dead" (rate >= 0.6) bi loai.
+    """
+    per = (health or {}).get("per_model") or {}
+    cand = []
+    for name, b in per.items():
+        try:
+            n = int((b or {}).get("n") or 0)
+            rate = float((b or {}).get("rate") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if n < int(min_n) or rate > float(max_rate):
+            continue
+        cand.append((rate, -n, str(name)))
+    cand.sort()
+    return [c[2] for c in cand[:max(1, int(k))]]
+
+
 def default_council(max_models: int = DEFAULT_MODELS, models=None):
-    """(ask, models): dung bo may cua bot; `models` cho phep CHON DUNG 2 model da duyet."""
+    """(ask, models): dung bo may cua bot.
+
+    `models` co the la:
+      * ""      -> lay N model dau theo `.env` (cu);
+      * "auto"  -> CHON theo do do `council_health` (ty le tra phieu);
+      * danh sach phay -> dung dung danh sach do.
+    """
     import agents as AG
     from config import Settings
     cfg = Settings()
     picked = parse_models(",".join(models) if isinstance(models, (list, tuple)) else models)
-    ms = picked or [m.strip() for m in AG._council_models(cfg) if m.strip()]
+    ms: list = []
+    if len(picked) == 1 and picked[0].lower() == "auto":
+        try:
+            ms = choose_models(AG.council_health(), k=max(1, int(max_models)))
+        except Exception:  # noqa: BLE001
+            ms = []
+    elif picked:
+        ms = picked
+    if not ms:
+        ms = [m.strip() for m in AG._council_models(cfg) if m.strip()]
     ms = ms[:max(1, int(max_models))]
     object.__setattr__(cfg, "council_rounds", 1)      # 1 vong: nhanh, du phieu
     object.__setattr__(cfg, "agents_council", True)
@@ -493,7 +534,7 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
               journal_path=JOURNAL_PATH, ops_path=OPS_OPEN_PATH, regress_path=REGRESS_PATH,
               env_path=ENV_PATH, pause_path=PAUSE_PATH, bot_heartbeat=HEARTBEAT_BOT,
               council_fn=None, fallback_fn=None, min_votes: int = 2,
-              write: bool = True) -> dict:
+              models_hint=None, write: bool = True) -> dict:
     """1 chu ky: lock -> tran -> agenda -> dedup -> (live) hoi dong -> outbox/heartbeat.
 
     KHONG BAO GIO: dat/huy lenh, ghi `.env`, sua tham so. Chi de xuat + ghi vet.
@@ -517,6 +558,7 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
               "cycle": int(cycle if cycle is not None else rep["budget"]["cycles"]),
               "spend_today": rep["budget"]["spend"],
               "cycles_today": rep["budget"]["cycles"], "pid": os.getpid(),
+              "models": [str(m) for m in (models_hint or [])],
               "reason": str(reason or "")[:200],
               "blocked": str(mode) in ("cycles_blocked", "budget_blocked", "locked")}
         if write:
@@ -794,14 +836,15 @@ def main(argv=None) -> int:
         return 0
 
     def _one():
-        ask, _ms = (default_council(max_models, models) if live else (None, []))
+        ask, ms = (default_council(max_models, models) if live else (None, []))
         fb = (default_council(max_models, models_fallback)[0]
               if (live and parse_models(models_fallback)) else None)
         return run_cycle(live=live, max_usd_day=max_usd_day,
                          max_cycles_day=max_cycles_day, max_topics=max_topics,
                          max_models=max_models,
                          ttl_s=max(0.0, float(ttl_hours)) * 3600.0,
-                         council_fn=ask, fallback_fn=fb, min_votes=min_votes)
+                         council_fn=ask, fallback_fn=fb, min_votes=min_votes,
+                         models_hint=ms)
 
     if not args.watch:
         rep = _one()

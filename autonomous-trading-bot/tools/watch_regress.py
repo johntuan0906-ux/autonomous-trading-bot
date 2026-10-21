@@ -45,6 +45,8 @@ STATE_NAME = "logs/regress_watch.json"
 LOG_NAME = "logs/regress_watch.log"
 TAIL_BYTES = 8 * 1024 * 1024      # du cho nhieu ngay log (log co dong dai hang KB)
 MAX_HB_SEC = 900.0
+#: Nhip tim HOI DONG NEN duoc coi la cu khi qua 3 lan chu ky task (task 15 phut => 45 phut).
+MAX_COUNCIL_HB_SEC = 2700.0
 TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 
 # Lop loi DA VA can theo doi tai phat (them vao day khi va lop loi moi).
@@ -140,7 +142,8 @@ def list_pids(run=None) -> set:
     return out
 
 
-def health(name: str, rep: dict, pids=None, *, max_hb_sec: float = MAX_HB_SEC) -> list:
+def health(name: str, rep: dict, pids=None, *, max_hb_sec: float = MAX_HB_SEC,
+           max_council_hb_sec: float = MAX_COUNCIL_HB_SEC) -> list:
     """Van de cua 1 tien trinh (ham THUAN TUY): tra list[str] (rong = khoe)."""
     bad: list = []
     pid = int((rep or {}).get("pid") or 0)
@@ -160,6 +163,15 @@ def health(name: str, rep: dict, pids=None, *, max_hb_sec: float = MAX_HB_SEC) -
                        % (name, pid))
     if (rep or {}).get("kill_tripped"):
         bad.append("%s: KILL-SWITCH dang ngung (%s)" % (name, rep.get("kill_reason") or "?"))
+    # (21/10) Hoi dong nen: "bi chan" (cham tran) KHONG phai loi, nhung "im lang" thi phai bao.
+    if (rep or {}).get("council_installed"):
+        age_c = (rep or {}).get("council_hb_age_s")
+        if age_c is None:
+            bad.append("%s: hoi dong nen co file nhip tim nhung KHONG doc duoc moc thoi gian"
+                       % name)
+        elif float(age_c) > float(max_council_hb_sec):
+            bad.append("%s: hoi dong NEN im lang %.0fs > %.0fs (task ATB-Council con chay?)"
+                       % (name, float(age_c), float(max_council_hb_sec)))
     return bad
 
 
@@ -256,6 +268,25 @@ def scan_instance(name: str, base: Path, *, baseline=None, minutes: float = 7.0,
         rep["paused_until"] = 0.0
     lines, cut = read_tail_lines(base / "logs" / "turbo_err.log", max_bytes)
     rep["log_truncated"] = bool(cut)
+    # (21/10) HOI DONG NEN: doc nhip tim cua `tools/council_daemon.py` (neu da lap). Neu no
+    # chet that ma khong ai doc thi "chay 24/7" chi la loi hua — dung lop loi B-027.
+    chb = {}
+    try:
+        chb = json.loads((base / "logs" / "council_heartbeat.json").read_text(encoding="utf-8"))
+        chb = chb if isinstance(chb, dict) else {}
+    except Exception:  # noqa: BLE001
+        chb = {}
+    rep["council_installed"] = bool(chb)
+    if chb:
+        try:
+            rep["council_hb_age_s"] = round(float(until or time.time())
+                                            - float(chb.get("ts") or 0.0), 1)
+        except (TypeError, ValueError):
+            rep["council_hb_age_s"] = None
+        rep["council_mode"] = str(chb.get("mode") or "")
+        rep["council_blocked"] = bool(chb.get("blocked"))
+        rep["council_spend_today"] = chb.get("spend_today")
+        rep["council_topics"] = chb.get("topics")
     base_ts = dict((baseline or {}).get("fixed_at") or {})
     rep["sightings"] = {}
     for sig in SIGNATURES:

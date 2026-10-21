@@ -27,7 +27,11 @@ LIVE_DIR = ROOT.parent / "atb-live"
 TAIL_BYTES = 300_000          # du cho ~2 vong quet 458 cap
 TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 COUNT_PATTERNS = ("FETCH_TIMEOUT", "DATA_FAIL", "Connection pool is full",
-                  "Too many requests", "-1003", "KILL-SWITCH", "LIVE INTERLOCK",
+                  "Too many requests", "-1003", "KILL-SWITCH",
+                  # (21/10) Truoc day de "LIVE INTERLOCK" ⇒ dong INFO `LIVE INTERLOCK OK`
+                  # (dang tin hieu TOT) cung bi dem la "loi" ⇒ ops bao "CAN XEM" gia.
+                  # Chi dem khi interlock CHAN.
+                  "LIVE INTERLOCK CHAN",
                   "ORDER_FAILED", "OPENED", "REJECTED",
                   "qua han",        # canh bao fetch qua ROUND_TIMEOUT (tieng Viet)
                   "SKIP_DATA",      # du lieu xau bi bo qua (khong phai loi nang)

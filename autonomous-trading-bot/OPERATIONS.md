@@ -210,7 +210,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Test toàn bộ | `python -m unittest discover -s tests -t .` (**1000 test**) |
 | Đẩy code | `tools\git-sync.cmd "mo ta"` |
 
-## Mẫu TP/SL của người vận hành (đang TẮT — 20/10)
+## Mẫu TP/SL của người vận hành (ĐÃ BẬT 21/10 — theo yêu cầu người vận hành)
 
 Đo từ lệnh tay `BICOUSDT` trên LIVE: LONG 706 @ 0.01703, **SL 0.0154 (−9.57%)**, chốt **30% ở +27.4%**,
 chốt **50% ở +47.4%**, giữ **20% chạy**, SL **cố định** (`closePosition=true`).

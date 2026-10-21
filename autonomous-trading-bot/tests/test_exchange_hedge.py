@@ -268,6 +268,40 @@ class TestCloseDaDong2022(unittest.TestCase):
                          "khong co dong nao ⇒ phang")
 
 
+class TestQtyStep(unittest.TestCase):
+    """(21/10) `qty_step` = tick size qty của sàn — dùng để nâng qty lên minNotional."""
+
+    class _Src:
+        def __init__(self, step=1.0, boom=False):
+            self.step, self.boom = step, boom
+
+        def load_markets(self):
+            if self.boom:
+                raise RuntimeError("mang loi")
+
+        def market(self, s):
+            return {"precision": {"amount": self.step}}
+
+    def _ex(self, src):
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=True)
+        ex._client = None
+        ex._public = src
+        return ex
+
+    def test_doc_duoc_tick(self):
+        self.assertEqual(self._ex(self._Src(1.0)).qty_step("X/USDT:USDT"), 1.0)
+        self.assertAlmostEqual(self._ex(self._Src(0.001)).qty_step("X"), 0.001)
+
+    def test_loi_mang_thi_tra_0(self):
+        self.assertEqual(self._ex(self._Src(boom=True)).qty_step("X"), 0.0)
+
+    def test_khong_co_src_thi_tra_0(self):
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=True)
+        ex._client = None
+        ex._public = None
+        self.assertEqual(ex.qty_step("X"), 0.0)
+
+
 class TestTuneSession(unittest.TestCase):
     """(11/10) Quét ~460 cặp làm pool HTTP mặc định (10) đầy -> phải nới lên 32."""
 

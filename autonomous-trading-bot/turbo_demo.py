@@ -83,6 +83,31 @@ _HEARTBEAT = Path(__file__).resolve().parent / "logs" / "heartbeat.json"
 # throttle qua PROTECT_CHECK_SEC (khong con dung PROTECT_RETRY_EVERY theo so vong).
 
 
+def qty_for_min_notional(entry: float, min_notional: float, step: float) -> float:
+    """Qty NHO NHAT dat `qty * entry >= min_notional`, làm tròn LÊN theo bước `step`.
+
+    Vì sao (21/10, mẫu TP/SL của người vận hành): vốn LIVE ~40 USDT + SL rộng 9-12%
+    (SL = 14×ATR15m) ⇒ qty tính theo risk cho notional **4-5 USDT**, sụt dưới
+    `minNotional` 5 USDT của sàn ⇒ trước đây rơi vào `SKIP_NOTIONAL` ⇒ **không bao giờ
+    vào được lệnh** (đo thật: 11/40 cặp không vào được ở risk 1.5%, 17/40 ở risk 1.2%).
+
+    `step` = tick size qty của sàn (`exchange.qty_step`). Người gọi PHAI kiểm lại trần
+    risk (risk thực tăng: `minNotional × SL% / equity`) và chỉ dùng khi bật
+    `SIZE_TO_MIN_NOTIONAL`.
+    """
+    import math
+    try:
+        entry = float(entry)
+        mn = float(min_notional)
+        step = float(step)
+        if entry <= 0 or mn <= 0 or step <= 0:
+            return 0.0
+        n = math.ceil((mn / entry) / step - 1e-9)
+        return round(n * step, 12)
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 def max_positions_block(cfg, positions, symbol: str, bypass=None) -> tuple[bool, str]:
     """(bi CHAN?, ly do) khi `turbo_demo` sap mo 1 lenh moi — chot `MAX_POSITIONS`.
 
@@ -1066,12 +1091,37 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         # khong bao gio vao duoc lenh. Kiem tra truoc cho minh bach.
         _notional = float(qty) * float(lv["entry"])
         if _notional < float(cfg.min_notional_usdt):
-            results.append({"symbol": sym, "status": "SKIP_NOTIONAL",
-                            "notional": round(_notional, 2),
-                            "reason": "notional %.2f < minNotional %.2f (SL qua xa so voi "
-                                      "von) — bo qua thay vi de san tu choi -4164"
-                                      % (_notional, float(cfg.min_notional_usdt))})
-            continue
+            # (21/10) Mau TP/SL cua nguoi van hanh (SL 14xATR15m ~ -9.5%) tren von nho:
+            # notional theo risk < min 5 USDT ⇒ truoc day SKIP_NOTIONAL (khong bao gio vao
+            # lenh). Neu bat `SIZE_TO_MIN_NOTIONAL`: NANG qty len dung minNotional roi
+            # KIEM LAI tran risk (risk thuc tang: minNotional x SL% / equity).
+            _floor_q = (qty_for_min_notional(
+                lv["entry"], cfg.min_notional_usdt,
+                bot.exchange.qty_step(sym) if hasattr(bot.exchange, "qty_step") else 0.0)
+                if bool(getattr(cfg, "size_to_min_notional", False)) else 0.0)
+            if _floor_q <= 0:
+                results.append({"symbol": sym, "status": "SKIP_NOTIONAL",
+                                "notional": round(_notional, 2),
+                                "reason": "notional %.2f < minNotional %.2f (SL qua xa so voi "
+                                          "von) — bo qua thay vi de san tu choi -4164"
+                                          % (_notional, float(cfg.min_notional_usdt))})
+                continue
+            _risk2 = planned_risk_usd(lv["entry"], lv["sl"], _floor_q)
+            _ok2, _why2 = can_add_risk(
+                bot.portfolio.positions, bot.equity or bot.balance, cfg.max_total_risk_pct,
+                _risk2, {s: m.initial_sl for s, m in bot.managed.items()})
+            if not _ok2:
+                results.append({"symbol": sym, "status": "SKIP_RISK",
+                                "reason": _why2 + " (sau khi nang qty len minNotional)",
+                                "new_risk_usdt": round(_risk2, 2)})
+                continue
+            log.info("SIZE %s: notional %.2f < minNotional -> nang len %.2f "
+                     "(risk %.2f USDT = %.2f%% equity)", sym, _notional,
+                     _floor_q * float(lv["entry"]), _risk2,
+                     _risk2 / max(float(bot.equity or bot.balance), 1e-9) * 100)
+            qty = _floor_q
+            risk_usdt = _risk2
+            _notional = _floor_q * float(lv["entry"])
         try:
             # (16/10) MARGIN_TYPE=ISOLATED: tach margin tung vi the (xem
             # `exchange.set_margin_mode`). Phai dat khi cap CON PHANG (ngay truoc lenh).

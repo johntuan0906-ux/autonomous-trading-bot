@@ -197,6 +197,12 @@ class Settings:
     # do NGUOI DUNG/bot khac mo o che do CROSS khong keo vi the cua bot vao thanh ly.
     # Rong = khong doi (giu nguyen che do san dang co).
     margin_type: str = field(default_factory=lambda: _get("MARGIN_TYPE", ""))
+    # (21/10) Von nho + SL rong (mau nguoi van hanh: SL 14xATR15m ~ -9.5%) ⇒ qty theo risk
+    # cho notional < minNotional san (5 USDT) ⇒ truoc day `SKIP_NOTIONAL` (mat co hoi).
+    # Bat = NANG qty len dung minNotional. Rui ro TANG (tran: minNotional x SL% / equity
+    # ~1.5% voi LIVE $40) nen mac dinh TAT; bat qua `SIZE_TO_MIN_NOTIONAL=true`.
+    size_to_min_notional: bool = field(
+        default_factory=lambda: _get_bool("SIZE_TO_MIN_NOTIONAL", False))
     # (18/10) Provider loi THANH TOAN/het credit (vd Cline `402 Payment Required`) -> chan
     # DAI (mac dinh 12 gio) thay vi pause 30 phut: loi thanh toan KHONG tu het, thu lai chi
     # ton 5 cuoc goi moi vong + rac journal.

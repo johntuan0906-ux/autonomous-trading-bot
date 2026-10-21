@@ -91,5 +91,41 @@ class TestMacDinhTheoCheDo(unittest.TestCase):
         self.assertIn("turbo_bypass_max_positions", names)
 
 
+class TestFloorMinNotional(unittest.TestCase):
+    """(21/10) Vốn nhỏ + SL rộng (mẫu người vận hành: 14×ATR15m ≈ −9.5%) ⇒ notional theo
+    risk < minNotional 5 USDT ⇒ trước đây `SKIP_NOTIONAL` (không bao giờ vào lệnh).
+    `qty_for_min_notional()` nâng qty lên đúng minNotional; người gọi phải kiểm lại
+    trần risk (risk thực tăng: minNotional × SL% / equity).
+    """
+
+    def _q(self, step: float):
+        """quantize giả: cắt xuống bội số `step` (giống TRUNCATE của sàn)."""
+        import math
+        return lambda x: math.floor(float(x) / step) * step
+
+    def test_nang_len_dung_min_notional(self):
+        q = TD.qty_for_min_notional(0.017, 5.0, 1.0)
+        self.assertGreater(q, 0)
+        self.assertGreaterEqual(q * 0.017, 5.0, "phải đạt notional >= minNotional")
+        self.assertLess(q * 0.017, 5.0 + 0.017, "không được phình quá 1 bước")
+
+    def test_lam_tron_LEN_theo_buoc_san(self):
+        # 5/0.0263 = 190.11 ⇒ phải lên 191 (không phải 380 như bản "tăng gấp đôi")
+        q = TD.qty_for_min_notional(0.0263, 5.0, 1.0)
+        self.assertEqual(q, 191)
+        self.assertGreaterEqual(q * 0.0263, 5.0)
+
+    def test_buoc_nho_van_dung(self):
+        q = TD.qty_for_min_notional(100.0, 5.0, 0.001)
+        self.assertAlmostEqual(q, 0.05, places=9)
+        self.assertGreaterEqual(q * 100.0, 5.0)
+
+    def test_khong_the_thi_tra_0(self):
+        self.assertEqual(TD.qty_for_min_notional(0.0, 5.0, 1.0), 0.0)
+        self.assertEqual(TD.qty_for_min_notional(1.0, 0.0, 1.0), 0.0)
+        self.assertEqual(TD.qty_for_min_notional(1.0, 5.0, 0.0), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()
+

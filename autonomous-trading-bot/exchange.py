@@ -252,6 +252,24 @@ class BinanceFutures:
         self.last_error = "response khong co truong so du USDT"
         return None
 
+    def qty_step(self, symbol: str) -> float:
+        """Buoc khoi luong nho nhat cua san (tick size cua qty). 0.0 = khong doc duoc.
+
+        Vi sao (21/10): khi von nho + SL rong, phai NANG qty len dung `minNotional`
+        (`turbo_demo.qty_for_min_notional`). Dung tick THAT de lam tron len chinh xac —
+        ban truoc "do" bang cach tang dan nen notional bi gap doi (380 thay vi 191).
+        """
+        src = self._client if self._client is not None else self._public
+        if src is None:
+            return 0.0
+        try:
+            src.load_markets()
+            m = src.market(symbol) or {}
+            p = (m.get("precision") or {}).get("amount")
+            return float(p or 0.0)
+        except Exception:  # noqa: BLE001
+            return 0.0
+
     def quantize_qty(self, symbol: str, qty: float) -> float:
         """Cat qty theo precision + min/max amount cua san.
 

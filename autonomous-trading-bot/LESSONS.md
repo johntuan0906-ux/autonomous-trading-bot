@@ -365,7 +365,7 @@ _Truy nguoc bang chung cua 1 ma (vd `EV-2677E0`):_ `python tools/trace_trade.py 
 ## Ghi chu cua nguoi van hanh
 
 <!-- HUMAN -->
-### MẪU TP/SL CỦA NGƯỜI VẬN HÀNH (đo từ lệnh thật, 20/10) — ĐÃ XEM XÉT, CHƯA ÁP DỤNG
+### MẪU TP/SL CỦA NGƯỜI VẬN HÀNH (đo từ lệnh thật) — ĐÃ ÁP DỤNG 21/10 THEO YÊU CẦU (hội đồng VETO 1-3)
 
 **Lệnh mẫu (người tự vào, LIVE):** `BICO/USDT:USDT` **LONG 706** @ `0.01703`, đòn bẩy 10×, notional ≈ 12 USDT
 (≈30% equity LIVE), lỗ tối đa theo SL ≈ **1.15 USDT = 2.9% equity**.
@@ -392,9 +392,21 @@ Quy đổi theo ATR tại thời điểm vào: SL = **5.5×ATR(1h) = 14×ATR(15m
 3. **Hội đồng 20/10**: **1 ALLOW / 3 VETO** ⇒ VETO (qwen3.7-plus: TP bất thực tế với MFE p90=1.25R;
    qwen3.8-max + mimo: vi phạm min notional). Phiếu lưu trong journal (`status=COUNCIL`).
 
-**Đã áp dụng (an toàn, không đổi hành vi giao dịch):** `ADOPT_SKIP_SYMBOLS` += `BICO` (bot **không bao giờ**
-quản lý/dời SL/chốt lệnh tay của người vận hành); mẫu cấu hình để sẵn trong `.env` (khối
-"MẪU TP/SL CỦA NGƯỜI DÙNG", đang comment). Muốn bật: bỏ `#` 6 dòng đó + restart.
-**Hạn chế đã biết:** mã hiện tại LUÔN kéo SL về hoà vốn sau khi chốt một phần ⇒ khác người dùng
-(giữ SL cố định); muốn đúng 100% phải sửa `trade_mgmt` (partial không dời SL) — chưa làm vì hội đồng VETO.
+**ĐÃ ÁP DỤNG 21/10 (người vận hành yêu cầu "làm đồng thời 2 lựa chọn", sau khi hội đồng VETO 1-3):**
+`RISK_PER_TRADE_PCT 1.2` · `MAX_TOTAL_RISK_PCT 1.6` · `SL_ATR_MULT 14` · `TP_ATR_MULT 69` ·
+`PARTIAL_AT_R 2.86` · `PARTIAL_PCT 0.3` · `BE_AT_R 0` · `TRAIL_ATR_MULT 0` · `SIZE_TO_MIN_NOTIONAL=true`
+(áp dụng **cả TESTNET và LIVE**; backup `.env` giữ tại `*.env.bak-*`).
+
+- `SIZE_TO_MIN_NOTIONAL=true`: khi notional theo risk < 5 USDT (LIVE $40 + SL 9-12%) thì **nâng qty
+  lên đúng minNotional** thay vì `SKIP_NOTIONAL` ⇒ mới vào được lệnh (đo: risk 1.2% chỉ 23/40 cặp vào
+  được, 1.5% được 29/40; có cờ này thì 40/40). Risk thực tăng nhẹ (trần ≈1.5%).
+- `ADOPT_SKIP_SYMBOLS=BICO` (cả 2 instance): bot **không bao giờ** quản lý/dời SL/chốt lệnh tay.
+- **HỆ QUẢ PHẢI BIẾT**: risk 1.2%/lệnh nhưng `MAX_DAILY_LOSS_PCT=2.0` ⇒ **2 lệnh thua là trip
+  kill-switch** (phải `python risk.py --reset` mới chạy tiếp). Muốn chạy liên tục phải nâng
+  `MAX_DAILY_LOSS_PCT` — **quyết định của người vận hành**, chưa làm.
+- Về lại cấu hình cũ: `RISK_PER_TRADE_PCT=0.25`, `MAX_TOTAL_RISK_PCT=1.0`, `SL_ATR_MULT=2.0`,
+  `TP_ATR_MULT=5.0`, `PARTIAL_AT_R=0.3`, `PARTIAL_PCT=0.5`, `BE_AT_R=1.0`, `TRAIL_ATR_MULT=1.0`,
+  `SIZE_TO_MIN_NOTIONAL=false` rồi restart.
+**Hạn chế đã biết:** mã hiện tại **luôn kéo SL về hoà vốn** sau khi chốt một phần ⇒ khác mẫu
+(người dùng giữ SL cố định). Muốn đúng 100% phải sửa `trade_mgmt` (partial không dời SL).
 <!-- /HUMAN -->

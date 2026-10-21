@@ -505,13 +505,35 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
     rep = {"ts": now_t, "mode": "locked" if not lock["ok"] else "dry-run",
            "live": bool(live), "topics": [], "skipped": [], "results": [],
            "lock": lock, "budget": budget_of(state, now_t), "heartbeat": ""}
+
+    def _beat(mode, n_topics=0, reason="", cycle=None):
+        """Ghi nhip tim o MOI duong thoat (ke ca khi bi chan).
+
+        (21/10) Lop loi B-027: `cycles_blocked`/`budget_blocked` truoc day return TRUOC khi
+        ghi nhip tim ⇒ `--status` bao "KHONG CO NHIP" va khong ai biet daemon con song hay
+        da chet. Cham tran la chuyen binh thuong, phai khac "im lang".
+        """
+        hb = {"ts": now_t, "mode": str(mode), "ok": True, "topics": int(n_topics),
+              "cycle": int(cycle if cycle is not None else rep["budget"]["cycles"]),
+              "spend_today": rep["budget"]["spend"],
+              "cycles_today": rep["budget"]["cycles"], "pid": os.getpid(),
+              "reason": str(reason or "")[:200],
+              "blocked": str(mode) in ("cycles_blocked", "budget_blocked", "locked")}
+        if write:
+            rep["heartbeat"] = str(heartbeat_path) if save_json(heartbeat_path, hb) else "GHI LOI"
+        rep["hb"] = hb
+        return hb
+
     if not lock["ok"]:
+        _beat("locked", 0, lock.get("reason") or "da co tien trinh khac dang chay")
         return rep
     try:
         bud = rep["budget"]
         if bud["cycles"] >= int(max_cycles_day):
             rep["mode"] = "cycles_blocked"
-            rep["reason"] = ("da chay %d/%d chu ky hom nay" % (bud["cycles"], max_cycles_day))
+            rep["reason"] = ("da hoi hoi dong %d/%d luot hom nay"
+                             % (bud["cycles"], max_cycles_day))
+            _beat("cycles_blocked", 0, rep["reason"])
             return rep
         ag = build_agenda(state=state, now=now_t, journal_path=journal_path,
                           ops_path=ops_path, regress_path=regress_path, env_path=env_path,
@@ -531,6 +553,7 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
             rep["reason"] = ("chi phi hom nay %.3f + uoc %.3f > tran %.3f USD"
                              % (bud["spend"], est, float(max_usd_day)))
             rep["topics"] = topics
+            _beat("budget_blocked", len(topics), rep["reason"])
             return rep
         rep["mode"] = "live" if live else "dry-run"
         rep["topics"] = topics
@@ -575,7 +598,8 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
             float((state.get("spend") or {}).get(d) or 0.0) + cost_total, 6)
         state.setdefault("votes", {})[d] = int(
             (state.get("votes") or {}).get(d) or 0) + votes_total
-        if live:      # chi dem chu ky GOI LLM (dry-run 96 lan/ngay khong duoc tinh)
+        if live and topics:   # chi dem khi THUC SU hoi hoi dong (chay 96 lan/ngay voi 0
+            # chu de ma van tinh la "het tran" thi daemon chet im nua ngay — dung B-027)
             state.setdefault("cycles", {})[d] = int(
                 (state.get("cycles") or {}).get(d) or 0) + 1
         state["last_cycle"] = now_t
@@ -588,13 +612,7 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
                 ok = _append_outbox(outbox_path, rep["results"])
                 rep["outbox"] = str(outbox_path) if ok else "GHI LOI"
             rep["state_saved"] = save_json(state_path, state)
-        hb = {"ts": now_t, "mode": rep["mode"], "ok": True, "cycle": rep["budget"]["cycles"],
-              "topics": len(topics), "spend_today": rep["budget"]["spend"],
-              "cycles_today": rep["budget"]["cycles"], "pid": os.getpid(),
-              "locked": False}
-        if write:
-            rep["heartbeat"] = str(heartbeat_path) if save_json(heartbeat_path, hb) else "GHI LOI"
-        rep["hb"] = hb
+        _beat(rep["mode"], len(topics))
         return rep
     finally:
         release_lock(lock_path)

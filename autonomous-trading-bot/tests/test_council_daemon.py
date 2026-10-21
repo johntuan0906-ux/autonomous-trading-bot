@@ -386,6 +386,49 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertIn("15", joined)
 
 
+class TestNhipTimVaTran(unittest.TestCase):
+    """(21/10) B-027: chạm trần KHÔNG được làm mất nhịp tim, và không được tính là 'đã hỏi'.
+
+    Đo thật: daemon TESTNET chạy 15 phút/lần ở chế độ live; mỗi lần *không có chủ đề* vẫn
+    bị tính 1 chu kỳ ⇒ hết trần 12 sau ~3 giờ ⇒ `cycles_blocked` **return trước khi ghi nhịp
+    tim** ⇒ `--status` báo "KHONG CO NHIP" (nhịp cũ 4,6 giờ) dù daemon hoàn toàn khoẻ.
+    """
+    NOW = 10_000.0
+
+    def test_khong_co_chu_de_thi_khong_tinh_chu_ky(self):
+        with tempfile.TemporaryDirectory() as t:
+            e = _ready(Path(t), self.NOW)
+            e.env_file(per=1.0, day=5.0)      # khong con chu de nao
+            rep = CD.run_cycle(now=self.NOW, live=True, council_fn=lambda p: {},
+                               **e.kwargs())
+            self.assertEqual(rep["topics"], [])
+            st = json.loads(e.state.read_text(encoding="utf-8"))
+            self.assertFalse(st.get("cycles"), "khong hoi gi thi khong duoc tinh luot")
+            self.assertTrue(json.loads(e.hb.read_text(encoding="utf-8"))["ok"])
+
+    def test_cham_tran_van_ghi_nhip_tim(self):
+        with tempfile.TemporaryDirectory() as t:
+            e = _ready(Path(t), self.NOW)
+            _write(e.state, {"cycles": {CD._day(self.NOW): 99}})
+            rep = CD.run_cycle(now=self.NOW, live=True, max_cycles_day=12,
+                               council_fn=lambda p: None, **e.kwargs())
+            self.assertEqual(rep["mode"], "cycles_blocked")
+            hb = json.loads(e.hb.read_text(encoding="utf-8"))
+            self.assertTrue(hb["blocked"], "phai noi ro la bi chan, khong phai im lang")
+            self.assertEqual(hb["ts"], self.NOW)
+
+    def test_cham_tran_chi_phi_van_ghi_nhip_tim(self):
+        with tempfile.TemporaryDirectory() as t:
+            e = _ready(Path(t), self.NOW)
+            _write(e.state, {"spend": {CD._day(self.NOW): 5.0}})
+            rep = CD.run_cycle(now=self.NOW, live=True, max_usd_day=1.0,
+                               council_fn=lambda p: None, **e.kwargs())
+            self.assertEqual(rep["mode"], "budget_blocked")
+            hb = json.loads(e.hb.read_text(encoding="utf-8"))
+            self.assertTrue(hb["blocked"])
+            self.assertIn("tran", hb["reason"])
+
+
 class TestKindCooldown(unittest.TestCase):
     """Cùng MỘT LOẠI chủ đề không được hỏi lại trong cooldown (chống đốt tiền 96 lần/ngày)."""
 

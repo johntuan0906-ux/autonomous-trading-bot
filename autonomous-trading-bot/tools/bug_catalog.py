@@ -278,6 +278,16 @@ CLASSES = [
                   "test_ops_safety.py::TestEntriesGate::test_file_hong_tu_het_han_sau_grace",
                   "test_ops_tools.py::TestEntriesGateExpiry::test_file_hong_thi_tam_dung_an_toan"],
     },
+    {
+        "code": "B-027", "kind": "im-lang", "seen": "21/10/2026",
+        "title": "Daemon hoi dong cham tran ⇒ MAT NHIP TIM (im lang) + dem sai luot da hoi",
+        "symptom": "Daemon chay 15 phut/lan o che do live: moi lan **khong co chu de** van bi tinh 1 luot ⇒ het tran 12 luot sau ~3 gio; `cycles_blocked`/`budget_blocked` **return TRUOC khi ghi** `logs/council_heartbeat.json` ⇒ `--status` bao 'KHONG CO NHIP' (do that 21/10: nhip cu **4,6 gio**) du daemon hoan toan khoe. Cham tran la chuyen binh thuong, nhung bi bao nhu da chet = dung lop loi 'im lang'",
+        "guard": "`run_cycle` dem luot CHI khi THUC SU hoi hoi dong (`live and topics`); `_beat()` ghi nhip tim o **MOI duong thoat** (locked / cycles_blocked / budget_blocked / binh thuong) kem co `blocked` + `reason` de phan biet 'bi chan' voi 'da chet'",
+        "files": ["tools/council_daemon.py"],
+        "tests": ["test_council_daemon.py::TestNhipTimVaTran::test_khong_co_chu_de_thi_khong_tinh_chu_ky",
+                  "test_council_daemon.py::TestNhipTimVaTran::test_cham_tran_van_ghi_nhip_tim",
+                  "test_council_daemon.py::TestNhipTimVaTran::test_cham_tran_chi_phi_van_ghi_nhip_tim"],
+    },
 ]
 
 

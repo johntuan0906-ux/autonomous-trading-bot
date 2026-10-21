@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 21/10/2026 21:53:41 · commit `7e0801d`
+- **Cập nhật**: 21/10/2026 22:23:41 · commit `2bf955c`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `2204` · round `160` · nhịp tim cách đây 121.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3251.09 USDT
+- **Bot**: pid `2204` · round `168` · nhịp tim cách đây 14.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3251.93 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3335 lệnh đóng, WR 44.89%, E(R) 1.3157, PnL -1018.6$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2471 | 40.15 | 6.607 | 0.691 | 1.7668 | -1059.17 |
+| 7 ngày | 2465 | 40.04 | 6.613 | 0.687 | 1.7706 | -1070.32 |
 | 14 ngày | 3106 | 43.53 | 5.601 | 0.789 | 1.4093 | -1044.69 |
 | 30 ngày | 3335 | 44.89 | 5.369 | 0.814 | 1.3157 | -1018.6 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.691 < 1.1; PF($) cua so 14 ngay = 0.789 < 1.1; PF($) cua so 30 ngay = 0.814 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.687 < 1.1; PF($) cua so 14 ngay = 0.789 < 1.1; PF($) cua so 30 ngay = 0.814 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,7 +44,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | APT/USDT:USDT | LONG | 150.4 | 0.8302 | 0.750428 | 1.223362 | False | False | 0.158 |
-| CFX/USDT:USDT | LONG | 3541.0 | 0.05521 | 0.051822 | 0.071908 | False | False | 0.097 |
+| CFX/USDT:USDT | LONG | 3541.0 | 0.05521 | 0.051822 | 0.071908 | False | False | 0.118 |
 | CYBER/USDT:USDT | LONG | 544.2 | 0.322 | 0.29995 | 0.430675 | False | False | 0.363 |
 | DOT/USDT:USDT | LONG | 131.9 | 1.1616 | 1.070656 | 1.609824 | False | False | 0.197 |
 

@@ -174,6 +174,10 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Test nhanh 1 module | `python -m unittest tests.test_ops_tools` |
 | Audit model hội đồng | `python tools/model_audit.py [--target live]` |
 | Audit 1 repo HF | `python tools/model_audit.py --hf <repo> --params-b <B> --bits 8` |
+| Hội đồng chạy nền: trạng thái | `python tools/council_daemon.py --status` |
+| Hội đồng chạy nền: 1 chu kỳ (KHÔNG tốn tiền) | `python tools/council_daemon.py --once` |
+| Hội đồng chạy nền: bật gọi LLM thật (có trần) | `python tools/council_daemon.py --once --live --max-usd-day 0.6 --max-topics 3` |
+| Hội đồng chạy nền: cài/bỏ task 15 phút | `python tools/council_daemon.py --install-task` · `--uninstall-task` |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |

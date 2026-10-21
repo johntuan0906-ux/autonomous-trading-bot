@@ -504,7 +504,6 @@ crash** (kill-switch ⇒ monitor-only, tự resume khi gỡ) · `RECONCILE` tự
   **B-021**: tiến trình test ghi đè `logs/heartbeat.json` của instance THẬT (pid 28000 không tồn tại).
 
 ## 17. (21/10) Đọc `abhixdd/ghgrab` — công cụ TUI tải file từ Git forge: áp dụng được gì
-
 **Nó là gì:** CLI + TUI viết bằng Rust (`tokio` + `ratatui`) để *duyệt và tải từng file/thư mục*
 từ GitHub/GitLab/Codeberg/Gitea/Forgejo mà không phải `git clone`; có tải release theo
 OS/arch, LFS, preview file, và **2 bề mặt cho agent**: `ghgrab agent tree|download` (JSON) +
@@ -549,4 +548,59 @@ cho agent nội bộ. Không dựng MCP.
 **Ghi chú kỹ thuật:** `download.rs` của ghgrab dùng `fs::write` trần (không tmp+rename) — tức
 là **ta đang chặt hơn họ** ở khoản bền vững dữ liệu; thứ đáng học từ họ là *kiểm tra đích
 trước khi ghi* và *hợp đồng JSON cho agent*, không phải cách tải file.
+
+
+## 18. (21/10) Đọc `coworker.ai` + `OpenCoworkAI/open-cowork` — "agent chạy liên tục" nghĩa là gì, và ta thiếu gì
+
+**Hai thứ khác nhau, đừng lẫn:**
+
+| | coworker.ai | open-cowork |
+|---|---|---|
+| Bản chất | **SaaS doanh nghiệp** (OM2 memory + model routing + 50 connector, SOC2, US-hosted) | **App desktop Electron** (MIT, 2.2k★): bọc Claude Code + MCP + Skills, sandbox WSL2/Lima, multi-model, điều khiển từ Feishu/Slack |
+| "Chạy liên tục" đến từ đâu | **Trigger trên cloud của họ**: "Pipeline Hygiene Agent … Live Trigger (Salesforce stage = Negotiation 14+ ngày) … Last run 2 minutes ago, 12 runs today" — tức là *hệ thống của họ* thức dậy theo sự kiện/lịch rồi gọi agent | **KHÔNG có**: `ROADMAP.md` xếp **"Scheduled Tasks: Cron-like task scheduling with UI management and persistent execution"** vào nhóm **Planned v3.4.0**; "Multi-Agent orchestration" là mid-term |
+| Giá trị học được cho ta | mẫu **model routing** (rẻ/đắt theo độ khó) + **memory có cấu trúc** + **trigger theo sự kiện** | mẫu **skill hoá quy trình** + **sandbox** + **cổng phê duyệt trước khi hành động** |
+
+⇒ Kết luận thẳng: **"AICoworker chạy 24/7" là tính năng của cloud bên họ, không phải thứ open-cowork đã làm được.**
+Ta **đã** có phần khó hơn: bot 24/7 (supervisor + deadman + 3 task Scheduler), hội đồng được gọi
+**trong từng vòng giao dịch** (LIVE 83 vòng/7 phút). Cái ta thiếu chỉ là **người trực khi thị trường im**
+(không có ứng viên lệnh ⇒ hội đồng ngủ) và **bộ hãm chi phí** nếu để nó tự thức dậy.
+
+### 18.1 Đã dựng: `tools/council_daemon.py` (task `ATB-Council`, 15 phút, pythonw)
+
+| Thành phần | Cụ thể | Vì sao cần |
+|---|---|---|
+| Lập chương trình nghị sự (không LLM) | journal CLOSE sau cursor (tổng R, thắng/thua, tệ nhất) · câu hỏi vận hành tồn > 24h · tái phát lớp lỗi (`regress_watch.json`) · **cấu hình rủi ro tự mâu thuẫn** (2 lỗ ⇒ trip) · cổng tạm dừng không hạn · nhịp tim bot cũ | Hội đồng phải có **việc thật** để bàn, không bịa |
+| Dedup TTL | `key` + 24h (đổi được `--ttl-hours`) | Không hỏi lại cùng vấn đề mỗi 15 phút (đốt tiền + nhiễu phiếu) |
+| Trần chi phí | `--max-usd-day` (0.6) · `--max-cycles-day` (48) · `--max-topics` (3) · `--max-models` (3) · ước tính trước khi gọi, chặn ⇒ ghi `budget_blocked` | Chạy 24/7 mà không có trần = hóa đơn không đáy |
+| **Dry-run mặc định** | không `--live` thì **không gọi LLM**, chỉ ghi agenda vào `logs/council_outbox.json` | Bật "liên tục" không đồng nghĩa "tiêu tiền" |
+| 1 tiến trình | `logs/council_daemon.lock` (pid sống ⇒ thoát; pid chết ⇒ chiếm quyền) | Task Scheduler + supervisor restart không tạo 2 hội đồng |
+| Chứng minh còn sống | `logs/council_heartbeat.json` mỗi vòng + `--status` | Đúng lớp lỗi "im lặng" của dự án |
+| Crash-resume | cursor journal chỉ nhảy **sau** khi ghi outbox/state; state ghi bằng `atomic.py` | Chết giữa chừng không mất/nhân đôi việc |
+| Ranh giới an toàn | **không** import `exchange`/`bot`, không đặt/huỷ lệnh, không ghi `.env`; test chốt bằng quét mã nguồn | Hội đồng chỉ **đề xuất**, người/bot quyết |
+
+### 18.2 Muốn "chạy liên tục không nghỉ" đúng nghĩa thì còn phải làm (theo thứ tự)
+
+1. **Duyệt ngân sách** (quyết định của người vận hành): bật `--live` với `--max-usd-day` bao nhiêu.
+   Chưa duyệt thì daemon vẫn chạy nhưng chỉ lập nghị trình (0 đồng).
+2. **Nối cảnh báo** khi `budget_blocked` / `cycles_blocked` / hội đồng không trả phiếu ≥ 2 vòng
+   ⇒ đẩy vào `ops_queue` (đã có hạ tầng), tránh "im lặng vì hết tiền".
+3. **Model routing**: việc rẻ (đọc số liệu, phân loại) dùng 1 model lite; chỉ việc khó mới gọi 3–6 model
+   — mẫu lấy từ coworker.ai (họ tuyên bố 51× rẻ hơn nhờ routing; ta chỉ cần phần "đừng dùng 6 model
+   cho câu hỏi có/không đã biết đáp án").
+4. **Thức dậy theo sự kiện** thay vì chỉ theo giờ: khi `watch_regress` bắt tái phát hoặc kill-switch trip
+   ⇒ gọi `--once` ngay (đã có hook `notify` trong watcher; chỉ cần thêm 1 dòng gọi daemon).
+5. **Ngủ/thức của máy Windows**: máy sleep thì task bỏ nhịp; cần chính sách "bỏ nhịp, không dồn" (đã có:
+   mỗi lần chạy là 1 chu kỳ, không burst) + kiểm tra `last_cycle` quá 2×interval thì báo.
+6. **Sandbox cho "skill"** nếu sau này cho hội đồng tự chạy lệnh: hiện chỉ đọc file — muốn mở rộng
+   phải đi theo mẫu open-cowork (path restriction + VM WSL2) và **cổng phê duyệt** trước khi ghi.
+7. **Bộ nhớ dài hạn**: `memory_agent.py daemon` đã có; cần nối để kết luận của hội đồng được nhớ
+   (hiện ghi journal + outbox, chưa thành "kinh nghiệm" cho vòng sau).
+
+### 18.3 Không áp dụng
+
+- GUI/computer-use, MCP connector, Feishu/Slack remote control, đóng gói Electron: không liên quan
+  bot giao dịch 1 máy; thêm bề mặt tấn công (xem phiếu MCP 1–3 VETO ở §17).
+- "OM2 knowledge graph" thương mại: ta đã có `memory_graph.py`/`memory_agent.py`; học *ý tưởng*
+  (memory có nguồn + rerank) chứ không tích hợp dịch vụ ngoài (dữ liệu tài khoản không ra khỏi máy).
+
 

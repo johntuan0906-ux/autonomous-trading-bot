@@ -209,3 +209,31 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Manifest năng lực tool (cho agent) | `python tools/capabilities.py [--json] [--check]` |
 | Test toàn bộ | `python -m unittest discover -s tests -t .` (**1000 test**) |
 | Đẩy code | `tools\git-sync.cmd "mo ta"` |
+
+## Mẫu TP/SL của người vận hành (đang TẮT — 20/10)
+
+Đo từ lệnh tay `BICOUSDT` trên LIVE: LONG 706 @ 0.01703, **SL 0.0154 (−9.57%)**, chốt **30% ở +27.4%**,
+chốt **50% ở +47.4%**, giữ **20% chạy**, SL **cố định** (`closePosition=true`).
+
+Quy đổi sang cấu hình bot (`R` = khoảng cách SL):
+
+| Tham số | Giá trị mẫu |
+|---|---|
+| `SL_ATR_MULT` | `14` (= 5.5×ATR(1h) ≈ −9.5%) |
+| `TP_ATR_MULT` | `69` (= 4.95R ≈ +47%) |
+| `PARTIAL_AT_R` / `PARTIAL_PCT` | `2.86` / `0.3` (= 30% ở +27%) |
+| `BE_AT_R` / `TRAIL_ATR_MULT` | `0` / `0` (người dùng **không dời SL**) |
+
+Khối này nằm sẵn trong `.env` (comment) của cả 2 instance — bỏ `#` 6 dòng rồi restart là bật.
+
+**Vì sao đang tắt:** hội đồng 20/10 **1 ALLOW / 3 VETO**; mô phỏng trên 3.231 lệnh của bot cho **−14% tổng R**;
+trên LIVE $40 vốn, SL 9.57% + risk 0.25% ⇒ notional **$1.04 < min 5 USDT** ⇒ không vào được lệnh
+(muốn vào phải `RISK_PER_TRADE_PCT ≥ 1.2`). Chi tiết + bằng chứng: `LESSONS.md` (khối `<!-- HUMAN -->`)
+và `CONTEXT.md`.
+
+**Lưu ý:** mã hiện tại **luôn kéo SL về hoà vốn** sau khi chốt một phần ⇒ khác mẫu (SL cố định).
+Muốn đúng 100% phải sửa `trade_mgmt` (partial không dời SL).
+
+**Lệnh tay của người vận hành:** thêm symbol vào `ADOPT_SKIP_SYMBOLS` (hiện `BTW,BICO`) để bot
+**không bao giờ** adopt/dời SL/chốt — kiểm chứng: dòng `ADOPT vi the san: ... skipped=[...]`.
+

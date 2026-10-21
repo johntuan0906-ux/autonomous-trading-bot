@@ -589,6 +589,19 @@ def _print_status(s: dict) -> None:
 
 
 
+def BK_run(argv: list) -> dict:
+    """Chay `schtasks` (tach ra de test tiem duoc, khong dung may that)."""
+    import backup as BK
+    return BK.run_schtasks(argv)
+
+
+def task_argv(action: str, name: str, command: str, task_min: int = 15) -> list:
+    """argv cho `schtasks` (tach rieng de test; LIVE dung ten khac `ATB-Council-Live`)."""
+    import backup as BK
+    return BK.schtasks_argv(action, str(name), command=command, sched="MINUTE",
+                            mod=int(task_min))
+
+
 def main(argv=None) -> int:
     for _s in (sys.stdout, sys.stderr):
         try:
@@ -614,20 +627,21 @@ def main(argv=None) -> int:
     ap.add_argument("--uninstall-task", action="store_true")
     ap.add_argument("--task-status", action="store_true")
     ap.add_argument("--task-min", type=int, default=15)
+    ap.add_argument("--task-name", default=TASK_NAME,
+                    help="ten task Scheduler (LIVE dung ATB-Council-Live)")
     args = ap.parse_args(argv)
+    task_name = str(args.task_name or TASK_NAME)
 
     if args.install_task or args.uninstall_task or args.task_status:
-        import backup as BK
         action = ("install" if args.install_task else
                   "uninstall" if args.uninstall_task else "status")
         cmd = task_command(live=args.live)
-        res = BK.run_schtasks(BK.schtasks_argv(action, TASK_NAME, command=cmd,
-                                              sched="MINUTE", mod=args.task_min))
-        res.update({"action": action, "task": TASK_NAME, "command": cmd})
+        res = BK_run(task_argv(action, task_name, cmd, args.task_min))
+        res.update({"action": action, "task": task_name, "command": cmd})
         if args.json:
             print(json.dumps(res, ensure_ascii=False, indent=1))
         else:
-            print("task %s: %s" % (TASK_NAME,
+            print("task %s: %s" % (task_name,
                                    "OK" if res.get("ok") else "LOI (%s)" % res.get("code")))
             print("  lenh: %s  (moi %d phut)" % (cmd, args.task_min))
             if res.get("out"):

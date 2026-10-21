@@ -604,3 +604,42 @@ Ta **đã** có phần khó hơn: bot 24/7 (supervisor + deadman + 3 task Schedu
   (memory có nguồn + rerank) chứ không tích hợp dịch vụ ngoài (dữ liệu tài khoản không ra khỏi máy).
 
 
+
+## 19. (21/10) Đọc `google-research/harness2` — "harness" là gì và ta tối ưu nó bằng bằng chứng thế nào
+
+**Nó là gì:** Google Research (Apache-2.0, 16.3k★, arXiv:2610.14224). Định nghĩa: *"A harness is
+the system around a model that enables it to act as an agent: prompts, tools, memory, skills,
+orchestration"*; **harnessing** = tối ưu chính hệ đó, **giữ nguyên trọng số model**. Hai tầng đệ quy:
+
+| Tầng | Cơ chế | Điểm mấu chốt |
+|---|---|---|
+| **Task-level** | **Propose–Probe–Compose**: đề xuất sửa harness → *probe* tác động **trên cùng một task** → ghép harness mới từ **contrast hành vi** giữa các lần chạy | **KHÔNG cần ground-truth feedback** |
+| **Harnessing-level** | Harness cải tiến **bền vững**: lưu các harness đã adopt + bài học có bằng chứng để dẫn dắt vòng sau | Bằng chứng phải được *giữ lại*, không chỉ ghi ý định |
+
+Kèm: benchmark JobBench/LAB/WorkBuddy, executor OpenCode (mặc định) hoặc Codex (`--substrate cx`),
+`--k` = ngân sách đệ quy, `--mode parallel|sequential`, kết quả trong `runs/` **resume được**.
+README **tự cảnh báo**: executor truy cập mạng không hạn chế, Codex chạy **sandbox tắt**.
+
+### 19.1 Áp dụng cho dự án này
+
+| Mẫu | Với ta | Trạng thái |
+|---|---|---|
+| Harness = prompt + tool + memory + skill + orchestration | Ta có đủ thành phần (agents/council, tools/, memory_agent, lessons, turbo_demo) nhưng **không có sổ thay đổi**: đổi prompt/model/cổng nằm rải rác trong commit + LESSONS | **ĐÃ LÀM**: `tools/harness_ledger.py` (8 test) — mỗi thay đổi có `id`, loại, **bằng chứng**, kết quả probe, quyết định `adopted/rejected/rolled-back`; `--check` bắt adopted thiếu bằng chứng + đề xuất treo > 7 ngày |
+| **Propose–Probe–Compose không cần ground truth** | **Rất hợp**: không bao giờ biết PnL phản thực của lệnh **bị VETO** ⇒ không chấm được bằng kết quả; chỉ so **hành vi** trên cùng bộ payload lịch sử | **P1 kế tiếp**: `council_probe` — replay N payload từ journal qua 2 biến thể harness (đổi prompt/vai/model/cổng), in contrast: tỉ lệ VETO, bất đồng giữa model, chi phí, độ trễ; ghi vào trường `probe` của ledger |
+| Harnessing-level: bài học có bằng chứng | Đã có `lessons.py` + `evidence_code` (`EV-xxxxxx`) + `bug_catalog` (lớp lỗi ↔ test) | Đủ; ledger bổ sung phần "thay đổi hệ thống", không trùng |
+| `--k` + `parallel|sequential` | Tương đương trần `--max-topics/--max-models` của `council_daemon.py`; có thể thêm `--proposals K` khi làm `council_probe` | Một phần |
+| `runs/` + resume | Đã có journal + `council_outbox.json` + state của daemon | Đủ |
+| **Cài harness2 lên máy này** | **KHÔNG**: cần executor OpenCode/Codex, mạng không hạn chế + sandbox tắt, benchmark là việc văn phòng/pháp lý, và tốn API — trên máy giữ **KEY LIVE** là rủi ro trực tiếp | Chỉ học phương pháp |
+
+### 19.2 Vì sao "không cần ground truth" lại quan trọng với bot này
+
+Có 3 câu hỏi không bao giờ trả lời được bằng dữ liệu: (a) lệnh bị hội đồng VETO thì lãi/lỗ bao nhiêu?
+(b) nếu SL rộng hơn thì sao? (c) nếu đổi model thì kết quả có khác? — **phản thực không tồn tại**.
+Harness2 đề xuất đúng cách xử lý: so **hành vi** trên **cùng đầu vào** (cùng payload, cùng seed) thay vì
+so kết quả. Đó cũng là điều `council_eval.py`/`--ab-report` đang thiếu: chúng so *kết quả theo thời gian*
+(khác điều kiện), chứ chưa so *cùng một bộ tình huống*.
+
+**Đã ghi 2 thay đổi thật vào sổ:** `H-20261021-001` (mẫu TP/SL người vận hành — adopted, bằng chứng:
+yêu cầu 21/10 + mô phỏng 3231 lệnh −14%R + phiếu 1–3 VETO) và `H-20261021-002` (`atomic.py` + fail-safe
+`entries_gate` — adopted, B-025/B-026, 20 test).
+

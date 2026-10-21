@@ -192,6 +192,7 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 | `journal.py` + `logs/journal.jsonl` | sổ mọi lệnh OPEN/CLOSE (có `feats`, `news_score`, `strategy`) |
 | `atomic.py` | **ghi file trạng thái NGUYÊN TỬ** (tmp → `fsync` → `os.replace`, retry khi Windows khóa file) — mọi file state phải đi qua đây (B-025) |
 | `tools/council_daemon.py` | **hội đồng chạy nền 24/7** (task `ATB-Council` 15 phút): tự lập chương trình nghị sự từ journal/câu hỏi tồn/tái phát/cấu hình rủi ro, dedup TTL, trần chi phí, **mặc định dry-run**; chỉ đề xuất, không chạm đường tiền |
+| `tools/harness_ledger.py` | **sổ thay đổi harness** (prompt/model/gate/risk/lesson) — mỗi thay đổi phải có bằng chứng + kết quả probe + quyết định adopt/reject (`--check`) |
 | `monitor_report.py` | báo cáo WR/PF theo cửa sổ, đọc từ journal |
 | `run_forever.py` | supervisor (tự restart, backoff, watchdog nhịp tim) |
 | `tools/` | `muse.cmd`, `muse-nosandbox.cmd`, `git-sync.cmd` |

@@ -318,3 +318,26 @@ class TestRunCycle(unittest.TestCase):
             self.assertNotIn(bad, src,
                              "council_daemon khong duoc cham duong tien: %r" % bad)
 
+
+
+class TestTaskScheduler(unittest.TestCase):
+    """LIVE phai co task RIENG (`ATB-Council-Live`) — khong de len task TESTNET."""
+
+    def test_task_command_chay_once_va_co_live(self):
+        c = CD.task_command(live=True, python_exe="C:/py/pythonw.exe", script="C:/x/cd.py")
+        self.assertIn("pythonw.exe", c)
+        self.assertIn("--once", c)
+        self.assertIn("--live", c)
+        self.assertNotIn("--live", CD.task_command(live=False))
+
+    def test_task_argv_mang_dung_ten(self):
+        argv = CD.task_argv("install", "ATB-Council-Live", "cmd", 15)
+        joined = " ".join(str(a) for a in argv)
+        self.assertIn("ATB-Council-Live", joined)
+        self.assertIn("MINUTE", joined.upper())
+        self.assertIn("15", joined)
+
+
+if __name__ == "__main__":
+    unittest.main()
+

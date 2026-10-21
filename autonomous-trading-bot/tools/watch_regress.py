@@ -114,10 +114,17 @@ def read_tail_lines(path: Path, max_bytes: int = TAIL_BYTES) -> tuple:
 
 
 def list_pids(run=None) -> set:
-    """Tap pid dang chay THAT tren may (`tasklist`). Loi -> set() rong (khong doan)."""
+    """Tap pid dang chay THAT tren may (`tasklist`). Loi -> set() rong (khong doan).
+
+    (21/10) `**winproc.hide_kwargs()`: neu thieu, `tasklist.exe` (chuong trinh CONSOLE)
+    duoc spawn tu `pythonw.exe` (Task Scheduler `ATB-WatchRegress` moi 10 phut) ⇒ Windows
+    **tu mo 1 cua so cmd den** nhay len giua man hinh — dung nhu nguoi dung bao.
+    """
+    import winproc
     r = subprocess.run if run is None else run
     try:
-        p = r(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=30)
+        p = r(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
+              timeout=30, **winproc.hide_kwargs())
         text = getattr(p, "stdout", "") or ""
     except Exception:  # noqa: BLE001
         return set()

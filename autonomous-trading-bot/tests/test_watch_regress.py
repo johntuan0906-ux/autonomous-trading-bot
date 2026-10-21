@@ -257,6 +257,31 @@ class TestTaskCommand(unittest.TestCase):
         self.assertTrue(cmd.startswith('"'))
 
 
+class TestListPidsAnCuaSo(unittest.TestCase):
+    """(21/10) `tasklist` phải chạy NGẦM — nếu không, mỗi 10 phút (Task Scheduler) một cửa
+    sổ cmd đen nhảy lên giữa màn hình (người dùng đã báo)."""
+
+    def test_truyen_co_an_cua_so(self):
+        calls: list = []
+
+        def fake_run(cmd, **kw):
+            calls.append((cmd, kw))
+
+            class R:
+                stdout = '"python.exe","1234","Console","1","10 K"\n'
+            return R()
+
+        pids = WR.list_pids(run=fake_run)
+        self.assertIn(1234, pids)
+        cmd, kw = calls[0]
+        self.assertEqual(cmd[0], "tasklist")
+        if sys.platform == "win32":
+            import subprocess
+            self.assertEqual(kw.get("creationflags"), subprocess.CREATE_NO_WINDOW,
+                             "thiếu cờ này ⇒ cửa sổ console nhảy lên")
+            self.assertIn("startupinfo", kw)
+
+
 class TestReadTailLines(unittest.TestCase):
     def test_cat_bot_dong_dau_khi_bi_gioi_han(self):
         p = Path(tempfile.mkdtemp()) / "log.txt"

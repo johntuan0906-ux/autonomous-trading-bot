@@ -141,12 +141,16 @@ def stop(models_dir: Path = MODELS) -> list:
     Tra danh sach ket qua tung buoc.
     """
     import subprocess
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+    import winproc as _wp
     out: list = []
     pidf = models_dir / "llamafile.pid"
     try:
         pid = int(pidf.read_text(encoding="utf-8").strip())
         r = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30, **_wp.hide_kwargs())
         out.append("pid %s -> rc=%s" % (pid, r.returncode))
         pidf.unlink(missing_ok=True)
     except Exception:  # noqa: BLE001

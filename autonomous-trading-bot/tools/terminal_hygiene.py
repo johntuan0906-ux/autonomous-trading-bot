@@ -111,11 +111,20 @@ def pick_idle_shells(rows, code_pids=None, protect=None) -> list:
 
 
 def list_processes(timeout: float = 25.0) -> list:
-    """Goi PowerShell liet ke tien trinh. Loi/khong co PowerShell -> [] (khong nem ra ngoai)."""
+    """Goi PowerShell liet ke tien trinh. Loi/khong co PowerShell -> [] (khong nem ra ngoai).
+
+    (21/10) `**winproc.hide_kwargs()`: tool nay chay NEN (task "Cline: theo doi don
+    terminal") duoi `pythonw` ⇒ thieu co nay thi **moi 2 phut mot cua so powershell den
+    nhay len** (dung lop loi pop-up console).
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import winproc
     try:
         res = subprocess.run(["powershell", "-NoProfile", "-Command", PS_LIST],
                              capture_output=True, text=True, timeout=timeout,
-                             encoding="utf-8", errors="replace")
+                             encoding="utf-8", errors="replace", **winproc.hide_kwargs())
     except Exception:  # noqa: BLE001
         return []
     return parse_rows(res.stdout)

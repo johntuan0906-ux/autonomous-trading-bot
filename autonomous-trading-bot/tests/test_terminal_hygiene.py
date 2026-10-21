@@ -19,6 +19,35 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import terminal_hygiene as TH      # noqa: E402
 
+
+class TestListProcessesAnCuaSo(unittest.TestCase):
+    """(21/10) Tool chạy NỀN dưới pythonw ⇒ thiếu cờ ẩn là mỗi 2 phút một cửa sổ
+    PowerShell đen nhảy lên (người dùng đã báo)."""
+
+    def test_truyen_co_an_cua_so(self):
+        from unittest import mock
+        calls: list = []
+
+        def fake_run(cmd, **kw):
+            calls.append((cmd, kw))
+
+            class R:
+                stdout = ""
+            return R()
+
+        with mock.patch.object(TH.subprocess, "run", side_effect=fake_run):
+            TH.list_processes()
+        _cmd, kw = calls[0]
+        if sys.platform == "win32":
+            import subprocess as sp
+            self.assertEqual(kw.get("creationflags"), sp.CREATE_NO_WINDOW)
+            self.assertIn("startupinfo", kw)
+
+    def test_powershell_loi_thi_tra_rong(self):
+        from unittest import mock
+        with mock.patch.object(TH.subprocess, "run", side_effect=RuntimeError("khong co")):
+            self.assertEqual(TH.list_processes(), [])
+
 CODE = 1000                        # pid gia cua Code.exe
 
 

@@ -130,11 +130,20 @@ def schtasks_argv(action: str, name: str = TASK_NAME, *, time_str: str = "03:30"
 
 
 def run_schtasks(argv: list, *, run=None, timeout: float = 60.0) -> dict:
-    """Chay schtasks. `run` tiem duoc (test khong dung den may that)."""
+    """Chay schtasks. `run` tiem duoc (test khong dung den may that).
+
+    (21/10) An cua so console (`winproc.hide_kwargs`) — tool nay chay tu Task Scheduler
+    (pythonw) nen thieu co ⇒ moi lan chay lai nhay 1 cua so cmd den.
+    """
     import subprocess
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import winproc
     r = subprocess.run if run is None else run
     try:
-        p = r(argv, capture_output=True, text=True, timeout=timeout)
+        p = r(argv, capture_output=True, text=True, timeout=timeout,
+              **winproc.hide_kwargs())
         return {"ok": int(getattr(p, "returncode", 1)) == 0,
                 "code": int(getattr(p, "returncode", 1)),
                 "out": ((getattr(p, "stdout", "") or "") + (getattr(p, "stderr", "") or "")).strip()[:400]}

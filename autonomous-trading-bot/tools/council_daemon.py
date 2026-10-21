@@ -28,8 +28,8 @@ Nguyen tac an toan (co test chot):
     chiem quyen) — supervisor/Task Scheduler restart khong tao 2 hoi dong cung luc.
   * **Co the chung minh dang song**: `logs/council_heartbeat.json` ghi moi vong; khong
     ghi duoc thi `--status` noi ro (dung lop loi "im lang" cua du an).
-  * **Crash-resume**: cursor journal chi nhay SAU khi ghi xong outbox/state; loi giua
-    chung ⇒ vong sau lam lai dung phan do.
+  * **Crash-resume**: `seen`/`seen_kind`/chi phi chi ghi SAU khi outbox+state ghi xong;
+    moi chu ky khong phu thuoc chu ky truoc (state ghi bang `atomic.py`).
 
     python tools/council_daemon.py --once                 # dry-run: lap chuong trinh nghi su
     python tools/council_daemon.py --once --live          # goi LLM that (co tran chi phi)
@@ -66,12 +66,22 @@ ENV_PATH = ROOT / ".env"
 PAUSE_PATH = LOG_DIR / "entries_pause.json"
 
 TASK_NAME = "ATB-Council"
+#: Cau hinh chay (Task Scheduler chi chay `--once`; tham so nam o day vi `/TR` cua Windows
+#: gioi han 261 ky tu — nhoi het co vao lenh task la KHONG LAP DUOC, da gap that 21/10).
+CONFIG_PATH = LOG_DIR / "council_config.json"
 DEFAULT_INTERVAL = 900.0
 DEFAULT_MAX_USD_DAY = 0.60
 DEFAULT_MAX_CYCLES_DAY = 48
 DEFAULT_MAX_TOPICS = 3
 DEFAULT_MODELS = 3
 DEFAULT_TTL_H = 24.0
+#: Cua so TRUOT de danh gia hieu nang (gio). 6h ~ 120 lenh tren LIVE.
+PERF_WINDOW_H = 6.0
+#: Duoi bao nhieu lenh thi khong ket luan (tranh nhieu).
+MIN_CLOSES = 8
+#: Cooldown theo LOAI chu de (gio): cung mot van de khong duoc hoi lai truoc han.
+KIND_COOLDOWN_H = {"perf": 6.0, "ops": 24.0, "regress": 1.0, "risk": 24.0,
+                   "pause": 12.0, "bot": 1.0}
 #: Uoc luong chi phi 1 phieu (model) — chi de CHAN, khong phai hoa don.
 EST_USD_PER_VOTE = 0.004
 #: Journal doc toi da bay nhieu byte tu cuoi (tranh doc ca file 50 MB).
@@ -248,33 +258,35 @@ def _topic(key, kind, severity, question, allow, veto, context) -> dict:
 
 def build_agenda(*, state=None, now=None, journal_path=JOURNAL_PATH, ops_path=OPS_OPEN_PATH,
                  regress_path=REGRESS_PATH, env_path=ENV_PATH, pause_path=PAUSE_PATH,
-                 bot_heartbeat=HEARTBEAT_BOT, first_run_hours: float = 6.0,
-                 min_closes: int = 3, loss_sum_r: float = -2.5, worst_r: float = -3.0,
-                 stale_q_hours: float = 24.0, hb_stale_s: float = 600.0) -> dict:
+                 bot_heartbeat=HEARTBEAT_BOT, perf_window_h: float = PERF_WINDOW_H,
+                 min_closes: int = MIN_CLOSES, loss_sum_r: float = -3.0,
+                 worst_r: float = -3.0, stale_q_hours: float = 24.0,
+                 hb_stale_s: float = 600.0) -> dict:
     """Lap CHUONG TRINH NGHI SU tu bang chung THAT (khong goi LLM). Ham thuan tuy.
 
-    Tra {topics, cursor_to, journal_truncated, seeded}. Moi topic du dieu kien de hoi
-    hoi dong 1 cau NHI PHAN (ALLOW/VETO) — dung dinh dang `council_vote.build_payload`.
+    (21/10, sau khi do): **cua so TRUOT `perf_window_h` gio** thay vi "tu lan truoc" —
+    LIVE dong ~480 lenh/ngay (~20/gio) nen mau 15 phut chi ~5 lenh = nhieu; cua so 6h cho
+    ~120 lenh moi du y nghia, va dedup theo LOAI (xem `KIND_COOLDOWN_H`) moi chan duoc
+    viec hoi lai moi 15 phut.
+
+    Tra {topics, journal_truncated}. Moi topic du dieu kien de hoi hoi dong 1 cau NHI
+    PHAN (ALLOW/VETO) — dung dinh dang `council_vote.build_payload`.
     """
-    st = dict(state or {})
     now_t = float(now if now is not None else time.time())
-    cursor = float(((st.get("cursor") or {}) or {}).get("journal_ts") or 0.0)
-    seeded = bool(cursor)
-    if not cursor:
-        cursor = now_t - float(first_run_hours) * 3600.0
     topics: list = []
 
-    closes, mx, cut = journal_closes(journal_path, since=cursor)
+    since = now_t - float(perf_window_h) * 3600.0
+    closes, _mx, cut = journal_closes(journal_path, since=since)
     if closes:
         rs = [float(c.get("r") or 0.0) for c in closes]
         total = round(sum(rs), 3)
         worst = min(rs)
         wins = sum(1 for r in rs if r > 0)
-        bad = (len(closes) >= int(min_closes) or total <= float(loss_sum_r)
-               or worst <= float(worst_r))
+        bad = (len(closes) >= int(min_closes)
+               and (total <= float(loss_sum_r) or worst <= float(worst_r)))
         if bad:
-            ctx = ["%d lenh dong: tong %.2fR, thang %d/%d, te nhat %.2fR"
-                   % (len(closes), total, wins, len(closes), worst)]
+            ctx = ["%d lenh dong trong %.0fh: tong %.2fR, thang %d/%d, te nhat %.2fR"
+                   % (len(closes), float(perf_window_h), total, wins, len(closes), worst)]
             for c in sorted(closes, key=lambda x: float(x.get("r") or 0.0))[:3]:
                 ctx.append("%s %s: %.2fR (%s)"
                            % (c.get("pair"), str(c.get("direction") or "").upper(),
@@ -282,9 +294,9 @@ def build_agenda(*, state=None, now=None, journal_path=JOURNAL_PATH, ops_path=OP
             if cut:
                 ctx.append("(journal dai hon vung doc — so lenh la NGUONG DUOI)")
             topics.append(_topic(
-                "perf:%d%.1f" % (len(closes), total), "perf", "high",
-                "Ket qua %d lenh vua dong (tong %.2fR) co phai bat thuong can dung vao lenh?"
-                % (len(closes), total),
+                "perf:%d:%.1f" % (len(closes), total), "perf", "high",
+                "Ket qua %d lenh trong %.0fh (tong %.2fR) co bat thuong can dung vao lenh?"
+                % (len(closes), float(perf_window_h), total),
                 "tiep tuc binh thuong, khong doi tham so",
                 "tam dung vao lenh moi de dieu tra (vi the dang mo van duoc quan ly)", ctx))
 
@@ -359,13 +371,29 @@ def build_agenda(*, state=None, now=None, journal_path=JOURNAL_PATH, ops_path=OP
             ["phase=%s round=%s" % ((hb or {}).get("phase"), (hb or {}).get("round"))]))
 
     topics.sort(key=lambda t: SEVERITY_ORDER.get(t.get("severity"), 9))
-    return {"topics": topics, "cursor_to": mx if mx > cursor else cursor,
-            "journal_truncated": cut, "seeded": seeded}
+    return {"topics": topics, "journal_truncated": cut}
 
 
-def filter_dedup(topics, seen, *, now, ttl_s: float = DEFAULT_TTL_H * 3600.0):
-    """Bo chu de da hoi trong TTL (chong dot tien + phieu rac). Tra (giu, bo)."""
+#: Cua so TRUOT de danh gia hieu nang (gio). 6h ~ 120 lenh tren LIVE.
+PERF_WINDOW_H = 6.0
+#: Duoi bao nhieu lenh thi khong ket luan (tranh nhieu).
+MIN_CLOSES = 8
+#: Cooldown theo LOAI chu de (gio): cung mot van de khong duoc hoi lai truoc han.
+KIND_COOLDOWN_H = {"perf": 6.0, "ops": 24.0, "regress": 1.0, "risk": 24.0,
+                   "pause": 12.0, "bot": 1.0}
+
+
+def filter_dedup(topics, seen, *, now, ttl_s: float = DEFAULT_TTL_H * 3600.0,
+                 kind_seen=None, kind_cooldown_s=None):
+    """Bo chu de da hoi (TTL theo `key`) VA theo LOAI (`kind_cooldown_s`).
+
+    Vi sao co cooldown theo loai (21/10): `key` cua chu de hieu nang chua so lieu
+    (`perf:120:-4.2`) nen MOI chu ky lai la key moi ⇒ TTL vo dung; LIVE dong ~480 lenh/ngay
+    ⇒ hoi hoi dong 96 lan/ngay. Cooldown theo loai moi la thu chan duoc tien.
+    """
     keep, skipped = [], []
+    kind_seen = dict(kind_seen or {})
+    cooldown = dict(kind_cooldown_s or {})
     for t in topics or []:
         try:
             ts = float((seen or {}).get(t.get("key")) or 0.0)
@@ -374,8 +402,22 @@ def filter_dedup(topics, seen, *, now, ttl_s: float = DEFAULT_TTL_H * 3600.0):
         if ts > 0 and (float(now) - ts) < float(ttl_s):
             skipped.append({"key": t.get("key"), "age_s": round(float(now) - ts)})
             continue
+        kd = float(cooldown.get(str(t.get("kind") or ""), 0.0) or 0.0)
+        try:
+            kts = float(kind_seen.get(str(t.get("kind") or "")) or 0.0)
+        except (TypeError, ValueError):
+            kts = 0.0
+        if kd > 0 and kts > 0 and (float(now) - kts) < kd:
+            skipped.append({"key": t.get("key"),
+                            "kind_cooldown_s": round(kd - (float(now) - kts))})
+            continue
         keep.append(t)
     return keep, skipped
+
+
+def cooldown_seconds() -> dict:
+    """`KIND_COOLDOWN_H` -> giay (truyen thang vao `filter_dedup`)."""
+    return {k: float(v) * 3600.0 for k, v in KIND_COOLDOWN_H.items()}
 
 
 def budget_of(state, now) -> dict:
@@ -405,12 +447,19 @@ def _votes_cost(res) -> float:
     return round(tot, 6)
 
 
-def default_council(max_models: int = DEFAULT_MODELS):
-    """(ask, models): dung dung bo may cua bot, GIOI HAN so model de chan chi phi."""
+def parse_models(text) -> list:
+    """`"a, b ,c"` -> ["a","b","c"] (bo khoang trang, bo rong)."""
+    return [m.strip() for m in str(text or "").split(",") if m.strip()]
+
+
+def default_council(max_models: int = DEFAULT_MODELS, models=None):
+    """(ask, models): dung bo may cua bot; `models` cho phep CHON DUNG 2 model da duyet."""
     import agents as AG
     from config import Settings
     cfg = Settings()
-    ms = [m.strip() for m in AG._council_models(cfg) if m.strip()][:max(1, int(max_models))]
+    picked = parse_models(",".join(models) if isinstance(models, (list, tuple)) else models)
+    ms = picked or [m.strip() for m in AG._council_models(cfg) if m.strip()]
+    ms = ms[:max(1, int(max_models))]
     object.__setattr__(cfg, "council_rounds", 1)      # 1 vong: nhanh, du phieu
     object.__setattr__(cfg, "agents_council", True)
     object.__setattr__(cfg, "agents_enabled", True)
@@ -428,6 +477,14 @@ def _append_outbox(path, entries: list, cap: int = 200) -> bool:
     return save_json(path, items[-int(cap):])
 
 
+def _votes_of(res) -> dict:
+    """Lay dict phieu tu ket qua `multi_model_council` (chiu duoc nhieu dang)."""
+    if not isinstance(res, dict):
+        return {}
+    d = res.get("votes") or res.get("decisions") or {}
+    return d if isinstance(d, dict) else {}
+
+
 def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_USD_DAY,
               max_cycles_day: int = DEFAULT_MAX_CYCLES_DAY,
               max_topics: int = DEFAULT_MAX_TOPICS, max_models: int = DEFAULT_MODELS,
@@ -435,7 +492,8 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
               heartbeat_path=HEARTBEAT_PATH, lock_path=LOCK_PATH, outbox_path=OUTBOX_PATH,
               journal_path=JOURNAL_PATH, ops_path=OPS_OPEN_PATH, regress_path=REGRESS_PATH,
               env_path=ENV_PATH, pause_path=PAUSE_PATH, bot_heartbeat=HEARTBEAT_BOT,
-              council_fn=None, write: bool = True) -> dict:
+              council_fn=None, fallback_fn=None, min_votes: int = 2,
+              write: bool = True) -> dict:
     """1 chu ky: lock -> tran -> agenda -> dedup -> (live) hoi dong -> outbox/heartbeat.
 
     KHONG BAO GIO: dat/huy lenh, ghi `.env`, sua tham so. Chi de xuat + ghi vet.
@@ -459,7 +517,9 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
                           ops_path=ops_path, regress_path=regress_path, env_path=env_path,
                           pause_path=pause_path, bot_heartbeat=bot_heartbeat)
         keep, skipped = filter_dedup(ag["topics"], (state.get("seen") or {}),
-                                     now=now_t, ttl_s=ttl_s)
+                                     now=now_t, ttl_s=ttl_s,
+                                     kind_seen=(state.get("seen_kind") or {}),
+                                     kind_cooldown_s=cooldown_seconds())
         rep["skipped"] = skipped
         topics = keep[:max(1, int(max_topics))]
         rep["agenda_total"] = len(ag["topics"])
@@ -485,8 +545,17 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
                     from council_vote import build_payload, tally
                     payload = build_payload(t["question"], t["allow"], t["veto"], t["context"])
                     res = council_fn(payload) or {}
-                    decs = (res.get("votes") or res.get("decisions") or {}) \
-                        if isinstance(res, dict) else {}
+                    decs = _votes_of(res)
+                    # (21/10) Model treo/thieu phieu ⇒ hoi BO SUNG 1 lan bang model du phong.
+                    # Do that 16:24: chi 1/2 model tra phieu ⇒ quyet dinh dua tren 1 goc nhin.
+                    if fallback_fn is not None and len(decs) < int(min_votes):
+                        try:
+                            decs2 = _votes_of(fallback_fn(payload) or {})
+                            for k, v in decs2.items():
+                                decs.setdefault(k, v)
+                            entry["fallback_used"] = True
+                        except Exception as e:  # noqa: BLE001
+                            entry["fallback_error"] = str(e)[:120]
                     tal = tally(decs)
                     entry.update(tal)
                     entry["verdict"] = tal.get("verdict") or "NO_OPINION"
@@ -499,15 +568,16 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
             rep["results"].append(entry)
             if live:
                 state.setdefault("seen", {})[t["key"]] = now_t
+                state.setdefault("seen_kind", {})[t["kind"]] = now_t
         rep["cost_usd"] = round(cost_total, 6)
-        if live:
-            state.setdefault("cursor", {})["journal_ts"] = ag["cursor_to"]
         d = _day(now_t)
         state.setdefault("spend", {})[d] = round(
             float((state.get("spend") or {}).get(d) or 0.0) + cost_total, 6)
         state.setdefault("votes", {})[d] = int(
             (state.get("votes") or {}).get(d) or 0) + votes_total
-        state.setdefault("cycles", {})[d] = int((state.get("cycles") or {}).get(d) or 0) + 1
+        if live:      # chi dem chu ky GOI LLM (dry-run 96 lan/ngay khong duoc tinh)
+            state.setdefault("cycles", {})[d] = int(
+                (state.get("cycles") or {}).get(d) or 0) + 1
         state["last_cycle"] = now_t
         state["last_mode"] = rep["mode"]
         state["last_topics"] = [t["key"] for t in topics]
@@ -536,7 +606,7 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
 STOP_FILE = LOG_DIR / "council_stop"
 
 
-def task_command(*, live: bool = False, python_exe=None, script=None) -> str:
+def task_command(*, live: bool = False, python_exe=None, script=None, extra: str = "") -> str:
     """Lenh Task Scheduler chay 1 chu ky (pythonw => khong hien cua so console)."""
     py = python_exe or sys.executable
     try:
@@ -546,7 +616,11 @@ def task_command(*, live: bool = False, python_exe=None, script=None) -> str:
         pass
     s = str(script or Path(__file__).resolve())
     cmd = '"%s" "%s" --once' % (py, s)
-    return cmd + (" --live" if live else "")
+    if live:
+        cmd += " --live"
+    if extra:
+        cmd += " " + str(extra).strip()
+    return cmd
 
 
 def status(state_path=STATE_PATH, heartbeat_path=HEARTBEAT_PATH, now=None) -> dict:
@@ -615,11 +689,21 @@ def main(argv=None) -> int:
                     help="giay giua 2 chu ky (mac dinh 900)")
     ap.add_argument("--live", action="store_true",
                     help="GOI LLM THAT (mac dinh chi lap chuong trinh nghi su)")
-    ap.add_argument("--max-usd-day", type=float, default=DEFAULT_MAX_USD_DAY)
-    ap.add_argument("--max-cycles-day", type=int, default=DEFAULT_MAX_CYCLES_DAY)
-    ap.add_argument("--max-topics", type=int, default=DEFAULT_MAX_TOPICS)
-    ap.add_argument("--max-models", type=int, default=DEFAULT_MODELS)
-    ap.add_argument("--ttl-hours", type=float, default=DEFAULT_TTL_H)
+    ap.add_argument("--max-usd-day", type=float, default=None)
+    ap.add_argument("--max-cycles-day", type=int, default=None)
+    ap.add_argument("--max-topics", type=int, default=None)
+    ap.add_argument("--max-models", type=int, default=None)
+    ap.add_argument("--models", default="",
+                    help="danh sach model CU THE (phay) — vd cline-pass/qwen3.8-max,...")
+    ap.add_argument("--models-fallback", default="",
+                    help="model DU PHONG khi < --min-votes phieu (phay)")
+    ap.add_argument("--min-votes", type=int, default=None,
+                    help="so phieu toi thieu moi duoc coi la du (mac dinh 2)")
+    ap.add_argument("--ttl-hours", type=float, default=None)
+    ap.add_argument("--config", default=str(CONFIG_PATH),
+                    help="file cau hinh (task Scheduler chi chay --once)")
+    ap.add_argument("--save-config", action="store_true",
+                    help="ghi cau hinh hien tai vao --config roi thoat")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="chi in khi CO chu de / loi")
@@ -632,10 +716,48 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     task_name = str(args.task_name or TASK_NAME)
 
+    file_cfg = read_json(args.config, {})
+    if not isinstance(file_cfg, dict):
+        file_cfg = {}
+
+    def _pick(name, default, cast):
+        v = getattr(args, name, None)
+        if v is not None:
+            return cast(v)
+        v = file_cfg.get(name)
+        return cast(v) if v not in (None, "") else cast(default)
+
+    live = bool(args.live or file_cfg.get("live"))
+    max_usd_day = _pick("max_usd_day", DEFAULT_MAX_USD_DAY, float)
+    max_cycles_day = _pick("max_cycles_day", DEFAULT_MAX_CYCLES_DAY, int)
+    max_topics = _pick("max_topics", DEFAULT_MAX_TOPICS, int)
+    max_models = _pick("max_models", DEFAULT_MODELS, int)
+    ttl_hours = _pick("ttl_hours", DEFAULT_TTL_H, float)
+    models = args.models or str(file_cfg.get("models") or "")
+    models_fallback = args.models_fallback or str(file_cfg.get("models_fallback") or "")
+    min_votes = _pick("min_votes", 2, int)
+    effective = {"live": live, "max_usd_day": max_usd_day,
+                 "max_cycles_day": max_cycles_day, "max_topics": max_topics,
+                 "max_models": max_models, "ttl_hours": ttl_hours, "models": models,
+                 "models_fallback": models_fallback, "min_votes": min_votes}
+
+    if args.save_config:
+        rec = dict(effective, saved_at=time.time())
+        ok = save_json(args.config, rec)
+        if args.json:
+            print(json.dumps(dict(rec, ok=ok), ensure_ascii=False, indent=1))
+        else:
+            print("da ghi cau hinh: %s (ok=%s) live=%s tran=%.2f USD/ngay models=%s"
+                  % (args.config, ok, live, max_usd_day, models or "auto"))
+        return 0 if ok else 1
+
     if args.install_task or args.uninstall_task or args.task_status:
         action = ("install" if args.install_task else
                   "uninstall" if args.uninstall_task else "status")
-        cmd = task_command(live=args.live)
+        if args.install_task:
+            # Tham so nam trong CONFIG (khong nhoi vao /TR: Windows gioi han 261 ky tu).
+            save_json(args.config, dict(effective, saved_at=time.time()))
+        cmd = task_command(live=False)
         res = BK_run(task_argv(action, task_name, cmd, args.task_min))
         res.update({"action": action, "task": task_name, "command": cmd})
         if args.json:
@@ -654,11 +776,14 @@ def main(argv=None) -> int:
         return 0
 
     def _one():
-        return run_cycle(live=bool(args.live), max_usd_day=args.max_usd_day,
-                         max_cycles_day=args.max_cycles_day, max_topics=args.max_topics,
-                         max_models=args.max_models,
-                         ttl_s=max(0.0, float(args.ttl_hours)) * 3600.0,
-                         council_fn=default_council(args.max_models)[0] if args.live else None)
+        ask, _ms = (default_council(max_models, models) if live else (None, []))
+        fb = (default_council(max_models, models_fallback)[0]
+              if (live and parse_models(models_fallback)) else None)
+        return run_cycle(live=live, max_usd_day=max_usd_day,
+                         max_cycles_day=max_cycles_day, max_topics=max_topics,
+                         max_models=max_models,
+                         ttl_s=max(0.0, float(ttl_hours)) * 3600.0,
+                         council_fn=ask, fallback_fn=fb, min_votes=min_votes)
 
     if not args.watch:
         rep = _one()
@@ -684,7 +809,7 @@ def main(argv=None) -> int:
 
     STOP_FILE.unlink(missing_ok=True)
     print("[COUNCIL] chay lien tuc moi %.0fs | live=%s | tran %.2f USD/ngay"
-          % (args.interval, bool(args.live), args.max_usd_day), flush=True)
+          % (args.interval, bool(live), max_usd_day), flush=True)
     while not STOP_FILE.exists():
         try:
             rep = _one()

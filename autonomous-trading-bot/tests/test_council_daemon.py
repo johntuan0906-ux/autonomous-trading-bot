@@ -113,18 +113,27 @@ def _agenda(e: _Env, now: float, cursor: float):
 
 
 class TestBuildAgenda(unittest.TestCase):
-    def test_3_lenh_dong_tao_chu_de_hieu_nang(self):
+    def test_8_lenh_dong_tao_chu_de_hieu_nang(self):
         with tempfile.TemporaryDirectory() as t:
             now = 10_000.0
             e = _Env(Path(t))
-            e.journal_lines([_close(now - 100, -1.0), _close(now - 50, -1.5),
-                             _close(now - 10, 0.2)])
+            # 8 lenh trong cua so 6h, tong -6R => bat thuong
+            e.journal_lines([_close(now - 3000 + i * 60, -1.0 if i < 6 else 0.0)
+                             for i in range(8)])
             e.env_file(per=1.0, day=5.0)
-            ag = _agenda(e, now, now - 3600)
+            ag = _agenda(e, now, 0.0)
             perf = [x for x in ag["topics"] if x["kind"] == "perf"]
             self.assertEqual(len(perf), 1)
-            self.assertIn("-2.30R", " ".join(perf[0]["context"]))
+            self.assertIn("-6.00R", " ".join(perf[0]["context"]))
             self.assertEqual(perf[0]["severity"], "high")
+
+    def test_7_lenh_chua_du_mau_khong_ket_luan(self):
+        with tempfile.TemporaryDirectory() as t:
+            now = 10_000.0
+            e = _Env(Path(t))
+            e.journal_lines([_close(now - 1000 + i * 60, -2.0) for i in range(7)])
+            e.env_file(per=1.0, day=5.0)
+            self.assertEqual(_agenda(e, now, 0.0)["topics"], [], "duoi MIN_CLOSES = nhieu")
 
     def test_1_lenh_nho_khong_tao_chu_de(self):
         with tempfile.TemporaryDirectory() as t:
@@ -191,11 +200,9 @@ class TestDedup(unittest.TestCase):
 
 
 def _ready(tmp: Path, now: float) -> _Env:
-    """Instance tam co 3 lenh dong (tao chu de), cau hinh rui ro sach, bot con song."""
+    """Instance tam co CHU DE ON DINH (cau hinh rui ro 2 lo ⇒ trip), bot con song."""
     e = _Env(tmp)
-    e.journal_lines([_close(now - 100, -1.0), _close(now - 50, -1.6),
-                     _close(now - 10, 0.3)])
-    e.env_file(per=1.0, day=5.0)
+    e.env_file(per=1.2, day=2.0)
     _write(e.bothb, {"ts": now, "phase": "scan", "round": 1})
     return e
 
@@ -219,8 +226,7 @@ class TestRunCycle(unittest.TestCase):
             self.assertEqual(rep["results"][0]["verdict"], "DRY_RUN")
             st = json.loads(e.state.read_text(encoding="utf-8"))
             self.assertFalse(st.get("seen"), "dry-run khong duoc danh dau da hoi")
-            self.assertFalse(st.get("cursor"), "dry-run khong duoc nhay cursor")
-            self.assertEqual(st["cycles"][CD._day(self.NOW)], 1)
+            self.assertFalse(st.get("cycles"), "dry-run KHONG tinh la chu ky goi LLM")
             self.assertTrue(e.outbox.exists(), "phai ghi outbox de nguoi doc duoc")
             self.assertTrue(json.loads(e.hb.read_text(encoding="utf-8"))["ok"])
 
@@ -239,8 +245,8 @@ class TestRunCycle(unittest.TestCase):
             self.assertEqual(r["n_veto"], 1)
             self.assertAlmostEqual(rep["cost_usd"], 0.01)
             st = json.loads(e.state.read_text(encoding="utf-8"))
-            self.assertGreater(st["cursor"]["journal_ts"], 0)
-            self.assertTrue(any(k.startswith("perf:") for k in st["seen"]))
+            self.assertIn("risk:daily-vs-trade", st["seen"])
+            self.assertIn("risk", st["seen_kind"])
             self.assertAlmostEqual(st["spend"][CD._day(self.NOW)], 0.01, places=6)
 
     def test_tran_chi_phi_chan_truoc_khi_goi_LLM(self):
@@ -310,6 +316,42 @@ class TestRunCycle(unittest.TestCase):
             self.assertEqual(r2["results"], [], "trong TTL khong duoc hoi lai")
             self.assertEqual([s["key"] for s in r2["skipped"]], ["risk:daily-vs-trade"])
 
+    def test_fallback_bo_sung_khi_thieu_phieu(self):
+        """Đo thật 16:24: 1/2 model trả phiếu ⇒ phải hỏi bổ sung bằng model dự phòng."""
+        with tempfile.TemporaryDirectory() as t:
+            e = _ready(Path(t), self.NOW)
+
+            def primary(payload):
+                return {"votes": {"m1": {"action": "VETO", "confidence": 0.8,
+                                         "reasons": ["x"], "cost_usd": 0.004}}}
+
+            def fallback(payload):
+                return {"votes": {"m2": {"action": "ALLOW", "confidence": 0.6,
+                                         "reasons": ["y"], "cost_usd": 0.004}}}
+
+            rep = CD.run_cycle(now=self.NOW, live=True, council_fn=primary,
+                               fallback_fn=fallback, min_votes=2, **e.kwargs())
+            r = rep["results"][0]
+            self.assertEqual(r["n"], 2, "phai gop phieu du phong")
+            self.assertTrue(r.get("fallback_used"))
+            self.assertEqual(r["n_allow"], 1)
+            self.assertEqual(r["n_veto"], 1)
+
+    def test_khong_goi_fallback_khi_du_phieu(self):
+        with tempfile.TemporaryDirectory() as t:
+            e = _ready(Path(t), self.NOW)
+            called = []
+
+            def primary(payload):
+                return {"votes": {m: {"action": "VETO", "confidence": 0.9, "reasons": ["x"],
+                                      "cost_usd": 0.0} for m in ("m1", "m2")}}
+
+            rep = CD.run_cycle(now=self.NOW, live=True, council_fn=primary,
+                               fallback_fn=lambda p: called.append(1), min_votes=2,
+                               **e.kwargs())
+            self.assertEqual(called, [])
+            self.assertFalse(rep["results"][0].get("fallback_used"))
+
     def test_nguon_khong_dung_toi_duong_tien(self):
         """Hoi dong nen CHI duoc de xuat: khong import exchange/bot, khong dung key."""
         src = Path(CD.__file__).read_text(encoding="utf-8")
@@ -330,12 +372,54 @@ class TestTaskScheduler(unittest.TestCase):
         self.assertIn("--live", c)
         self.assertNotIn("--live", CD.task_command(live=False))
 
+    def test_task_command_mang_tran_chi_phi(self):
+        c = CD.task_command(live=True, python_exe="C:/py/pythonw.exe", script="C:/x/cd.py",
+                            extra="--max-usd-day 0.3 --max-models 2 --max-topics 2")
+        for part in ("--max-usd-day 0.3", "--max-models 2", "--max-topics 2"):
+            self.assertIn(part, c, "task live phai mang tran chi phi da duyet")
+
     def test_task_argv_mang_dung_ten(self):
         argv = CD.task_argv("install", "ATB-Council-Live", "cmd", 15)
         joined = " ".join(str(a) for a in argv)
         self.assertIn("ATB-Council-Live", joined)
         self.assertIn("MINUTE", joined.upper())
         self.assertIn("15", joined)
+
+
+class TestKindCooldown(unittest.TestCase):
+    """Cùng MỘT LOẠI chủ đề không được hỏi lại trong cooldown (chống đốt tiền 96 lần/ngày)."""
+
+    def test_cung_loai_bi_chan_trong_cooldown(self):
+        now = 10_000.0
+        keep, skipped = CD.filter_dedup([{"key": "perf:120:-4.2", "kind": "perf"}], {},
+                                       now=now, ttl_s=0.0,
+                                       kind_seen={"perf": now - 60},
+                                       kind_cooldown_s={"perf": 6 * 3600.0})
+        self.assertEqual(keep, [])
+        self.assertIn("kind_cooldown_s", skipped[0])
+
+    def test_khac_loai_khong_bi_chan(self):
+        now = 10_000.0
+        keep, _ = CD.filter_dedup([{"key": "risk:x", "kind": "risk"}], {},
+                                  now=now, ttl_s=0.0,
+                                  kind_seen={"perf": now - 60},
+                                  kind_cooldown_s={"perf": 6 * 3600.0, "risk": 24 * 3600.0})
+        self.assertEqual([t["key"] for t in keep], ["risk:x"])
+
+    def test_qua_cooldown_thi_hoi_lai(self):
+        now = 10_000.0
+        keep, _ = CD.filter_dedup([{"key": "perf:120:-4.2", "kind": "perf"}], {},
+                                  now=now, ttl_s=0.0,
+                                  kind_seen={"perf": now - 7 * 3600},
+                                  kind_cooldown_s={"perf": 6 * 3600.0})
+        self.assertEqual(len(keep), 1)
+
+
+class TestParseModels(unittest.TestCase):
+    def test_bo_khoang_trang_va_rong(self):
+        self.assertEqual(CD.parse_models(" a , b ,, c "), ["a", "b", "c"])
+        self.assertEqual(CD.parse_models(""), [])
+        self.assertEqual(CD.parse_models(None), [])
 
 
 if __name__ == "__main__":

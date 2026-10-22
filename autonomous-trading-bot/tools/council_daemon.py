@@ -607,7 +607,7 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
                      "n_allow": 0, "n_veto": 0, "n_abstain": 0, "cost_usd": 0.0}
             if live and council_fn is not None:
                 try:
-                    from council_vote import build_payload, tally
+                    from council_vote import build_payload, tally, resolve_verdict
                     payload = build_payload(t["question"], t["allow"], t["veto"], t["context"])
                     res = council_fn(payload) or {}
                     decs = _votes_of(res)
@@ -622,8 +622,11 @@ def run_cycle(*, live: bool = False, now=None, max_usd_day: float = DEFAULT_MAX_
                         except Exception as e:  # noqa: BLE001
                             entry["fallback_error"] = str(e)[:120]
                     tal = tally(decs)
+                    rb = resolve_verdict(tal)
                     entry.update(tal)
-                    entry["verdict"] = tal.get("verdict") or "NO_OPINION"
+                    entry["verdict"] = rb["verdict"]          # BINDING (khong con NO_OPINION)
+                    entry["rule"] = rb["rule"]
+                    entry["binding"] = rb["binding"]
                     entry["cost_usd"] = _votes_cost(res)
                 except Exception as e:  # noqa: BLE001  (1 chu de loi khong lam chet vong)
                     entry["verdict"] = "ERROR"

@@ -78,6 +78,58 @@ def tally(results: dict) -> dict:
             "n": len(rows), "verdict": verdict}
 
 
+#: So phieu toi thieu de mot quyet dinh co hieu luc (duoi nguong -> giu hien trang).
+QUORUM = 2
+
+
+def resolve_verdict(tal: dict, *, quorum: int = QUORUM) -> dict:
+    """Quyet dinh BINDING tu bang phieu: quorum -> da so -> confidence -> AN TOAN.
+
+    (22/10) Nguoi van hanh giao TOAN QUYEN cho hoi dong va yeu cau ro: **khong duoc de
+    "chia re ⇒ khong quyet"** (dan den tri tre). Vi vay:
+
+      1. Khong du quorum (`< quorum` phieu that) -> giu hien trang, ghi ro `rule="quorum"`.
+      2. Da so thang (ALLOW > VETO hoac nguoc lai) -> theo da so.
+      3. Hoa phieu -> ben co **tong confidence cao hon** thang (`rule="confidence"`).
+      4. Van hoa -> chon **VETO = giu nguyen hien trang** (`rule="conservative"`): doi tham
+         so rui ro ma khong co dong thuan thi khong doi.
+
+    Tra {verdict, binding, rule, n_allow, n_veto, conf_allow, conf_veto, n}.
+    """
+    n_allow = int((tal or {}).get("n_allow") or 0)
+    n_veto = int((tal or {}).get("n_veto") or 0)
+    conf_a = conf_v = 0.0
+    for r in (tal or {}).get("rows") or []:
+        try:
+            c = float(r.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            c = 0.0
+        if str(r.get("action") or "").upper() == "ALLOW":
+            conf_a += c
+        elif str(r.get("action") or "").upper() == "VETO":
+            conf_v += c
+    out = {"n_allow": n_allow, "n_veto": n_veto, "n": int((tal or {}).get("n") or 0),
+           "conf_allow": round(conf_a, 3), "conf_veto": round(conf_v, 3),
+           "binding": True, "rule": "majority"}
+    if (n_allow + n_veto) < int(quorum):
+        out.update({"verdict": "VETO", "rule": "quorum", "binding": False,
+                    "why": "chi %d phieu that (< quorum %d) -> giu hien trang"
+                           % (n_allow + n_veto, int(quorum))})
+        return out
+    if n_allow > n_veto:
+        out["verdict"] = "ALLOW"
+    elif n_veto > n_allow:
+        out["verdict"] = "VETO"
+    elif conf_a > conf_v:
+        out.update({"verdict": "ALLOW", "rule": "confidence"})
+    elif conf_v > conf_a:
+        out.update({"verdict": "VETO", "rule": "confidence"})
+    else:
+        out.update({"verdict": "VETO", "rule": "conservative",
+                    "why": "hoa ca phieu lan confidence -> giu nguyen hien trang"})
+    return out
+
+
 def missing_models(requested, rows) -> list:
     """Model DUOC YEU CAU nhung KHONG tra ve phieu nao (giu nguyen thu tu yeu cau).
 
@@ -102,6 +154,8 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--context", action="append", default=[],
                     help="1 dong bang chung/ngu canh (lap lai duoc)")
     ap.add_argument("--models", default="", help="danh sach model, phay (rong = theo .env)")
+    ap.add_argument("--rounds", type=int, default=1,
+                    help="so vong debate (1 = nhanh; 2 = quyet dinh lon, chat luong hon)")
     ap.add_argument("--no-journal", action="store_true", help="khong ghi phieu vao journal")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--no-clean", action="store_true",
@@ -147,7 +201,7 @@ def main(argv: list | None = None) -> int:
         # (`votes: {}`, `abstained: []`) du log bao "8 model". Quyet dinh van hanh phai
         # lay y kien ca hoi dong => lay danh sach day du va truyen thang xuong.
         ms = [m.strip() for m in AG._council_models(cfg) if m.strip()]
-    object.__setattr__(cfg, "council_rounds", 1)      # 1 vong: nhanh, du phieu
+    object.__setattr__(cfg, "council_rounds", max(1, int(args.rounds)))
 
     payload = build_payload(args.question, args.allow, args.veto, args.context)
     t0 = time.time()
@@ -162,6 +216,10 @@ def main(argv: list | None = None) -> int:
             decs = {k: v for k, v in res.items()
                     if isinstance(v, dict) and "action" in v}
     rep = tally(decs or {})
+    # (22/10) QUYET DINH BINDING: da so -> confidence -> an toan (khong con "hoa thi khong quyet").
+    rep["binding"] = resolve_verdict(rep)
+    rep["verdict_raw"] = rep.get("verdict")
+    rep["verdict"] = rep["binding"]["verdict"]
     # (15/10) Model DUOC YEU CAU nhung khong tra ve phieu nao (bi `CLINE_SKIP_MODELS` /
     # `LOCAL_SKIP_MODELS` loai tu trong `_council_models`, hoac provider bi chan) truoc day
     # **bien mat im lang**: `votes` rong + `abstained` rong => khong ai biet vi sao thieu
@@ -212,6 +270,10 @@ def main(argv: list | None = None) -> int:
                      ("%.2f" % c) if isinstance(c, (int, float)) else "-", r["reason"][:90]))
         print("  --- KET QUA: %d ALLOW / %d VETO / %d khong y kien -> QUYET DINH: %s"
               % (rep["n_allow"], rep["n_veto"], rep["n_abstain"], rep["verdict"]))
+        b = rep.get("binding") or {}
+        if b.get("rule") not in (None, "majority"):
+            print("      (phá thế hoà theo luật '%s'%s)"
+                  % (b.get("rule"), (": " + str(b.get("why"))) if b.get("why") else ""))
         print("  -> %s" % (args.allow if rep["verdict"] == "ALLOW" else
                            args.veto if rep["verdict"] == "VETO" else "hoa/khong du phieu"))
         if rep.get("journal"):

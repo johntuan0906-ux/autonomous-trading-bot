@@ -67,6 +67,15 @@ class KillSwitch:
     # "daily loss 99.49%" ngay khi bot doi tu demo sang LIVE (da gap that 09/10 16:45).
     mode: str = ""
 
+    #: (22/10) TU DONG GO KILL-SWITCH sau bao nhieu gio (0 = tat, phai reset tay).
+    #: Vi sao: do that 15/10 — trip roi **ket 3,6 ngay** vi khong ai reset; nguoi van hanh
+    #: yeu cau "khong de tri tre". Day la co che CO HAN (khac "tu resume ngay" da bi hoi dong
+    #: 4-0 VETO 19/10): chi go khi da qua du thoi gian nguoi, va ghi vet `last_auto_reset`.
+    auto_reset_hours: float = 0.0
+    trip_ts: float = 0.0            # thoi diem trip gan nhat (de tinh auto-reset)
+    last_auto_reset: float = 0.0    # lan tu go gan nhat (0 = chua)
+    auto_reset_count: int = 0       # so lan tu go (do luong)
+
     def register_error(self) -> bool:
         self.errors += 1
         if self.errors >= self.max_errors:
@@ -101,6 +110,8 @@ class KillSwitch:
     def check(self, balance: float, atr_pct: float = 0.0) -> bool:
         """Return True if trading must halt. Checks drawdown + volatility."""
         if self.tripped:
+            if self.auto_reset(balance):
+                return False               # da qua han tu go -> chay tiep (co ghi vet)
             return True
         self.peak_balance = max(self.peak_balance or balance, balance)
         # P0-6: DD tinh tren equity THAT dau ngay (start_equity), khong phai
@@ -154,7 +165,9 @@ class KillSwitch:
                 "start_balance": self.start_balance, "start_equity": self.start_equity,
                 "peak_balance": self.peak_balance, "errors": self.errors,
                 "tripped": bool(self.tripped), "reason": self.reason,
-                "consec_losses": self.consec_losses, "day": self.day, "mode": self.mode}
+                "consec_losses": self.consec_losses, "day": self.day, "mode": self.mode,
+                "trip_ts": self.trip_ts, "last_auto_reset": self.last_auto_reset,
+                "auto_reset_count": self.auto_reset_count}
 
     @classmethod
     def from_dict(cls, d: dict) -> "KillSwitch":
@@ -163,6 +176,9 @@ class KillSwitch:
                  max_errors=int(d.get("max_errors", 5)),
                  start_balance=float(d.get("start_balance", 1000.0)))
         ks.max_consec_losses = int(d.get("max_consec_losses", 5))
+        ks.trip_ts = float(d.get("trip_ts", 0.0) or 0.0)
+        ks.last_auto_reset = float(d.get("last_auto_reset", 0.0) or 0.0)
+        ks.auto_reset_count = int(d.get("auto_reset_count", 0) or 0)
         ks.start_equity = float(d.get("start_equity", 0.0) or 0.0)
         ks.peak_balance = float(d.get("peak_balance", 0.0) or 0.0)
         ks.errors = int(d.get("errors", 0))
@@ -176,6 +192,36 @@ class KillSwitch:
     def trip(self, reason: str) -> bool:
         self.tripped = True
         self.reason = reason
+        import time as _t
+        self.trip_ts = float(self.trip_ts or _t.time())
+        return True
+
+    def auto_reset(self, balance: float = 0.0, *, now=None) -> bool:
+        """Tu go kill-switch khi da qua `auto_reset_hours` (0 = tat). Tra True neu vua go.
+
+        Ghi vet bang `last_auto_reset`/`auto_reset_count` (do luong + truy vet), va moc lai
+        `peak_balance`/`start_equity` theo equity hien tai de tran DD khong trip lai ngay.
+        """
+        if not self.tripped or float(self.auto_reset_hours or 0) <= 0:
+            return False
+        import time as _t
+        now_t = float(now if now is not None else _t.time())
+        trip_at = float(self.trip_ts or 0.0)
+        if trip_at <= 0:
+            self.trip_ts = now_t        # state cu khong co moc -> bat dau tinh tu bay gio
+            return False
+        if (now_t - trip_at) < float(self.auto_reset_hours) * 3600.0:
+            return False
+        self.tripped = False
+        self.reason = ""
+        self.consec_losses = 0
+        self.errors = 0
+        self.trip_ts = 0.0
+        self.last_auto_reset = now_t
+        self.auto_reset_count = int(self.auto_reset_count or 0) + 1
+        if balance > 0:
+            self.peak_balance = float(balance)
+            self.start_equity = float(balance)
         return True
 
 
@@ -219,12 +265,15 @@ def load_state(path: str, ks: KillSwitch, warn=None) -> KillSwitch:
     ks.reason = old.reason
     ks.errors = old.errors
     ks.consec_losses = old.consec_losses
+    ks.trip_ts = old.trip_ts or ks.trip_ts
+    ks.last_auto_reset = old.last_auto_reset or ks.last_auto_reset
+    ks.auto_reset_count = int(old.auto_reset_count or 0)
     ks.peak_balance = max(ks.peak_balance, old.peak_balance)
     ks.start_equity = old.start_equity or ks.start_equity
     ks.day = old.day or ks.day
     if warn:
         drift = []
-        for name in ("max_daily_loss_pct", "max_atr_pct", "max_errors"):
+        for name in ("max_daily_loss_pct", "max_atr_pct", "max_errors", "auto_reset_hours"):
             was, now = getattr(old, name), getattr(ks, name)
             if was != now:
                 drift.append(f"{name}: file={was} -> dung {now} (.env)")

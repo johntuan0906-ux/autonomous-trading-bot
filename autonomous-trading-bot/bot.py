@@ -30,6 +30,9 @@ class TradingBot:
         self.portfolio = PortfolioManager(self.cfg.max_positions, self.cfg.allow_hedge_opposite)
         self.kill = KillSwitch(self.cfg.max_daily_loss_pct, self.cfg.max_atr_pct,
                                self.cfg.max_consecutive_errors, self.cfg.balance_usdt)
+        # (22/10) Cho phep TU GO kill-switch sau N gio (0 = tat) — chong "trip roi ket im".
+        self.kill.auto_reset_hours = float(
+            getattr(self.cfg, "kill_auto_reset_hours", 0.0) or 0.0)
         self.sentiment = SentimentCache(self.cfg.sentiment_cache_sec)
         self.balance = self.cfg.balance_usdt
         # P0-6: `balance` = tran size (BALANCE_USDT), `equity` = tai san THAT tren san.

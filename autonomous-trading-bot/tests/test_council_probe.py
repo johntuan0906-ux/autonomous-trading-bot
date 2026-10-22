@@ -129,5 +129,53 @@ class TestLoadCases(unittest.TestCase):
             self.assertEqual(cases[0]["name"], "case-0")
 
 
+class TestResolveVerdict(unittest.TestCase):
+    """(22/10) Người vận hành giao toàn quyền: KHÔNG được để 'chia rẽ ⇒ không quyết'."""
+
+    def _tal(self, votes):
+        import council_vote as CV
+        return CV.tally(votes)
+
+    def test_da_so_thang(self):
+        import council_vote as CV
+        t = self._tal({"a": {"action": "ALLOW"}, "b": {"action": "ALLOW"},
+                       "c": {"action": "VETO"}})
+        r = CV.resolve_verdict(t)
+        self.assertEqual(r["verdict"], "ALLOW")
+        self.assertEqual(r["rule"], "majority")
+
+    def test_hoa_thi_theo_confidence(self):
+        import council_vote as CV
+        t = self._tal({"a": {"action": "ALLOW", "confidence": 0.9},
+                       "b": {"action": "VETO", "confidence": 0.5}})
+        r = CV.resolve_verdict(t)
+        self.assertEqual(r["verdict"], "ALLOW")
+        self.assertEqual(r["rule"], "confidence")
+
+    def test_hoa_ca_confidence_thi_giu_hien_trang(self):
+        import council_vote as CV
+        t = self._tal({"a": {"action": "ALLOW", "confidence": 0.7},
+                       "b": {"action": "VETO", "confidence": 0.7}})
+        r = CV.resolve_verdict(t)
+        self.assertEqual(r["verdict"], "VETO")
+        self.assertEqual(r["rule"], "conservative")
+
+    def test_khong_du_quorum_thi_giu_hien_trang(self):
+        import council_vote as CV
+        t = self._tal({"a": {"action": "ALLOW", "confidence": 0.99}})
+        r = CV.resolve_verdict(t)
+        self.assertEqual(r["verdict"], "VETO")
+        self.assertFalse(r["binding"])
+        self.assertEqual(r["rule"], "quorum")
+
+    def test_khong_bao_gio_tra_NO_OPINION(self):
+        import council_vote as CV
+        for votes in ({"a": {"action": "ALLOW"}},
+                      {"a": {"action": "NO_OPINION"}},
+                      {"a": {"action": "ALLOW"}, "b": {"action": "VETO"}}):
+            self.assertNotEqual(CV.resolve_verdict(self._tal(votes))["verdict"],
+                                "NO_OPINION")
+
+
 if __name__ == "__main__":
     unittest.main()

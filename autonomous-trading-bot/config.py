@@ -163,6 +163,9 @@ class Settings:
     sl_atr_mult: float = field(default_factory=lambda: _get_float("SL_ATR_MULT", 2.0))
     tp_atr_mult: float = field(default_factory=lambda: _get_float("TP_ATR_MULT", 5.0))
     max_daily_loss_pct: float = field(default_factory=lambda: _get_float("MAX_DAILY_LOSS_PCT", 2.0))
+    #: (22/10) Tu dong go kill-switch sau N gio (0 = tat, phai reset tay). Xem `risk.auto_reset`.
+    kill_auto_reset_hours: float = field(
+        default_factory=lambda: _get_float("KILL_AUTO_RESET_HOURS", 0.0))
     max_atr_pct: float = field(default_factory=lambda: _get_float("MAX_ATR_PCT", 0.05))
     max_consecutive_errors: int = field(default_factory=lambda: _get_int("MAX_CONSECUTIVE_ERRORS", 5))
     min_tp_pct: float = field(default_factory=lambda: _get_float("MIN_TP_PCT", 0.0))

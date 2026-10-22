@@ -160,6 +160,9 @@ Làm mới: `python live_ready.py` · `python monitor_report.py --days 7` · `py
 | Xem vị thế thật trên sàn | `python positions.py` |
 | Đối soát journal ↔ sàn | `python reconcile.py` |
 | SL/TP có trên sàn chưa | `python arm_protection.py` (`--arm` để thử đặt lại) |
+| **Trần lỗ NGÀY (22/10)** | **6.0%** (hội đồng 2 ALLOW / 1 VETO): 11/15 ngày lỗ >2%, 9/15 >3.6% ⇒ trần 2% bị chạm gần như mỗi ngày ⇒ trip + reset tay liên tục. Phanh chính nay là `MAX_CONSECUTIVE_LOSSES=5` + `MAX_TOTAL_RISK_PCT=1.6` + cổng tạm dừng có hạn |
+| **Tự gỡ kill-switch** | Cơ chế `KILL_AUTO_RESET_HOURS` đã có (7 test) nhưng **hội đồng 0–2 VETO** ⇒ để **TẮT (0)**, vẫn reset tay; chống trì trệ bằng cảnh báo tự động khi trip (`watch_regress` → `ops_queue`) |
+| **Luật phá thế hoà của hội đồng** | `council_vote.resolve_verdict`: quorum ≥2 → đa số → tổng confidence → **giữ nguyên hiện trạng**. Không bao giờ trả `NO_OPINION` cho quyết định vận hành (người vận hành yêu cầu "đừng để chia rẽ ⇒ trì trệ") |
 | Reset kill-switch | `python risk.py --reset` |
 | Chạy lại bot | `pythonw run_forever.py` (chạy từ thư mục project) |
 | Test toàn bộ | `python -m unittest discover -s tests` (hiện **555 test OK**) |

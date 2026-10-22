@@ -288,6 +288,20 @@ CLASSES = [
                   "test_council_daemon.py::TestNhipTimVaTran::test_cham_tran_van_ghi_nhip_tim",
                   "test_council_daemon.py::TestNhipTimVaTran::test_cham_tran_chi_phi_van_ghi_nhip_tim"],
     },
+    {
+        "code": "B-028", "kind": "im-lang", "seen": "22/10/2026",
+        "title": "Van de tien trinh/an toan chi duoc IN ra (khong vao hang doi) + do phu bao ve KHONG AI KIEM",
+        "symptom": "`watch_regress --check` phat hien kill-switch TRIPPED / supervisor chet / nhip tim cu nhung chi `print` roi `return 1`: khong co cau hoi nao vao `ops_queue` ⇒ nguoi van hanh khong bao gio duoc hoi (dung lop loi 'im lang'). Kem theo: khong co gi dinh ky kiem 'moi vi the co du 1 SL + 1 TP' ⇒ lenh bao ve TRUNG tich tu den khi cham tran stop-order (`-4045`) moi biet (do that 22/10 LIVE: BICO co **4** lenh bao ve = 2 cap TRUNG). Cong cu `orders_audit` bao 'KHONG co SL/TP' cho ca vi the BUI da ghi `dust_skip.json` ⇒ vua bao dong gia vua CHE MAT vi the TRAN that",
+        "guard": "`watch_regress.notify()` day ca `problems` vao `ops_queue` theo LOAI van de (`problem_kind`: kill/naked/dupes/supervisor/child/heartbeat/council) ⇒ bao lai moi 1h khi van con loi (khong spam, khong tat); `refresh_orders()` + `--orders` (task `ATB-WatchRegress` moi 10 phut) ghi `logs/orders_snapshot.json` va bat vi the TRAN / cap lenh TRUNG; `orders_audit.load_dust()` tach BUI (khong the dat SL/TP) khoi TRAN va ket luan rieng cho TRAN; `ops.py` + `harness_audit --with-exchange` hien thi/canh bao TRUNG/TRAN",
+        "files": ["tools/watch_regress.py", "tools/orders_audit.py", "tools/ops.py",
+                  "tools/harness_audit.py"],
+        "tests": ["test_watch_regress.py::TestBaoVeTrenSan::test_notify_day_van_de_tien_trinh_vao_hang_doi",
+                  "test_watch_regress.py::TestBaoVeTrenSan::test_health_bat_vi_the_tran_va_lenh_bao_ve_trung",
+                  "test_watch_regress.py::TestBaoVeTrenSan::test_problem_kind_on_dinh_khi_SO_thay_doi",
+                  "test_watch_regress.py::TestBaoVeTrenSan::test_refresh_orders_tra_naked_va_dupes_va_ghi_snapshot",
+                  "test_orders_audit.py::TestViTheBuiVaTran::test_vi_the_tran_thi_ket_luan_rieng",
+                  "test_orders_audit.py::TestViTheBuiVaTran::test_bui_khong_bao_dong_gia"],
+    },
 ]
 
 

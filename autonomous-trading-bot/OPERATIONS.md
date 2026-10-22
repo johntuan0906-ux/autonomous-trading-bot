@@ -183,6 +183,8 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Đo A/B một thay đổi harness (0 đồng nếu chưa `--live`) | `python tools/council_probe.py --cases logs/probe_cases.json` · thêm `--live` để đo thật (≈0,02 USD/lần) |
 | Hội đồng quyết định (không bao giờ "hoà ⇒ không quyết") | `python tools/council_vote.py --question ... --allow ... --veto ... --rounds 2` → in luật phá thế hoà (`majority`/`confidence`/`conservative`/`quorum`) |
 | Trần lỗ ngày / tự gỡ kill-switch | `.env`: `MAX_DAILY_LOSS_PCT=6.0` (hội đồng 22/10) · `KILL_AUTO_RESET_HOURS=0` (hội đồng VETO bật) — đổi xong **restart** mới có hiệu lực |
+| Kiểm kê bảo vệ + cảnh báo (B-028) | `python tools/watch_regress.py --check --orders` (task `ATB-WatchRegress` đã chạy sẵn 10 phút/lần) · dọn cặp lệnh trùng: `python tools/orders_audit.py --target live --dedupe` |
+| Xem "vấn đề có được báo không" | `python tools/ops_queue.py list` (mọi vấn đề tiến trình/an toàn nay nằm ở đây, kèm cooldown 1h) |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |

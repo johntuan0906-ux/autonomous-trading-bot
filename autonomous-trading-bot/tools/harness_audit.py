@@ -323,7 +323,7 @@ def audit_one(base: Path, label: str, *, with_exchange: bool = False) -> dict:
     _chk_council(checks, base / "logs")
     _chk_local_model(checks, env)
     if with_exchange:
-        _chk_protection(checks, env, label)
+        _chk_protection(checks, env, label, base)
     else:
         add(checks, "OK", "bao-ve", "bo qua (them --with-exchange de kiem tra that)")
     return {"label": label, "checks": checks, "summary": summarize(checks),
@@ -374,20 +374,32 @@ def _chk_local_model(checks: list, env: dict) -> None:
             "`python tools/llamafile_setup.py --start`")
 
 
-def _chk_protection(checks: list, env: dict, label: str) -> None:
+def _chk_protection(checks: list, env: dict, label: str, base=None) -> None:
     """Do phu bao ve tren san: moi vi the phai co dung 1 SL + 1 TP (khong mo coi)."""
     try:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import orders_audit as OA
         cli = OA.build_client(env, not flag(env, "BINANCE_TESTNET", True))
         poss = [p for p in cli.fetch_positions() if float(p.get("contracts") or 0) != 0]
-        s = OA.summarize(OA.algo_orders(cli), poss)
+        # (22/10) Tru vi the BUI da ghi `dust_skip.json` (khong the dat SL/TP duoc) ra khoi
+        # ket luan: neu khong thi cong cu vua bao dong gia vua che mat vi the TRAN that.
+        s = OA.summarize(OA.algo_orders(cli), poss,
+                         dust=OA.load_dust(Path(base) if base else ROOT))
         if s["positions"] == 0 and s["orders"] == 0:
             add(checks, "OK", "bao-ve", "khong co vi the/lenh treo")
+        elif s.get("naked"):
+            add(checks, "FAIL", "bao-ve",
+                "%d vi the TRAN (khong SL/TP): %s"
+                % (len(s["naked"]), ", ".join(s["naked"][:3])),
+                "python tools/orders_audit.py --target %s" % label.lower())
         elif s["to_cancel"] or s["orphans"]:
             add(checks, "FAIL", "bao-ve",
                 "%d vi the, %d lenh cho, %d lenh thua/mo coi"
                 % (s["positions"], s["orders"], s["to_cancel"]),
+                "python tools/orders_audit.py --target %s --dedupe" % label.lower())
+        elif s.get("dupes"):
+            add(checks, "WARN", "bao-ve",
+                "%d cap lenh bao ve TRUNG -> gom lai con 1 SL + 1 TP" % len(s["dupes"]),
                 "python tools/orders_audit.py --target %s --dedupe" % label.lower())
         else:
             add(checks, "OK", "bao-ve", "%d vi the = %d lenh bao ve (dung 2/vi the)"

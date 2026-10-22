@@ -509,6 +509,58 @@ từ GitHub/GitLab/Codeberg/Gitea/Forgejo mà không phải `git clone`; có t�
 OS/arch, LFS, preview file, và **2 bề mặt cho agent**: `ghgrab agent tree|download` (JSON) +
 `ghgrab mcp` (MCP server stdio). Không liên quan nghiệp vụ giao dịch.
 
+## 20. (22/10) Hội đồng TOÀN QUYỀN + đo phủ bảo vệ — hai lỗ hổng "quyết định" và "im lặng"
+
+**Bối cảnh.** Người vận hành giao hội đồng **toàn quyền** quyết định thay đổi tham số rủi ro và
+nói thẳng yêu cầu: *"đừng để chia rẽ ⇒ không quyết ⇒ trì trệ"*. Hệ thống có 2 lỗ hổng đúng
+theo lời đó: (a) phiếu chia rẽ trả `NO_OPINION` ⇒ **không quyết gì**; (b) các vấn đề
+**tiến trình/an toàn** do `watch_regress` phát hiện chỉ được **in ra**, không vào hàng đợi ⇒
+**im lặng**.
+
+### 20.1 Luật phá thế hoà (`council_vote.resolve_verdict`)
+
+| Thứ tự | Luật | Ý nghĩa |
+|---|---|---|
+| 1 | **quorum** (≥2 phiếu thật) | dưới ngưỡng ⇒ giữ hiện trạng, ghi rõ "chỉ N phiếu", `binding=false` |
+| 2 | **majority** | đa số thắng |
+| 3 | **confidence** | hoà ⇒ tổng confidence bên nào cao hơn |
+| 4 | **conservative** | vẫn hoà ⇒ **giữ nguyên hiện trạng** (bảo thủ có chủ đích) |
+
+Không bao giờ trả `NO_OPINION` cho quyết định vận hành; kết quả luôn kèm `rule` đã dùng ⇒
+đọc lại biết **vì sao** nó quyết như vậy.
+
+### 20.2 Quyết định 22/10 (4 model, 2 vòng debate, 105s, bằng chứng từ journal 1815 lệnh)
+
+| Quyết định | Phiếu | Bằng chứng | Kết cục |
+|---|---|---|---|
+| Nâng `MAX_DAILY_LOSS_PCT` 2.0% → **6.0%** | **2 ALLOW / 1 VETO** | 11/15 ngày lỗ > 2%, 9/15 > 3.6% ⇒ trần 2% bị chạm gần như mỗi ngày ⇒ trip + reset tay liên tục | **adopted** (`H-20261022-003`), áp cả 2 instance |
+| Cơ chế **tự gỡ kill-switch** sau 12h | **0 ALLOW / 2 VETO** | veto: mốc lại peak/start_equity **xoá dấu vết drawdown**; tự gỡ khi chưa xác nhận nguyên nhân = tái kích hoạt rủi ro | **rejected** (`H-20261022-004`) — mã + 7 test vẫn còn, `.env` để `KILL_AUTO_RESET_HOURS=0` |
+
+Bài học: **veto phải được tôn trọng và ghi lại kèm lý do** — nếu không, cùng một đề xuất sẽ
+quay lại mỗi tuần. Chống trì trệ bằng con đường hội đồng chấp nhận: **cảnh báo tự động khi
+trip** + cổng tạm dừng có hạn + trần ngày rộng hơn.
+
+### 20.3 B-028 — "in ra" không phải là "báo"
+
+`watch_regress --check` phát hiện kill-switch TRIPPED / supervisor chết / nhịp tim cũ nhưng chỉ
+`print` rồi `return 1`; `notify()` chỉ chạy khi có **tái phát log**. Kèm theo, **không có gì định
+kỳ kiểm "mỗi vị thế có đủ 1 SL + 1 TP"** — đo thật 22/10: LIVE `BICO` có **4** lệnh bảo vệ
+(2 cặp trùng) và `orders_audit` báo "KHÔNG co SL/TP" cho cả vị thế **bụi** đã ghi `dust_skip.json`
+⇒ vừa báo động giả vừa **che mất vị thế TRẦN** thật.
+
+Đã vá: (a) `notify()` đẩy **cả `problems`** vào `ops_queue` theo **loại** vấn đề
+(`problem_kind` ⇒ khoá ổn định, không spam vì số thay đổi), báo lại mỗi 1h khi còn lỗi;
+(b) `refresh_orders()` + `--orders` (task `ATB-WatchRegress` 10 phút/lần) ghi
+`logs/orders_snapshot.json` và bật **TRẦN / TRÙNG**; (c) `load_dust()` tách **bụi ≠ TRẦN**;
+(d) `ops.py` và `harness_audit --with-exchange` hiển thị/cảnh báo. 28 lớp lỗi, 66 test chốt.
+
+### 20.4 Còn lại (chưa làm)
+
+- **LIVE chưa restart** để nhận trần 6.0% (watcher chờ hết vị thế — có `--max-hours 12`, quá hạn thì phải restart tay).
+- **Tự động dọn cặp lệnh bảo vệ TRÙNG**: hiện chỉ **cảnh báo**; chưa có task tự `--dedupe` (cố ý — huỷ lệnh phải có người xác nhận).
+- **Đo hiệu quả trần 6.0%**: cần vài ngày dữ liệu để so "số lần trip/tuần" trước–sau (ghi vào `harness_ledger --decide` khi có).
+
+
 | Mục trong ghgrab | Bản chất | Với dự án này | Trạng thái |
 |---|---|---|---|
 | `Config::validate_path` + `Config::save` (kiểm tra thư mục cha/tồn tại/quyền ghi **trước** khi lưu) | Ghi cấu hình an toàn | Đối chiếu ⇒ phát hiện **5 chỗ ghi file trạng thái TRỰC TIẾP** (`.env`, `entries_pause.json`, `state.json`, `deadman.json`, artifact) ⇒ mất điện giữa lúc ghi là file cắt ngang | **ĐÃ ÁP DỤNG**: `atomic.py` (tmp → `fsync` → `os.replace`, retry khi Windows khoá file) + 6 call site + 10 test |

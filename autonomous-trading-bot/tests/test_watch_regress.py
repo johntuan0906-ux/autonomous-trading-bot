@@ -328,5 +328,103 @@ class TestReadTailLines(unittest.TestCase):
         self.assertFalse(cut)
 
 
+class _FakeClient:
+    """Client GIA: tra vi the/lenh cho dinh san (khong goi API that)."""
+
+    def __init__(self, positions=None, orders=None, testnet=False):
+        self._pos = positions or []
+        self._ord = orders or []
+        self.testnet = testnet
+
+    def fetch_positions(self):
+        return list(self._pos)
+
+    def fetch_open_orders(self, symbol=None):
+        return [o for o in self._ord
+                if symbol is None or o.get("symbol") == symbol]
+
+
+class TestBaoVeTrenSan(unittest.TestCase):
+    """(22/10) Do PHU BAO VE dinh ky — lop loi B-028.
+
+    Truoc day khong co gi kiem "moi vi the co du 1 SL + 1 TP": lenh bao ve TRUNG tich tu
+    (B-013) den khi cham tran stop-order (`-4045`) moi biet, va vi the TRAN (khong SL/TP)
+    thi khong ai thay. Do that 22/10: LIVE co vi the BICO voi **4** lenh bao ve.
+    """
+
+    def _cli(self):
+        return _FakeClient(
+            positions=[{"symbol": "SOL/USDT:USDT", "contracts": 2},
+                       {"symbol": "ADA/USDT:USDT", "contracts": 1}],
+            orders=[{"symbol": "SOL/USDT:USDT", "type": "STOP_MARKET"},
+                    {"symbol": "SOL/USDT:USDT", "type": "STOP_MARKET"},
+                    {"symbol": "SOL/USDT:USDT", "type": "TAKE_PROFIT_MARKET"}])
+
+    def test_refresh_orders_tra_naked_va_dupes_va_ghi_snapshot(self):
+        base = Path(tempfile.mkdtemp())
+        s = WR.refresh_orders(base, client=self._cli(), write=True)
+        self.assertEqual(s["naked"], ["ADA/USDT:USDT"])
+        self.assertEqual(list(s["dupes"]), ["SOL/USDT:USDT"])
+        snap = json.loads((base / "logs" / "orders_snapshot.json").read_text(encoding="utf-8"))
+        self.assertEqual(snap["naked"], ["ADA/USDT:USDT"])
+
+    def test_refresh_orders_loi_san_thi_tra_err_khong_crash(self):
+        class Boom:
+            testnet = False
+
+            def fetch_positions(self):
+                raise RuntimeError("san loi")
+
+        s = WR.refresh_orders(Path(tempfile.mkdtemp()), client=Boom(), write=False)
+        self.assertIn("err", s)
+
+    def test_health_bat_vi_the_tran_va_lenh_bao_ve_trung(self):
+        rep = {"name": "LIVE", "pid": 100, "supervisor_pid": 200, "hb_age_s": 5.0,
+               "kill_tripped": False, "naked": ["ADA/USDT:USDT"], "dupes": 1}
+        bad = WR.health("LIVE", rep, pids={100, 200})
+        self.assertTrue(any("TRAN (khong SL/TP)" in b for b in bad), bad)
+        self.assertTrue(any("bao ve TRUNG" in b for b in bad), bad)
+
+    def test_khong_co_van_de_bao_ve_thi_khoe(self):
+        rep = {"name": "LIVE", "pid": 100, "supervisor_pid": 200, "hb_age_s": 5.0,
+               "kill_tripped": False, "naked": [], "dupes": 0}
+        self.assertEqual(WR.health("LIVE", rep, pids={100, 200}), [])
+
+    def test_problem_kind_on_dinh_khi_SO_thay_doi(self):
+        """Khoa phai theo LOAI (nhip tim cu 620s vs 999s = cung 1 khoa) — neu khong se spam."""
+        self.assertEqual(WR.problem_kind("LIVE: nhip tim cu 620s > 300s"), "heartbeat")
+        self.assertEqual(WR.problem_kind("LIVE: nhip tim cu 999s > 300s"), "heartbeat")
+        self.assertEqual(WR.problem_kind("LIVE: KILL-SWITCH dang ngung (lo)"), "kill")
+        self.assertEqual(WR.problem_kind("LIVE: 1 cap lenh bao ve TRUNG -> gom lai"), "dupes")
+        self.assertEqual(WR.problem_kind("LIVE: 1 vi the TRAN (khong SL/TP): X"), "naked")
+        self.assertEqual(WR.problem_kind("chuyen gi do la"), "khac")
+
+    def test_notify_day_van_de_tien_trinh_vao_hang_doi(self):
+        """Van de tien trinh/an toan truoc day chi IN ra ⇒ nay phai vao `ops_queue`."""
+        rep = {"instances": [{"name": "LIVE", "sightings": {},
+                              "problems": ["LIVE: KILL-SWITCH dang ngung (thua 2 lenh)"]}],
+               "problems": ["x"], "regressions": []}
+        calls: list = []
+        st_path = Path(tempfile.mkdtemp()) / "regress_watch.json"
+        enq = lambda q, **k: calls.append((q, k)) or {"ok": True}   # noqa: E731
+        r1 = WR.notify(rep, state={}, now=lambda: 1000.0, path=st_path, enqueue=enq)
+        self.assertEqual(len(r1["sent"]), 1)
+        self.assertEqual(calls[0][1]["priority"], "high")
+        self.assertIn("KILL-SWITCH", calls[0][0])
+        r2 = WR.notify(rep, state=r1["state"], now=lambda: 1060.0, path=st_path, enqueue=enq)
+        self.assertEqual(r2["sent"], [], "con trong cooldown -> khong spam")
+        r3 = WR.notify(rep, state=r2["state"], now=lambda: 1000.0 + 7200, path=st_path,
+                       enqueue=enq)
+        self.assertEqual(len(r3["sent"]), 1, "van con loi + qua cooldown -> bao lai")
+        self.assertEqual(len(calls), 2)
+
+    def test_notify_khong_bao_khi_khong_co_van_de(self):
+        rep = {"instances": [{"name": "LIVE", "sightings": {}, "problems": []}],
+               "problems": [], "regressions": []}
+        r = WR.notify(rep, state={}, path=Path(tempfile.mkdtemp()) / "s.json",
+                      enqueue=lambda *a, **k: {"ok": True})
+        self.assertEqual(r["sent"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -114,6 +114,11 @@ def _instance(name: str, d: Path, minutes: float) -> dict:
         rep["positions"] = int(snap.get("positions") or 0)
         rep["orders"] = int(snap.get("orders") or 0)
         rep["orphans"] = int(snap.get("orphans") or 0)
+        # (22/10) Do phu bao ve: TRUNG = tien thanh cham tran stop-order (-4045);
+        # TRAN = vi the khong co gi chan lo. Snapshot do `orders_audit --json` hoac
+        # `watch_regress --orders` ghi.
+        rep["dupes"] = len(snap.get("dupes") or {})
+        rep["naked"] = list(snap.get("naked") or [])
     except Exception:  # noqa: BLE001
         rep["positions"] = rep.get("managed_trades")
         rep["orders"] = None
@@ -145,8 +150,13 @@ def _print(rep: dict, minutes: float) -> None:
           % (rep.get("supervisor_pid") or "-", rep.get("pid") or "-",
              rep.get("managed_trades")))
     if rep.get("orders") is not None or rep.get("positions") is not None:
-        print("         san: %s vi the / %s lenh cho / %s mo coi (snapshot orders_audit)"
-              % (rep.get("positions"), rep.get("orders"), rep.get("orphans", 0)))
+        extra = ""
+        if rep.get("dupes"):
+            extra += " | %d cap TRUNG" % rep["dupes"]
+        if rep.get("naked"):
+            extra += " | %d vi the TRAN" % len(rep["naked"])
+        print("         san: %s vi the / %s lenh cho / %s mo coi (snapshot orders_audit)%s"
+              % (rep.get("positions"), rep.get("orders"), rep.get("orphans", 0), extra))
     if rep.get("kill_tripped"):
         print("         KILL-SWITCH: TRIPPED (%s) -> dung bot, python risk.py --reset, chay lai"
               % rep.get("kill_reason"))

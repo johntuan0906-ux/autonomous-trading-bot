@@ -331,6 +331,33 @@ _Truy nguoc bang chung cua 1 ma (vd `EV-2677E0`):_ `python tools/trace_trade.py 
 <!-- HUMAN -->
 ` se KHONG bi ghi de.
 
+
+## Bài học 22/10 (bổ sung của trợ lý — ngoài khối HUMAN)
+
+**1. "In ra" KHÔNG phải là "báo" (B-028).** `watch_regress` phát hiện kill-switch TRIPPED,
+supervisor chết, nhịp tim cũ... rồi chỉ `print` + `exit 1`. Với hệ thống chạy bằng Task
+Scheduler (không ai ngồi xem console), **chỉ in ra = im lặng**. Từ nay mọi vấn đề
+**tiến trình/an toàn** phải vào `ops_queue` theo **loại** vấn đề (khoá ổn định ⇒ không spam vì
+số trong câu đổi mỗi lần), và báo lại mỗi 1h khi vẫn còn lỗi.
+
+**2. Bụi ≠ TRẦN.** `orders_audit` báo "KHÔNG co SL/TP" cho cả vị thế **bụi** (qty < minNotional,
+đã ghi `dust_skip.json`) rồi vẫn kết luận "gọn" ⇒ vừa báo động giả, vừa **che mất** vị thế
+**TRẦN** (không có gì chặn lỗ). Phải phân biệt **đã biết / không thể bảo vệ** với **thiếu bảo vệ**.
+
+**3. Đo phủ bảo vệ phải ĐỊNH KỲ.** Đo thật 22/10: LIVE `BICO` có **4** lệnh bảo vệ (2 cặp
+TRÙNG) — lệnh trùng tích tụ đến khi chạm trần stop-order (`-4045`) thì lệnh bảo vệ mới không
+đặt được nữa. Nay task `ATB-WatchRegress` (10 phút/lần) chạy `--check --orders`.
+
+**4. Veto của hội đồng phải được TÔN TRỌNG + ghi lý do.** Hội đồng VETO 0–2 cơ chế tự gỡ
+kill-switch sau 12h (lý do: mốc lại peak/start_equity **xoá dấu vết drawdown**; tự gỡ khi chưa
+xác nhận nguyên nhân = tái kích hoạt rủi ro). Cách xử lý đúng: **giữ cơ chế trong mã nhưng TẮT**,
+ghi `H-20261022-004` kèm lý do, và chống trì trệ bằng đường khác mà hội đồng đã chấp nhận
+(cảnh báo tự động khi trip + cổng tạm dừng có hạn + nâng trần ngày).
+
+**5. Đổi tham số rủi ro = đổi `.env` rồi RESTART.** `risk_state.json` **không** ghi đè ngưỡng
+trong `.env` (state chỉ lưu ảnh chụp). Đo thật: TESTNET sau restart ghi `max_daily_loss_pct: 6.0`;
+LIVE vẫn `2.0` cho tới khi restart (đang chờ hết vị thế).
+
 ## So lieu
 
 - So lenh da dong doc duoc: **698**

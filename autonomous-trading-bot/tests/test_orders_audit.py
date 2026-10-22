@@ -196,5 +196,58 @@ class TestExchangeAlgo(unittest.TestCase):
         self.assertEqual(ex.fetch_protection("SOL/USDT:USDT"), {"sl": None, "tp": None})
 
 
+class TestViTheBuiVaTran(unittest.TestCase):
+    """(22/10) Do that: 2/6 vi the TESTNET thieu SL/TP la **bui** da ghi
+    `dust_skip.json` (qty=1 < minNotional => san khong cho dat bao ve). Cong cu cu
+    bao "KHONG co SL/TP" cho ca bui roi van ket luan "gon" => vua bao dong gia vua
+    che mat vi the TRAN that. Nay phai phan biet ro.
+    """
+
+    def _pos(self, sym):
+        return {"symbol": sym, "contracts": 1}
+
+    def test_bui_khong_bao_dong_gia(self):
+        pos = [self._pos("APE/USDT:USDT"), self._pos("SOL/USDT:USDT")]
+        orders = [_o("SOL/USDT:USDT", "STOP_MARKET"), _o("SOL/USDT:USDT", "TAKE_PROFIT_MARKET")]
+        s = OA.summarize(orders, pos, dust={"APE/USDT:USDT"})
+        self.assertEqual(s["dust"], ["APE/USDT:USDT"])
+        v = OA.verdict(s)
+        self.assertIn("BUI", v)
+        self.assertNotIn("TRAN", v)
+
+    def test_vi_the_tran_thi_ket_luan_rieng(self):
+        pos = [self._pos("SOL/USDT:USDT"), self._pos("ADA/USDT:USDT")]
+        orders = [_o("SOL/USDT:USDT", "STOP_MARKET")]
+        s = OA.summarize(orders, pos, dust={"APE/USDT:USDT"})
+        v = OA.verdict(s)
+        self.assertIn("TRAN", v)
+        self.assertIn("ADA/USDT:USDT", v)
+
+    def test_dust_chi_tinh_vi_the_dang_mo(self):
+        pos = [self._pos("SOL/USDT:USDT")]
+        s = OA.summarize([_o("SOL/USDT:USDT", "STOP_MARKET")], pos,
+                         dust={"APE/USDT:USDT"})
+        self.assertEqual(s["dust"], [])
+
+    def test_load_dust_doc_va_bo_qua_file_hong(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            (base / "logs").mkdir()
+            (base / "logs" / "dust_skip.json").write_text(
+                json.dumps({"symbols": ["APE/USDT:USDT"], "why": {}}), encoding="utf-8")
+            self.assertEqual(OA.load_dust(base), {"APE/USDT:USDT"})
+            (base / "logs" / "dust_skip.json").write_text("{hong", encoding="utf-8")
+            self.assertEqual(OA.load_dust(base), set())
+        self.assertEqual(OA.load_dust(Path("khong/ton/tai")), set())
+
+    def test_khong_dust_thi_van_bao_gon_nhu_cu(self):
+        pos = [self._pos("SOL/USDT:USDT")]
+        orders = [_o("SOL/USDT:USDT", "STOP_MARKET"), _o("SOL/USDT:USDT", "TAKE_PROFIT_MARKET")]
+        s = OA.summarize(orders, pos, dust=set())
+        self.assertEqual(OA.verdict(s), "gon (moi vi the dung 2 lenh bao ve)")
+
+
 if __name__ == "__main__":
     unittest.main()

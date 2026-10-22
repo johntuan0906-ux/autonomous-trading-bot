@@ -163,6 +163,20 @@ def health(name: str, rep: dict, pids=None, *, max_hb_sec: float = MAX_HB_SEC,
                        % (name, pid))
     if (rep or {}).get("kill_tripped"):
         bad.append("%s: KILL-SWITCH dang ngung (%s)" % (name, rep.get("kill_reason") or "?"))
+    # (22/10) Do PHU BAO VE: truoc day khong ai kiem dinh ky nen lenh bao ve TRUNG tich tu
+    # (B-013) den khi cham tran stop-order (`-4045`) moi biet — dung luc can nhat. Vi the
+    # TRAN (khong SL/TP, khong phai bui) la loi NANG: khong co gi chan lo.
+    nk = [str(x) for x in ((rep or {}).get("naked") or ())]
+    if nk:
+        bad.append("%s: %d vi the TRAN (khong SL/TP): %s"
+                   % (name, len(nk), ", ".join(nk[:3])))
+    try:
+        dp = int((rep or {}).get("dupes") or 0)
+    except (TypeError, ValueError):
+        dp = 0
+    if dp:
+        bad.append("%s: %d cap lenh bao ve TRUNG -> gom lai "
+                   "(python tools/orders_audit.py --dedupe)" % (name, dp))
     # (21/10) Hoi dong nen: "bi chan" (cham tran) KHONG phai loi, nhung "im lang" thi phai bao.
     if (rep or {}).get("council_installed"):
         age_c = (rep or {}).get("council_hb_age_s")
@@ -241,17 +255,64 @@ def append_log(text: str, path=None) -> str:
 
 # ---------------------------------------------------------------- quet instance
 
+def refresh_orders(base: Path, *, client=None, write: bool = True) -> dict:
+    """Kiem ke bao ve tren san (CHI DOC) + ghi `logs/orders_snapshot.json`.
+
+    Vi sao (22/10): khong co gi dinh ky kiem "moi vi the co du 1 SL + 1 TP" ⇒ lenh bao
+    ve TRUNG (B-013) tich tu den khi cham tran stop-order (`-4045`) thi moi biet — dung
+    luc can nhat. Do that 22/10 tren LIVE: BICO co **4** lenh bao ve (du 2).
+
+    Loi API => tra `{"err": ...}` (KHONG lam hong vong theo doi tien trinh).
+    `client` tiem duoc de test (khong goi san).
+    """
+    base = Path(base)
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import orders_audit as OA
+        if client is None:
+            env = OA.read_env(base / ".env")
+            if not (env.get("BINANCE_API_KEY") and env.get("BINANCE_API_SECRET")):
+                return {}
+            live = str(env.get("BINANCE_TESTNET", "true")).lower() in ("false", "0", "no")
+            client = OA.build_client(env, live)
+        else:
+            live = bool(getattr(client, "testnet", False) is False)
+        poss = [p for p in (client.fetch_positions() or [])
+                if float(p.get("contracts") or 0) != 0]
+        orders, _err = OA.all_orders(client, [str(p.get("symbol")) for p in poss])
+        s = OA.summarize(orders, poss, dust=OA.load_dust(base))
+        s["target"] = "live" if live else "testnet"
+        s["live"] = live
+        if write:
+            p = base / "logs" / "orders_snapshot.json"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_suffix(p.suffix + ".tmp")
+            tmp.write_text(json.dumps(s, ensure_ascii=False, indent=1), encoding="utf-8")
+            tmp.replace(p)
+        return s
+    except Exception as e:  # noqa: BLE001
+        return {"err": str(e)[:140]}
+
+
 def scan_instance(name: str, base: Path, *, baseline=None, minutes: float = 7.0,
-                  pids=None, max_bytes: int = TAIL_BYTES, until=None) -> dict:
+                  pids=None, max_bytes: int = TAIL_BYTES, until=None,
+                  orders: bool = False, client=None) -> dict:
     """Bao cao 1 instance: tien trinh + dau hieu tai phat ke tu moc da va.
 
     Dung lai `ops._instance()` (mot nguon su that cho nhip tim/kill/vi the/supervisor) roi
     them 3 thu ma ops.py khong co: pid CON con chay khong, cong tam dung, va so lan tai phat.
     """
     base = Path(base)
+    snap = refresh_orders(base, client=client) if orders else {}
     rep = dict(OPS._instance(name, base, minutes))
     rep["name"] = name
     rep["dir"] = str(base)
+    if orders:
+        rep["orders_checked"] = not bool(snap.get("err"))
+        rep["dupes"] = len(snap.get("dupes") or {}) if not snap.get("err") else None
+        rep["naked"] = list(snap.get("naked") or [])
+        if snap.get("err"):
+            rep["orders_err"] = snap["err"]
     try:
         rep["child_pid"] = int(rep.get("pid") or 0)
     except (TypeError, ValueError):
@@ -301,12 +362,14 @@ def scan_instance(name: str, base: Path, *, baseline=None, minutes: float = 7.0,
 
 
 def build_report(*, dirs=None, baseline=None, minutes: float = 7.0, pids=None,
-                 max_bytes: int = TAIL_BYTES, until=None) -> dict:
+                 max_bytes: int = TAIL_BYTES, until=None, orders: bool = False,
+                 clients=None) -> dict:
     """Bao cao CA 2 instance (hoac `dirs` tuy y — de test). `pids=None` -> doc tu may."""
     dirs = dirs or {"TESTNET": ROOT, "LIVE": LIVE_DIR}
     pids = list_pids() if pids is None else pids
     inst = [scan_instance(n, d, baseline=baseline, minutes=minutes, pids=pids,
-                          max_bytes=max_bytes, until=until)
+                          max_bytes=max_bytes, until=until, orders=orders,
+                          client=(clients or {}).get(n))
             for n, d in dirs.items()]
     v = verdict(inst)
     return {"ts": time.time(), "pids": len(pids), "instances": inst, **v}
@@ -326,6 +389,33 @@ def touch_state(rep: dict, state=None, path=None) -> dict:
                            + list((rep or {}).get("regressions") or []))
     st["saved"] = save_state(st, path)
     return st
+
+
+PROBLEM_KINDS = (
+    ("KILL-SWITCH", "kill"),
+    ("TRAN (khong SL/TP)", "naked"),
+    ("bao ve TRUNG", "dupes"),
+    ("khong co supervisor", "supervisor"),
+    ("supervisor pid", "supervisor"),
+    ("tien trinh con pid", "child"),
+    ("hoi dong NEN im lang", "council"),
+    ("nhip tim cu", "heartbeat"),
+    ("khong doc duoc nhip tim", "heartbeat"),
+    ("TAM DUNG", "pause"),
+)
+
+
+def problem_kind(text: str) -> str:
+    """Ma ON DINH cho 1 van de tien trinh (de chong spam ma khong im lang).
+
+    Van de chua SO thay doi tung lan (vd `nhip tim cu 620s`) ⇒ neu lay ca chuoi lam khoa
+    thi moi lan la 1 khoa moi ⇒ spam. Lay theo LOAI van de.
+    """
+    t = str(text or "")
+    for marker, code in PROBLEM_KINDS:
+        if marker in t:
+            return code
+    return "khac"
 
 
 def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None,
@@ -369,6 +459,31 @@ def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None,
                               priority="high")
             done[key] = {"ts": now_t, "n": int(s["n"])}
             sent.append({"key": key, "record": rec})
+    # (22/10) VAN DE TIEN TRINH / AN TOAN: truoc day chi IN ra roi thoi (khong vao
+    # `ops_queue`) ⇒ dung lop loi "im lang": kill-switch TRIPPED, supervisor chet, vi the
+    # TRAN, lenh bao ve TRUNG... deu khong ai duoc hoi. Nay day vao hang doi theo LOAI
+    # van de: bao lai moi `cooldown_s` khi van con ⇒ khong spam nhung cung khong tat.
+    for i in rep.get("instances") or []:
+        for p in (i.get("problems") or []):
+            kind = problem_kind(p)
+            key = "%s/PROBLEM/%s" % (i.get("name"), kind)
+            prev = done.get(key) or {}
+            if isinstance(prev, dict) and prev:
+                if (now_t - float(prev.get("ts") or 0.0)) < float(cooldown_s):
+                    continue
+            why = ("Van de tien trinh/an toan tai %s (loai %s): %s"
+                   % (i.get("name"), kind, p))
+            append_log("%s VAN DE %s @ %s: %s"
+                       % (time.strftime("%Y-%m-%d %H:%M:%S"), kind, i.get("name"), p),
+                       path=(Path(path).parent / LOG_NAME) if path else None)
+            rec = {"ok": True, "key": key}
+            if enqueue is not None:
+                rec = enqueue("Van de tien trinh/an toan tai %s: %s" % (i.get("name"), p),
+                              why=why,
+                              options=["da xu ly / khong can", "can sua tiep"],
+                              priority="high")
+            done[key] = {"ts": now_t, "kind": kind, "text": str(p)[:200]}
+            sent.append({"key": key, "record": rec})
     st["notified"] = done
     st["saved"] = save_state(st, path)
     return {"sent": sent, "state": st}
@@ -387,7 +502,7 @@ def task_command(python_exe=None, script=None, target: str = "both") -> str:
     except Exception:  # noqa: BLE001
         pass
     s = str(script or Path(__file__).resolve())
-    return '"%s" "%s" --target %s --check' % (py, s, target)
+    return '"%s" "%s" --target %s --check --orders' % (py, s, target)
 
 
 def _print(rep: dict) -> None:
@@ -404,6 +519,13 @@ def _print(rep: dict) -> None:
                             "" if i.get("child_alive", True) else "(CHET)"))
                  if i.get("child_pid") else "KHONG",
                  "TRIPPED" if i.get("kill_tripped") else "-", i.get("positions")))
+        if i.get("orders_checked"):
+            print("         bao ve: %s vi the / %s lenh cho / %s mo coi / %s cap TRUNG / %s TRAN"
+                  % (i.get("positions"), i.get("orders"), i.get("orphans") or 0,
+                     i.get("dupes") if i.get("dupes") is not None else "?",
+                     len(i.get("naked") or [])))
+        elif i.get("orders_err"):
+            print("         bao ve: khong doc duoc san (%s)" % i.get("orders_err"))
         if i.get("paused_until"):
             print("         TAM DUNG toi %s: %s"
                   % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(i["paused_until"])),
@@ -437,6 +559,8 @@ def main(argv=None) -> int:
     ap.add_argument("--watch", action="store_true", help="chay lien tuc (nen)")
     ap.add_argument("--interval", type=float, default=300.0, help="giay giua 2 lan (mac dinh 300)")
     ap.add_argument("--check", action="store_true", help="exit 1 neu co tai phat/co van de")
+    ap.add_argument("--orders", action="store_true",
+                    help="kiem ke bao ve tren san (goi API, ghi snapshot) + canh bao TRAN/TRUNG")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="chi in khi CO van de (dung cho --watch)")
     ap.add_argument("--no-notify", action="store_true", help="khong them cau hoi van hanh")
@@ -481,9 +605,12 @@ def main(argv=None) -> int:
 
     def once() -> dict:
         st = load_state()
-        rep = build_report(dirs=dirs, baseline=st, minutes=args.minutes)
+        rep = build_report(dirs=dirs, baseline=st, minutes=args.minutes,
+                           orders=args.orders)
         st = touch_state(rep, state=st)          # vet lan kiem tra (chung minh con chay)
-        if not args.no_notify and rep["regressions"]:
+        # (22/10) Khong chi tai phat LOG: van de tien trinh/an toan (kill-switch TRIPPED,
+        # supervisor chet, vi the TRAN, lenh bao ve TRUNG) cung phai vao `ops_queue`.
+        if not args.no_notify and (rep["regressions"] or rep["problems"]):
             import ops_queue as OQ
             rep["notify"] = notify(rep, state=st, enqueue=OQ.add)
         else:

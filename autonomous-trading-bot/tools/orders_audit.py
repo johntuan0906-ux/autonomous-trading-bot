@@ -170,12 +170,34 @@ def dupes(orders: list, positions: list) -> dict:
     return out
 
 
-def summarize(orders: list, positions: list) -> dict:
+def load_dust(base: Path) -> set:
+    """Symbol trong `logs/dust_skip.json` (B-024) — vi the BUI da biet, KHONG the
+    dong/bao ve duoc (qty < minNotional) nen thieu SL/TP la *dung nhu thiet ke*.
+
+    Khong doc file nay thi cong cu bao "KHONG co SL/TP" cho ca bui => bao dong gia
+    va lam mat tin hieu cho vi the TRAN that (do that 22/10: 2/6 vi the TESTNET
+    la bui, 0 vi the tran).
+    """
+    try:
+        import json
+        data = json.loads((Path(base) / "logs" / "dust_skip.json")
+                          .read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return set()
+    syms = data.get("symbols") if isinstance(data, dict) else data
+    return {str(s) for s in (syms or [])}
+
+
+def summarize(orders: list, positions: list, dust=None) -> dict:
     """Tong hop 1 lan cho ca bao cao + quyet dinh."""
     by_type = classify(orders)
     live = open_symbols(positions)
     orph = orphans(orders, positions)
     plan = plan_cleanup(orders, positions)
+    dust_live = sorted({str(s) for s in (dust or ())} & live)
+    per_symbol = {s: protect_count(orders, s) for s in sorted(live)}
+    naked = sorted(s for s, n in per_symbol.items()
+                   if int(n) == 0 and s not in set(dust_live))
     return {
         "orders": len(orders or []),
         "positions": len(live),
@@ -185,7 +207,9 @@ def summarize(orders: list, positions: list) -> dict:
         "orphans": len(orph),
         "orphan_symbols": sorted({str((o or {}).get("symbol")) for o in orph}),
         "dupes": dupes(orders, positions),
-        "per_symbol": {s: protect_count(orders, s) for s in sorted(live)},
+        "per_symbol": per_symbol,
+        "dust": dust_live,
+        "naked": naked,
         "keep": len(plan["keep"]),
         "to_cancel": len(plan["cancel"]),
     }
@@ -204,6 +228,16 @@ def verdict(s: dict) -> str:
     if int(s.get("to_cancel") or 0) > 0:
         return ("con %d lenh thua -> gom lai (python tools/orders_audit.py "
                 "--dedupe)" % s["to_cancel"])
+    # (22/10) Vi the TRAN (khong SL/TP, khong phai bui) phai la KET LUAN rieng —
+    # truoc day bi lan vao dong "gon" nen khong ai thay.
+    naked = [str(x) for x in (s.get("naked") or ())]
+    if naked:
+        return ("%d vi the TRAN (khong SL/TP) -> dat bao ve ngay: %s"
+                % (len(naked), ", ".join(sorted(naked)[:3])))
+    dust = {str(x) for x in (s.get("dust") or ())}
+    if dust:
+        return ("gon (ngoai %d vi the BUI da ghi dust_skip — khong the dat SL/TP)"
+                % len(dust))
     return "gon (moi vi the dung 2 lenh bao ve)"
 
 
@@ -240,6 +274,14 @@ def _all_orders(cli, symbols) -> tuple:
                 continue
     out.extend(algo_orders(cli))
     return out, err
+
+
+def all_orders(cli, symbols=None) -> tuple:
+    """Alias cong khai cua `_all_orders` (cho `watch_regress`/`harness_audit` dung).
+
+    Tra (orders, err): gop lenh THUONG + lenh DIEU KIEN (Algo Order API).
+    """
+    return _all_orders(cli, symbols or [])
 
 
 def cancel_orders(cli, orders: list) -> tuple:
@@ -295,7 +337,7 @@ def main(argv=None) -> int:
         return 1
     syms = [str(p.get("symbol")) for p in poss]
     orders, err = _all_orders(cli, syms)
-    s = summarize(orders, poss)
+    s = summarize(orders, poss, dust=load_dust(base))
     s["target"] = args.target
     s["live"] = live
 
@@ -319,11 +361,14 @@ def main(argv=None) -> int:
                   % ", ".join("%s=%d" % kv for kv in sorted(s["by_type"].items())))
         if err:
             print("  [WARN] fetch toan bo loi: %s" % err)
+        dust = {str(x) for x in (s.get("dust") or ())}
         for sym, n in s["per_symbol"].items():
-            if n > 2:
+            if sym in dust:
+                flag = "   <-- BUI (da ghi dust_skip: khong the dat SL/TP)"
+            elif n > 2:
                 flag = "   <-- DU/TRUNG (chi can 2)"
             elif n == 0:
-                flag = "   <-- KHONG co SL/TP"
+                flag = "   <-- TRAN: KHONG co SL/TP"
             else:
                 flag = ""
             print("    %-20s bao ve=%d%s" % (sym, n, flag))

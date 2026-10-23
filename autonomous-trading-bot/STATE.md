@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 23/10/2026 22:48:14 · commit `fd29153`
+- **Cập nhật**: 23/10/2026 23:18:14 · commit `e7980e9`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `75016` · round `582` · nhịp tim cách đây 46.8s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `75016` · round `589` · nhịp tim cách đây 88.9s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -14,7 +14,7 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 2393 | 39.62 | 6.77 | 0.63 | 1.8187 | -1178.54 |
-| 14 ngày | 2918 | 42.39 | 5.783 | 0.754 | 1.4959 | -1141.18 |
+| 14 ngày | 2917 | 42.37 | 5.783 | 0.754 | 1.4963 | -1141.22 |
 | 30 ngày | 3335 | 44.89 | 5.368 | 0.813 | 1.3157 | -1023.75 |
 
 ## Cổng sang LIVE
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | LONG | 25974.0 | 0.003234 | 0.002772 | 0.005511 | False | False | 0.089 |
+| 1000BONK/USDT:USDT | LONG | 25974.0 | 0.003234 | 0.002772 | 0.005511 | False | False | 0.165 |
 | APR/USDT:USDT | SHORT | 2164.0 | 0.02624 | 0.031784 | -0.001084 | False | False | 0.186 |
 | CYBER/USDT:USDT | LONG | 544.2 | 0.322 | 0.29995 | 0.430675 | False | False | 0.499 |
 | DOT/USDT:USDT | LONG | 131.9 | 1.1616 | 1.070656 | 1.609824 | False | False | 0.415 |

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 23/10/2026 08:48:06 · commit `0fa811f`
+- **Cập nhật**: 23/10/2026 09:18:06 · commit `be11fc6`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `75016` · round `372` · nhịp tim cách đây 140.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3211.09 USDT
+- **Bot**: pid `75016` · round `380` · nhịp tim cách đây 59.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3215.73 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3336 lệnh đóng, WR 44.87%, E(R) 1.315, PnL -1031.05$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 2392 | 39.63 | 6.78 | 0.633 | 1.8199 | -1165.89 |
-| 14 ngày | 2993 | 42.57 | 5.668 | 0.74 | 1.456 | -1240.94 |
+| 14 ngày | 2992 | 42.58 | 5.675 | 0.742 | 1.4569 | -1228.51 |
 | 30 ngày | 3336 | 44.87 | 5.363 | 0.812 | 1.315 | -1031.05 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.633 < 1.1; PF($) cua so 14 ngay = 0.740 < 1.1; PF($) cua so 30 ngay = 0.812 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.633 < 1.1; PF($) cua so 14 ngay = 0.742 < 1.1; PF($) cua so 30 ngay = 0.812 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| APR/USDT:USDT | SHORT | 2164.0 | 0.02624 | 0.031784 | -0.001084 | False | False | 0.065 |
+| APR/USDT:USDT | SHORT | 2164.0 | 0.02624 | 0.031784 | -0.001084 | False | False | 0.141 |
 | APT/USDT:USDT | LONG | 150.4 | 0.8302 | 0.750428 | 1.223362 | False | False | 0.165 |
 | CYBER/USDT:USDT | LONG | 544.2 | 0.322 | 0.29995 | 0.430675 | False | False | 0.499 |
 | DOT/USDT:USDT | LONG | 131.9 | 1.1616 | 1.070656 | 1.609824 | False | False | 0.311 |

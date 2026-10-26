@@ -392,6 +392,17 @@ hành đã chọn** thì cần chính họ đồng ý, dù số liệu nói gì.
 khi biên độ thuận thật chỉ **0.23%** (mfe/ATR = 0.37) và chi phí ăn **40–50%** biên độ thuận trung
 vị. ⇒ Vấn đề nằm ở **hình học SL/TP + chi phí**, không phải ở chỗ thiếu model dự báo.
 
+**11. Đừng tin MỘT đường equity — hãy bootstrap.** `tools/stress_harness.py` lấy phân phối R thật
+rồi mô phỏng 3000 đường: LIVE có **P(kết thúc âm)=13%**, drawdown p90 **13.7R (~16.4% equity)**, và
+**P(chạm trần ngày) 16% với trần 2% → 0.3% với trần 6%** ⇒ quyết định nâng trần của hội đồng nay
+được **kiểm chứng bằng xác suất**, không chỉ bằng "11/15 ngày lỗ >2%".
+
+**12. Edge mỏng thì CHI PHÍ là kẻ thù số một.** Trên LIVE E(R)=0.085R/lệnh; thêm **0.05R** chi
+phí/lệnh ⇒ P(âm) 13%→**35%**; thêm 0.10R ⇒ **62%**. Vì vậy thứ tự ưu tiên đúng là: (1) giảm chi phí
+(phí/slippage/không overtrade), (2) hình học SL/TP, (3) mới tới model dự báo. Ghi kèm **giới hạn**:
+bootstrap giả định lệnh độc lập — regime xấu làm nhiều lệnh hỏng liên tiếp nên số thực có thể xấu
+hơn ⇒ công cụ để **so sánh phương án**, không phải để "chứng minh an toàn".
+
 ## So lieu
 
 - So lenh da dong doc duoc: **698**

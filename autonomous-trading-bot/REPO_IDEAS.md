@@ -654,6 +654,41 @@ truyền `slippage_pct` và ghi `slippage` từng lệnh ⇒ **mọi so sánh th
 giá**. Mặc định `slippage_pct=0.0` trong `trade_result` ⇒ **số thật không đổi** (giá khớp thật đã
 bao gồm trượt giá) — có test chốt riêng.
 
+## 22. (26/10) Stress-test đường tiền bằng bootstrap — và **kiểm chứng trần 6% bằng số**
+
+**Ý tưởng (lấy từ Kronos §21.2 mục 3)**: đừng tin MỘT đường equity đã xảy ra — nó có thể chỉ là
+may mắn. Hãy **bootstrap từ phân phối R thật** rồi hỏi: *nếu lặp lại N lần thì bao nhiêu lần kết
+thúc âm? drawdown thường bao nhiêu? bao lâu thì chạm trần ngày? edge chịu được thêm bao nhiêu
+chi phí?*
+
+`tools/stress_harness.py` (3000 đường × 200 lệnh, seed cố định ⇒ **lặp lại được**):
+
+| Chỉ số | LIVE (n_R=649, E(R)=0.085) | TESTNET (n_R=3342, E(R)=1.312) |
+|---|---|---|
+| P(kết thúc âm) | **13%** | 0% |
+| Drawdown p90 | 13.7R (~**16.4%** equity @ risk 1.2%) | 10.3R (~12.4%) |
+| **P(chạm trần NGÀY)** — trần **2%** | **16.0%** | 9.1% |
+| **P(chạm trần NGÀY)** — trần **6%** | **0.3%** | 1.2% |
+| +0.05R chi phí/lệnh ⇒ P(âm) | 13% → **35%** | 0% |
+| +0.10R ⇒ P(âm) | 13% → **62%** | 0% |
+| +0.20R ⇒ P(âm) | 13% → **93%** | 0% |
+
+**Ba kết luận dùng được ngay:**
+1. **Quyết định nâng trần 2% → 6% của hội đồng 22/10 được KIỂM CHỨNG BẰNG SỐ**: trên LIVE xác suất
+   chạm trần ngày giảm **16% → 0.3%** (53 lần ít hơn). Trước đó tôi chỉ có bằng chứng "11/15 ngày
+   lỗ > 2%"; nay có cả xác suất.
+2. **Edge của LIVE rất MỎNG** (E(R)=0.085R/lệnh): thêm **0.05R chi phí** đã đẩy P(âm) từ 13% lên
+   **35%**, thêm 0.10R lên **62%**. ⇒ **kiểm soát chi phí là ràng buộc chính**, không phải "thiếu
+   model dự báo" (khớp kết luận §21.4).
+3. **Drawdown thật lớn hơn cảm giác**: p90 ≈ 13.7R ≈ 16% equity — với trần ngày 6% thì một chuỗi
+   xấu vẫn có thể tới đó trong vài ngày, nên **cảnh báo tự động + giám sát** vẫn cần thiết (đã có
+   `watch_regress` → `ops_queue` → Telegram).
+
+**Giới hạn đã biết (ghi để không tự lừa mình):** bootstrap giả định các lệnh **độc lập và cùng
+phân phối** — thực tế có chuỗi tương quan theo regime (một regime xấu làm hỏng nhiều lệnh liên
+tiếp), nên P(âm) và drawdown thực có thể **xấu hơn** số ở trên. Vì vậy công cụ này dùng để **so
+sánh phương án**, không phải để "chứng minh an toàn".
+
 
 | Mục trong ghgrab | Bản chất | Với dự án này | Trạng thái |
 |---|---|---|---|

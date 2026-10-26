@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 26/10/2026 17:49:11 · commit `a453b0b`
+- **Cập nhật**: 26/10/2026 18:19:12 · commit `fc58a05`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `47488` · round `58` · nhịp tim cách đây 56.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3217.02 USDT
+- **Bot**: pid `47488` · round `65` · nhịp tim cách đây 165.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3218.78 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3342 lệnh đóng, WR 44.79%, E(R) 1.3118, PnL -1065.25$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 2380 | 39.41 | 6.814 | 0.628 | 1.8296 | -1187.83 |
+| 7 ngày | 2072 | 38.71 | 6.701 | 0.62 | 1.821 | -1068.02 |
 | 14 ngày | 2752 | 42.77 | 6.14 | 0.767 | 1.5919 | -971.97 |
 | 30 ngày | 3311 | 44.58 | 5.385 | 0.799 | 1.3233 | -1090.3 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.628 < 1.1; PF($) cua so 14 ngay = 0.767 < 1.1; PF($) cua so 30 ngay = 0.799 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.620 < 1.1; PF($) cua so 14 ngay = 0.767 < 1.1; PF($) cua so 30 ngay = 0.799 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,7 +44,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ADA/USDT:USDT | SHORT | 650.0 | 0.2075 | 0.225952 | 0.116558 | False | False | 0.379 |
-| AERO/USDT:USDT | SHORT | 528.1 | 0.6666 | 0.689322 | 0.621156 | False | False | 0.33 |
+| AERO/USDT:USDT | SHORT | 528.1 | 0.6666 | 0.689322 | 0.621156 | False | False | 0.356 |
 | AIOT/USDT:USDT | LONG | 1851.0 | 0.0616 | 0.055118 | 0.093547 | False | False | 0.987 |
 | APT/USDT:USDT | SHORT | 145.5 | 0.7186 | 0.801032 | 0.312328 | False | False | 0.398 |
 

@@ -642,6 +642,23 @@ biên độ thuận trung vị**.
 Hội đồng: **0 ALLOW / 4 VETO** (195s) — *"n=31 quá nhỏ để kết luận thống kê; chưa có bằng chứng
 live cho 6/12; mẫu 14/69 do người vận hành chọn nên không tự ý đổi"*. **Kết cục: GIỮ NGUYÊN.**
 
+**Bổ sung 26/10 (chạy lại đúng điều hội đồng đòi — nhiều symbol, cửa sổ dài hơn):** backtest **10 cặp
+× 60 ngày** (15m, có slippage), n tăng **5–18 lần**:
+
+| Biến thể | n | WR | PF | E(R) |
+|---|---|---|---|---|
+| `V4_hien_tai_14_69` | **162** | 36.4% | **0.57** | −0.180 |
+| `V5_hep_6_12` | 305 | 42.3% | 0.81 | −0.091 |
+| `V6_hep_4_8` | **558** | 45.5% | **0.963** | −0.010 |
+| `V3_wide_partial_trail` (2/4 + partial/BE/trail) | 2165 | 44.7% | 0.91 | −0.034 |
+| `V0_baseline_1.5_3` | 2652 | 33.0% | 0.84 | −0.070 |
+
+⇒ Xu hướng **đơn điệu trên cả 7 biến thể**: **SL càng hẹp ⇒ PF/WR càng cao**. Nhưng **tất cả vẫn
+PF < 1** trên 10 cặp LỚN trong 60 ngày này — tức là *edge (nếu có) nằm ở universe ~500 cặp nhỏ*,
+không phải majors. Ghi sổ `H-20261026-007` ở trạng thái **proposed** (chờ người vận hành quyết):
+đổi hay không là quyền của người vận hành, còn bằng chứng thì đã đủ để họ quyết trong 1 dòng
+(`SL_ATR_MULT=6`, `TP_ATR_MULT=12` + restart).
+
 Đây là lần thứ hai hội đồng bác đề xuất của chính tôi — và **đúng**: PF 0.20 với n=31 có thể chỉ
 là một regime xấu; đổi tham số đường tiền dựa trên mẫu đó là hành vi đánh bạc. Ghi sổ
 `H-20261026-005` (**rejected**) kèm **điều kiện mở lại**: ≥100 lệnh/arm (backtest nhiều symbol +

@@ -403,6 +403,20 @@ phí/lệnh ⇒ P(âm) 13%→**35%**; thêm 0.10R ⇒ **62%**. Vì vậy thứ t
 bootstrap giả định lệnh độc lập — regime xấu làm nhiều lệnh hỏng liên tiếp nên số thực có thể xấu
 hơn ⇒ công cụ để **so sánh phương án**, không phải để "chứng minh an toàn".
 
+**13. Veto có LÝ DO CỤ THỂ thì phải trả lời bằng DỮ LIỆU, không phải bằng lời.** Hội đồng VETO
+đổi hình học SL/TP với lý do *"n=31 quá nhỏ"*. Việc đúng đắn không phải là tranh luận lại, mà là
+**chạy đúng phép đo mà lý do đó đòi**: backtest **10 cặp × 60 ngày** ⇒ n tăng 5–18 lần
+(162 / 305 / 558) và xu hướng đơn điệu (SL hẹp ⇒ PF cao). Kết quả: **cùng hội đồng, cùng câu hỏi,
+10:14 = 4 VETO → 13:45 = 4 ALLOW (chọn B = 6×ATR/12×ATR)** ⇒ đã thi hành trên cả 2 instance.
+Bài học: *một veto tốt là một yêu cầu bổ sung dữ liệu, không phải một bức tường* — và cơ chế chỉ
+đáng tin khi nó **đổi ý khi dữ liệu đổi**.
+
+**14. Thu hẹp SL không chỉ "chặt lỗ hơn" — nó đổi CẢ cấu trúc chi phí.** Với risk/lệnh cố định,
+`notional = risk / khoảng_cách_SL` ⇒ SL hẹp 2.4× thì **notional tăng 2.4×** và **chi phí quy ra R
+tăng 2.4×** (0.017R → 0.040R). Đồng thời số lệnh tăng ~1.9× (học nhanh hơn) và TP trở nên thực tế
+hơn (14/69 cần ~40% giá — trong khi MFE trung vị chỉ **0.37×ATR** ⇒ TP bất khả thi). Muốn đổi hình
+học thì phải nhìn **cả 4 thứ**: khoảng cách SL, chi phí theo R, số mẫu, và khả năng chạm TP.
+
 ## So lieu
 
 - So lenh da dong doc duoc: **698**

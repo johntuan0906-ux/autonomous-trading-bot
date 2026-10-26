@@ -659,6 +659,32 @@ không phải majors. Ghi sổ `H-20261026-007` ở trạng thái **proposed** (
 đổi hay không là quyền của người vận hành, còn bằng chứng thì đã đủ để họ quyết trong 1 dòng
 (`SL_ATR_MULT=6`, `TP_ATR_MULT=12` + restart).
 
+**KẾT CỤC CUỐI (26/10 13:45–13:50): hội đồng ĐỔI quyết định khi bằng chứng mạnh hơn ⇒ ĐÃ THI HÀNH.**
+
+| Thời điểm | Phiếu | Vì sao |
+|---|---|---|
+| 10:14 | **4 VETO** | "n=31 quá nhỏ; chưa có bằng chứng live cho 6/12; mẫu 14/69 do người vận hành chọn" |
+| 13:45 | **4 ALLOW (chọn B = 6×ATR/12×ATR)** | có backtest rộng n=162/305/558 + PF 0.57 vs 0.81/0.963; cả 4 phiếu nêu rõ **B** |
+
+Đã áp `.env` **cả 2 instance**: `SL_ATR_MULT=6`, `TP_ATR_MULT=12`, `PARTIAL_AT_R=1.0`
+(giữ `PARTIAL_PCT=0.3`, `BE_AT_R=0`, `TRAIL_ATR_MULT=0`), backup `.env.bak-hinhhoc1346`, restart
+cả 2 (TESTNET 22752→**35868**, LIVE 21696→**115512**), xác nhận tiến trình đọc lại đúng cấu hình.
+
+**Tác động đã đo trước khi đổi (trả lời câu hỏi "thu hẹp ảnh hưởng gì"):**
+
+| | Giữ 14/69 | Đổi sang 6/12 |
+|---|---|---|
+| Khoảng cách SL (ATR 0.58%) | ~8.1% giá | ~3.5% giá |
+| Notional cho cùng risk 1.2% (equity 1000) | 148 USDT | 345 USDT |
+| **Chi phí quy ra R** (0.07% vòng) | 0.017R | 0.040R |
+| TP có chạm được? (MFE trung vị = **0.37×ATR**) | TP 69×ATR ≈ 40% giá ⇒ **bất khả thi** | TP 12×ATR ≈ 7% ⇒ vẫn xa, nhưng **thực tế hơn** |
+| Số lệnh/60 ngày (10 cặp lớn) | 162 | **305 (×1.9)** |
+| PF / WR (có slippage) | **0.57** / 36.4% | **0.81** / 42.3% |
+
+Rủi ro **không đổi** (risk/lệnh vẫn 1.2%, 1R = 1.2% equity), trần ngày/tổng risk/kill-switch giữ
+nguyên; đổi lại **chi phí theo R tăng 2.4×** (vẫn nhỏ so với 0.13R đo trên journal thật — journal
+đó phần lớn là lệnh chạy SL ~2×ATR thời kỳ trước).
+
 Đây là lần thứ hai hội đồng bác đề xuất của chính tôi — và **đúng**: PF 0.20 với n=31 có thể chỉ
 là một regime xấu; đổi tham số đường tiền dựa trên mẫu đó là hành vi đánh bạc. Ghi sổ
 `H-20261026-005` (**rejected**) kèm **điều kiện mở lại**: ≥100 lệnh/arm (backtest nhiều symbol +

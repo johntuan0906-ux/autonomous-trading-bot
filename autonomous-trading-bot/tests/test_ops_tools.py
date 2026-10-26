@@ -196,9 +196,11 @@ class TestOpsReport(unittest.TestCase):
         counts = {p: sum(p in ln for ln in win) for p in OPS.COUNT_PATTERNS}
         self.assertEqual(counts["FETCH_TIMEOUT"], 1)
         self.assertEqual(counts["DATA_FAIL"], 1)
-        self.assertEqual(counts["OPENED"], 1)
         self.assertEqual(counts["qua han"], 1,
                          "canh bao tieng Viet cung phai duoc dem")
+        # (26/10) B-030: dong `'status': 'OPENED'` trong log mau la lenh mo THANH CONG
+        # => KHONG duoc dem la loi (truoc day dem ⇒ ops bao "CAN XEM" gia).
+        self.assertNotIn("OPENED", counts)
 
 
 class TestTuneScanTheoSoCap(unittest.TestCase):
@@ -754,6 +756,35 @@ class TestBugCatalog(unittest.TestCase):
         self.assertIn("Test chot", txt)
         self.assertIn(c["tests"][0], txt)
 
+
+
+class TestDemLoiBaoDongGia(unittest.TestCase):
+    """(26/10) B-030: mo lenh THANH CONG KHONG duoc dem la "loi".
+
+    Do that: `ops.py` bao "CAN XEM: TESTNET" chi vi dong tong ket vong co
+    `'status': 'OPENED'` (lenh mo THANH CONG) ⇒ bao dong gia ⇒ nguoi van hanh quen bao dong
+    that (cung lop loi voi "LIVE INTERLOCK OK" da sua truoc do).
+    """
+
+    def test_OPENED_khong_bi_dem_la_loi(self):
+        import ops as OPS
+        lines = ["2026-10-26 13:51:59,816 INFO round 1 monitor={} -> "
+                 "[{'symbol': '1000BONK/USDT:USDT', 'status': 'OPENED'}]"]
+        self.assertEqual(OPS.count_errors(lines), {})
+
+    def test_loi_that_van_bi_dem(self):
+        import ops as OPS
+        lines = ["2026-10-26 13:52:00 WARNING ORDER_FAILED X: -4045",
+                 "2026-10-26 13:52:01 ERROR Connection pool is full",
+                 "2026-10-26 13:52:02 WARNING {'status': 'REJECTED'}"]
+        got = OPS.count_errors(lines)
+        self.assertEqual(got.get("ORDER_FAILED"), 1)
+        self.assertEqual(got.get("Connection pool is full"), 1)
+        self.assertEqual(got.get("REJECTED"), 1)
+
+    def test_mau_OPENED_da_bi_bo_khoi_danh_sach(self):
+        import ops as OPS
+        self.assertNotIn("OPENED", OPS.COUNT_PATTERNS)
 
 
 class TestOpsQueue(unittest.TestCase):

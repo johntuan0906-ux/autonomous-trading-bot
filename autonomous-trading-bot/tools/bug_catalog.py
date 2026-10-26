@@ -313,6 +313,16 @@ CLASSES = [
                   "test_watch_regress.py::TestBaoVeTrenSan::test_notify_dinh_kem_DUONG_DAN_hang_doi_cua_instance",
                   "test_watch_regress.py::TestBaoVeTrenSan::test_notify_ghi_vet_khi_KHONG_ghi_duoc_hang_doi"],
     },
+    {
+        "code": "B-030", "kind": "im-lang", "seen": "26/10/2026",
+        "title": "Mo lenh THANH CONG bi dem la 'loi' ⇒ ops bao 'CAN XEM' gia (bao dong gia lam nguoi van hanh quen bao dong that)",
+        "symptom": "`tools/ops.py` de `\"OPENED\"` trong `COUNT_PATTERNS` — do la STATUS cua lenh mo THANH CONG (`{'status': 'OPENED'}` trong dong tong ket vong) ⇒ moi lan mo lenh, `errors_win` co `OPENED: 1` ⇒ ops ket luan **'CAN XEM: TESTNET'** du he thong hoan toan khoe (do that 26/10 13:52, ngay sau khi doi hinh hoc: TESTNET round 2 co 1 lenh OPENED ⇒ bao dong gia). Cung lop loi voi `LIVE INTERLOCK OK` da sua truoc do",
+        "guard": "Bo `\"OPENED\"` khoi `COUNT_PATTERNS`; tach `ops.count_errors(lines)` de test duoc; loi mo lenh THAT co mau rieng (`ORDER_FAILED`/`ERROR`/`REJECTED`) VAN duoc dem",
+        "files": ["tools/ops.py"],
+        "tests": ["test_ops_tools.py::TestDemLoiBaoDongGia::test_OPENED_khong_bi_dem_la_loi",
+                  "test_ops_tools.py::TestDemLoiBaoDongGia::test_loi_that_van_bi_dem",
+                  "test_ops_tools.py::TestDemLoiBaoDongGia::test_mau_OPENED_da_bi_bo_khoi_danh_sach"],
+    },
 ]
 
 

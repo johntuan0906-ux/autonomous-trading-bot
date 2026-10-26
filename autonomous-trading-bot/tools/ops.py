@@ -32,7 +32,11 @@ COUNT_PATTERNS = ("FETCH_TIMEOUT", "DATA_FAIL", "Connection pool is full",
                   # (dang tin hieu TOT) cung bi dem la "loi" ⇒ ops bao "CAN XEM" gia.
                   # Chi dem khi interlock CHAN.
                   "LIVE INTERLOCK CHAN",
-                  "ORDER_FAILED", "OPENED", "REJECTED",
+                  # (26/10) B-030: BO "OPENED" — do la STATUS cua lenh mo THANH CONG
+                  # (`{"status": "OPENED"}` trong dong tong ket vong) ⇒ dem no la "loi" lam
+                  # `ops.py` bao "CAN XEM" gia (cung lop loi voi "LIVE INTERLOCK OK" o tren).
+                  # Loi mo lenh THAT SU co status rieng: ORDER_FAILED / ERROR / REJECTED.
+                  "ORDER_FAILED", "REJECTED",
                   "qua han",        # canh bao fetch qua ROUND_TIMEOUT (tieng Viet)
                   "SKIP_DATA",      # du lieu xau bi bo qua (khong phai loi nang)
                   # (20/10) `-2022 ReduceOnly Order is rejected`: san TU CHOI `reduceOnly`
@@ -52,6 +56,17 @@ def _read_tail(path: Path) -> str:
     except OSError:
         return ""
     return data[-TAIL_BYTES:].decode("utf-8", errors="replace")
+
+
+def count_errors(lines, patterns=COUNT_PATTERNS) -> dict:
+    """Dem so lan xuat hien cac mau LOI trong cua so (tach rieng de test duoc).
+
+    (26/10) B-030: `OPENED` da bi BO khoi `COUNT_PATTERNS` — mo lenh THANH CONG
+    (`{"status": "OPENED"}`) la tin TOT, dem no la "loi" lam `ops.py` bao "CAN XEM" gia
+    ⇒ nguoi van hanh quen bao dong that. Loi that co mau rieng (ORDER_FAILED/ERROR/REJECTED).
+    """
+    counts = {p: sum(p in ln for ln in (lines or [])) for p in patterns}
+    return {k: v for k, v in counts.items() if v}
 
 
 def _window_lines(tail: str, minutes: float) -> list:
@@ -124,8 +139,7 @@ def _instance(name: str, d: Path, minutes: float) -> dict:
         rep["orders"] = None
     tail = _read_tail(d / "logs" / "turbo_err.log")
     win = _window_lines(tail, minutes)
-    counts = {p: sum(p in ln for ln in win) for p in COUNT_PATTERNS}
-    rep["errors_win"] = {k: v for k, v in counts.items() if v}
+    rep["errors_win"] = count_errors(win)
     rep["log_lines_win"] = len(win)
     n_rounds, last_round, st = _last_round(tail)
     rep["rounds_in_tail"] = n_rounds

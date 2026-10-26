@@ -32,13 +32,37 @@ import atomic  # noqa: E402
 
 OPEN_PATH = "logs/ops_questions.json"
 DONE_PATH = "logs/ops_queue.json"
+#: Dau hieu "day la thu muc instance bot" (co `logs/` THOI la chua du: Windows cung co
+#: `C:\Windows\System32\logs` nhung khong ghi duoc — xem `_instance_base`).
+INSTANCE_MARKERS = ("turbo_demo.py", "config.py", "bot.py")
 PRIORITIES = ("low", "normal", "high", "blocker")
 
 
+def _instance_base(base: Path) -> Path:
+    """Thu muc INSTANCE neu `base` that su la 1 instance bot, khong thi tra `ROOT`.
+
+    (26/10) Khong the chi kiem `logs/`: Windows CO SAN `C:\\Windows\\System32\\logs` (task
+    Scheduler chay voi cwd = System32 khi task khong dat `<WorkingDirectory>`) nhung thu muc
+    do **khong ghi duoc** (do that: `PermissionError`) ⇒ canh bao ghi that bai trong thinh
+    lang (24/10: dong `VAN DE naked @ LIVE` co trong log, hang doi TRONG).
+    Nen phai kiem them DAU HIEU INSTANCE (file loi cua bot o goc thu muc).
+    """
+    base = Path(base)
+    if (base / "logs").is_dir() and any((base / m).exists() for m in INSTANCE_MARKERS):
+        return base
+    return ROOT
+
+
 def _paths(cfg=None, open_path=None, done_path=None) -> tuple:
-    """(file cau hoi dang cho, file lich su) — theo instance (mac dinh: cwd)."""
-    o = Path(str(open_path or getattr(cfg, "ops_questions_path", "") or OPEN_PATH))
-    d = Path(str(done_path or getattr(cfg, "ops_queue_path", "") or DONE_PATH))
+    """(file cau hoi dang cho, file lich su) — theo instance (mac dinh: cwd).
+
+    Chay trong thu muc instance (vd `atb-live`) ⇒ hang doi cua instance do. Chay o noi khac
+    (Task Scheduler: cwd = `C:\\Windows\\System32`) ⇒ dung thu muc repo chua cong cu nay,
+    KHONG ghi vao noi khong ghi duoc (loi that 24/10, xem `_instance_base`).
+    """
+    base = _instance_base(Path.cwd())
+    o = Path(str(open_path or getattr(cfg, "ops_questions_path", "") or base / OPEN_PATH))
+    d = Path(str(done_path or getattr(cfg, "ops_queue_path", "") or base / DONE_PATH))
     return o, d
 
 
@@ -54,9 +78,13 @@ def _read_list(p: Path) -> list:
 def _write_list(p: Path, items: list) -> bool:
     """Ghi nguyen tu (tmp + fsync + replace) — khong lam hong file khi crash."""
     try:
+        p.parent.mkdir(parents=True, exist_ok=True)
         atomic.write_json_atomic(p, items, indent=1)
         return True
-    except OSError:
+    except OSError as e:
+        # (26/10) Loi ghi KHONG duoc im lang (truoc day `return False` trong thinh lang).
+        print("[LOI] khong ghi duoc hang doi %s: %s" % (p, str(e)[:120]),
+              file=sys.stderr)
         return False
 
 

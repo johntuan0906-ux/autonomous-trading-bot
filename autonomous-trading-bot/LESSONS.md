@@ -358,6 +358,14 @@ ghi `H-20261022-004` kèm lý do, và chống trì trệ bằng đường khác 
 trong `.env` (state chỉ lưu ảnh chụp). Đo thật: TESTNET sau restart ghi `max_daily_loss_pct: 6.0`;
 LIVE vẫn `2.0` cho tới khi restart (đang chờ hết vị thế).
 
+**6. Đường dẫn TƯƠNG ĐỐI theo cwd = bom hẹn giờ trong Task Scheduler (B-029).** Task
+Scheduler không đặt `<WorkingDirectory>` ⇒ cwd = `C:\Windows\System32`. Windows **có sẵn**
+`System32\logs` nhưng **không ghi được** (`PermissionError`) ⇒ `ops_queue` ghi cảnh báo thất
+bại **trong thinh lặng** (đo thật 24/10: `regress_watch.log` có dòng `VAN DE naked @ LIVE`
+nhưng `ops_questions.json` TRỐNG). Bài học kép: (a) mọi file trạng thái phải neo vào **thư mục
+dự án**, không theo cwd; (b) **lỗi ghi phải la lên** (stderr + vết trong log), đừng `return False`
+rồi thôi. Và phép kiểm "có `logs/`" là chưa đủ để nhận diện instance — phải có **dấu hiệu bot**.
+
 ## So lieu
 
 - So lenh da dong doc duoc: **698**

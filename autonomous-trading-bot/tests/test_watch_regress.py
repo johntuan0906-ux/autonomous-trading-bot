@@ -426,5 +426,34 @@ class TestBaoVeTrenSan(unittest.TestCase):
         self.assertEqual(r["sent"], [])
 
 
+    def test_notify_dinh_kem_DUONG_DAN_hang_doi_cua_instance(self):
+        """(26/10) Cau hoi cua LIVE phai vao hang doi cua `atb-live` (khong phai TESTNET):
+        task chay `--target both` tu repo TESTNET nen khong the doan theo cwd."""
+        rep = {"instances": [{"name": "LIVE", "dir": "C:\\x\\atb-live", "sightings": {},
+                              "problems": ["LIVE: 1 vi the TRAN (khong SL/TP): X"]}],
+               "problems": ["x"], "regressions": []}
+        got: dict = {}
+
+        def fake(q, **kw):
+            got.update(kw)
+            return {"ok": True}
+
+        WR.notify(rep, state={}, now=lambda: 1.0,
+                  path=Path(tempfile.mkdtemp()) / "s.json", enqueue=fake)
+        self.assertIn("atb-live", str(got.get("open_path")))
+        self.assertIn("ops_questions.json", str(got.get("open_path")))
+
+    def test_notify_ghi_vet_khi_KHONG_ghi_duoc_hang_doi(self):
+        """Neu hang doi khong ghi duoc thi phai co VET trong log — khong im lang."""
+        d = Path(tempfile.mkdtemp())
+        rep = {"instances": [{"name": "LIVE", "dir": str(d), "sightings": {},
+                              "problems": ["LIVE: 1 vi the TRAN (khong SL/TP): X"]}],
+               "problems": ["x"], "regressions": []}
+        WR.notify(rep, state={}, now=lambda: 1.0, path=d / "regress_watch.json",
+                  enqueue=lambda q, **k: {"ok": False, "path": "C:/Windows/System32/logs/q.json"})
+        log = (d / "logs" / "regress_watch.log").read_text(encoding="utf-8")
+        self.assertIn("KHONG GHI DUOC HANG DOI", log)
+
+
 if __name__ == "__main__":
     unittest.main()

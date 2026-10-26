@@ -302,6 +302,17 @@ CLASSES = [
                   "test_orders_audit.py::TestViTheBuiVaTran::test_vi_the_tran_thi_ket_luan_rieng",
                   "test_orders_audit.py::TestViTheBuiVaTran::test_bui_khong_bao_dong_gia"],
     },
+    {
+        "code": "B-029", "kind": "im-lang", "seen": "26/10/2026",
+        "title": "Hang doi van hanh ghi theo cwd ⇒ Task Scheduler (cwd=System32) lam canh bao BIEN MAT trong thinh lang",
+        "symptom": "`tools/ops_queue.py` dung duong dan TUONG DOI (`logs/ops_questions.json`) ⇒ phu thuoc cwd. Task `ATB-WatchRegress` khong dat `<WorkingDirectory>` ⇒ cwd = `C:\\Windows\\System32`; Windows CO SAN `System32\\logs` nhung **khong ghi duoc** (`PermissionError` — do that) ⇒ `_write_list` tra False TRONG THINH LANG. Do that 24/10 12:00: `logs/regress_watch.log` co dong `VAN DE naked @ LIVE: 1 vi the TRAN (khong SL/TP): 1000CAT/USDT:USDT` nhung hang doi TRONG ⇒ khong ai duoc hoi",
+        "guard": "`ops_queue._instance_base()`: chi coi cwd la instance khi co `logs/` VA **dau hieu bot** (`turbo_demo.py`/`config.py`/`bot.py`), khong thi dung `ROOT`; `_write_list` tu `mkdir` thu muc dich + bao loi ra **stderr** (khong im lang); `watch_regress.notify()` dinh kem `open_path` theo TUNG instance (LIVE -> `atb-live/logs/ops_questions.json`) va ghi vet `KHONG GHI DUOC HANG DOI` vao `regress_watch.log` khi that bai",
+        "files": ["tools/ops_queue.py", "tools/watch_regress.py"],
+        "tests": ["test_ops_tools.py::TestOpsQueue::test_cwd_khac_thi_dung_thu_muc_repo",
+                  "test_ops_tools.py::TestOpsQueue::test_ghi_loi_thi_bao_ra_stderr",
+                  "test_watch_regress.py::TestBaoVeTrenSan::test_notify_dinh_kem_DUONG_DAN_hang_doi_cua_instance",
+                  "test_watch_regress.py::TestBaoVeTrenSan::test_notify_ghi_vet_khi_KHONG_ghi_duoc_hang_doi"],
+    },
 ]
 
 

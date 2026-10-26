@@ -478,10 +478,20 @@ def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None,
                        path=(Path(path).parent / LOG_NAME) if path else None)
             rec = {"ok": True, "key": key}
             if enqueue is not None:
+                kw = {"why": why, "options": ["da xu ly / khong can", "can sua tiep"],
+                      "priority": "high"}
+                # (26/10) Cau hoi phai vao DUNG hang doi cua instance (LIVE -> atb-live):
+                # task chay `--target both` tu repo TESTNET, khong co duong dan thi cau hoi
+                # cua LIVE se nam trong hang doi TESTNET (nguoi van hanh LIVE khong thay).
+                if i.get("dir"):
+                    kw["open_path"] = Path(str(i["dir"])) / "logs" / "ops_questions.json"
                 rec = enqueue("Van de tien trinh/an toan tai %s: %s" % (i.get("name"), p),
-                              why=why,
-                              options=["da xu ly / khong can", "can sua tiep"],
-                              priority="high")
+                              **kw)
+                if isinstance(rec, dict) and rec.get("ok") is False:
+                    append_log("%s KHONG GHI DUOC HANG DOI cho %s: %s"
+                               % (time.strftime("%Y-%m-%d %H:%M:%S"), i.get("name"),
+                                  str(rec.get("path") or "?")),
+                               path=(Path(path).parent / LOG_NAME) if path else None)
             done[key] = {"ts": now_t, "kind": kind, "text": str(p)[:200]}
             sent.append({"key": key, "record": rec})
     st["notified"] = done

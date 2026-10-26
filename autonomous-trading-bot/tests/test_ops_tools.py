@@ -781,6 +781,50 @@ class TestOpsQueue(unittest.TestCase):
         self.assertEqual(OQ.add("cau 3?", priority="khong-hop-le",
                                 open_path=self.o)["priority"], "normal")
 
+    def test_cwd_khac_thi_dung_thu_muc_repo(self):
+        """(26/10) Loi THAT: Task Scheduler chay `watch_regress.py` voi cwd =
+        `C:\\Windows\\System32` (task khong dat WorkingDirectory). Windows CO SAN
+        `System32\\logs` nhung **khong ghi duoc** (do that: `PermissionError`) ⇒ duong dan
+        tuong doi lam canh bao ghi that bai TRONG THINH LANG (24/10 12:00: log co dong
+        `VAN DE naked @ LIVE` nhung hang doi TRONG). Nen phai nhan dien INSTANCE that.
+        """
+        import os
+        import ops_queue as OQ
+        old = os.getcwd()
+        try:
+            # (a) thu muc KHONG phai instance (khong co logs/) -> repo
+            tmp = Path(self.tmp.name) / "khong-phai-instance"
+            tmp.mkdir(parents=True, exist_ok=True)
+            os.chdir(tmp)
+            o, d = OQ._paths()
+            self.assertEqual(Path(o).parent, Path(OQ.ROOT) / "logs")
+            self.assertEqual(Path(d).parent, Path(OQ.ROOT) / "logs")
+            # (b) thu muc CO `logs/` nhung khong co dau hieu bot (dung ca System32) -> repo
+            trap = Path(self.tmp.name) / "bay-logs"
+            (trap / "logs").mkdir(parents=True, exist_ok=True)
+            os.chdir(trap)
+            o_trap, _ = OQ._paths()
+            self.assertEqual(Path(o_trap).parent, Path(OQ.ROOT) / "logs",
+                             "co `logs/` KHONG du de coi la instance")
+            # (c) thu muc instance that (co `logs/` + config.py) -> hang doi cua instance
+            inst = Path(self.tmp.name) / "atb-live"
+            (inst / "logs").mkdir(parents=True, exist_ok=True)
+            (inst / "config.py").write_text("# marker", encoding="utf-8")
+            os.chdir(inst)
+            o2, d2 = OQ._paths()
+            self.assertEqual(Path(o2), inst / "logs" / "ops_questions.json")
+            self.assertEqual(Path(d2), inst / "logs" / "ops_queue.json")
+        finally:
+            os.chdir(old)
+
+    def test_ghi_loi_thi_bao_ra_stderr(self):
+        """Ghi that bai KHONG duoc im lang (truoc day `return False` trong thinh lang)."""
+        import ops_queue as OQ
+        blocker = Path(self.tmp.name) / "khong-the-ghi"
+        blocker.write_text("x", encoding="utf-8")        # FILE chan duong dan
+        r = OQ.add("cau?", open_path=blocker / "sub" / "x.json")
+        self.assertFalse(r["ok"], r)
+
     def test_tra_loi_chuyen_sang_lich_su(self):
         import ops_queue as OQ
         OQ.add("cau 1?", open_path=self.o, now=lambda: 0.0)

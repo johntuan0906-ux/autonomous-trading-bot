@@ -366,6 +366,20 @@ nhưng `ops_questions.json` TRỐNG). Bài học kép: (a) mọi file trạng th
 dự án**, không theo cwd; (b) **lỗi ghi phải la lên** (stderr + vết trong log), đừng `return False`
 rồi thôi. Và phép kiểm "có `logs/`" là chưa đủ để nhận diện instance — phải có **dấu hiệu bot**.
 
+**7. Cảnh báo phải ra khỏi CÁI MÁY (Telegram 2 chiều).** Hệ thống đã có Telegram 1 chiều
+(OPEN/CLOSE/KILL + báo cáo), nhưng cảnh báo vận hành thì nằm im trong file ⇒ phải có người mở
+máy xem. Nay `tools/telegram_bridge.py` đẩy **câu hỏi đang chờ** ra Telegram (nhắc lại sau 6h nếu
+còn treo) và **nhận lệnh vào** (`/status /health /list /ask /answer`, cộng `/dedupe /reset /restart`
+khi được cho phép). Nguyên tắc giữ nguyên: **lệnh ghi mặc định TẮT**, chỉ nghe chat_id trong `.env`,
+argv cố định (không `shell=True`), mọi lệnh có vết trong log.
+
+**8. Veto vì TÀI NGUYÊN là veto hợp lệ — nhưng phải ghi ĐIỀU KIỆN MỞ LẠI.** Hội đồng bác Kronos
+0–4 (máy CPU-only đang chia tài nguyên cho llamafile; chưa có bằng chứng vượt ATR). Điều cần làm
+không phải là "bỏ qua repo đó", mà là: ghi sổ **rejected + điều kiện mở lại** (có GPU, hoặc có
+giả thuyết đo được), và **rút ra phần dùng được ngay** (đo chất lượng proxy ATR bằng MAE/MFE thật,
+backtest phải tính phí/slippage, sinh dữ liệu tổng hợp để stress-test harness) — phần này **0 đồng,
+0 dependency**.
+
 ## So lieu
 
 - So lenh da dong doc duoc: **698**

@@ -186,6 +186,9 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Kiểm kê bảo vệ + cảnh báo (B-028) | `python tools/watch_regress.py --check --orders` (task `ATB-WatchRegress` đã chạy sẵn 10 phút/lần) · dọn cặp lệnh trùng: `python tools/orders_audit.py --target live --dedupe` |
 | Xem "vấn đề có được báo không" | `python tools/ops_queue.py list` (mọi vấn đề tiến trình/an toàn nay nằm ở đây, kèm cooldown 1h) |
 | Cảnh báo có bị MẤT không? (B-029) | `Select-String logs\regress_watch.log -Pattern 'VAN DE|KHONG GHI DUOC'` — mỗi cảnh báo phải có dòng tương ứng; dòng `KHONG GHI DUOC HANG DOI` = hàng đợi ghi thất bại (nay đã báo ra stderr) |
+| Nhận cảnh báo + ra lệnh từ điện thoại (Telegram) | task `ATB-Telegram` (1 phút/lần) · thử tay: `python tools/telegram_bridge.py --once` · gửi thử: `--test "noi dung"` · khô: `--dry` |
+| Lệnh Telegram có sẵn | `/status` `/health` `/list` `/ask <câu hỏi>` `/answer <TESTNET\|LIVE> <id> <nội dung>` · **GHI** (cần `TELEGRAM_ALLOW_WRITE=true`): `/dedupe <t>` `/reset <t> confirm` `/restart <t>` |
+| Kiểm vết cầu nối Telegram | `Get-Content logs\telegram_bridge.log -Tail 20` (mọi lệnh + kết quả + nguồn chat_id) |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |

@@ -560,6 +560,57 @@ kỳ kiểm "mỗi vị thế có đủ 1 SL + 1 TP"** — đo thật 22/10: LIV
 - **Tự động dọn cặp lệnh bảo vệ TRÙNG**: hiện chỉ **cảnh báo**; chưa có task tự `--dedupe` (cố ý — huỷ lệnh phải có người xác nhận).
 - **Đo hiệu quả trần 6.0%**: cần vài ngày dữ liệu để so "số lần trip/tuần" trước–sau (ghi vào `harness_ledger --decide` khi có).
 
+## 21. (26/10) Đọc `shiyu-coder/Kronos` — hội đồng VETO (có điều kiện mở lại) + cầu nối Telegram 2 chiều
+
+### 21.1 Kronos là gì (đo từ repo, không suy đoán)
+
+| Mục | Số liệu |
+|---|---|
+| Bản chất | Foundation model **decoder-only cho nến (K-line)**, AAAI 2026, **MIT**, pretrain **12 tỷ** bản ghi K-line từ **45 sàn** |
+| Tokenizer | 2 giai đoạn: quantize OHLCV → token rời rạc (hierarchical BSQ) rồi mới học autoregressive |
+| Model zoo | `mini` 4.1M / ctx **2048** · `small` 24.7M / ctx **512** · `base` 102.3M / ctx 512 · `large` 499M (**chưa công khai**) |
+| Vào/Ra | `KronosPredictor(model, tokenizer, device).predict(df[open,high,low,close,volume,amount], x_timestamp, y_timestamp, pred_len, T, top_p, sample_count)` → DataFrame OHLCV dự báo |
+| Kèm theo | script **finetune** (tokenizer + predictor) + `qlib_test.py` backtest top-K |
+| Công bố | dự báo giá, **dự báo biến động (volatility)**, sinh dữ liệu tổng hợp; zero-shot |
+| Cần | **PyTorch**; README tự cảnh báo: tín hiệu thô cần portfolio optimization, backtest phải mô phỏng phí/slippage |
+
+### 21.2 Hội đồng quyết: **0 ALLOW / 4 VETO** (68s, conf 0.78–0.90)
+
+Lý do các phiếu (nguyên văn rút gọn): *máy Windows **CPU-only**, đang chia tài nguyên cho
+llamafile; nạp thêm PyTorch + weight 25–100M sẽ ngộp; **chưa có bằng chứng vượt ATR hiện tại***.
+
+Đây là veto **đúng nguyên tắc** của dự án: "ít mà chất" + mọi thay đổi đường tiền phải có bằng
+chứng đo trên dữ liệu của chính bot (tiền lệ: mẫu TP/SL người vận hành bị mô phỏng bác bỏ
+**−14%R**). Ghi sổ `H-20261026-002` (**rejected**) kèm **điều kiện mở lại**:
+(a) có GPU/máy riêng; (b) có **giả thuyết đo được** (vd biến động Kronos dự báo tốt hơn ATR(15m)
+ở bước đặt SL) — khi đó chỉ làm **probe offline**, không chạm đường tiền.
+
+**Nhưng vẫn có 3 thứ lấy được ngay, KHÔNG cần torch** (phần "học từ repo" chứ không phải dùng model):
+1. **Volatility-first**: dự án đang dùng ATR(15m) làm proxy biến động — nên đo *chất lượng* proxy
+   này (tương quan ATR với MAE/MFE thật) trước khi nghĩ tới model nặng hơn. Nếu ATR đã tốt ⇒
+   không cần Kronos; nếu dở ⇒ có số liệu để mở lại đề xuất.
+2. **Backtest phải mô phỏng phí/slippage** — đúng thứ README nhấn mạnh, và là mục còn thiếu
+   trong `harness_ledger`/mô phỏng của ta.
+3. **Sinh dữ liệu tổng hợp để thử harness**: ý tưởng "stress test đường tiền bằng dữ liệu tổng
+   hợp" áp dụng được ngay bằng cách bootstrap từ 3.335 lệnh đã có (0 đồng, 0 dependency).
+
+### 21.3 Cầu nối Telegram 2 chiều (`tools/telegram_bridge.py`)
+
+Trả lời câu hỏi *"nếu hàng đợi không ghi được thì la lên — vậy có gửi cảnh báo ra Telegram để
+hội đồng kiểm tra và sửa lỗi không?"*:
+
+- **Đã có sẵn (1 chiều)**: `notify.py` + `turbo_demo.py` (OPEN/CLOSE/KILL), `telegram_report.py`
+  (báo cáo trạng thái read-only), tóm tắt phiên hội đồng (`state_sync`), token đã cấu hình ở cả
+  2 `.env`. ⇒ Bot **vẫn luôn** gửi lệnh/thông báo ra Telegram.
+- **Còn thiếu (nay đã bù)**: cảnh báo của `watch_regress`/`ops_queue` (B-028/B-029) **không** ra
+  Telegram, và **không có đường vào** ⇒ đọc xong không trả lời/ra lệnh được.
+- **Nay**: task `ATB-Telegram` mỗi **1 phút** chạy `--once` = `--push` + `--poll`:
+  - `--push`: câu hỏi ĐANG CHỜ → Telegram (mỗi câu 1 lần, **nhắc lại sau 6h** nếu còn treo);
+  - `--poll`: nhận lệnh và trả lời: `/status` `/health` `/list` `/ask` `/answer`
+    (+ `/dedupe` `/reset <t> confirm` `/restart <t>` **chỉ khi** `TELEGRAM_ALLOW_WRITE=true`);
+  - an toàn: chỉ nghe chat_id trong `.env`; argv **cố định**, không `shell=True`; mọi lệnh ghi vết
+    `logs/telegram_bridge.log`; không token ⇒ chế độ DRY (ghi log, không gọi mạng).
+
 
 | Mục trong ghgrab | Bản chất | Với dự án này | Trạng thái |
 |---|---|---|---|

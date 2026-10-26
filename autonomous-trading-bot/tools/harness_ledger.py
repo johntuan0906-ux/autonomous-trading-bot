@@ -75,7 +75,8 @@ def next_id(rows, now) -> str:
 
 
 def add(kind: str, change: str, evidence: str = "", *, decision: str = "proposed",
-        probe: str = "", by: str = "agent", note: str = "", path=PATH, now=None) -> dict:
+        probe: str = "", by: str = "agent", note: str = "", path=PATH, now=None,
+        review_days: float = 0.0) -> dict:
     """Them 1 dong. Tra {ok, record} hoac {ok: False, err} (khong nem ra ngoai)."""
     k = str(kind or "").strip().lower()
     d = str(decision or "").strip().lower()
@@ -92,6 +93,12 @@ def add(kind: str, change: str, evidence: str = "", *, decision: str = "proposed
     rec = {"id": next_id(rows, now_t), "ts": now_t, "kind": k, "change": txt[:600],
            "evidence": str(evidence or "")[:600], "probe": str(probe or "")[:400],
            "decision": d, "by": str(by or "agent")[:60], "note": str(note or "")[:400]}
+    # (26/10) "Xac nhan sau vai ngay" phai nam trong SO, khong phai trong tri nho nguoi:
+    # thay doi da ADOPT ma khong co ngay ra soat thi se "va roi de do" (dung lop loi
+    # "in ra khong phai la bao cao"). `tools/review_due.py` doc `review_at` moi ngay.
+    if float(review_days or 0.0) > 0:
+        rec["review_days"] = float(review_days)
+        rec["review_at"] = now_t + float(review_days) * 86400.0
     rows.append(rec)
     try:
         atomic.write_text_atomic(
@@ -140,6 +147,80 @@ def decide(rid: str, decision: str, *, evidence: str = "", note: str = "", by: s
     return {"ok": True, "record": hit}
 
 
+def _find(rows, rid):
+    for r in rows or []:
+        if str(r.get("id")) == str(rid):
+            return r
+    return None
+
+
+def _write(rows, path, rec) -> dict:
+    """Ghi lai ca so (nguyen tu). Dung chung cho `schedule`/`mark_review`."""
+    try:
+        atomic.write_text_atomic(
+            path, "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n")
+    except OSError as e:
+        return {"ok": False, "err": "khong ghi duoc: %s" % str(e)[:160]}
+    return {"ok": True, "record": rec}
+
+
+def due(rows=None, *, now=None, path=PATH) -> list:
+    """Muc da ADOPT **den han ra soat** (co `review_at` <= now, chua `reviewed_at`).
+
+    (26/10) Yeu cau cua nguoi van hanh: "theo doi tiep, vai ngay sau xac nhan lai".
+    Cau tra loi KHONG the la tri nho cua nguoi ⇒ phai nam trong so: moi thay doi da ap
+    co the hen `--review-days N`, toi han thi `tools/review_due.py` tu do lai bang
+    chung THAT va hoi nguoi van hanh (hoac tu hoan tiep neu chua du mau).
+    """
+    rows = read_all(path) if rows is None else list(rows)
+    now_t = float(now if now is not None else time.time())
+    out = []
+    for r in rows:
+        if str(r.get("decision") or "") != "adopted" or r.get("reviewed_at"):
+            continue
+        try:
+            ra = float(r.get("review_at") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if ra and ra <= now_t:
+            out.append(r)
+    return sorted(out, key=lambda r: float(r.get("review_at") or 0.0))
+
+
+def schedule(rid: str, days: float, *, path=PATH, now=None) -> dict:
+    """Hen (lai) ngay ra soat cho 1 muc; xoa `reviewed_at` de muc quay lai hang cho.
+
+    Dung khi chua du du lieu de ket luan: KHONG duoc ket luan bang `n` nho — phai
+    HOAN lai va do tiep (`review_due.py` tu goi ham nay).
+    """
+    rows = read_all(path)
+    hit = _find(rows, rid)
+    if hit is None:
+        return {"ok": False, "err": "khong tim thay id %r" % rid}
+    now_t = float(now if now is not None else time.time())
+    hit["review_days"] = float(days)
+    hit["review_at"] = now_t + float(days) * 86400.0
+    hit["reviewed_at"] = 0
+    return _write(rows, path, hit)
+
+
+def mark_review(rid: str, note: str = "", *, by: str = "agent", path=PATH, now=None) -> dict:
+    """Danh dau DA ra soat (kem ket luan) — muc thoi hien trong `due()`."""
+    rows = read_all(path)
+    hit = _find(rows, rid)
+    if hit is None:
+        return {"ok": False, "err": "khong tim thay id %r" % rid}
+    now_t = float(now if now is not None else time.time())
+    hist = list(hit.get("history") or [])
+    hist.append({"ts": now_t, "kind": "review", "note": str(note or "")[:400],
+                 "by": str(by or "agent")[:60]})
+    hit["history"] = hist
+    hit["reviewed_at"] = now_t
+    if note:
+        hit["review_note"] = str(note)[:400]
+    return _write(rows, path, hit)
+
+
 def check(rows=None, *, now=None, stale_days: float = STALE_DAYS) -> dict:
     """Tim thay doi THIEU bang chung hoac treo qua lau. Tra {ok, problems, n}."""
     rows = read_all() if rows is None else list(rows)
@@ -160,6 +241,13 @@ def check(rows=None, *, now=None, stale_days: float = STALE_DAYS) -> dict:
                 probs.append("%s: de xuat qua %.0f ngay chua quyet" % (rid, age_d))
         if str(r.get("kind") or "") not in KINDS:
             probs.append("%s: kind la %r" % (rid, r.get("kind")))
+    # (26/10) Thay doi da AP ma qua han ra soat ma chua xac nhan ⇒ phai hien ra, khong
+    # duoc de "va roi de do". `review_due.py` se hoac hoi nguoi van hanh, hoac tu hoan
+    # tiep (kem bang chung `n`) — ca hai deu xoa trang thai nay.
+    for r in due(rows, now=now_t):
+        probs.append("%s: da AP nhung qua han ra soat ma CHUA xac nhan (hen %s)"
+                     % (r.get("id"),
+                        time.strftime("%d/%m", time.localtime(float(r.get("review_at") or 0)))))
     return {"ok": not probs, "n": len(rows), "problems": probs}
 
 
@@ -180,6 +268,13 @@ def main(argv=None) -> int:
     ap.add_argument("--by", default="agent")
     ap.add_argument("--note", default="")
     ap.add_argument("--decide", metavar="ID", help="chot quyet dinh cho muc da ghi")
+    ap.add_argument("--review-days", type=float, default=0.0,
+                    help="hen RA SOAT LAI sau N ngay (dung voi --add)")
+    ap.add_argument("--due", action="store_true",
+                    help="liet ke muc da AP den han ra soat ma chua xac nhan")
+    ap.add_argument("--schedule", metavar="ID", help="hen (lai) ngay ra soat cho muc ID")
+    ap.add_argument("--days", type=float, default=3.0, help="so ngay hen (voi --schedule)")
+    ap.add_argument("--review", metavar="ID", help="danh dau DA ra soat muc ID (kem --note)")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--limit", type=int, default=20)
     ap.add_argument("--check", action="store_true")
@@ -201,18 +296,65 @@ def main(argv=None) -> int:
 
     if args.add:
         r = add(args.kind or "", args.change, args.evidence, decision=args.decision,
-                probe=args.probe, by=args.by, note=args.note)
+                probe=args.probe, by=args.by, note=args.note,
+                review_days=args.review_days)
         if args.json:
             print(json.dumps(r, ensure_ascii=False, indent=1))
         elif r["ok"]:
             rec = r["record"]
             print("%s [%s/%s] %s" % (rec["id"], rec["kind"], rec["decision"],
                                      rec["change"][:100]))
+            if rec.get("review_at"):
+                print("  hen ra soat lai: %s (sau %.1f ngay)"
+                      % (time.strftime("%Y-%m-%d %H:%M",
+                                       time.localtime(rec["review_at"])),
+                         rec.get("review_days") or 0.0))
+        else:
+            print("LOI: %s" % r["err"])
+        return 0 if r["ok"] else 1
+
+    if args.schedule:
+        r = schedule(args.schedule, args.days)
+        if args.json:
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        elif r["ok"]:
+            print("%s -> hen ra soat lai %s (sau %.1f ngay)"
+                  % (r["record"]["id"],
+                     time.strftime("%Y-%m-%d %H:%M",
+                                   time.localtime(r["record"]["review_at"])), args.days))
+        else:
+            print("LOI: %s" % r["err"])
+        return 0 if r["ok"] else 1
+
+    if args.review:
+        r = mark_review(args.review, args.note, by=args.by)
+        if args.json:
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        elif r["ok"]:
+            print("%s -> DA ra soat (%s)" % (r["record"]["id"],
+                                             str(r["record"].get("review_note") or "")[:80]))
         else:
             print("LOI: %s" % r["err"])
         return 0 if r["ok"] else 1
 
     rows = read_all()
+    if args.due:
+        d = due(rows)
+        if args.json:
+            print(json.dumps(d, ensure_ascii=False, indent=1))
+        else:
+            print("=== DEN HAN RA SOAT | %d muc ===" % len(d))
+            for r in d:
+                print("  %-14s hen %s (qua %.1f ngay) | %s"
+                      % (r.get("id"),
+                         time.strftime("%Y-%m-%d %H:%M",
+                                       time.localtime(float(r.get("review_at") or 0))),
+                         (time.time() - float(r.get("review_at") or 0)) / 86400.0,
+                         str(r.get("change") or "")[:80]))
+            if not d:
+                print("  (khong co muc nao den han)")
+        return 0
+
     if args.check:
         rep = check(rows)
         if args.json:

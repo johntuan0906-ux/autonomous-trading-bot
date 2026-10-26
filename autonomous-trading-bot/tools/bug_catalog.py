@@ -33,6 +33,10 @@ KINDS = {
     "cau-hinh": "Cau hinh bi doc sai / thay doi khong co hieu luc",
     "van-hanh": "Van hanh: watcher, pause, restart, khoi phuc",
     "ai": "Hoi dong AI: phieu, provider, do tin cay",
+    # (26/10) Lop moi: DU LIEU SAI (journal/log/so lieu) — nguy hiem hon loi code vi no
+    # khong lam he thong dung, no lam MOI KET LUAN ve he thong thanh RAC (B-031: `r` trong
+    # journal co ban ghi 793R) ⇒ nguoi van hanh "sua" theo so lieu sai.
+    "du-lieu": "Du lieu SAI (journal/log/so lieu) ⇒ moi ket luan dua tren no deu rac",
 }
 
 # Moi muc: code (on dinh, dung de tham chieu trong CONTEXT.md), title, kind, symptom
@@ -322,6 +326,16 @@ CLASSES = [
         "tests": ["test_ops_tools.py::TestDemLoiBaoDongGia::test_OPENED_khong_bi_dem_la_loi",
                   "test_ops_tools.py::TestDemLoiBaoDongGia::test_loi_that_van_bi_dem",
                   "test_ops_tools.py::TestDemLoiBaoDongGia::test_mau_OPENED_da_bi_bo_khoi_danh_sach"],
+    },
+    {
+        "code": "B-031", "kind": "du-lieu", "seen": "26/10/2026",
+        "title": "Truong `r` trong journal SAI (co ban ghi r=793 va r=+196 cho lenh LO) ⇒ moi thong ke dung `r` la RAC",
+        "symptom": "Do that 26/10 tren `logs/journal.jsonl` TESTNET (3342 ban ghi CLOSE): max `r`=793.07, 319 ban ghi `r`>5, min `r`=-14.84, trung vi `r`=+0.076 (vo ly voi WR 43%). Vi du cu the: DASH entry 49.32 -> exit 48.84 (LENH LO) nhung ghi `r`=+196.36; BNB entry 727.33 -> exit 730.04 ghi `r`=793.07; 315 ban ghi FLATTEN co |r|>5. Nghia la **moi ket luan dua tren `r`/`avgR`/`PF` doc tu journal deu vo nghia** — ke ca \"do luong hinh hoc moi tot hay xau\": suyt nua thi `tools/review_due.py` da bao \"nen avgR=+1.521 PF=5.89\" (do la RAC). Nguon goc trong `trade_mgmt.r_multiple` (co chan `dist<=0` ⇒ 0.0) CHUA xac dinh — nghi `initial_sl` bi dat sat entry khi `position_sync.adopt` vi the; dang theo doi, KHONG ket luan khi chua do duoc",
+        "guard": "`tools/review_due.pair_trades()` ghep OPEN->CLOSE theo (pair, direction) va tinh **R THAT tu gia**: `r = (exit-entry)/|entry-sl|` (± theo chieu); loai ban ghi ngoai dai hop ly `R_BAND=(-1.6, 5.0)` va DEM `n_dropped` de minh bach; `rr` cung tinh tu gia (khong tin truong `rr` san co)",
+        "files": ["tools/review_due.py"],
+        "tests": ["test_review_due.py::TestPairTrades::test_rr_tinh_tu_gia_khong_tin_truong_rr",
+                  "test_review_due.py::TestPairTrades::test_bo_R_ngoai_dai_hop_ly",
+                  "test_review_due.py::TestRun::test_ban_ghi_rac_bi_loai_truoc_khi_tinh"],
     },
 ]
 

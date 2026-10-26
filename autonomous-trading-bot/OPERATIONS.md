@@ -208,6 +208,10 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Chấm điểm TỪNG model hội đồng** (theo kết quả thật) | `python tools/council_eval.py [--target live] [--hours 336] [--min-n 8] [--json]` |
 | **Sao lưu có kiểm chứng** (.env + journal + state) | `python tools/backup.py [--target live] [--keep 14]` → `backups/*.zip` |
 | **Đăng ký backup hằng ngày** (Task Scheduler) | `python tools/backup.py --install-task [--task-time 03:30]` / gỡ: `--uninstall-task` |
+| **Rà soát lại thay đổi ĐÃ ÁP sau vài ngày** | `python tools/review_due.py --list` (mục đến hạn) · `--force H-20261026-007` (rà soát ngay) · `--check` (exit 1 nếu **cần người vận hành quyết**) — task **`ATB-ReviewDue`** chạy 09:00 mỗi ngày |
+| Hẹn ngày rà soát / xác nhận | `python tools/harness_ledger.py --add ... --review-days 3` · `--schedule H-20261026-007 --days 3` · `--due` · `--review H-20261026-007 --note "giữ nguyên, n=64"` |
+| Vì sao phải rà soát (B-031) | Trường `r` trong journal là **RÁC** (đo 26/10: `r=793`, `r=+196` cho lệnh LỎ) ⇒ mọi `avgR/PF` đọc trực tiếp từ journal vô nghĩa; dùng `tools/review_due.pair_trades()` (R tính từ giá) |
+| Vết rà soát | `Get-Content logs\review_due.log -Tail 20` (mỗi lần rà soát 1 dòng: n, avgR, PF, hành động) · `logs/review_due.json` (chống spam) |
 | **Dead-man switch** (báo khi bot NGỪNG) | `python tools/deadman.py [--dry-run] [--json]` — điền `HEALTHCHECKS_URL` vào `.env` để nhận cảnh báo ngoài máy |
 | **Đăng ký dead-man mỗi 15 phút** | `python tools/deadman.py --install-task [--task-min 15]` / gỡ: `--uninstall-task` |
 > ⚠️ Task Scheduler phải gọi **`pythonw.exe`** (không phải `python.exe`), nếu không cứ mỗi chu kỳ sẽ hiện 1 cửa sổ cmd đen. `--install-task` đã tự chọn `pythonw.exe` (`backup.hidden_python()`); vì không có console nên lỗi được ghi vào `logs/backup_task.log` / `logs/deadman_task.log`.

@@ -125,5 +125,82 @@ class TestDecide(unittest.TestCase):
             self.assertTrue(rep["ok"], rep["problems"])
 
 
+class TestHenRaSoat(unittest.TestCase):
+    """(26/10) "Xác nhận sau vài ngày" phải nằm trong SỔ, không phải trí nhớ người.
+
+    Yêu cầu người vận hành: *"theo dõi tiếp, vài ngày sau xác nhận lại"* — nếu chỉ ghi vào
+    docs/ghi chú thì không ai nhắc ⇒ thay đổi vào hệ thống rồi "vả rồi để đó" (lớp lỗi B-028).
+    """
+
+    def test_add_co_review_days_thi_dat_hen(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            rec = HL.add("risk", "doi hinh hoc", "backtest", decision="adopted",
+                         path=p, now=1_000_000.0, review_days=3.0)["record"]
+            self.assertAlmostEqual(rec["review_at"], 1_000_000.0 + 3 * 86400.0)
+            self.assertAlmostEqual(rec["review_days"], 3.0)
+
+    def test_add_khong_hen_thi_khong_co_review_at(self):
+        with tempfile.TemporaryDirectory() as t:
+            rec = HL.add("prompt", "x", "ev", path=Path(t) / "l.jsonl", now=0.0)["record"]
+            self.assertNotIn("review_at", rec)
+
+    def test_due_chi_lay_adopted_qua_han_chua_ra_soat(self):
+        rows = [{"id": "A", "kind": "risk", "decision": "adopted", "evidence": "x",
+                 "ts": 0.0, "review_at": 100.0},
+                {"id": "B", "kind": "risk", "decision": "proposed", "evidence": "x",
+                 "ts": 0.0, "review_at": 100.0},
+                {"id": "C", "kind": "risk", "decision": "adopted", "evidence": "x",
+                 "ts": 0.0, "review_at": 10 ** 9},
+                {"id": "D", "kind": "risk", "decision": "adopted", "evidence": "x",
+                 "ts": 0.0, "review_at": 100.0, "reviewed_at": 50.0},
+                {"id": "E", "kind": "risk", "decision": "adopted", "evidence": "x",
+                 "ts": 0.0}]
+        self.assertEqual([r["id"] for r in HL.due(rows, now=200.0)], ["A"])
+
+    def test_schedule_hen_lai_va_mo_lai_muc_da_ra_soat(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            rid = HL.add("risk", "x", "ev", decision="adopted", path=p, now=0.0,
+                         review_days=1.0)["record"]["id"]
+            HL.mark_review(rid, "da xac nhan", path=p, now=2 * 86400.0)
+            self.assertEqual(HL.due(HL.read_all(p), now=2 * 86400.0), [])
+            r = HL.schedule(rid, 3.0, path=p, now=2 * 86400.0)
+            self.assertTrue(r["ok"])
+            self.assertEqual(r["record"]["reviewed_at"], 0)
+            self.assertAlmostEqual(r["record"]["review_at"], 5 * 86400.0)
+            self.assertEqual(len(HL.due(HL.read_all(p), now=6 * 86400.0)), 1)
+
+    def test_mark_review_ghi_ket_luan_vao_lich_su(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            rid = HL.add("risk", "x", "ev", decision="adopted", path=p,
+                         now=0.0)["record"]["id"]
+            r = HL.mark_review(rid, "giu nguyen, n=64 PF 1.2", by="nguoi van hanh",
+                               path=p, now=5.0)
+            self.assertTrue(r["ok"])
+            self.assertEqual(r["record"]["review_note"], "giu nguyen, n=64 PF 1.2")
+            self.assertEqual(r["record"]["history"][0]["kind"], "review")
+            self.assertEqual(r["record"]["history"][0]["by"], "nguoi van hanh")
+
+    def test_check_bao_khi_qua_han_chua_xac_nhan(self):
+        rows = [{"id": "H-9", "kind": "risk", "decision": "adopted", "evidence": "x",
+                 "ts": 0.0, "review_at": 100.0}]
+        rep = HL.check(rows, now=200.0)
+        self.assertFalse(rep["ok"])
+        self.assertIn("CHUA xac nhan", rep["problems"][0])
+
+    def test_sau_khi_ra_soat_thi_check_sach(self):
+        rows = [{"id": "H-9", "kind": "risk", "decision": "adopted", "evidence": "x",
+                 "ts": 0.0, "review_at": 100.0, "reviewed_at": 150.0}]
+        self.assertTrue(HL.check(rows, now=200.0)["ok"])
+
+    def test_khong_tim_thay_id(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.jsonl"
+            self.assertFalse(HL.schedule("H-1", 1.0, path=p)["ok"])
+            self.assertFalse(HL.mark_review("H-1", "x", path=p)["ok"])
+
+
 if __name__ == "__main__":
     unittest.main()

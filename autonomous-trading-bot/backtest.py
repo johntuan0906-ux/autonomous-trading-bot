@@ -22,7 +22,7 @@ import pandas as pd
 from indicators import market_regime, technical_score
 from learner import signal_score_100, structure_score
 from strategy import classify_strategy
-from trade_mgmt import FEE_ROUNDTRIP_PCT, manage, new_trade, trade_result
+from trade_mgmt import FEE_ROUNDTRIP_PCT, SLIPPAGE_PCT, manage, new_trade, trade_result
 
 SYMBOLS = ("BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "XRP/USDT:USDT")
 
@@ -35,6 +35,15 @@ VARIANTS: dict[str, dict] = {
                                 partial_pct=0.5, be_at_r=1.0, trail_atr_mult=1.0),
     "V3_wide_partial_trail": dict(sl_mult=2.0, tp_mult=4.0, partial_at_r=1.0,
                                   partial_pct=0.5, be_at_r=1.0, trail_atr_mult=1.5),
+    # (26/10) So sanh HINH HOC SL/TP theo bang chung do tu chinh bot (tools/atr_quality_probe):
+    # bien do THUAN trung vi chi 0.20-0.33R va chi phi 0.10-0.16R ⇒ SL/TP hien tai (14xATR /
+    # 69xATR) RONG hon nhieu so voi bien do gia thuc su di.
+    "V4_hien_tai_14_69": dict(sl_mult=14.0, tp_mult=69.0, partial_at_r=2.86,
+                              partial_pct=0.3, be_at_r=0.0, trail_atr_mult=0.0),
+    "V5_hep_6_12": dict(sl_mult=6.0, tp_mult=12.0, partial_at_r=1.0,
+                        partial_pct=0.3, be_at_r=0.0, trail_atr_mult=0.0),
+    "V6_hep_4_8": dict(sl_mult=4.0, tp_mult=8.0, partial_at_r=1.0,
+                       partial_pct=0.3, be_at_r=0.0, trail_atr_mult=0.0),
 }
 
 
@@ -251,7 +260,8 @@ def simulate(df: pd.DataFrame, sigs: list[dict], cfg: dict, *,
                     reason = "SL" if mg["action"] == "EXIT_SL" else "TP"
                     px = t.sl if reason == "SL" else t.tp
             if reason is not None:
-                res = trade_result(t, reason, float(px))
+                # (26/10) Mo phong TRUOT GIA: chi phi 2 chieu x SLIPPAGE_PCT x notional.
+                res = trade_result(t, reason, float(px), slippage_pct=SLIPPAGE_PCT)
                 balance += float(res["pnl"])
                 rec = dict(ref)
                 rec.update({"pnl": float(res["pnl"]), "r": float(res["r"]),
@@ -260,6 +270,7 @@ def simulate(df: pd.DataFrame, sigs: list[dict], cfg: dict, *,
                             "partial_done": res["partial_done"],
                             "mfe_r": res["mfe_r"], "qty": t.init_qty,
                             "entry": t.entry, "bars": bars_open,
+                            "slippage": float(res.get("slippage") or 0.0),
                             "fee": round(t.init_qty * t.entry * FEE_ROUNDTRIP_PCT, 6)})
                 trades.append(rec)
                 equity.append(balance)

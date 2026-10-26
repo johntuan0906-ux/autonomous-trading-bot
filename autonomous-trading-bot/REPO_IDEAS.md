@@ -611,6 +611,49 @@ hội đồng kiểm tra và sửa lỗi không?"*:
   - an toàn: chỉ nghe chat_id trong `.env`; argv **cố định**, không `shell=True`; mọi lệnh ghi vết
     `logs/telegram_bridge.log`; không token ⇒ chế độ DRY (ghi log, không gọi mạng).
 
+### 21.4 Đo thật "ATR có phản ánh đúng biến động?" — `tools/atr_quality_probe.py`
+
+Trước khi nghĩ tới model nặng, phải trả lời câu hỏi rẻ hơn. Kết quả **trên dữ liệu của chính bot**:
+
+| Chỉ số | TESTNET (n=955) | LIVE (n=599) |
+|---|---|---|
+| Khoảng cách SL kế hoạch (trung vị) | 1.05% giá | 0.88% giá |
+| **Biên độ THUẬN** (mfe_r) trung vị / p90 | **0.32R** / 1.36R | **0.33R** / 1.13R |
+| Chi phí (phí 0.05% + slippage 0.02%/chiều) quy ra R | 0.133R | 0.159R |
+
+Lấy **ATR thật từ sàn** (mẫu 30 lệnh, ATR(14) khung 15m tại thời điểm vào lệnh):
+ATR trung vị **0.580%** nhưng biên độ thuận thật chỉ **0.23%** ⇒ **mfe/ATR = 0.37**
+(ATR phóng đại ~3×) và **Spearman(ATR%, biên độ thuận) = 0.23** (tương quan yếu).
+
+⇒ Đây là *bằng chứng cho hướng "không cần model nặng"*: vấn đề không phải thiếu model dự báo,
+mà là **hình học SL/TP rộng hơn nhiều so với biên độ giá thực sự đi**, và **chi phí ăn ~40–50%
+biên độ thuận trung vị**.
+
+### 21.5 Hội đồng VETO đổi hình học SL/TP (và vì sao veto đó ĐÚNG)
+
+Đề xuất: đổi 14×ATR/69×ATR → 6×ATR/12×ATR. Backtest 30 ngày (BTC/ETH/SOL/XRP, 15m, **có slippage**):
+
+| Biến thể | n | WR | PF | E(R) |
+|---|---|---|---|---|
+| `V4_hien_tai_14_69` | 31 | 16.1% | **0.20** | −0.443 |
+| `V5_hep_6_12` | 61 | 37.7% | 0.65 | −0.203 |
+| `V6_hep_4_8` | 104 | 45.2% | **0.82** | −0.090 |
+
+Hội đồng: **0 ALLOW / 4 VETO** (195s) — *"n=31 quá nhỏ để kết luận thống kê; chưa có bằng chứng
+live cho 6/12; mẫu 14/69 do người vận hành chọn nên không tự ý đổi"*. **Kết cục: GIỮ NGUYÊN.**
+
+Đây là lần thứ hai hội đồng bác đề xuất của chính tôi — và **đúng**: PF 0.20 với n=31 có thể chỉ
+là một regime xấu; đổi tham số đường tiền dựa trên mẫu đó là hành vi đánh bạc. Ghi sổ
+`H-20261026-005` (**rejected**) kèm **điều kiện mở lại**: ≥100 lệnh/arm (backtest nhiều symbol +
+cửa sổ dài hơn), hoặc ≥100 lệnh LIVE mỗi arm, hoặc **người vận hành yêu cầu**.
+
+### 21.6 Mô phỏng có slippage (mục 2 của §21.2 đã xong)
+
+`trade_mgmt.SLIPPAGE_PCT` (0.02%/chiều, đọc từ `.env`) + `COST_ROUNDTRIP_PCT`; `backtest.py`
+truyền `slippage_pct` và ghi `slippage` từng lệnh ⇒ **mọi so sánh tham số từ nay gồm phí + trượt
+giá**. Mặc định `slippage_pct=0.0` trong `trade_result` ⇒ **số thật không đổi** (giá khớp thật đã
+bao gồm trượt giá) — có test chốt riêng.
+
 
 | Mục trong ghgrab | Bản chất | Với dự án này | Trạng thái |
 |---|---|---|---|

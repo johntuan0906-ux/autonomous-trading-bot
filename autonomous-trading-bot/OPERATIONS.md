@@ -189,6 +189,8 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Nhận cảnh báo + ra lệnh từ điện thoại (Telegram) | task `ATB-Telegram` (1 phút/lần) · thử tay: `python tools/telegram_bridge.py --once` · gửi thử: `--test "noi dung"` · khô: `--dry` |
 | Lệnh Telegram có sẵn | `/status` `/health` `/list` `/ask <câu hỏi>` `/answer <TESTNET\|LIVE> <id> <nội dung>` · **GHI** (cần `TELEGRAM_ALLOW_WRITE=true`): `/dedupe <t>` `/reset <t> confirm` `/restart <t>` |
 | Kiểm vết cầu nối Telegram | `Get-Content logs\telegram_bridge.log -Tail 20` (mọi lệnh + kết quả + nguồn chat_id) |
+| Đo chất lượng proxy biến động (ATR) | `python tools/atr_quality_probe.py --target testnet` · thêm `--with-exchange --sample 30` để lấy **ATR thật** từ sàn · `--json` cho máy đọc |
+| So sánh hình học SL/TP **có phí + slippage** | `python backtest.py --tf 15m --days 30 --risk 0.012` (biến thể `V4_hien_tai_14_69`, `V5_hep_6_12`, `V6_hep_4_8`) — slippage đặt qua `.env`: `SLIPPAGE_PCT=0.0002` |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |

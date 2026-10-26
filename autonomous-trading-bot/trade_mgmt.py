@@ -12,10 +12,16 @@ Toan bo la ham thuan (pure) + dataclass de unit-test duoc, khong goi API.
 """
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 
 FEE_ROUNDTRIP_PCT = 0.001  # 0.05% x 2 chieu (taker Binance Futures)
+#: (26/10) Slippage gia dinh cho MO PHONG (khong ap cho so that: gia khop that da bao gom
+#: truot gia). 0.02%/chieu — market order tren cap thanh khoan trung binh.
+SLIPPAGE_PCT = float(os.getenv("SLIPPAGE_PCT", "0.0002") or 0.0)
+#: Tong chi phi 1 vong (phi + slippage 2 chieu) — dung cho mo phong/tham so.
+COST_ROUNDTRIP_PCT = FEE_ROUNDTRIP_PCT + 2.0 * SLIPPAGE_PCT
 
 
 @dataclass
@@ -208,16 +214,22 @@ def manage_trade(trade: ManagedTrade, price: float, atr: float = 0.0,
                   **cfg_from_env(env))
 
 
-def trade_result(trade: ManagedTrade, exit_reason: str, exit_price: float) -> dict:
+def trade_result(trade: ManagedTrade, exit_reason: str, exit_price: float, *,
+                 slippage_pct: float = 0.0) -> dict:
     """Ket qua cuoi cung: PnL (USDT), R, va 'won' cho learner.
 
     Won = TP/TRAIL, hoac BE sau khi da chot partial (thuc te khong lo).
+
+    `slippage_pct` (26/10): chi phi TRUOT GIA gia dinh cho **mo phong** = 2 chieu x
+    slippage_pct x notional. Mac dinh 0.0 ⇒ **khong doi hanh vi that** (so that da bao gom
+    truot gia trong gia khop). Backtest truyen `SLIPPAGE_PCT` de so sanh sat thuc te hon.
     """
     rem = (trade.qty * (exit_price - trade.entry)
            if trade.direction.upper() == "LONG"
            else trade.qty * (trade.entry - exit_price))
     rem *= (1.0 - FEE_ROUNDTRIP_PCT)
-    pnl = trade.booked_pnl + rem
+    slip = 2.0 * float(slippage_pct or 0.0) * (trade.init_qty or trade.qty) * trade.entry
+    pnl = trade.booked_pnl + rem - slip
     dist = abs(trade.entry - trade.initial_sl) or 1e-12
     full_qty = trade.init_qty or trade.qty
     r = pnl / (dist * full_qty)
@@ -226,5 +238,5 @@ def trade_result(trade: ManagedTrade, exit_reason: str, exit_price: float) -> di
     return {"pnl": round(pnl, 6), "r": round(r, 4),
             "won": bool(won or (trade.partial_done and pnl > 0)),
             "exit_reason": reason, "partial_done": trade.partial_done,
-            "mfe_r": round(trade.mfe_r, 3)}
+            "mfe_r": round(trade.mfe_r, 3), "slippage": round(slip, 6)}
 

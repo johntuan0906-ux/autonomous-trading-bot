@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backtest import VARIANTS, build_signals, simulate, stats, verdict  # noqa: E402
 from strategy import bump, classify_strategy, report  # noqa: E402
-from trade_mgmt import (dust_notional, manage, manage_trade, new_trade,  # noqa: E402
+from trade_mgmt import (COST_ROUNDTRIP_PCT, FEE_ROUNDTRIP_PCT,  # noqa: E402
+                        SLIPPAGE_PCT, dust_notional, manage, manage_trade, new_trade,
                         r_multiple, trade_result)
 
 
@@ -146,6 +147,27 @@ class TestTradeMgmt(unittest.TestCase):
         self.assertLess(r2["pnl"], 0)
         self.assertFalse(r2["won"])
         self.assertAlmostEqual(r2["r"], -1.0, delta=0.05)
+
+    def test_slippage_mac_dinh_LA_KHONG_doi_so_that(self):
+        """(26/10) Slippage chi danh cho MO PHONG: mac dinh 0.0 ⇒ so that giu nguyen."""
+        t = new_trade("XRPUSDT", "LONG", 1.0, 1000, 0.98, 1.04)
+        r = trade_result(t, "TP", 1.04)
+        self.assertEqual(r["slippage"], 0.0)
+        self.assertAlmostEqual(r["pnl"], 1000 * 0.04 * (1 - FEE_ROUNDTRIP_PCT), places=6)
+
+    def test_slippage_tru_dung_2_chieu_nhan_notional(self):
+        t = new_trade("XRPUSDT", "LONG", 1.0, 1000, 0.98, 1.04)
+        r = trade_result(t, "TP", 1.04, slippage_pct=0.0002)
+        # notional = qty 1000 x entry 1.0 = 1000; chi phi = 2 x 0.0002 x 1000 = 0.4
+        self.assertAlmostEqual(r["slippage"], 0.4, places=6)
+        base = 1000 * 0.04 * (1 - FEE_ROUNDTRIP_PCT)
+        self.assertAlmostEqual(r["pnl"], base - 0.4, places=6)
+        # 1R = |entry - sl| x qty = 0.02 x 1000 = 20 => slippage lam R giam 0.02
+        self.assertAlmostEqual(r["r"], (base - 0.4) / 20.0, places=4)
+
+    def test_chi_phi_vong_bang_phi_cong_slippage_2_chieu(self):
+        self.assertAlmostEqual(COST_ROUNDTRIP_PCT, FEE_ROUNDTRIP_PCT + 2 * SLIPPAGE_PCT,
+                               places=9)
 
 
 class TestStrategy(unittest.TestCase):

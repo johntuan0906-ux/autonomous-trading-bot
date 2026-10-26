@@ -380,6 +380,18 @@ giả thuyết đo được), và **rút ra phần dùng được ngay** (đo ch
 backtest phải tính phí/slippage, sinh dữ liệu tổng hợp để stress-test harness) — phần này **0 đồng,
 0 dependency**.
 
+**9. Bằng chứng phải ĐỦ MẠNH, không chỉ "có số".** Tôi đo được hình học SL/TP hiện tại là tệ nhất
+trong 7 biến thể (PF 0.20) và đề nghị đổi — hội đồng **VETO 0–4** với lý do đúng: **n=31 quá nhỏ**,
+chưa có bằng chứng live, và mẫu đó do **người vận hành** chọn. Bài học: (a) *p-value không có thì
+"PF thấp" chưa phải bằng chứng*; (b) veto vì **thiếu mẫu** khác veto vì **sai nguyên tắc** — cả hai
+đều phải ghi kèm **điều kiện mở lại cụ thể** (≥100 lệnh/arm…); (c) muốn đổi tham số mà **người vận
+hành đã chọn** thì cần chính họ đồng ý, dù số liệu nói gì.
+
+**10. Đo cái RẺ trước cái ĐẮT.** Trước khi cài PyTorch + model 25–100M, một probe 200 dòng
+(`tools/atr_quality_probe.py`) đã trả lời được câu hỏi cốt lõi: ATR(15m) trung vị **0.580%** trong
+khi biên độ thuận thật chỉ **0.23%** (mfe/ATR = 0.37) và chi phí ăn **40–50%** biên độ thuận trung
+vị. ⇒ Vấn đề nằm ở **hình học SL/TP + chi phí**, không phải ở chỗ thiếu model dự báo.
+
 ## So lieu
 
 - So lenh da dong doc duoc: **698**

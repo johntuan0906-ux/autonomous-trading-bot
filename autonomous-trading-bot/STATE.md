@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 27/10/2026 13:49:23 · commit `f1fd680`
+- **Cập nhật**: 27/10/2026 14:19:23 · commit `83379a0`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `47488` · round `352` · nhịp tim cách đây 69.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3207.79 USDT
+- **Bot**: pid `47488` · round `359` · nhịp tim cách đây 120.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3208.92 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3343 lệnh đóng, WR 44.78%, E(R) 1.3111, PnL -1077.54$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 60 | 23.33 | 0.507 | 0.203 | -0.2134 | -89.49 |
+| 7 ngày | 54 | 20.37 | 0.538 | 0.2 | -0.2001 | -85.58 |
 | 14 ngày | 2652 | 41.63 | 6.223 | 0.705 | 1.6422 | -1176.34 |
 | 30 ngày | 3312 | 44.57 | 5.379 | 0.797 | 1.3226 | -1102.59 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.507 < 1.2; PF($) cua so 7 ngay = 0.203 < 1.1; PF($) cua so 14 ngay = 0.705 < 1.1; PF($) cua so 30 ngay = 0.797 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.538 < 1.2; PF($) cua so 7 ngay = 0.200 < 1.1; PF($) cua so 14 ngay = 0.705 < 1.1; PF($) cua so 30 ngay = 0.797 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | SHORT | 79946.0 | 0.0043729 | 0.004523 | 0.004073 | False | False | 0.449 |
+| 1000PEPE/USDT:USDT | SHORT | 79946.0 | 0.0043729 | 0.004523 | 0.004073 | False | False | 0.497 |
 | ADA/USDT:USDT | SHORT | 650.0 | 0.2075 | 0.225952 | 0.116558 | False | False | 0.379 |
 | AERO/USDT:USDT | LONG | 263.2 | 0.6900999999999999 | 0.660616 | 0.752668 | False | False | 0.197 |
 | AIOT/USDT:USDT | LONG | 1295.7 | 0.0616 | 0.061661600000000004 | 0.093547 | True | True | 1.219 |

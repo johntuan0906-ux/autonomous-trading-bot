@@ -758,7 +758,7 @@ Rủi ro **không đổi** (risk/lệnh vẫn 1.2%, 1R = 1.2% equity), trần ng
 
 ### 23.5 Việc còn lại (đề xuất, chờ quyết)
 
-1. **Sửa nguồn `r`** (B-031) hoặc chuyển mọi nơi tính `R` sang `pair_trades` (R từ giá) — câu hỏi #1.
+1. ✅ **XONG 28/10** — **Sửa nguồn `r`** (B-031): `trade_mgmt` trả R=0 + `r_valid=False` khi khoảng cách 1R không hợp lệ; `bot.py` ghi `r_valid`; loại R rác ở `monitor_report` / `lessons` / `strategy`; dựng lại `strategy_stats.json` (xem §23.6).
 2. **P2** — báo cáo chi phí/độ trễ hội đồng theo ngày + gom "ca lỗi" thành dataset hồi quy (Lesson 10).
 3. **P2** — trọng số *recency* khi truy hồi bài học (Generative Agents).
 4. **P2** — thêm "ví dụ dùng + trường hợp biên" vào `capabilities.py` (ACI của Anthropic).
@@ -960,7 +960,7 @@ yêu cầu 21/10 + mô phỏng 3231 lệnh −14%R + phiếu 1–3 VETO) và `H-
 | **(3) `orders_audit --target live --dedupe`** | LIVE: 1 vị thế / 2 lệnh bảo vệ, **giữ 2 huỷ 0** (đã gọn); `watch_regress --check --orders` → **OK** |
 | **(4) Phát hiện thêm B-032 (ngoài 3 việc)** | Nhãn `won` cho learner **sai một chiều**: **220/1717 lệnh LÃI (13%) bị đánh dấu THUA**, 0 chiều ngược ⇒ learner bi quan giả ⇒ `BLOCKED_LEARN` (edge −0.80). Đã vá `learner.money_label(pnl)` + **dựng lại `learner.json`** bằng replay theo thời gian (TESTNET 913 lần học / 63% WIN theo tiền; LIVE 560 / 67%) |
 
-**Còn lại (để người vận hành quyết — KHÔNG tự đổi vì là đánh đổi rủi ro):** sau khi dựng lại learner, `LEARN_MIN_EDGE=-0.30` vẫn chặn **64% setup TESTNET** (LIVE chỉ 13%) ⇒ muốn nhiều dữ liệu hơn thì phải nới ngưỡng này hoặc tăng `MAX_POSITIONS`. **Đường lui mọi thay đổi 28/10:** `.env.bak-goblock`, `strategy_stats.json.bak-b031`, `learner.json.bak-b032`.
+**ĐÃ GIẢI QUYẾT 28/10 (chiều) — xem §23.7:** câu hỏi `LEARN_MIN_EDGE=-0.30` (chặn 64% setup TESTNET / 13% LIVE) **không còn tồn tại**: sau khi dựng lại learner bằng fit offline + kiểm định holdout, cả 2 instance chặn **0% setup** ⇒ **không phải nới ngưỡng**. **Còn đúng 1 việc để người vận hành quyết (KHÔNG tự đổi vì là đánh đổi rủi ro):** `MAX_POSITIONS=1` (LIVE) và trần risk danh mục 1.6% (TESTNET) làm bot **muốn vào lệnh mà hết chỗ** (`SKIP_MAX_POS` / `SKIP_RISK`) ⇒ muốn nhiều dữ liệu nhanh hơn thì nới 2 tham số này. **Đường lui mọi thay đổi 28/10:** `.env.bak-goblock`, `strategy_stats.json.bak-b031`, `learner.json.bak-b032`, `learner.json.bak-refit`.
 
 
 ### 23.7 (28/10) Dựng lại learner — hội đồng quyết **(A) fit offline + kiểm định + lưới an toàn** (4 ALLOW / 0 VETO)

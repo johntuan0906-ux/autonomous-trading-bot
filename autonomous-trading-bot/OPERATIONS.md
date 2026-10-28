@@ -208,6 +208,9 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Chấm điểm TỪNG model hội đồng** (theo kết quả thật) | `python tools/council_eval.py [--target live] [--hours 336] [--min-n 8] [--json]` |
 | **Sao lưu có kiểm chứng** (.env + journal + state) | `python tools/backup.py [--target live] [--keep 14]` → `backups/*.zip` |
 | **Đăng ký backup hằng ngày** (Task Scheduler) | `python tools/backup.py --install-task [--task-time 03:30]` / gỡ: `--uninstall-task` |
+| **Đo lệch khai báo vs thực tế + lệch đầu vào** | `python tools/drift_probe.py --target both ` (mặc định cửa sổ 24h) · `--hours 168` để xem 7 ngày · `--check` (exit 1 nếu cần người quyết) — task **`ATB-DriftProbe`** 08:30 mỗi ngày |
+| Vì sao phải đo lệch (B-031 → bot đứng yên) | 28/10: `.env STRATEGY_BLOCK=A_TREND_PULLBACK` đặt theo digest journal (`r` RÁC) ⇒ 18.048 `BLOCKED_STRAT` / 2 `OPENED` ⇒ bot không vào lệnh mới; xem `ops_queue` #2 |
+| Vết đo lệch | `Get-Content logs\drift_probe.log -Tail 20` · `logs/drift_probe.json` (chống hỏi lại, cooldown 24h) |
 | **Rà soát lại thay đổi ĐÃ ÁP sau vài ngày** | `python tools/review_due.py --list` (mục đến hạn) · `--force H-20261026-007` (rà soát ngay) · `--check` (exit 1 nếu **cần người vận hành quyết**) — task **`ATB-ReviewDue`** chạy 09:00 mỗi ngày |
 | Hẹn ngày rà soát / xác nhận | `python tools/harness_ledger.py --add ... --review-days 3` · `--schedule H-20261026-007 --days 3` · `--due` · `--review H-20261026-007 --note "giữ nguyên, n=64"` |
 | Vì sao phải rà soát (B-031) | Trường `r` trong journal là **RÁC** (đo 26/10: `r=793`, `r=+196` cho lệnh LỎ) ⇒ mọi `avgR/PF` đọc trực tiếp từ journal vô nghĩa; dùng `tools/review_due.pair_trades()` (R tính từ giá) |

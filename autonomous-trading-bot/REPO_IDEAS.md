@@ -681,7 +681,89 @@ cả 2 (TESTNET 22752→**35868**, LIVE 21696→**115512**), xác nhận tiến 
 | Số lệnh/60 ngày (10 cặp lớn) | 162 | **305 (×1.9)** |
 | PF / WR (có slippage) | **0.57** / 36.4% | **0.81** / 42.3% |
 
+
+## 23. (28/10) Đọc danh sách "FULL ROADMAP AI AGENT" người vận hành gửi — hội đồng 2 lần **4 ALLOW / 0 VETO**
+
+**Danh sách**: 13 video + 11 repo học AI + 5 tài liệu (Google/Anthropic/OpenAI) + 7 sách + 4 paper
+(ReAct, Generative Agents, Toolformer, CoT) + 15 khoá học + **50 repo** (lập trình, AI agent, tự động
+hoá, bộ nhớ, hệ sinh thái).
+
+**Cách làm (theo đúng quy ước repo)**: đọc **nội dung THẬT** của các mục liên quan (fetch trực tiếp,
+không đoán theo tên), **bỏ qua mục không liên quan**, rồi để **hội đồng phản biện 2 câu hỏi có dữ
+liệu của chính repo** (`tools/council_vote.py`), sau đó chỉ áp dụng cái **kiểm chứng được** và ghi sổ.
+
+> **Phát hiện phụ về phương pháp**: `AGENT_COUNCIL_MODELS` (copilot) đang **bị chặn**:
+> *"You have exceeded your monthly quota"*, 7 lỗi liên tiếp ⇒ tự disable trong `logs/agent_state.json`
+> ⇒ lần gọi đầu trả **0 phiếu trong 0.1s** (đúng lớp lỗi B-011 "0 phiếu"). Phiên này gọi qua provider
+> `cline-pass`: **4/5 model trả phiếu** (qwen3.7-plus, qwen3.7-max, qwen3.8-max, mimo-v2.6-pro;
+> `minimax-m3` không trả). Link `iFixAi` trong danh sách **hỏng (404)** — không đọc được.
+
+### 23.1 Hội đồng quyết gì (mỗi câu 4 ALLOW / 0 VETO)
+
+| Câu hỏi | Kết quả | Việc đã làm ngay |
+|---|---|---|
+| Dựng phép đo hằng ngày phát hiện **(a)** lệch phân phối đầu vào và **(b)** lệch **khai báo (.env) vs thực tế (journal)**, báo vào `ops_queue`? | **ALLOW 4-0** (conf 0.72–0.90), hội đồng chọn **làm (b) trước** vì rẻ nhất (chỉ stdlib, không gọi LLM) | **`tools/drift_probe.py`** + **29 test** + task **`ATB-DriftProbe`** (08:30) + sổ `H-20261028-001` |
+| Phần còn lại: có nên **THÊM PHỤ THUỘC** ngoài (firecrawl, browser-use, vLLM, langchain, crewAI, MetaGPT, AutoGen, RAGFlow, llama_index, n8n, dify, langflow, ComfyUI)? | **ALLOW 4-0** (conf 0.92–0.95) cho phương án **"chỉ MƯỢN CƠ CHẾ, không thêm phụ thuộc"** | Không cài gì (xem §23.3) |
+
+### 23.2 Áp dụng được gì — theo từng mục
+
+| Nguồn | Cơ chế lấy được | Áp dụng cho repo này | Ưu tiên |
+|---|---|---|---|
+| **dmls-book (Chip Huyen) ch.8** *Data Distribution Shifts & Monitoring* | PSI / drift detection / thiết kế monitoring | **`tools/drift_probe.py` phần (B)** — PSI từng đặc trưng trong journal OPEN so với nền 30 ngày (ngưỡng 0.1 / 0.25) | **P1 — đã làm** |
+| **iFixAi** (goal drift; link 404) + **B-031** | đo "agent còn làm đúng mục tiêu KHAI BÁO không" | **`drift_probe.py` phần (A)**: so `.env` (ý định) với journal (giá trị bot **đang chạy**) ⇒ bắt "sửa .env nhưng CHƯA restart", hình học không được áp, SL không còn theo ATR | **P1 — đã làm** |
+| **MS ai-agents-for-beginners — Lesson 10** (Production: observability/eval) | trace/span, **chi phí + độ trễ**, vòng *offline → online → gom ca lỗi → dataset* | Repo đã có `ops.py --prom`, journal đã ghi `latency_ms/tokens/cost_usd`; **còn thiếu**: báo cáo chi phí/độ trễ theo ngày + gom **failure case** thành dataset hồi quy | **P2** |
+| **Lesson 6** (Trustworthy: meta-prompt, human-in-the-loop, cổng duyệt trước hành động) | meta-prompt sinh system prompt; cổng duyệt; audit | Đã có: `ops_queue` (người duyệt), `council_vote` (cổng), system prompt trong `agents.py`. **P2**: meta-prompt để **đồng bộ** system prompt 5 role — nhưng **VETO auto-apply** | **P2** |
+| **Lesson 9** (Metacognition: tự đánh giá + escalation) | độ tin cậy thấp ⇒ leo thang cho người | Đã có `confidence`, luật phá thế hoà, `ops_queue`. **P2**: ngưỡng "conf < X ⇒ hỏi người" (một phần đã có: `AGENT_VETO_MIN_CONF`) | **P2** |
+| **Anthropic — Building Effective Agents** | workflow vs agent; **"đơn giản nhất có thể"**; prompt-engineering cho **tool (ACI)**: tên tham số rõ, ví dụ, edge case, **poka-yoke** (ép đường dẫn tuyệt đối) | Repo: tool viết tay + `capabilities.py` (37 tool, `--check` chặn tool thiếu docstring/test). **P2**: thêm "ví dụ dùng + trường hợp biên" vào manifest | **P2** |
+| **Generative Agents (2304.03442)** | memory stream + **reflection** + truy hồi theo *recency/importance/relevance* | Repo có `lessons.py`, `graph_memory.py`, `learn_review --prune`. **P2**: thêm **trọng số recency** khi truy hồi bài học | **P2** |
+| **TradingAgents (2412.20138, 117k★)** | analyst → **bull/bear debate** → trader → **risk team** → fund manager; memory/reflection; **cảnh báo của chính họ**: "LLM-driven ⇒ 2 lần chạy khác nhau, **không phải chiến lược sinh lời cố định**", chi phí/độ trễ cao | Đã có debate 2 vòng + luật phá thế hoà + vai `review`/`reflect`; risk là **tất định** (`risk.py`) — tốt hơn risk bằng LLM. **VETO** copy kiến trúc 5 tầng agent | P2 / **VETO kiến trúc** |
+| **ReAct (2210.03629)** | xen kẽ *suy luận ↔ hành động*, quan sát quay lại vòng lặp | Hội đồng đã ghi `reasons`; bot là **pipeline tất định** — thêm vòng LLM = tăng chi phí/độ trễ, chưa có bằng chứng cần | **P3** |
+| **mem0** | add/update/**dedupe**/search | Đã có `learn_review --prune` + dedupe; không thêm vector DB | **P3** |
+| **18 bài MS + Prompt-Engineering-Guide + llm-course + Made-With-ML + system-design-primer + public-apis** | checklist bài học; mẫu prompt; MLOps; API công khai | Dùng làm **checklist**; `public-apis` có thể tìm API lịch kinh tế (bot đã có `econ_event`) | **P3** |
+| **ollama / llama.cpp** | chạy model local | **Đã dùng** (llamafile/ollama cho hội đồng local) | đã có |
+
 Rủi ro **không đổi** (risk/lệnh vẫn 1.2%, 1R = 1.2% equity), trần ngày/tổng risk/kill-switch giữ
+
+### 23.3 KHÔNG áp dụng (ghi lại để khỏi bàn lại)
+
+- **firecrawl** — **AGPL-3.0** (SDK MIT), self-host cần Docker + Redis; cloud thì tốn tiền + đẩy dữ
+  liệu ra ngoài. Repo đã có nguồn tin riêng (`news_score`) ⇒ **VETO**.
+- **browser-use / stagehand** — cần Playwright + **gọi LLM mỗi bước** (chi phí/độ trễ cao), độ tin cậy
+  phụ thuộc trang (CAPTCHA, đổi giao diện) ⇒ **VETO** cho bot tiền thật.
+- **vLLM** — cần GPU + Linux server ⇒ **VETO** (đang chạy Windows, ollama/llamafile là đủ).
+- **langchain / crewAI / MetaGPT / AutoGen / RAGFlow / llama_index** — framework orchestration/RAG:
+  **VETO** (đã bàn §16.3; **AutoGen đã ARCHIVED**); hội đồng lần này cũng ALLOW "không thêm phụ thuộc".
+- **n8n / dify / langflow / ComfyUI / open-webui / Lobe Chat / markitdown** — GUI/workflow platform;
+  bot là CLI + Task Scheduler đã ổn định ⇒ **P3/VETO**.
+- **maigret** (OSINT tìm tài khoản người) — không liên quan + vấn đề quyền riêng tư ⇒ **VETO**.
+- **15 khoá học Coursera** (Excel, SQL, Power BI, Meta/Google Data Analytics, Python cơ bản) —
+  **không áp dụng**: đây là kỹ năng *con người*, không phải thành phần hệ thống. Nói thẳng: **0 giá
+  trị kỹ thuật cho repo này** (đừng tốn thời gian vận hành vào đây).
+- **Sách học thuật** (udlbook, Build an LLM from Scratch, nanoGPT, Hands-On LLM, LLM Engineering
+  Handbook, AI Engineering) + **transformers** — **P3**: hiểu để đọc paper/phản biện hội đồng, không
+  thêm vào bot (bot **không train model**, chỉ gọi API + model local qua ollama).
+- **ComfyUI** — tạo ảnh, không liên quan.
+
+### 23.4 Việc `drift_probe.py` bắt được **ngay trong lần chạy đầu** (giá trị của phép đo)
+
+1. **0 lệnh MỚI trong 24h ở CẢ 2 instance** (lệnh mở cuối: 26/10 21:50) ⇒ **thay đổi hình học 6/12
+   (`H-20261026-007`) không thể được xác nhận** vì không có lệnh mới nào.
+2. Truy nguyên (bằng log, không đoán): trong ~6000 dòng log cuối có **18.048 `BLOCKED_STRAT`**,
+   19.357 `SKIP_RISK`, 22.606 `BLOCKED_LEARN` nhưng chỉ **2 `OPENED`**; lý do: `.env`
+   **`STRATEGY_BLOCK=A_TREND_PULLBACK`** + `STRATEGY_GATE=true` ⇒ mọi ứng viên bị chặn.
+3. Nguồn của block: đề xuất của agent dựa trên *digest từ journal* (`sum_r=-2.465`, `avg_r=-0.066`) —
+   **chính là trường `r` RÁC của B-031** ⇒ chuỗi **B-031 → chặn chiến lược → bot đứng yên**.
+4. Đã đẩy **câu hỏi #2 (high)** vào `ops_queue`: *gỡ block hay đo lại bằng R thật trước?* — cùng câu
+   hỏi #1 (cổng `live_ready`/`STATE.md` dùng `pf_r` rác).
+
+### 23.5 Việc còn lại (đề xuất, chờ quyết)
+
+1. **Sửa nguồn `r`** (B-031) hoặc chuyển mọi nơi tính `R` sang `pair_trades` (R từ giá) — câu hỏi #1.
+2. **P2** — báo cáo chi phí/độ trễ hội đồng theo ngày + gom "ca lỗi" thành dataset hồi quy (Lesson 10).
+3. **P2** — trọng số *recency* khi truy hồi bài học (Generative Agents).
+4. **P2** — thêm "ví dụ dùng + trường hợp biên" vào `capabilities.py` (ACI của Anthropic).
+5. **P2** — meta-prompt đồng bộ system prompt 5 role (Lesson 6) — **chỉ đề xuất, không auto-apply**.
+
 nguyên; đổi lại **chi phí theo R tăng 2.4×** (vẫn nhỏ so với 0.13R đo trên journal thật — journal
 đó phần lớn là lệnh chạy SL ~2×ATR thời kỳ trước).
 

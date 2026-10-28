@@ -352,6 +352,16 @@ CLASSES = [
         "tests": ["test_learner_label.py::TestNhanTheoTienB032::test_lenh_lai_do_FLATTEN_van_la_WIN",
                   "test_learner_label.py::TestNhanTheoTienB032::test_hoc_tu_nhan_tien_thi_khong_lech_mot_chieu"],
     },
+    {
+        "code": "B-033", "kind": "ai", "seen": "28/10/2026",
+        "title": "Learner chan OAN vi KHONG kiem dinh calibration (SGD online lech) ⇒ bot dung yen du moi cong khac da mo",
+        "symptom": "Do that 28/10 (200 lenh ghep cap gan nhat): TESTNET **WIN thuc te 58% nhung learner du doan p = 23%** (edge -0.53, `b` = -0.479) ⇒ chan 64% setup ⇒ ~349 luot `BLOCKED_LEARN`/500 dong log; LIVE 60% vs 48% (chan 13%). Learner MOI (chua hoc) cho edge +0.33 tren CUNG bo feats ⇒ loi nam o TRONG SO da hoc. `update()` la SGD logistic DUNG cong thuc nhung chay ONLINE tren chuoi KHONG DUNG ⇒ trong so cuoi bi chi phoi boi ~100 lenh gan nhat ⇒ lech calibration (model dung de chan tien that ma khong ai kiem dinh)",
+        "guard": "`tools/learner_refit.py`: fit logistic chinh quy (L2) tren train 80% cu nhat + KIEM DINH holdout 20% moi nhat (log-loss vs base-rate); LUOI AN TOAN: khong thang base-rate ⇒ ghi learner TRUNG TINH (w=0, b=logit(base_rate)) ⇒ khong bao gio chan; bao cao mo ta DUNG model se ghi; backup .bak-refit. Ket qua that: TESTNET THANG (0.6885 < 0.6940) ⇒ chan 0%; LIVE khong thang ⇒ TRUNG TINH ⇒ chan 0%",
+        "files": ["tools/learner_refit.py", "learner.py"],
+        "tests": ["test_learner_refit.py::TestFitVaKiemDinh::test_khong_tin_hieu_thi_TRUNG_TINH_va_khong_chan",
+                  "test_learner_refit.py::TestFitVaKiemDinh::test_co_tin_hieu_thi_KHONG_trung_tinh",
+                  "test_learner_refit.py::TestFitVaKiemDinh::test_write_ghi_file_dung_dang_va_co_backup"],
+    },
 ]
 
 

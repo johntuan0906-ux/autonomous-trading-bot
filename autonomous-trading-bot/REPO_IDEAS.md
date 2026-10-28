@@ -961,3 +961,23 @@ yêu cầu 21/10 + mô phỏng 3231 lệnh −14%R + phiếu 1–3 VETO) và `H-
 | **(4) Phát hiện thêm B-032 (ngoài 3 việc)** | Nhãn `won` cho learner **sai một chiều**: **220/1717 lệnh LÃI (13%) bị đánh dấu THUA**, 0 chiều ngược ⇒ learner bi quan giả ⇒ `BLOCKED_LEARN` (edge −0.80). Đã vá `learner.money_label(pnl)` + **dựng lại `learner.json`** bằng replay theo thời gian (TESTNET 913 lần học / 63% WIN theo tiền; LIVE 560 / 67%) |
 
 **Còn lại (để người vận hành quyết — KHÔNG tự đổi vì là đánh đổi rủi ro):** sau khi dựng lại learner, `LEARN_MIN_EDGE=-0.30` vẫn chặn **64% setup TESTNET** (LIVE chỉ 13%) ⇒ muốn nhiều dữ liệu hơn thì phải nới ngưỡng này hoặc tăng `MAX_POSITIONS`. **Đường lui mọi thay đổi 28/10:** `.env.bak-goblock`, `strategy_stats.json.bak-b031`, `learner.json.bak-b032`.
+
+
+### 23.7 (28/10) Dựng lại learner — hội đồng quyết **(A) fit offline + kiểm định + lưới an toàn** (4 ALLOW / 0 VETO)
+
+**Bằng chứng đặt vấn đề (đo thật, 200 lệnh ghép cặp gần nhất):** TESTNET **WIN thực tế 58%** nhưng learner dự đoán **p = 23%** (edge −0.53, `b` = −0.479) ⇒ chặn **64%** setup ⇒ `BLOCKED_LEARN` ⇒ bot đứng yên; LIVE 60% vs 48% (chặn 13%). Learner **mới** (chưa học) cho edge **+0.33** trên **cùng bộ feats** ⇒ lỗi nằm ở **trọng số đã học**, không phải features. `update()` là SGD logistic **đúng công thức** nhưng chạy **online** trên chuỗi không dừng ⇒ trọng số bị chi phối bởi ~100 lệnh gần nhất.
+
+**Cách làm được chọn (A) — `tools/learner_refit.py`:**
+
+1. Fit **logistic chính quy (L2)** trên **train = 80% cũ nhất** (chỉ stdlib, gradient batch).
+2. **Kiểm định trên holdout = 20% mới nhất**: log-loss của model **vs** log-loss của “luôn đoán base-rate”; báo % setup bị chặn ở ngưỡng `LEARN_MIN_EDGE=-0.30`.
+3. **LƯỚI AN TOÀN (quan trọng nhất)**: nếu model **không thắng** base-rate ⇒ ghi learner **TRUNG TÍNH** (`w = 0`, `b = logit(base_rate)`) ⇒ **không bao giờ chặn oan**; có dữ liệu mới thì fit lại mới có căn cứ để chặn. Báo cáo mô tả **đúng model sẽ được ghi**.
+
+**Kết quả thật (đã áp dụng + restart):**
+
+| Instance | n (train/test) | WIN train → holdout | log-loss model vs base | Chặn ở holdout | Ghi gì |
+|---|---|---|---|---|---|
+| TESTNET | 913 (730/183) | 65% → 57% | **0.6885 < 0.6940 ⇒ THẮNG** | **0.0%** | model đã fit |
+| LIVE | 560 (448/112) | 68% → 64% | 0.6696 ≥ 0.6546 ⇒ không thắng | **0.0%** | **TRUNG TÍNH** |
+
+**Sau restart: `BLOCKED_LEARN` = 0 ở cả 2 instance**; chỉ còn chặn bởi giới hạn **hợp lệ** (`SKIP_RISK` — trần risk danh mục 1.6% với 6 vị thế đang mở ở TESTNET; `SKIP_MAX_POS` — LIVE đã đủ 1 vị thế). Đường lui: `learner.json.bak-refit` (+ `.bak-b032`).

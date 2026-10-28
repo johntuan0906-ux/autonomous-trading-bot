@@ -208,6 +208,8 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Chấm điểm TỪNG model hội đồng** (theo kết quả thật) | `python tools/council_eval.py [--target live] [--hours 336] [--min-n 8] [--json]` |
 | **Sao lưu có kiểm chứng** (.env + journal + state) | `python tools/backup.py [--target live] [--keep 14]` → `backups/*.zip` |
 | **Đăng ký backup hằng ngày** (Task Scheduler) | `python tools/backup.py --install-task [--task-time 03:30]` / gỡ: `--uninstall-task` |
+| **Dựng lại learner (fit + kiểm định)** | `python tools\learner_refit.py --target both` (chỉ báo cáo) · thêm `--write` để áp dụng (backup `.bak-refit`) · `--json` cho máy đọc. **Lưới an toàn**: không thắng base-rate trên holdout ⇒ learner TRUNG TÍNH (không chặn) |
+| Vì sao phải kiểm định (B-033) | Learner online lệch calibration: TESTNET dự đoán p=23% trong khi thực tế 58% ⇒ chặn 64% setup. Xem `logs/learner.json` → `refit` (neutral/logloss) |
 | **Đo lại 1 chiến lược bằng R THẬT** | ghép OPEN→CLOSE theo giá (xem `tools/review_due.py` / `tools/drift_probe.py`), rồi xem `logs/strategy_stats.json` (đã lọc R rác từ 28/10) |
 | **Gỡ/thêm chặn chiến lược** | `.env`: `STRATEGY_BLOCK=` (đã gỡ 28/10, backup `.env.bak-goblock`) · cổng TỰ ĐỘNG chặn khi `n ≥ STRAT_MIN_N` **và** `avgR ≤ −STRAT_AVG_R` |
 | **Kiểm tra R/nhãn có bị rác lại không** | `python tools\drift_probe.py --target both` (rr khai báo vs thực tế) · `python monitor_report.py --days 7` (PF(R) đã lọc R rác) · `python -m unittest tests.test_learner_label` |

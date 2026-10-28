@@ -950,3 +950,14 @@ so kết quả. Đó cũng là điều `council_eval.py`/`--ab-report` đang thi
 yêu cầu 21/10 + mô phỏng 3231 lệnh −14%R + phiếu 1–3 VETO) và `H-20261021-002` (`atomic.py` + fail-safe
 `entries_gate` — adopted, B-025/B-026, 20 test).
 
+
+### 23.6 (28/10) Đã THI HÀNH 3 quyết định của người vận hành — và phát hiện thêm **B-032**
+
+| Việc | Kết quả đo được |
+|---|---|
+| **(1) Sửa gốc `r` + các cổng** | `trade_mgmt`: `risk_distance_ok` + R=0/`r_valid=False` khi khoảng cách 1R không hợp lệ (trước: `or 1e-12` ⇒ R tới **793R** và kích hoạt chốt-một-phần OAN); `bot.py` ghi `r_valid`; loại R rác ở `monitor_report._r_ok` / `lessons` / `strategy`; **dựng lại `strategy_stats.json`** (trước: `NONE sum_r=826.94` cho 550 lệnh = rác) |
+| **(2) Đo lại bằng R thật rồi GỠ `STRATEGY_BLOCK`** | `A_TREND_PULLBACK` **n=3, avgR +0.032** ⇒ không thể kết luận (và block tự khoá dữ liệu). Gỡ ở 2 `.env` (backup `.bak-goblock`) + restart; hội đồng **4 ALLOW / 0 VETO**. Sau đó **`BLOCKED_STRAT` = 0**; LIVE chuyển sang `SKIP_MAX_POS` (muốn vào lệnh, chỉ vướng trần 1 vị thế) |
+| **(3) `orders_audit --target live --dedupe`** | LIVE: 1 vị thế / 2 lệnh bảo vệ, **giữ 2 huỷ 0** (đã gọn); `watch_regress --check --orders` → **OK** |
+| **(4) Phát hiện thêm B-032 (ngoài 3 việc)** | Nhãn `won` cho learner **sai một chiều**: **220/1717 lệnh LÃI (13%) bị đánh dấu THUA**, 0 chiều ngược ⇒ learner bi quan giả ⇒ `BLOCKED_LEARN` (edge −0.80). Đã vá `learner.money_label(pnl)` + **dựng lại `learner.json`** bằng replay theo thời gian (TESTNET 913 lần học / 63% WIN theo tiền; LIVE 560 / 67%) |
+
+**Còn lại (để người vận hành quyết — KHÔNG tự đổi vì là đánh đổi rủi ro):** sau khi dựng lại learner, `LEARN_MIN_EDGE=-0.30` vẫn chặn **64% setup TESTNET** (LIVE chỉ 13%) ⇒ muốn nhiều dữ liệu hơn thì phải nới ngưỡng này hoặc tăng `MAX_POSITIONS`. **Đường lui mọi thay đổi 28/10:** `.env.bak-goblock`, `strategy_stats.json.bak-b031`, `learner.json.bak-b032`.

@@ -361,8 +361,5 @@ class TestProvenance(unittest.TestCase):
             md = (Path(d) / "LESSONS.md").read_text(encoding="utf-8")
         self.assertIn(gates[0]["code"], md)
         self.assertIn("trace_trade.py --key", md)
-
-
-
 if __name__ == "__main__":
     unittest.main()

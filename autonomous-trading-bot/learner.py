@@ -169,6 +169,21 @@ def dynamic_risk_pct(drawdown_pct: float, base: float = 0.5) -> float:
     return base
 
 
+def money_label(pnl, fallback_won: bool = False) -> bool:
+    """Nhan cho learner = SU THAT TIEN (`pnl > 0`), KHONG dung nhan theo LY DO thoat.
+
+    B-032 (do that 28/10 tren journal TESTNET): nhan cu theo ly do thoat khien
+    **220/1717 lenh LAI (13%) bi danh dau THUA** (FLATTEN=189, DUST=28, CLOSE=3) va
+    **0 chieu nguoc lai** ⇒ learner lech MOT CHIEU ve phia bi quan ⇒ `edge` am ⇒
+    `BLOCKED_LEARN` chan gan het setup ⇒ bot dung yen.
+    """
+    try:
+        if pnl is None or pnl == "":
+            return bool(fallback_won)
+        return float(pnl) > 0
+    except (TypeError, ValueError):
+        return bool(fallback_won)
+
 class OnlineLearner:
     """Logistic online: p = sigmoid(w.f + b). Update sau moi close."""
 

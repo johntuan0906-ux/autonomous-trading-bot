@@ -53,6 +53,9 @@ def classify_strategy(direction: str, *, regime: str = "", struct: float = 0.0,
     return "NONE"
 
 
+#: Dai R hop ly (28/10, B-031) — ngoai dai nay = ban ghi RAC, khong cong vao sum_r.
+R_BAND = (-1.6, 5.0)
+
 def bump(code: str, won: bool, r: float = 0.0,
          path: str = "logs/strategy_stats.json") -> dict:
     """Ghi nhan 1 ket qua vao thong ke strategy (n/wins/sum_r)."""
@@ -67,7 +70,13 @@ def bump(code: str, won: bool, r: float = 0.0,
     cur = data.get(code) or {"n": 0, "wins": 0, "sum_r": 0.0}
     cur["n"] = int(cur.get("n", 0)) + 1
     cur["wins"] = int(cur.get("wins", 0)) + (1 if won else 0)
-    cur["sum_r"] = round(float(cur.get("sum_r", 0.0)) + float(r), 4)
+    # (28/10) B-031: R RAC khong duoc cong vao `sum_r` — neu khong `avgR` tung chien luoc
+    # (va cong tu dong `gate_check`) cham bang so rac (do that: NONE sum_r=826.94/n=550).
+    rv = float(r or 0.0)
+    if R_BAND[0] <= rv <= R_BAND[1]:
+        cur["sum_r"] = round(float(cur.get("sum_r", 0.0)) + rv, 4)
+    else:
+        cur["n_bad_r"] = int(cur.get("n_bad_r", 0)) + 1
     cur["ts"] = time.time()
     data[code] = cur
     try:

@@ -16,6 +16,7 @@ from strategy import bump, classify_strategy, report  # noqa: E402
 from trade_mgmt import (COST_ROUNDTRIP_PCT, FEE_ROUNDTRIP_PCT,  # noqa: E402
                         SLIPPAGE_PCT, dust_notional, manage, manage_trade, new_trade,
                         r_multiple, trade_result)
+import trade_mgmt as TM  # noqa: E402  (B-031: test chan R rac)
 
 
 def _df(n=300, drift=0.0015, vol=0.004):
@@ -266,6 +267,53 @@ class TestBacktest(unittest.TestCase):
         st = stats([], [1000.0], 1000.0)
         self.assertEqual(st["n"], 0)
         self.assertEqual(verdict(st), "REVIEW (<30 lenh)")
+
+
+class TestChanRRacB031(unittest.TestCase):
+    """(28/10) B-031: khoảng cách 1R không hợp lệ ⇒ R phải là 0.0 + `r_valid=False`.
+
+    Vì sao: `dist = abs(entry - initial_sl) or 1e-12` biến SL-bị-dời-sát-entry thành mẫu số
+    1e-12 ⇒ R nổ tung (đo thật: `r=793.07`, `mfe_r=802.36`); `mfe_r` nổ còn **kích hoạt
+    chốt-một-phần/hòa vốn ngay lập tức** ⇒ đóng lệnh oan. Các nơi thống kê phải LOẠI bản ghi này.
+    """
+
+    def test_risk_distance_ok(self):
+        self.assertTrue(TM.risk_distance_ok(100.0, 96.0))
+        self.assertTrue(TM.risk_distance_ok(100.0, 100.5))
+        self.assertFalse(TM.risk_distance_ok(100.0, 100.0), "SL trung entry = khong co 1R")
+        self.assertFalse(TM.risk_distance_ok(100.0, 100.05), "qua sat (< 0.1%) = khong tin duoc")
+        self.assertFalse(TM.risk_distance_ok(100.0, 0.0))
+        self.assertFalse(TM.risk_distance_ok(0.0, 96.0))
+        self.assertFalse(TM.risk_distance_ok(None, 96.0))
+        self.assertFalse(TM.risk_distance_ok(100.0, "bua"))
+
+    def test_r_multiple_khong_no_khi_sl_sat_entry(self):
+        self.assertAlmostEqual(TM.r_multiple("LONG", 100.0, 96.0, 104.0), 1.0)
+        self.assertEqual(TM.r_multiple("LONG", 100.0, 100.0, 104.0), 0.0)
+        self.assertEqual(TM.r_multiple("LONG", 100.0, 100.02, 130.0), 0.0,
+                         "SL sat entry ⇒ KHONG duoc tra ve R khong lo")
+
+    def test_trade_result_hop_le_thi_giu_nguyen_nghia(self):
+        mt = TM.ManagedTrade(symbol="X/USDT:USDT", direction="LONG", entry=100.0, qty=10.0,
+                             sl=96.0, tp=112.0, initial_sl=96.0, init_qty=10.0)
+        res = TM.trade_result(mt, "SL", 96.0)
+        self.assertTrue(res["r_valid"])
+        self.assertAlmostEqual(res["r"], -1.0, places=2)   # 1R, tru phi 1 vong
+
+    def test_trade_result_sl_sat_entry_thi_R_bang_0_va_danh_dau(self):
+        mt = TM.ManagedTrade(symbol="X/USDT:USDT", direction="LONG", entry=100.0, qty=10.0,
+                             sl=100.0, tp=112.0, initial_sl=100.0, init_qty=10.0)
+        res = TM.trade_result(mt, "SL", 96.0)
+        self.assertFalse(res["r_valid"])
+        self.assertEqual(res["r"], 0.0)
+        self.assertEqual(res["mfe_r"], 0.0, "mfe_r rac phai bi xoa (no kich hoat partial oan)")
+
+    def test_manage_khong_kich_hoat_partial_khi_R_rac(self):
+        mt = TM.ManagedTrade(symbol="X/USDT:USDT", direction="LONG", entry=100.0, qty=10.0,
+                             sl=100.0, tp=112.0, initial_sl=100.0, init_qty=10.0)
+        out = TM.manage(mt, 101.0, partial_at_r=1.0, be_at_r=1.0)
+        self.assertEqual(out["action"], "HOLD", "R rac khong duoc kich hoat chot som")
+        self.assertEqual(mt.mfe_r, 0.0)
 
 
 if __name__ == "__main__":

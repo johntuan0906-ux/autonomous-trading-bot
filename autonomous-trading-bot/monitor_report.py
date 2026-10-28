@@ -95,6 +95,21 @@ def _group(rows: list, key_fn) -> dict:
     return out
 
 
+#: Dai R hop ly (28/10, B-031): SL = 6..14xATR, TP = 12..69xATR ⇒ 1 lenh khong the vuot ~5R
+#: va khong the lo qua ~1.6R (truot gia khi SL). Ngoai dai / `r_valid=False` = ban ghi RAC.
+R_BAND = (-1.6, 5.0)
+
+
+def _r_ok(close: dict) -> bool:
+    """Ban ghi CLOSE co R DUNG de dua vao thong ke khong (`r_valid` + dai hop ly)."""
+    if close.get("r_valid") is False:
+        return False
+    try:
+        r = float(close.get("r"))
+    except (TypeError, ValueError):
+        return False
+    return R_BAND[0] <= r <= R_BAND[1]
+
 def stats(pairs: list) -> dict:
     """WR/PF/E(R) tu cac cap (OPEN, CLOSE) da ghep."""
     closes = [c for _, c in pairs]
@@ -103,6 +118,17 @@ def stats(pairs: list) -> dict:
         return {"n": 0, "wins": 0, "wr": 0.0, "pf_r": 0.0, "pf_pnl": 0.0,
                 "e_r": 0.0, "pnl": 0.0, "avg_hold_min": None,
                 "by_pair": {}, "by_direction": {}, "by_strategy": {}}
+    # (28/10) B-031: loai R RAC truoc khi tinh pf_r/e_r. Truong `r` co the sai hoan toan
+    # (do that: r=793.07, r=+196.36 cho lenh LO; 320/3342 ban ghi |r|>5)
+    # ⇒ pf_r=5.345 gia trong khi PF(R) that chi 1.013.
+    bad = [c for c in closes if not _r_ok(c)]
+    if bad:
+        closes = [c for c in closes if _r_ok(c)]
+        n = len(closes)
+        if n == 0:
+            return {"n": 0, "n_dropped": len(bad), "wins": 0, "wr": 0.0, "pf_r": 0.0,
+                    "pf_pnl": 0.0, "e_r": 0.0, "pnl": 0.0, "avg_hold_min": None,
+                    "by_pair": {}, "by_direction": {}, "by_strategy": {}}
     rs = [float(c.get("r") or 0.0) for c in closes]
     pnls = [float(c.get("pnl") or 0.0) for c in closes]
     wins = sum(1 for c in closes if c.get("won"))
@@ -111,7 +137,8 @@ def stats(pairs: list) -> dict:
     win_p = sum(p for p in pnls if p > 0)
     loss_p = abs(sum(p for p in pnls if p < 0))
     st = {
-        "n": n, "wins": wins, "wr": round(100.0 * wins / n, 2),
+        "n": n, "n_dropped": len(bad), "wins": wins,
+        "wr": round(100.0 * wins / n, 2),
         "pf_r": round(win_r / loss_r, 3) if loss_r > 1e-9 else (999.0 if win_r > 0 else 0.0),
         "pf_pnl": round(win_p / loss_p, 3) if loss_p > 1e-9 else (999.0 if win_p > 0 else 0.0),
         "e_r": round(sum(rs) / n, 4), "pnl": round(sum(pnls), 2),

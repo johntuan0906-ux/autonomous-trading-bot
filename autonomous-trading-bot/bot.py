@@ -186,7 +186,8 @@ class TradingBot:
                   timeframe=self.cfg.timeframe, entry=mt.entry,
                   qty=mt.init_qty, exit_price=price, r=res["r"],
                   won=bool(res["won"]), pnl=res["pnl"], reason=reason,
-                  partial=res.get("partial_done"), mfe_r=res.get("mfe_r"))
+                  partial=res.get("partial_done"), mfe_r=res.get("mfe_r"),
+                  r_valid=res.get("r_valid", True))
         return None
 
     def _managed_for(self, sym: str, pos: Position) -> ManagedTrade:
@@ -236,7 +237,8 @@ class TradingBot:
                   timeframe=self.cfg.timeframe, entry=mt.entry, qty=mt.init_qty,
                   exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
                   reason="DUST", partial=res.get("partial_done"),
-                  mfe_r=res.get("mfe_r"))
+                  mfe_r=res.get("mfe_r"),
+                  r_valid=res.get("r_valid", True))
         self._close(sym, f"DUST qty={mt.qty:g} < minNotional @ {price}")
         # Xac nhan lai voi SAN: dong duoc chua? (None = khong doc duoc -> tin bot)
         try:
@@ -460,7 +462,8 @@ class TradingBot:
                       qty=(mt.init_qty if mt is not None else pos.qty),
                       exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
                       reason="FLATTEN", partial=res.get("partial_done"),
-                      mfe_r=res.get("mfe_r"))
+                      mfe_r=res.get("mfe_r"),
+                      r_valid=res.get("r_valid", True))
             log.info("FLATTEN ghi CLOSE %s r=%s pnl=%s (%s)", sym, res["r"], res["pnl"], reason)
 
     def run_forever(self) -> None:

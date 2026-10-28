@@ -232,9 +232,5 @@ class TestJournalLoad(unittest.TestCase):
         self.assertTrue(vd["ready_for_live"], vd["reasons"])
         self.assertTrue(any("DA BI STRATEGY GATE" in w for w in vd["warnings"]),
                         vd["warnings"])
-
-
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from learner import FEATURES, OnlineLearner                                     # noqa: E402
+from learner import FEATURES, OnlineLearner, money_label                                     # noqa: E402
 
 LEARN_MIN_EDGE = -0.30
 FEATS = {f: 1.0 for f in FEATURES}      # moi feature cung huong, rat manh
@@ -110,7 +110,33 @@ class TestNhanLearnerKhongPhuThuocHuongLenh(unittest.TestCase):
         self.assertGreaterEqual(L.predict(FEATS), 0.0)
         L.b = -999.0
         self.assertGreaterEqual(L.predict(FEATS), 0.0)
+if __name__ == "__main__":
+    unittest.main()
+
+class TestNhanTheoTienB032(unittest.TestCase):
+    """(28/10) B-032: nhan cho learner = su that TIEN, khong theo ly do thoat."""
+
+    def test_lenh_lai_do_FLATTEN_van_la_WIN(self):
+        self.assertTrue(money_label(12.5), "FLATTEN co lai = WIN (nhan cu ghi LOSS)")
+        self.assertTrue(money_label(0.01))
+
+    def test_lenh_lo_la_LOSS(self):
+        self.assertFalse(money_label(-3.0))
+        self.assertFalse(money_label(0.0), "hoa von (phi an het) = khong thang")
+
+    def test_thieu_pnl_thi_dung_lai_nhan_cu(self):
+        self.assertTrue(money_label(None, fallback_won=True))
+        self.assertFalse(money_label("bua", fallback_won=False))
+
+    def test_hoc_tu_nhan_tien_thi_khong_lech_mot_chieu(self):
+        import os, tempfile
+        L = OnlineLearner(path=os.path.join(tempfile.mkdtemp(), "l.json"))
+        feats = {k: 1.0 for k in FEATURES}
+        for _ in range(20):
+            L.update(feats, "LONG", money_label(5.0))
+        self.assertGreater(L.edge(feats, "LONG"), 0.0,
+                           "hoc tu su that tien thi khong con edge am gia")
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main()

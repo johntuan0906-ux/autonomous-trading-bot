@@ -57,12 +57,35 @@ class ManagedTrade:
         return abs(self.entry - self.initial_sl)
 
 
+#: (28/10) B-031 — duoi nguong nay thi "khoang cach 1R" KHONG con la 1R that (SL da bi doi
+#: sat entry, hoac vi the adopt khong co SL goc) ⇒ moi R tinh ra deu RAC. Do that tren journal
+#: TESTNET: 320/3342 ban ghi CLOSE co |r| > 5 (max r=793.07, mfe_r=802.36).
+MIN_RISK_PCT = 0.001
+
+
+def risk_distance_ok(entry: float, sl: float, *, min_pct: float = MIN_RISK_PCT) -> bool:
+    """Khoang cach entry→SL co THAT SU la 1R khong (>= `min_pct`% gia vao)?"""
+    try:
+        e, s = float(entry), float(sl)
+    except (TypeError, ValueError):
+        return False
+    if e <= 0 or s <= 0:
+        return False
+    return abs(e - s) >= e * float(min_pct)
+
+
 def r_multiple(direction: str, entry: float, sl0: float, price: float) -> float:
-    """Lai/lo hien tai tinh theo R (1R = |entry - SL ban dau|)."""
-    dist = abs(entry - sl0)
-    if dist <= 0:
+    """Lai/lo hien tai tinh theo R (1R = |entry - SL ban dau|).
+
+    Tra **0.0** khi khoang cach 1R khong hop le (`risk_distance_ok`). Vi sao phai chan (28/10):
+    mot SL bi doi sat entry ⇒ `dist` ≈ 0 ⇒ R khong lo (do that `r=793`), va vi `manage()` dung
+    `r` de kich hoat **chot-mot-phan / hoa von**, R rac lam lenh bi chot ngay lap tuc ⇒ dong oan.
+    """
+    if not risk_distance_ok(entry, sl0):
         return 0.0
-    d = (price - entry) if direction.upper() == "LONG" else (entry - price)
+    dist = abs(float(entry) - float(sl0))
+    d = ((float(price) - float(entry)) if direction.upper() == "LONG"
+         else (float(entry) - float(price)))
     return d / dist
 
 
@@ -230,13 +253,24 @@ def trade_result(trade: ManagedTrade, exit_reason: str, exit_price: float, *,
     rem *= (1.0 - FEE_ROUNDTRIP_PCT)
     slip = 2.0 * float(slippage_pct or 0.0) * (trade.init_qty or trade.qty) * trade.entry
     pnl = trade.booked_pnl + rem - slip
-    dist = abs(trade.entry - trade.initial_sl) or 1e-12
+    # (28/10) B-031 — cong thuc `pnl / (dist * full_qty)` LA DUNG (no tinh ca phi 1 vong va
+    # phan da chot som — dung thu du an dang do "chi phi quy ra R"). Loi THAT SU nam o cho khac:
+    #   (a) `dist = abs(entry - initial_sl) or 1e-12` ⇒ khi SL bi doi sat entry (hoac vi the
+    #       adopt khong co SL goc) thi mau so = 1e-12 ⇒ R NO TUNG (do that: r=793.07, mfe_r=802);
+    #   (b) `mfe_r` (tu `r_multiple`) cung bi no ⇒ **kich hoat chot-mot-phan/hoa von ngay lap tuc**
+    #       ⇒ dong lenh oan.
+    # Nay: neu khoang cach 1R khong hop le thi R = 0.0 va `r_valid=False` ⇒ cac noi thong ke
+    # (`monitor_report.stats`, `lessons`) LOAI ban ghi do thay vi cong so rac vao PF(R)/avgR.
+    valid = risk_distance_ok(trade.entry, trade.initial_sl)
+    dist = abs(trade.entry - trade.initial_sl)
     full_qty = trade.init_qty or trade.qty
-    r = pnl / (dist * full_qty)
+    risk_usdt = dist * full_qty
+    r = (pnl / risk_usdt) if (valid and risk_usdt > 0) else 0.0
     reason = exit_reason.upper()
     won = reason in ("TP", "TRAIL") or (reason == "BE" and trade.partial_done)
-    return {"pnl": round(pnl, 6), "r": round(r, 4),
+    return {"pnl": round(pnl, 6), "r": round(r, 4), "r_valid": bool(valid),
             "won": bool(won or (trade.partial_done and pnl > 0)),
             "exit_reason": reason, "partial_done": trade.partial_done,
-            "mfe_r": round(trade.mfe_r, 3), "slippage": round(slip, 6)}
+            "mfe_r": round(trade.mfe_r, 3) if valid else 0.0,
+            "slippage": round(slip, 6)}
 

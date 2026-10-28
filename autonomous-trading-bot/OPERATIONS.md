@@ -208,6 +208,10 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Chấm điểm TỪNG model hội đồng** (theo kết quả thật) | `python tools/council_eval.py [--target live] [--hours 336] [--min-n 8] [--json]` |
 | **Sao lưu có kiểm chứng** (.env + journal + state) | `python tools/backup.py [--target live] [--keep 14]` → `backups/*.zip` |
 | **Đăng ký backup hằng ngày** (Task Scheduler) | `python tools/backup.py --install-task [--task-time 03:30]` / gỡ: `--uninstall-task` |
+| **Đo lại 1 chiến lược bằng R THẬT** | ghép OPEN→CLOSE theo giá (xem `tools/review_due.py` / `tools/drift_probe.py`), rồi xem `logs/strategy_stats.json` (đã lọc R rác từ 28/10) |
+| **Gỡ/thêm chặn chiến lược** | `.env`: `STRATEGY_BLOCK=` (đã gỡ 28/10, backup `.env.bak-goblock`) · cổng TỰ ĐỘNG chặn khi `n ≥ STRAT_MIN_N` **và** `avgR ≤ −STRAT_AVG_R` |
+| **Kiểm tra R/nhãn có bị rác lại không** | `python tools\drift_probe.py --target both` (rr khai báo vs thực tế) · `python monitor_report.py --days 7` (PF(R) đã lọc R rác) · `python -m unittest tests.test_learner_label` |
+| **Nhãn learner (B-032)** | `learner.money_label(pnl)` = sự thật tiền; muốn dựng lại learner: replay journal theo thứ tự thời gian (xem `logs/_rebuild_learner.py`), backup `.bak-b032` |
 | **Đo lệch khai báo vs thực tế + lệch đầu vào** | `python tools/drift_probe.py --target both ` (mặc định cửa sổ 24h) · `--hours 168` để xem 7 ngày · `--check` (exit 1 nếu cần người quyết) — task **`ATB-DriftProbe`** 08:30 mỗi ngày |
 | Vì sao phải đo lệch (B-031 → bot đứng yên) | 28/10: `.env STRATEGY_BLOCK=A_TREND_PULLBACK` đặt theo digest journal (`r` RÁC) ⇒ 18.048 `BLOCKED_STRAT` / 2 `OPENED` ⇒ bot không vào lệnh mới; xem `ops_queue` #2 |
 | Vết đo lệch | `Get-Content logs\drift_probe.log -Tail 20` · `logs/drift_probe.json` (chống hỏi lại, cooldown 24h) |

@@ -31,7 +31,7 @@ from indicators import (liquidity_sweep, market_regime, mtf_trend, retest_ok,
                         technical_score, vwap)
 from journal import log_trade
 from live_guard import enforce as live_guard_enforce
-from learner import (OnlineLearner, extract_features, news_features,
+from learner import (OnlineLearner, extract_features, money_label, news_features,
                      signal_score_100, structure_score)
 from strategy import bump as strat_bump, classify_strategy, report as strat_report, gate_check as strat_gate
 from notify import fmt_close, fmt_kill, fmt_open, send as tg_send
@@ -1343,9 +1343,15 @@ def manage_open_positions(bot, cfg, log) -> dict:
                                  "had_feats": bool(pend)})
         if pend:
             try:
-                upd = _learner.update(pend["feats"], pend["direction"], won)
+                # (28/10) B-032 — nhan cho learner phai la SU THAT TIEN (`pnl > 0`), khong dung
+                # nhan theo LY DO thoat. Do that tren journal TESTNET: **220/1717 lenh LAI bi
+                # danh dau THUA (13%)** (chu yeu FLATTEN=189, DUST=28, CLOSE=3) va **0 chieu
+                # nguoc lai** ⇒ learner lech MOT CHIEU ve phia bi quan ⇒ sinh "edge -0.90" va
+                # chan gan het setup (`BLOCKED_LEARN`), bot dung yen.
+                won_learn = money_label(exr.get("pnl"), fallback_won=bool(won))
+                upd = _learner.update(pend["feats"], pend["direction"], won_learn)
                 log.info("LEARN %s %s (%s) R=%.2f n=%s w=%s", sym,
-                         "WIN" if won else "LOSS", reason, r_real, upd["n"], upd["w"])
+                         "WIN" if won_learn else "LOSS", reason, r_real, upd["n"], upd["w"])
             except Exception as e:  # noqa: BLE001
                 log.warning("learner update fail: %s", e)
         else:

@@ -112,9 +112,12 @@ def bucket_stats(trades: list, keys=KEYS_DEFAULT, *,
     return out
 
 
+#: Dai R hop ly (28/10, B-031) — ngoai dai nay = ban ghi RAC, khong cong vao sum_r.
+R_BAND = (-1.6, 5.0)
+
 def _new_bucket() -> dict:
     """Bucket rong (chi chua TONG tich luy, cac truong dan xuat tinh bang `_finalize`)."""
-    return {"n": 0, "wins": 0, "sum_r": 0.0, "sum_pnl": 0.0,
+    return {"n": 0, "n_bad_r": 0, "wins": 0, "sum_r": 0.0, "sum_pnl": 0.0,
             "gross_win": 0.0, "gross_loss": 0.0, "last_ts": 0.0}
 
 
@@ -127,6 +130,12 @@ def _add_to_bucket(b: dict, t: dict) -> dict:
     try:
         r = float((t or {}).get("r") or 0.0)
     except (TypeError, ValueError):
+        r = 0.0
+    # (28/10) B-031: R RAC (r_valid=False hoac ngoai dai) KHONG duoc cong vao sum_r —
+    # neu khong `avg_r`/`pf` cua tung to hop dieu kien (va cong chien luoc/learner) la RAC.
+    # Van giu `n` (so mau that) va dem rieng so ban ghi bi loai de minh bach.
+    if (t or {}).get("r_valid") is False or not (R_BAND[0] <= r <= R_BAND[1]):
+        b["n_bad_r"] = int(b.get("n_bad_r") or 0) + 1
         r = 0.0
     try:
         pnl = float((t or {}).get("pnl") or 0.0)

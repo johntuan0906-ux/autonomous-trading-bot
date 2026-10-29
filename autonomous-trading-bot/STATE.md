@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 29/10/2026 08:35:20 · commit `85b6b6b`
+- **Cập nhật**: 29/10/2026 09:05:20 · commit `73848a0`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `35964` · round `282` · nhịp tim cách đây 173.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3226.06 USDT
+- **Bot**: pid `35964` · round `290` · nhịp tim cách đây 33.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3226.23 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2909 lệnh đóng, WR 41.01%, E(R) 0.2303, PnL -996.08$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 9 | 0.0 | 0.096 | 0.096 | -0.6656 | -71.88 |
-| 14 ngày | 2015 | 32.9 | 2.169 | 0.62 | 0.3285 | -1097.15 |
+| 14 ngày | 2014 | 32.92 | 2.173 | 0.623 | 0.3291 | -1086.92 |
 | 30 ngày | 2878 | 40.72 | 1.848 | 0.791 | 0.2319 | -1021.13 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.096 < 1.2; PF($) cua so 7 ngay = 0.096 < 1.1; PF($) cua so 14 ngay = 0.620 < 1.1; PF($) cua so 30 ngay = 0.791 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.096 < 1.2; PF($) cua so 7 ngay = 0.096 < 1.1; PF($) cua so 14 ngay = 0.623 < 1.1; PF($) cua so 30 ngay = 0.791 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ADA/USDT:USDT | SHORT | 650.0 | 0.2075 | 0.225952 | 0.116558 | False | False | 0.379 |
+| ADA/USDT:USDT | SHORT | 650.0 | 0.2075 | 0.225952 | 0.116558 | False | False | 0.477 |
 | AERO/USDT:USDT | LONG | 263.2 | 0.6900999999999999 | 0.660616 | 0.752668 | False | False | 0.79 |
 | AIOT/USDT:USDT | LONG | 1296.0 | 0.0616 | 0.061661600000000004 | 0.093547 | True | True | 1.728 |
-| APT/USDT:USDT | SHORT | 145.5 | 0.7186 | 0.801032 | 0.312328 | False | False | 0.518 |
+| APT/USDT:USDT | SHORT | 145.5 | 0.7186 | 0.801032 | 0.312328 | False | False | 0.58 |
 
 ---
 

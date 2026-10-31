@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 01/11/2026 00:36:04 · commit `6c61a0a`
+- **Cập nhật**: 01/11/2026 01:06:04 · commit `1619243`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `35964` · round `1240` · nhịp tim cách đây 69.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3207.44 USDT
+- **Bot**: pid `35964` · round `1248` · nhịp tim cách đây 19.2s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2919 lệnh đóng, WR 40.94%, E(R) 0.231, PnL -1025.13$)
@@ -15,7 +15,7 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 12 | 16.67 | 1.285 | 0.247 | 0.1783 | -54.27 |
 | 14 ngày | 1982 | 32.59 | 2.169 | 0.557 | 0.3292 | -1243.24 |
-| 30 ngày | 2835 | 40.21 | 1.866 | 0.788 | 0.2373 | -1011.04 |
+| 30 ngày | 2834 | 40.23 | 1.867 | 0.788 | 0.2376 | -1011.04 |
 
 ## Cổng sang LIVE
 
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 

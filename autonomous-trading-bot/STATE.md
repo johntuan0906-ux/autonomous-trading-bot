@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 01/11/2026 01:36:05 · commit `fda45ba`
+- **Cập nhật**: 01/11/2026 02:06:05 · commit `90c081b`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `35964` · round `1255` · nhịp tim cách đây 67.7s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3201.6 USDT
+- **Bot**: pid `35964` · round `1262` · nhịp tim cách đây 130.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3201.32 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2920 lệnh đóng, WR 40.92%, E(R) 0.2305, PnL -1038.15$)
@@ -46,7 +46,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | 1000BONK/USDT:USDT | SHORT | 50000.0 | 0.002848 | 0.003088 | 0.002368 | False | False | 0.708 |
 | 1000SHIB/USDT:USDT | SHORT | 51282.0 | 0.004674 | 0.004908 | 0.004206 | False | False | 0.808 |
 | ADA/USDT:USDT | SHORT | 455.0 | 0.20690000000000003 | 0.20669310000000002 | 0.116558 | True | True | 1.197 |
-| ALGO/USDT:USDT | SHORT | 5540.1 | 0.09543 | 0.097596 | 0.091098 | False | False | 0.0 |
+| ALGO/USDT:USDT | SHORT | 5540.1 | 0.09543 | 0.097596 | 0.091098 | False | False | 0.018 |
 
 ---
 

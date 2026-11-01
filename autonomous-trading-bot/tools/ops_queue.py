@@ -90,13 +90,30 @@ def _write_list(p: Path, items: list) -> bool:
 
 def add(question: str, *, why: str = "", options=(), priority: str = "normal",
         cfg=None, open_path=None, now=None, by: str = "agent") -> dict:
-    """Them 1 cau hoi DANG CHO. Tra ban ghi da them (co `id`)."""
+    """Them 1 cau hoi DANG CHO. Tra ban ghi da them (co `id`).
+
+    (01/11) CHONG TRUNG: neu cau hoi Y NGUYEN (cung chuoi `question`) dang OPEN thi
+    KHONG them dong moi — chi tang `n_repeat` + cap nhat `last_ts`. Do that: hang doi
+    LIVE co **90 cau OPEN**, trong do **88 dong y nguyen** "1 cap lenh bao ve TRUNG ->
+    gom lai" (1 cau/gio trong 4,5 ngay) ⇒ nguoi van hanh khong doc duoc hang doi, hoi
+    dong bi hoi lai cung 1 cau, va `--check` bao "ton dong > 24h" lien tuc. Giu `ts` GOC
+    (khong lam moi) de quy tac ton dong van hoat dong, va giu 1 dong duy nhat de doc.
+    """
     o, _ = _paths(cfg, open_path, None)
     items = _read_list(o)
+    ts = float(now() if callable(now) else time.time())
+    q = str(question)[:400]
+    for x in items:
+        if (isinstance(x, dict) and str(x.get("status") or "OPEN") == "OPEN"
+                and str(x.get("question")) == q):
+            x["n_repeat"] = int(x.get("n_repeat") or 1) + 1
+            x["last_ts"] = ts
+            ok = _write_list(o, items)
+            return {"ok": ok, "path": str(o), "duplicate": True, **x}
     ids = [int(x.get("id") or 0) for x in items if isinstance(x, dict)]
     rec = {"id": (max(ids) + 1) if ids else 1,
-           "ts": float(now() if callable(now) else time.time()),
-           "question": str(question)[:400], "why": str(why)[:600],
+           "ts": ts,
+           "question": q, "why": str(why)[:600],
            "options": [str(x)[:120] for x in (options or [])],
            "priority": str(priority if priority in PRIORITIES else "normal"),
            "by": str(by)[:40], "status": "OPEN"}
@@ -266,8 +283,11 @@ def main(argv: list | None = None) -> int:
     print("=== CAU HOI DANG CHO | %d ===" % len(items))
     for x in items:
         age_h = (time.time() - float(x.get("ts") or 0)) / 3600.0
-        print("  #%s [%s] %.1fh: %s" % (x.get("id"), x.get("priority"), age_h,
-                                        str(x.get("question"))[:90]))
+        rep = int(x.get("n_repeat") or 1)
+        print("  #%s [%s] %.1fh%s: %s"
+              % (x.get("id"), x.get("priority"), age_h,
+                 (" (lap x%d)" % rep) if rep > 1 else "",
+                 str(x.get("question"))[:90]))
     if not items:
         print("  (trong — khong cho nguoi van hanh tra loi gi)")
     return 0

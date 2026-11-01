@@ -1078,5 +1078,22 @@ lấy *tính sẵn sàng*.
 `telegram`/`deadman`; 02/11 08:30 `drift_probe`; 02/11 09:00 `review_due`. Lần điểm danh agent kế
 tiếp: **01/12** (đưa vào `REPO_IDEAS` §mới, cùng khuôn §24).
 
+### 24.6 (01/11) Phát hiện thêm khi điểm danh: **agent SPAM hàng đợi + báo động SAI** — đã vá (B-036, B-037)
+
+Điểm danh agent AI không chỉ cho ra số của hội đồng — nó lộ ra **agent "watcher" đang làm nhiễu
+người vận hành**, đúng thứ cần phát hiện:
+
+| | Số đo thật | Nguyên nhân gốc | Đã vá |
+|---|---|---|---|
+| **B-036** hàng đợi bị spam | LIVE `logs/ops_questions.json` = **90 câu OPEN**, **88 dòng Y NGUYÊN** "1 cặp lệnh bảo vệ TRÙNG → gom lại" (1 câu/giờ trong 4,5 ngày) | `ops_queue.add()` **không chống trùng** — thêm dòng mới mỗi lần điều kiện còn đúng | `add()` chống trùng: câu Y NGUYÊN đang OPEN ⇒ **không thêm dòng mới**, chỉ tăng `n_repeat` + `last_ts` (giữ `ts` gốc ⇒ quy tắc "tồn đọng > 24h" vẫn đúng); đã trả lời ⇒ hỏi lại được; CLI hiện `(lặp xN)` |
+| **B-037** báo động SAI | 2 câu LIVE lệch nhau 0,4 giây: "supervisor pid **91852** KHÔNG chạy" + "tiến trình con pid **44840** KHÔNG chạy" — trong khi `Get-CimInstance` xác nhận **cả 2 pid VẪN SỐNG** | `list_pids()` lỗi ⇒ trả `set()` RỖNG; `health()` kiểm "pid có trong tập" ⇒ **tập rỗng = "không pid nào đang chạy"** ⇒ báo động cho MỌI pid. (Đổi sang `None` mà quên `build_report` thì `len(None)` = TypeError) | `list_pids()` lỗi ⇒ `None` = **KHÔNG BIẾT**; `health(pids=None)` **bỏ qua** phần kiểm pid; `build_report` thêm `pids_known`, không gọi `len(None)` |
+
+**Dọn hậu quả:** cả 2 hàng đợi về **rỗng** (`ops_questions.json` = `[]`), 93 câu cũ được chuyển sang
+lịch sử `ops_queue.json` kèm lý do (trùng B-036 / báo động giả B-037 / đã xử lý). Từ nay nếu điều
+kiện còn đúng thì chỉ **1 dòng** với `(lặp xN)`, không nhân bản.
+
+**Bug catalog: 35 lớp lỗi / 86 test chốt** (`--check` OK). 5 test mới chốt 2 lớp lỗi này.
+
+
 
 

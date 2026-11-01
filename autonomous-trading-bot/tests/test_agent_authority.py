@@ -251,11 +251,20 @@ class TestChuanHoaTenProvider(unittest.TestCase):
     neu khong viec 'bo qua review khi provider bi chan' khong co tac dung."""
 
     def test_hau_to_cli_duoc_bo(self):
+        """(01/11) Lop loi B-038: test nay TRUOC DAY assert TRANG THAI `.env` ("copilot dang
+        bi chan theo ngay") ⇒ **tu dong FAIL khi moc chan HET HAN** — dung luc sang thang 11
+        (moc `..._UNTIL=2026-10-31` het) du CODE khong doi. Test do NGAY chu khong do CODE.
+        Nay dung cfg GIA voi moc chan o TUONG LAI ⇒ do dung Y DINH: `copilot_cli` phai cho
+        CUNG ket qua voi `copilot` (chuan hoa hau to `_cli`).
+        """
+        import time
+        from types import SimpleNamespace
         import agents as AG
-        from config import Settings
-        cfg = Settings()
-        # copilot dang bi chan theo ngay (het quota thang) trong .env
-        self.assertTrue(AG._provider_blocked("copilot", cfg))
+        AG._PROVIDER_BLOCKED.pop("copilot", None)      # khong phu thuoc trang thai session
+        until = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 7 * 86400))
+        cfg = SimpleNamespace(agent_council_copilot_until=until)
+        self.assertTrue(AG._provider_blocked("copilot", cfg),
+                        "moc chan o TUONG LAI ⇒ phai bao bi chan")
         self.assertEqual(AG._provider_blocked("copilot_cli", cfg),
                          AG._provider_blocked("copilot", cfg),
                          "copilot_cli phai cho CUNG ket qua voi copilot")

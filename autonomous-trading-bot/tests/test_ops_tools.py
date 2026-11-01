@@ -812,6 +812,43 @@ class TestOpsQueue(unittest.TestCase):
         self.assertEqual(OQ.add("cau 3?", priority="khong-hop-le",
                                 open_path=self.o)["priority"], "normal")
 
+    def test_cau_hoi_TRUNG_thi_khong_them_dong_moi(self):
+        """(01/11) Lop loi B-036: hang doi LIVE co **90 cau OPEN**, trong do **88 dong Y
+        NGUYEN** "1 cap lenh bao ve TRUNG -> gom lai" (1 cau/gio trong 4,5 ngay) vi `add()`
+        khong chong trung ⇒ nguoi van hanh khong doc duoc hang doi, hoi dong bi hoi lai
+        cung 1 cau. Nay: cau hoi y nguyen dang OPEN chi tang `n_repeat`.
+        """
+        import ops_queue as OQ
+        q = ("LIVE: 1 cap lenh bao ve TRUNG -> gom lai "
+             "(python tools/orders_audit.py --dedupe)")
+        a = OQ.add(q, open_path=self.o, now=lambda: 100.0)
+        b = OQ.add(q, open_path=self.o, now=lambda: 200.0)
+        c = OQ.add(q, open_path=self.o, now=lambda: 300.0)
+        items = OQ.open_items(open_path=self.o)
+        self.assertEqual(len(items), 1, "cau hoi Y NGUYEN khong duoc nhan doi dong")
+        self.assertTrue(b.get("duplicate"))
+        self.assertEqual(c["id"], a["id"], "giu nguyen id de khong pha lich su")
+        self.assertEqual(c["n_repeat"], 3)
+        self.assertEqual(c["ts"], 100.0, "giu ts GOC ⇒ quy tac 'ton dong > 24h' van dung")
+        self.assertEqual(c["last_ts"], 300.0)
+        OQ.add("cau KHAC?", open_path=self.o, now=lambda: 400.0)
+        self.assertEqual(len(OQ.open_items(open_path=self.o)), 2,
+                         "cau hoi khac van phai duoc them")
+
+    def test_cau_hoi_da_tra_loi_thi_duoc_hoi_LAI(self):
+        """Chong trung KHONG duoc bien thanh 'khoa vinh vien': da tra loi ⇒ hoi lai duoc."""
+        import ops_queue as OQ
+        q = "cau X?"
+        a = OQ.add(q, open_path=self.o, now=lambda: 100.0)
+        OQ.answer(a["id"], "da xu ly", open_path=self.o, done_path=self.d,
+                  now=lambda: 150.0)
+        b = OQ.add(q, open_path=self.o, now=lambda: 200.0)
+        self.assertFalse(b.get("duplicate"),
+                         "da tra loi roi ⇒ phai la cau hoi MOI, khong phai 'lap lai'")
+        self.assertEqual(int(b.get("n_repeat") or 1), 1)
+        self.assertEqual(b["ts"], 200.0)
+        self.assertEqual(len(OQ.open_items(open_path=self.o)), 1)
+
     def test_cwd_khac_thi_dung_thu_muc_repo(self):
         """(26/10) Loi THAT: Task Scheduler chay `watch_regress.py` voi cwd =
         `C:\\Windows\\System32` (task khong dat WorkingDirectory). Windows CO SAN

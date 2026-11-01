@@ -115,8 +115,15 @@ def read_tail_lines(path: Path, max_bytes: int = TAIL_BYTES) -> tuple:
     return lines, start > 0
 
 
-def list_pids(run=None) -> set:
-    """Tap pid dang chay THAT tren may (`tasklist`). Loi -> set() rong (khong doan).
+def list_pids(run=None) -> "set | None":
+    """Tap pid dang chay THAT tren may (`tasklist`). **Loi -> `None` = KHONG BIET**.
+
+    (01/11) LOP LOI THAT: truoc day loi tra `set()` RONG ⇒ `health()` thay "sup/pid
+    khong nam trong tap rong" nen bao **"pid KHONG chay"** cho CA supervisor lan tien
+    trinh con — du ca 2 dang chay. Do that: hang doi LIVE co 2 cau bao dong SAI
+    ("supervisor pid 91852 KHONG chay" + "tien trinh con pid 44840 KHONG chay") sinh
+    lech nhau 0,4 giay, trong khi `Get-CimInstance` cho thay ca 2 pid VAN SONG. `None`
+    = "khong doc duoc" ⇒ `health()` BO QUA phan kiem pid (khong doan bua).
 
     (21/10) `**winproc.hide_kwargs()`: neu thieu, `tasklist.exe` (chuong trinh CONSOLE)
     duoc spawn tu `pythonw.exe` (Task Scheduler `ATB-WatchRegress` moi 10 phut) ⇒ Windows
@@ -129,7 +136,7 @@ def list_pids(run=None) -> set:
               timeout=30, **winproc.hide_kwargs())
         text = getattr(p, "stdout", "") or ""
     except Exception:  # noqa: BLE001
-        return set()
+        return None
     out: set = set()
     for ln in text.splitlines():
         parts = [x.strip('"') for x in ln.split('","')]
@@ -372,7 +379,10 @@ def build_report(*, dirs=None, baseline=None, minutes: float = 7.0, pids=None,
                           client=(clients or {}).get(n))
             for n, d in dirs.items()]
     v = verdict(inst)
-    return {"ts": time.time(), "pids": len(pids), "instances": inst, **v}
+    # (01/11) `list_pids()` loi -> None (KHONG BIET) ⇒ KHONG duoc `len(None)` (crash) va
+    # KHONG duoc coi la "0 pid dang chay" (se bao dong gia "pid KHONG chay").
+    return {"ts": time.time(), "pids": len(pids) if pids is not None else 0,
+            "pids_known": pids is not None, "instances": inst, **v}
 
 
 def touch_state(rep: dict, state=None, path=None) -> dict:

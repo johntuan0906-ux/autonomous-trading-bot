@@ -97,6 +97,31 @@ class TestHealth(unittest.TestCase):
         bad = WR.health("LIVE", self._rep(hb_age_s=5.0), pids={200})
         self.assertTrue(any("tien trinh con pid 100 KHONG chay" in b for b in bad), bad)
 
+    def test_khong_biet_pid_thi_KHONG_bao_dong_gia(self):
+        """(01/11) Lop loi B-037: `list_pids()` loi tra `set()` RONG ⇒ `health()` thay
+        "sup/pid khong nam trong tap rong" ⇒ bao **"pid KHONG chay"** cho CA supervisor lan
+        tien trinh con DU CA HAI dang chay. Do that: hang doi LIVE co 2 cau bao dong SAI
+        ("supervisor pid 91852 KHONG chay" + "tien trinh con pid 44840 KHONG chay") sinh
+        lech nhau 0,4 giay, trong khi `Get-CimInstance` cho thay ca 2 pid VAN SONG.
+        `pids=None` = KHONG BIET ⇒ bo qua phan kiem pid (khong doan bua).
+        """
+        bad = WR.health("LIVE", self._rep(), pids=None)
+        self.assertEqual([b for b in bad if "KHONG chay" in b], [], bad)
+
+    def test_build_report_khi_khong_biet_pid_thi_khong_crash(self):
+        """`build_report` cu goi `len(pids)` ⇒ `len(None)` = TypeError khi tasklist loi."""
+        tmp = tempfile.TemporaryDirectory()
+        (Path(tmp.name) / "logs").mkdir(parents=True, exist_ok=True)
+        old = WR.list_pids
+        WR.list_pids = lambda run=None: None            # gia lap tasklist loi
+        try:
+            rep = WR.build_report(dirs={"X": Path(tmp.name)})
+        finally:
+            WR.list_pids = old
+            tmp.cleanup()
+        self.assertFalse(rep["pids_known"], "tasklist loi ⇒ phai bao KHONG BIET")
+        self.assertEqual(rep["pids"], 0)
+
     def test_nhip_tim_cu(self):
         bad = WR.health("LIVE", self._rep(hb_age_s=5000.0), pids={100, 200})
         self.assertTrue(any("nhip tim cu" in b for b in bad), bad)
@@ -280,6 +305,14 @@ class TestListPidsAnCuaSo(unittest.TestCase):
             self.assertEqual(kw.get("creationflags"), subprocess.CREATE_NO_WINDOW,
                              "thiếu cờ này ⇒ cửa sổ console nhảy lên")
             self.assertIn("startupinfo", kw)
+
+    def test_tasklist_loi_thi_tra_None_chu_khong_phai_set_rong(self):
+        """(01/11) Lop loi B-037: `set()` rong bi hieu la "0 pid dang chay" ⇒ bao dong gia.
+        Loi ⇒ `None` = KHONG BIET."""
+        def boom(cmd, **kw):
+            raise OSError("tasklist khong chay duoc")
+
+        self.assertIsNone(WR.list_pids(run=boom))
 
 
 class TestHoiDongNen(unittest.TestCase):

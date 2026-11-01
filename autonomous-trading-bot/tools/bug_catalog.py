@@ -362,6 +362,33 @@ CLASSES = [
                   "test_learner_refit.py::TestFitVaKiemDinh::test_co_tin_hieu_thi_KHONG_trung_tinh",
                   "test_learner_refit.py::TestFitVaKiemDinh::test_write_ghi_file_dung_dang_va_co_backup"],
     },
+    {
+        "code": "B-036", "kind": "van-hanh", "seen": "01/11/2026",
+        "title": "Hang doi cau hoi bi SPAM: 1 cau hoi Y NGUYEN duoc them lai moi gio (LIVE 90 dong OPEN, 88 dong trung)",
+        "symptom": "`logs/ops_questions.json` cua LIVE co **90 cau OPEN** (01/11), trong do **88 dong Y NGUYEN**: 'LIVE: 1 cap lenh bao ve TRUNG -> gom lai (python tools/orders_audit.py --dedupe)' — 1 cau/gio trong 4,5 ngay (id 1..90). Hau qua: nguoi van hanh KHONG doc duoc hang doi; hoi dong bi hoi lai cung 1 cau (`council_outbox`: 'Co 1 cau hoi van hanh ton dong qua 24 gio'); `ops_queue --check` bao 'ton dong' lien tuc nen canh bao that bi lan voi nhieu",
+        "guard": "`tools/ops_queue.add()` CHONG TRUNG: cau hoi Y NGUYEN dang OPEN ⇒ KHONG them dong moi, chi tang `n_repeat` + cap nhat `last_ts` (giu `ts` GOC nen quy tac 'ton dong > 24h' van dung); da tra loi ⇒ duoc hoi LAI; CLI `list` hien '(lap xN)'",
+        "files": ["tools/ops_queue.py"],
+        "tests": ["test_ops_tools.py::TestOpsQueue::test_cau_hoi_TRUNG_thi_khong_them_dong_moi",
+                  "test_ops_tools.py::TestOpsQueue::test_cau_hoi_da_tra_loi_thi_duoc_hoi_LAI"],
+    },
+    {
+        "code": "B-037", "kind": "van-hanh", "seen": "01/11/2026",
+        "title": "BAO DONG GIA 'pid KHONG chay' khi `tasklist` loi (set() rong bi hieu la 0 pid)",
+        "symptom": "Hang doi LIVE co 2 cau bao dong SAI sinh lech nhau 0,4 giay: 'supervisor pid 91852 KHONG chay' + 'tien trinh con pid 44840 KHONG chay' — trong khi `Get-CimInstance` cho thay CA HAI pid VAN SONG (pythonw.exe `run_forever.py` + `turbo_demo.py`). Nguyen nhan: `list_pids()` bat loi roi tra `set()` RONG, ma `health()` kiem 'pid co nam trong tap' ⇒ tap rong = 'khong pid nao dang chay' ⇒ bao dong cho MOI pid. Kem theo: `build_report` goi `len(pids)` ⇒ `len(None)` = TypeError neu doi sang None",
+        "guard": "`list_pids()` loi ⇒ tra `None` = KHONG BIET (khong doan bua); `health(pids=None)` BO QUA phan kiem pid; `build_report` tra them `pids_known` va khong goi `len(None)`",
+        "files": ["tools/watch_regress.py"],
+        "tests": ["test_watch_regress.py::TestListPidsAnCuaSo::test_tasklist_loi_thi_tra_None_chu_khong_phai_set_rong",
+                  "test_watch_regress.py::TestHealth::test_khong_biet_pid_thi_KHONG_bao_dong_gia",
+                  "test_watch_regress.py::TestHealth::test_build_report_khi_khong_biet_pid_thi_khong_crash"],
+    },
+    {
+        "code": "B-038", "kind": "ai", "seen": "01/11/2026",
+        "title": "Test do NGAY thay vi do CODE: assert trang thai `.env` (copilot bi chan theo ngay) ⇒ tu dong do khi moc chan het han",
+        "symptom": "Sang thang 11 (01/11) suite bao `FAIL: test_hau_to_cli_duoc_bo` — nhung CODE khong doi. Nguyen nhan: test assert `AG._provider_blocked('copilot', Settings())` la TRUTHY, tuc la dua vao `AGENT_COUNCIL_COPILOT_UNTIL` trong `.env`; moc chan cu (31/10) HET HAN dung luc sang thang ⇒ ham tra '' ⇒ test do. Hau qua: suite do theo LICH, khong theo ma — dung lop loi 'test do nhieu nen nguoi ta bo qua test'",
+        "guard": "Test dung cfg GIA (`SimpleNamespace(agent_council_copilot_until=<ngay tuong lai>)`) + xoa trang thai session `_PROVIDER_BLOCKED` ⇒ do dung Y DINH (chuan hoa hau to `_cli`) va KHONG phu thuoc `.env`/ngay",
+        "files": ["tests/test_agent_authority.py"],
+        "tests": ["test_agent_authority.py::TestChuanHoaTenProvider::test_hau_to_cli_duoc_bo"],
+    },
 ]
 
 

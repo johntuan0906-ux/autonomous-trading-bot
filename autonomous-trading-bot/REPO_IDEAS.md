@@ -981,3 +981,102 @@ yêu cầu 21/10 + mô phỏng 3231 lệnh −14%R + phiếu 1–3 VETO) và `H-
 | LIVE | 560 (448/112) | 68% → 64% | 0.6696 ≥ 0.6546 ⇒ không thắng | **0.0%** | **TRUNG TÍNH** |
 
 **Sau restart: `BLOCKED_LEARN` = 0 ở cả 2 instance**; chỉ còn chặn bởi giới hạn **hợp lệ** (`SKIP_RISK` — trần risk danh mục 1.6% với 6 vị thế đang mở ở TESTNET; `SKIP_MAX_POS` — LIVE đã đủ 1 vị thế). Đường lui: `learner.json.bak-refit` (+ `.bak-b032`).
+
+
+## 24. (01/11) Điểm danh agent AI tháng 10 — hội đồng **chết vì HẾT QUOTA**, không phải vì code
+
+Người vận hành yêu cầu kiểm tra lại toàn bộ agent AI khi sang tháng mới. Đã chạy bộ công cụ
+có sẵn (`tools/model_audit.py`, `tools/council_eval.py`, `agents.py --council-health/--stats`,
+`tools/harness_audit.py --both`) + phân tích thô journal 45 ngày. **Kết luận: hội đồng không
+hỏng về mặt logic — nó bị CẮT NGUỒN.**
+
+### 24.1 Hội đồng "nói" được gì khi còn sống (eval theo kết quả thật, 720h)
+
+| Model | phiếu | ghép được | ALLOW R | VETO R | value_r | veto_prec | brier |
+|---|---|---|---|---|---|---|---|
+| `claude-sonnet-5.5` | 97 | 27 | **+0.252** | +0.152 | **+0.099** | +0.269 | +0.188 |
+| `cline-pass/qwen3.8-max` | 99 | 30 | – | −0.209 | – (không có ALLOW ghép được) | +0.733 | +0.363 |
+| `cline-pass/qwen3.7-max` | 99 | 7 | – | −0.058 | – | +0.571 | +0.453 |
+| `cline-pass/qwen3.7-plus` | 98 | 6 | – | −0.277 | – | +0.667 | +0.467 |
+| `cline-pass/mimo-v2.6-pro` | 97 | 4 | – | −0.175 | – | +0.500 | +0.319 |
+| `cline-pass/minimax-m3` | 20 | 4 | – | −0.282 | – | +0.500 | +0.372 |
+| **`local/llama3.2-3b-local`** | 64 | **36** | **−1.057** | +0.246 | **−1.303** | +0.343 | +0.270 |
+
+TESTNET 575 phiếu ghép được / LIVE 214. **Chỉ `claude-sonnet-5.5` có `value_r > 0`**;
+`local/llama3.2-3b-local` có mẫu **đủ lớn** (n=36 ≥ 8) và `value_r = −1.303` ⇒ **phá giá trị**.
+
+**Calibration (nơi đáng lo nhất):** TESTNET brier **0.302** (n=114) — tự tin khai 83% nhưng thực
+tế chỉ **57%** đúng; LIVE brier 0.182 (n=32) tốt hơn. Tức hội đồng **quá tự tin** ⇒ không được
+dùng `confidence` để quyết định tiền.
+
+### 24.2 Vì sao hội đồng IM LẶNG — nguyên nhân gốc (45 ngày, 2416 sự kiện TESTNET / 1536 LIVE)
+
+| Lý do `NO_OPINION` (trường `note`) | TESTNET | LIVE |
+|---|---|---|
+| `COUNCIL\|treo/loi/het gio` (gọi model quá hạn) | **1024** | **701** |
+| `CLOSED\|agent đang TẮT: lỗi liên tiếp 5 lần (provider: copilot CLI)` | 286 | 178 |
+| `SETUP\|hết trần cuộc gọi/ngày (60)` / `(10)` | 76 / 62 | 76 / 62 |
+| `CLOSED\|agent đang TẮT: lỗi liên tiếp 5–6 lần` | 48 + 47 | 47 |
+| `CLOSED\|hết trần cuộc gọi/ngày (60)` / `COUNCIL\|hết trần (60)` | 46 / 38 | 46 / 38 |
+| **`CLOSED\|lỗi provider: copilot CLI rc=1: You have exceeded your monthly quota`** | **365 lần** (05/10 07:14 → 14/10 08:15) | 32 |
+
+Ba tầng cùng chặn: **(1) hết quota THÁNG của Copilot CLI** (05–14/10 hội đồng chết hẳn 10 ngày),
+**(2) circuit breaker tự TẮT agent sau 5 lỗi liên tiếp** và **không tự bật lại** (phải chờ chu kỳ
+mới), **(3) trần cuộc gọi/ngày** 60 (vòng lặp) và 10 (setup). Chi phí **không phải** vấn đề: tổng
+tháng 10 chỉ **$0.083** (TESTNET) và **$0.056** (LIVE).
+
+**Hành vi khi còn nói được:** TESTNET 45 ngày = **VETO 533 / ALLOW 66 / NO_OPINION 1681** (74%
+không có ý kiến); theo vai: `critic` **423 VETO / 9 ALLOW / 1101 NO_OPINION** ⇒ **critic là "máy
+VETO"**, `arbiter` 33 VETO / 1 ALLOW. LIVE trong vòng lặp **im lặng từ 22/10** (`harness_audit`
+chấm 96/100 kèm WARN "hội đồng IM LẶNG 48h"); chỉ còn `council_daemon` bỏ phiếu theo lịch.
+
+**Tin tốt:** quota **đã reset ngày 01/11** — `logs/agent_state.json` hôm nay: **13 cuộc gọi, 0 lỗi**;
+hội đồng bỏ phiếu trở lại được (xem 24.4). `tools/model_audit.py` cả 2 instance: **"hội đồng sạch"**
+(không cờ đỏ), 3 model thiếu bằng chứng eval: `mimo-v2.6-pro`, `minimax-m3`, `llama3.2-3b-local`.
+
+### 24.3 Hai lỗi dữ liệu phát hiện trong lần điểm danh này (đề xuất, chưa vá)
+
+- **B-034 (learner mất dấu vết refit):** `learner.json` của TESTNET hiện `n=736`, `w ≠ 0` nhưng
+  `refit: null` — bot học online sau khi refit nên **khối `refit` (bằng chứng đã kiểm định holdout)
+  bị ghi đè**, không còn cách biết model đang chạy có phải model đã kiểm định. Guard đề xuất:
+  `learner.save()` giữ nguyên khối `refit` + cảnh báo khi `n` vượt xa mốc refit (drift lại).
+- **B-035 (tên model không chuẩn hoá ⇒ chia đôi mẫu eval):** cùng một model bị ghi dưới nhiều tên —
+  `local/llama3.2:3b` (83) vs `local/llama3.2-3b-local` (73); `mimo-v2.6-pro` (77) vs
+  `cline-pass/mimo-v2.6-pro` (105); `qwen/cline-pass/qwen3.7-plus` (14); `claude-sonnet-5` (17) vs
+  `claude-sonnet-5.5` (559); **135 sự kiện có `model` RỖNG**. Hệ quả: `council_eval` kết luận
+  "chưa đủ mẫu" cho model thật ra đã có đủ dữ liệu, và ngược lại. Guard đề xuất: chuẩn hoá tên khi
+  ghi sự kiện AGENT + bảng ánh xạ tên cũ trong `council_evals.py`.
+
+### 24.4 Hội đồng tự bỏ phiếu về phát hiện nghiêm trọng nhất (01/11, `tools/council_vote.py`)
+
+Câu hỏi: *giữ `local/llama3.2-3b` (value_r = −1.303, n=36 đủ mẫu) hay bỏ khỏi hội đồng?*
+Bối cảnh đưa vào: value_r/veto_precision của local, 365 lần hết quota, `critic` 423 VETO/9 ALLOW,
+quota đã reset 01/11.
+
+**Kết quả: 5 ALLOW / 6 VETO / 0 không ý kiến → VETO: "BỎ local khỏi hội đồng, chỉ dùng model trả phí"**
+(11 model trả phiếu trong 276s; 2 model treo: `cline-pass/minimax-m3` và **chính `local/llama3.2-3b-local`**).
+
+| Bên | Model | Lý do chính |
+|---|---|---|
+| VETO (6) | `claude-haiku-4.5` (0.92), `gemini-3.8-flash` (0.88), `gpt-5.6-terra` (0.86), `grok-4.6` (0.78), `claude-sonnet-5.5` (0.70), `claude-sonnet-5` (0.65) | value_r âm với n đủ mẫu ⇒ local **phá** giá trị (mất ~1.3R/ván); `veto_precision` 0.343 < 0.5 |
+| ALLOW (5) | `qwen3.7-max` (0.85), `qwen3.7-plus` (0.85), `qwen3.8-max` (0.65), `mimo-v2.6-pro` (0.65), `kimi-k3` (0.62) | giữ **tính sẵn sàng**: bỏ local ⇒ hết quota là hội đồng im lặng hoàn toàn (đã xảy ra 10 ngày) |
+
+**Chưa áp dụng** — theo `AGENTS.md`, việc bỏ model khỏi hội đồng do **người vận hành** điền `.env`
+(`LOCAL_SKIP_MODELS=local/llama3.2-3b-local`), không tự đổi: đây là đánh đổi *chất lượng quyết định*
+lấy *tính sẵn sàng*.
+
+### 24.5 Việc cần người vận hành quyết sau điểm danh
+
+1. **Nguồn model cho hội đồng**: Copilot CLI hết quota THÁNG ⇒ hội đồng chết 10 ngày mà không ai
+   biết. Chọn: gia hạn/đổi provider, hay chấp nhận hội đồng im lặng theo chu kỳ quota.
+2. **Bỏ hay giữ `local/llama3.2-3b-local`** (hội đồng đã VETO ⇒ đề xuất bỏ; 1 dòng `.env`).
+3. **Nâng hội đồng từ SHADOW lên VETO THẬT?** Đề xuất **KHÔNG**, cho tới khi `critic` có
+   `value_r > 0` với n ≥ 30 và brier < 0.25 — hiện `critic` 423 VETO/9 ALLOW và brier 0.302.
+4. **Có vá B-034 + B-035 ngay không** (đều là lỗi dữ liệu, không phải đánh đổi rủi ro).
+
+**Việc hội đồng tự làm khi đến hạn:** 01/11 16:29–16:33 vòng `council`/`council-live`/`watch_regress`/
+`telegram`/`deadman`; 02/11 08:30 `drift_probe`; 02/11 09:00 `review_due`. Lần điểm danh agent kế
+tiếp: **01/12** (đưa vào `REPO_IDEAS` §mới, cùng khuôn §24).
+
+
+

@@ -509,6 +509,57 @@ def notify(rep: dict, *, state=None, enqueue=None, now=None, path=None,
     return {"sent": sent, "state": st}
 
 
+# ---------------------------------------------------------------- tu sua: lenh trung
+
+def auto_dedupe(base, *, runner=None, python_exe=None) -> dict:
+    """(01/11) TU DONG gom lenh bao ve TRUNG — theo quyet dinh nguoi van hanh:
+    "**lenh neu trung bo qua** lam cap giao dich khac" ⇒ KHONG hoi lai nua.
+
+    Dung dung cong cu da co test `tools/orders_audit.py --target <t> --dedupe`
+    (giu 1 SL + 1 TP moi vi the, huy phan thua). Loi ⇒ `{ok: False}` (KHONG nuot loi —
+    van de se con trong bao cao ⇒ van hoi nguoi van hanh).
+    """
+    import winproc
+    base = Path(base)
+    tgt = "live" if "atb-live" in str(base).replace("\\", "/").lower() else "testnet"
+    py = python_exe or sys.executable
+    r = runner or subprocess.run
+    script = str(Path(__file__).resolve().parent / "orders_audit.py")
+    try:
+        p = r([py, script, "--target", tgt, "--dedupe"], cwd=str(base),
+              capture_output=True, text=True, timeout=180, **winproc.hide_kwargs())
+        out = getattr(p, "stdout", "") or ""
+        rc = int(getattr(p, "returncode", 1) or 0)
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "target": tgt, "err": str(e)[:160], "out": ""}
+    return {"ok": rc == 0, "target": tgt, "out": str(out).strip()[-400:]}
+
+
+def apply_auto_dedupe(rep, *, runner=None, python_exe=None) -> list:
+    """Voi moi instance co van de `bao ve TRUNG`: TU GOM roi BO van de khoi bao cao.
+
+    Chi giu van de neu tu gom THAT BAI (khong im lang). Tra list hanh dong (de in + test).
+    """
+    acts: list = []
+    for i in rep.get("instances") or []:
+        probs = list(i.get("problems") or [])
+        keep = [p for p in probs if problem_kind(p) != "dupes"]
+        if len(keep) == len(probs):
+            continue
+        res = auto_dedupe(i.get("dir") or ROOT, runner=runner, python_exe=python_exe)
+        ok = bool(res.get("ok"))
+        acts.append({"name": i.get("name"), "ok": ok, "target": res.get("target"),
+                     "out": res.get("out") or res.get("err") or ""})
+        if ok:
+            i["problems"] = keep
+    if acts:
+        rep["auto_dedupe"] = acts
+        # `ok`/`problems` da duoc `verdict()` tinh TRUOC khi tu gom ⇒ phai tinh LAI,
+        # neu khong bao cao van noi "CAN XEM" du da tu sua xong.
+        rep.update(verdict(rep.get("instances") or []))
+    return acts
+
+
 
 
 # ---------------------------------------------------------------- CLI
@@ -584,6 +635,8 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="chi in khi CO van de (dung cho --watch)")
     ap.add_argument("--no-notify", action="store_true", help="khong them cau hoi van hanh")
+    ap.add_argument("--no-auto-dedupe", action="store_true",
+                    help="khong TU GOM lenh bao ve TRUNG (mac dinh: tu gom, chi hoi neu that bai)")
     ap.add_argument("--install-task", action="store_true")
     ap.add_argument("--uninstall-task", action="store_true")
     ap.add_argument("--task-status", action="store_true")
@@ -627,6 +680,15 @@ def main(argv=None) -> int:
         st = load_state()
         rep = build_report(dirs=dirs, baseline=st, minutes=args.minutes,
                            orders=args.orders)
+        # (01/11) Quyet dinh nguoi van hanh: "lenh neu trung bo qua lam cap giao dich
+        # khac" ⇒ TU GOM truoc khi hoi (het canh bao lap moi gio).
+        if args.orders and not args.no_auto_dedupe:
+            acts = apply_auto_dedupe(rep)
+            if acts and not args.quiet:
+                for a in acts:
+                    print("  TU GOM lenh bao ve TRUNG @ %s: %s (%s)"
+                          % (a["name"], "OK" if a["ok"] else "THAT BAI — van hoi nguoi van hanh",
+                             a.get("target")))
         st = touch_state(rep, state=st)          # vet lan kiem tra (chung minh con chay)
         # (22/10) Khong chi tai phat LOG: van de tien trinh/an toan (kill-switch TRIPPED,
         # supervisor chet, vi the TRAN, lenh bao ve TRUNG) cung phai vao `ops_queue`.

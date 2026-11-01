@@ -199,6 +199,9 @@ class OnlineLearner:
         self.w: dict[str, float] = {f: _defaults.get(f, 0.1) for f in FEATURES}
         self.b = 0.0
         self.n_updates = 0
+        # (01/11) B-034: khoa LA trong `learner.json` (vd khoi `refit` = bang chung model
+        # da kiem dinh holdout) phai duoc GIU LAI khi ghi — xem `save()`.
+        self._extra: dict = {}
         self.load()
 
     def predict(self, feats: dict) -> float:
@@ -243,11 +246,20 @@ class OnlineLearner:
                 "w": {k: round(v, 4) for k, v in self.w.items()}}
 
     def save(self) -> None:
+        """Ghi `learner.json` — GIU moi khoa LA (vd `refit`).
+
+        (01/11) Lop loi B-034: ban cu ghi lai dung `w/b/n/ts` ⇒ moi lan bot hoc online
+        (`update()` → `save()`) la **khoi `refit` bi xoa** ⇒ khong con cach biet model dang
+        chay co phai model da kiem dinh holdout hay khong (do that: TESTNET `n=736`, `w≠0`
+        nhung `refit: null` chi vai gio sau khi refit). Nay moi khoa khac duoc doc tu file
+        (`load()`) va ghi lai nguyen ven.
+        """
         try:
             os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+            rec = {"w": self.w, "b": self.b, "n": self.n_updates, "ts": time.time()}
+            rec.update(self._extra)
             with open(self.path, "w") as f:
-                json.dump({"w": self.w, "b": self.b, "n": self.n_updates,
-                           "ts": time.time()}, f)
+                json.dump(rec, f)
         except Exception:
             pass
 
@@ -258,5 +270,7 @@ class OnlineLearner:
             self.w.update(d.get("w", {}))
             self.b = float(d.get("b", 0.0))
             self.n_updates = int(d.get("n", 0))
+            self._extra = {k: v for k, v in d.items()
+                           if k not in ("w", "b", "n", "ts")}
         except Exception:
             pass

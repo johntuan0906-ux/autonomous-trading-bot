@@ -79,6 +79,47 @@ def render(rep: dict, min_n: int) -> str:
     return "\n".join(lines)
 
 
+#: (01/11) Dieu kien de NANG hoi dong tu SHADOW len VETO THAT — quyet dinh nguoi van hanh
+#: 01/11: "**khi nao du dieu kien hay lam that**". Do bang SO DO THAT (khong doan):
+#:   - co >= `min_n` phieu ghep duoc lenh; moi model duoc GIU phai `value_r > 0`;
+#:   - calibration `brier <= 0.25` (0.25 = doan bua);
+#:   - co it nhat 1 model dat (neu khong thi "hoi dong quyet" chi la trang tri).
+MIN_N_GATE = 30
+MAX_BRIER_GATE = 0.25
+
+
+def readiness(rep: dict, *, min_n: int = MIN_N_GATE,
+              max_brier: float = MAX_BRIER_GATE) -> dict:
+    """Hoi dong da DU DIEU KIEN de quyet dinh TIEN THAT chua? (ham THUAN TUY -> test duoc)
+
+    Tra `{ready, reasons, models_ok, cases}`. `ready=False` kem LY DO cu the de biet can do gi.
+    """
+    reasons: list = []
+    rows = rep.get("per_model") or {}
+    ok_models: list = []
+    for m, b in sorted(rows.items()):
+        if int(b.get("matched") or 0) < int(min_n):
+            continue
+        v = b.get("value_r")
+        if v is None or float(v) <= 0:
+            reasons.append("model %s: value_r=%s <= 0 (n=%s)"
+                           % (m, v, b.get("matched")))
+            continue
+        ok_models.append(m)
+    cal = rep.get("calibration") or {}
+    br = cal.get("brier")
+    if br is None:
+        reasons.append("chua do duoc calibration (brier)")
+    elif float(br) > float(max_brier):
+        reasons.append("brier %.3f > %.2f (hoi dong qua TU TIN)" % (float(br), max_brier))
+    cases = int(rep.get("cases") or 0)
+    if cases < int(min_n):
+        reasons.append("chi %d phieu ghep duoc < %d" % (cases, min_n))
+    if not ok_models:
+        reasons.append("khong model nao co value_r > 0 voi n >= %d" % min_n)
+    return {"ready": not reasons, "reasons": reasons, "models_ok": ok_models, "cases": cases}
+
+
 def main(argv: list | None = None) -> int:
     for _s in (sys.stdout, sys.stderr):
         try:
@@ -94,10 +135,26 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--window-sec", type=float, default=3600.0,
                     help="cua so ghep phieu -> lenh CLOSE (giay)")
     ap.add_argument("--json", action="store_true", help="in JSON (cho bao cao khac)")
+    ap.add_argument("--ready", action="store_true",
+                    help="chi kiem CONG nang hoi dong SHADOW -> VETO THAT (exit 0 = du dieu kien)")
+    ap.add_argument("--gate-n", type=int, default=MIN_N_GATE,
+                    help="so phieu ghep toi thieu cho cong nang (mac dinh %d)" % MIN_N_GATE)
     args = ap.parse_args(argv)
     jp = TARGETS[args.target]
     rep = CE.model_leaderboard(str(jp), window_sec=args.window_sec, hours=args.hours,
                                min_n=args.min_n)
+    if args.ready:
+        g = readiness(rep, min_n=args.gate_n)
+        print("=== CONG NANG HOI DONG (SHADOW -> VETO THAT) | %s ===" % args.target)
+        print("  phieu ghep duoc : %d (can >= %d)" % (g["cases"], args.gate_n))
+        print("  model dat cong  : %s" % (", ".join(g["models_ok"]) or "khong"))
+        if g["ready"]:
+            print("  KET LUAN: DU DIEU KIEN — co the nang (van can nguoi van hanh xac nhan)")
+            return 0
+        print("  KET LUAN: CHUA DU — ly do:")
+        for r in g["reasons"]:
+            print("    - %s" % r)
+        return 1
     if args.json:
         print(json.dumps(rep, ensure_ascii=False, indent=1))
     else:

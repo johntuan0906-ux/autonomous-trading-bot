@@ -315,6 +315,76 @@ class TestListPidsAnCuaSo(unittest.TestCase):
         self.assertIsNone(WR.list_pids(run=boom))
 
 
+class TestTuGomLenhTrung(unittest.TestCase):
+    """(01/11) Quyet dinh nguoi van hanh: "**lenh neu trung bo qua** lam cap giao dich khac"
+    ⇒ watcher phai TU GOM lenh bao ve TRUNG, chi hoi khi tu gom THAT BAI.
+
+    Truoc day moi gio 1 cau hoi "1 cap lenh bao ve TRUNG -> gom lai" du tinh trang do chi la
+    ANH CHUP CU (do that 01/11: hang doi LIVE co 90 cau, 88 cau y nguyen; `orders_audit
+    --target live --dedupe` xac nhan "giu 2, huy 0" ⇒ khong co gi de sua).
+    """
+
+    DUP = ("LIVE: 1 cap lenh bao ve TRUNG -> gom lai "
+           "(python tools/orders_audit.py --dedupe)")
+
+    def _rep(self, probs):
+        return {"instances": [{"name": "LIVE", "dir": "x", "problems": list(probs),
+                               "sightings": {}}],
+                "problems": list(probs), "regressions": [], "ok": not probs}
+
+    def _ok(self, argv, **kw):
+        class R:
+            returncode = 0
+            stdout = "GIU / HUY (gom lai): giu 2, huy 0"
+        return R()
+
+    def _fail(self, argv, **kw):
+        raise OSError("khong goi duoc san")
+
+    def test_tu_gom_roi_BO_van_de_khoi_bao_cao(self):
+        rep = self._rep([self.DUP])
+        acts = WR.apply_auto_dedupe(rep, runner=self._ok)
+        self.assertEqual(len(acts), 1)
+        self.assertTrue(acts[0]["ok"])
+        self.assertEqual(rep["instances"][0]["problems"], [], "da tu gom ⇒ khong hoi nua")
+        self.assertEqual(rep["problems"], [])
+        self.assertTrue(rep["ok"], "ket luan phai duoc tinh LAI sau khi tu sua")
+
+    def test_tu_gom_that_bai_thi_VAN_BAO(self):
+        rep = self._rep([self.DUP])
+        acts = WR.apply_auto_dedupe(rep, runner=self._fail)
+        self.assertFalse(acts[0]["ok"])
+        self.assertEqual(rep["instances"][0]["problems"], [self.DUP],
+                         "tu gom that bai ⇒ KHONG duoc im lang")
+        self.assertFalse(rep["ok"])
+
+    def test_van_de_khac_khong_bi_dung_toi(self):
+        rep = self._rep(["LIVE: 1 vi the TRAN (khong SL/TP): X"])
+        self.assertEqual(WR.apply_auto_dedupe(rep, runner=self._ok), [])
+        self.assertEqual(rep["instances"][0]["problems"],
+                         ["LIVE: 1 vi the TRAN (khong SL/TP): X"])
+
+    def test_lenh_tu_gom_dung_cong_cu_va_dung_instance(self):
+        seen: list = []
+
+        def fake(argv, **kw):
+            seen.append((argv, kw))
+
+            class R:
+                returncode = 0
+                stdout = ""
+            return R()
+
+        WR.auto_dedupe(Path("C:/x/atb-live"), runner=fake)
+        argv, kw = seen[0]
+        self.assertTrue(str(argv[1]).endswith("orders_audit.py"))
+        self.assertEqual(argv[argv.index("--target") + 1], "live")
+        self.assertIn("--dedupe", argv)
+        self.assertEqual(kw["cwd"], str(Path("C:/x/atb-live")))
+        WR.auto_dedupe(Path("C:/x/autonomous-trading-bot"), runner=fake)
+        self.assertEqual(seen[1][0][seen[1][0].index("--target") + 1], "testnet")
+
+
 class TestHoiDongNen(unittest.TestCase):
     """(21/10) Watcher phải đọc nhịp tim HỘI ĐỒNG NỀN: 'bị chặn' ≠ 'im lặng'."""
 

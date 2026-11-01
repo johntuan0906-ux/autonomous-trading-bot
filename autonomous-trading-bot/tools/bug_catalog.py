@@ -389,6 +389,14 @@ CLASSES = [
         "files": ["tests/test_agent_authority.py"],
         "tests": ["test_agent_authority.py::TestChuanHoaTenProvider::test_hau_to_cli_duoc_bo"],
     },
+    {
+        "code": "B-039", "kind": "van-hanh", "seen": "01/11/2026",
+        "title": "Lenh bao ve TRUNG chi duoc BAO (hoi) chu khong TU GOM ⇒ hoi lap moi gio du tinh trang la ANH CHUP CU",
+        "symptom": "Hang doi LIVE co cau 'LIVE: 1 cap lenh bao ve TRUNG -> gom lai' voi `n_repeat=4` (truoc khi va B-036 la 88 dong rieng); trong khi `orders_audit --target live --dedupe` xac nhan **giu 2, huy 0** ⇒ KHONG co gi de sua. Hau qua: nguoi van hanh bi hoi lien tuc ve 1 tinh trang khong con ton tai (quyet dinh 01/11: 'lenh neu trung bo qua lam cap giao dich khac')",
+        "guard": "`watch_regress.auto_dedupe()` + `apply_auto_dedupe()`: watcher (task `ATB-WatchRegress` moi 10 phut) TU chay `orders_audit --target <t> --dedupe` khi thay cap TRUNG; thanh cong ⇒ BO van de khoi bao cao (khong hoi nua); THAT BAI ⇒ giu van de (khong im lang). Tat bang `--no-auto-dedupe`",
+        "files": ["tools/watch_regress.py"],
+        "tests": ["test_watch_regress.py::TestTuGomLenhTrung"],
+    },
 ]
 
 

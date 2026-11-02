@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 03/11/2026 00:22:48 · commit `?`
+- **Cập nhật**: 03/11/2026 00:52:48 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `26728` · round `482` · nhịp tim cách đây 30.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3224.55 USDT
+- **Bot**: pid `26728` · round `489` · nhịp tim cách đây 128.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3228.95 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 2922 lệnh đóng, WR 40.9%, E(R) 0.2297, PnL -1050.14$)
+## Hiệu suất (journal: 2923 lệnh đóng, WR 40.92%, E(R) 0.2302, PnL -1029.36$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 14 | 14.29 | 1.008 | 0.21 | 0.0058 | -66.99 |
-| 14 ngày | 276 | 18.48 | 1.527 | 0.401 | 0.1844 | -354.37 |
-| 30 ngày | 2784 | 39.62 | 1.865 | 0.774 | 0.2398 | -1067.62 |
+| 7 ngày | 15 | 20.0 | 1.189 | 0.455 | 0.1208 | -46.21 |
+| 14 ngày | 277 | 18.77 | 1.545 | 0.436 | 0.19 | -333.59 |
+| 30 ngày | 2785 | 39.64 | 1.868 | 0.778 | 0.2403 | -1046.84 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.008 < 1.2; PF($) cua so 7 ngay = 0.210 < 1.1; PF($) cua so 14 ngay = 0.401 < 1.1; PF($) cua so 30 ngay = 0.774 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.189 < 1.2; PF($) cua so 7 ngay = 0.455 < 1.1; PF($) cua so 14 ngay = 0.436 < 1.1; PF($) cua so 30 ngay = 0.778 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,9 +44,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000BONK/USDT:USDT | SHORT | 50000.0 | 0.002848 | 0.003088 | 0.002368 | False | False | 0.708 |
+| 1000PEPE/USDT:USDT | SHORT | 53981.0 | 0.0046127 | 0.004835 | 0.004169 | False | False | 0.019 |
 | 1000SHIB/USDT:USDT | SHORT | 51282.0 | 0.004674 | 0.004908 | 0.004206 | False | False | 0.808 |
 | ADA/USDT:USDT | SHORT | 455.0 | 0.20690000000000003 | 0.20669310000000002 | 0.116558 | True | True | 1.197 |
-| ALGO/USDT:USDT | SHORT | 3878.07 | 0.09543 | 0.09533457000000001 | 0.091098 | True | True | 1.921 |
 
 ---
 

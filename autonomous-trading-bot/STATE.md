@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 03/11/2026 11:52:54 · commit `?`
+- **Cập nhật**: 03/11/2026 12:22:55 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `26728` · round `654` · nhịp tim cách đây 15.7s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3213.36 USDT
+- **Bot**: pid `26728` · round `661` · nhịp tim cách đây 34.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2924 lệnh đóng, WR 40.9%, E(R) 0.2297, PnL -1041.57$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 16 | 18.75 | 1.075 | 0.398 | 0.0497 | -58.41 |
-| 14 ngày | 116 | 28.45 | 0.825 | 0.331 | -0.063 | -164.13 |
+| 14 ngày | 106 | 31.13 | 0.831 | 0.346 | -0.0633 | -153.15 |
 | 30 ngày | 2786 | 39.63 | 1.865 | 0.776 | 0.2399 | -1059.05 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.075 < 1.2; PF($) cua so 7 ngay = 0.398 < 1.1; PF(R) cua so 14 ngay = 0.825 < 1.2; PF($) cua so 14 ngay = 0.331 < 1.1; PF($) cua so 30 ngay = 0.776 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.075 < 1.2; PF($) cua so 7 ngay = 0.398 < 1.1; PF(R) cua so 14 ngay = 0.831 < 1.2; PF($) cua so 14 ngay = 0.346 < 1.1; PF($) cua so 30 ngay = 0.776 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 

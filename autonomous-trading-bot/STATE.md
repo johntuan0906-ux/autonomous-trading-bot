@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 03/11/2026 14:52:56 · commit `?`
+- **Cập nhật**: 03/11/2026 15:22:57 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `26728` · round `698` · nhịp tim cách đây 32.1s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3217.59 USDT
+- **Bot**: pid `26728` · round `705` · nhịp tim cách đây 150.9s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3220.13 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2924 lệnh đóng, WR 40.9%, E(R) 0.2297, PnL -1041.57$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 16 | 18.75 | 1.075 | 0.398 | 0.0497 | -58.41 |
-| 14 ngày | 64 | 18.75 | 0.769 | 0.305 | -0.1044 | -134.66 |
+| 14 ngày | 62 | 19.35 | 0.811 | 0.31 | -0.0837 | -131.91 |
 | 30 ngày | 2786 | 39.63 | 1.865 | 0.776 | 0.2399 | -1059.05 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.075 < 1.2; PF($) cua so 7 ngay = 0.398 < 1.1; PF(R) cua so 14 ngay = 0.769 < 1.2; PF($) cua so 14 ngay = 0.305 < 1.1; PF($) cua so 30 ngay = 0.776 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.075 < 1.2; PF($) cua so 7 ngay = 0.398 < 1.1; PF(R) cua so 14 ngay = 0.811 < 1.2; PF($) cua so 14 ngay = 0.310 < 1.1; PF($) cua so 30 ngay = 0.776 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 

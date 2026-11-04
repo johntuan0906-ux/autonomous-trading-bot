@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 04/11/2026 12:23:09 · commit `?`
+- **Cập nhật**: 04/11/2026 12:53:10 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `26728` · round `1022` · nhịp tim cách đây 47.8s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3198.19 USDT
+- **Bot**: pid `26728` · round `1030` · nhịp tim cách đây 0.4s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3193.12 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2925 lệnh đóng, WR 40.89%, E(R) 0.2293, PnL -1047.81$)
@@ -15,7 +15,7 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 16 | 18.75 | 1.079 | 0.427 | 0.052 | -51.73 |
 | 14 ngày | 25 | 12.0 | 0.7 | 0.272 | -0.2063 | -123.61 |
-| 30 ngày | 2759 | 39.58 | 1.879 | 0.782 | 0.2437 | -1013.78 |
+| 30 ngày | 2757 | 39.61 | 1.879 | 0.782 | 0.2439 | -1012.84 |
 
 ## Cổng sang LIVE
 
@@ -39,14 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (5)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000BONK/USDT:USDT | SHORT | 50000.0 | 0.002848 | 0.003088 | 0.002368 | False | False | 0.708 |
 | 1000SHIB/USDT:USDT | SHORT | 51282.0 | 0.004674 | 0.004908 | 0.004206 | False | False | 0.808 |
 | ADA/USDT:USDT | SHORT | 455.0 | 0.20690000000000003 | 0.20669310000000002 | 0.116558 | True | True | 1.228 |
-| AIOT/USDT:USDT | LONG | 2936.0 | 0.0909 | 0.086814 | 0.099072 | False | False | 0.245 |
 | NIL/USDT:USDT | SHORT | 1264.2 | 0.062 | 0.066746 | 0.052508 | False | False | 0.063 |
 
 ---

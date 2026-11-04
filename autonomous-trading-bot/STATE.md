@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 04/11/2026 07:53:06 · commit `?`
+- **Cập nhật**: 04/11/2026 08:23:07 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `26728` · round `953` · nhịp tim cách đây 139.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3200.49 USDT
+- **Bot**: pid `26728` · round `961` · nhịp tim cách đây 54.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3198.71 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2924 lệnh đóng, WR 40.9%, E(R) 0.2297, PnL -1041.57$)
@@ -39,7 +39,7 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (5)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
@@ -47,6 +47,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | 1000SHIB/USDT:USDT | SHORT | 51282.0 | 0.004674 | 0.004908 | 0.004206 | False | False | 0.808 |
 | ADA/USDT:USDT | SHORT | 455.0 | 0.20690000000000003 | 0.20669310000000002 | 0.116558 | True | True | 1.197 |
 | AIOT/USDT:USDT | LONG | 2936.0 | 0.0909 | 0.086814 | 0.099072 | False | False | 0.0 |
+| NIL/USDT:USDT | LONG | 1785.7 | 0.0663 | 0.06294 | 0.07302 | False | False | 0.0 |
 
 ---
 

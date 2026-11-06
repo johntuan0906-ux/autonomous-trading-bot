@@ -1157,7 +1157,7 @@ LIVE **`SKIP_MAX_POS` 512 lần**, TESTNET **`SKIP_RISK` 386 lần** trong ~3 MB
 | Instance | MAX_POSITIONS | RISK_PER_TRADE | MAX_TOTAL_RISK_PCT | Ghi chú |
 |---|---|---|---|---|
 | TESTNET | **1 → 4** | **1.2 → 0.4** | 1.6 (giữ) | 4 × 0.4 = **1.6%** = trần cũ |
-| LIVE | **1 → 3** | **1.2 → 0.6** | 1.6 → **3.0** | vốn 38 USDT: sàn bắt notional tối thiểu 5 USDT ⇒ risk thật 1 lệnh ~0.65–1.2% |
+| LIVE | **1 → 2** | **1.2 → 0.6** | 1.6 → **2.0** | **Interlock cứng: `live_guard` chặn `MAX_TOTAL_RISK_PCT > 2`** — đặt 3.0% làm bot THOÁT sau 5s (crash-loop 300s), đã sửa về 2.0% |
 
 Code: "single best setup" **chỉ còn đúng khi `max_positions <= 1`**; nhiều slot ⇒ cho phép nhiều cặp **khác symbol**, trần tổng risk vẫn do `can_add_risk()` giữ. Hệ quả có kiểm soát: 3 lệnh cùng chiều là **1 canh bạc tương quan** — nên trần tổng vẫn là hàng rào cuối, không phải số slot.
 
@@ -1173,9 +1173,15 @@ LIVE: **367** dòng teapot từ **16:33 → 23:20**; thông báo thật `{"code"
 
 Vá: `parse_ban_until()` (đọc mốc, hiểu **mili giây**) + `logs/api_ban.json` (**chỉ tăng**, atomic) ⇒ vòng lặp **bỏ qua vòng quét** (`phase=api_ban`), báo Telegram 1 lần; file hỏng ⇒ **fail-open** (không được để bot đứng mãi vì file rác).
 
-### 27.5 Kiểm chứng
+### 27.5 Kiểm chứng (07/11 00:1x)
 
-- TESTNET sau restart: **mở lệnh mới 1000BONK SHORT**, `single-best-setup` = **0** lần trong log, `phase` tiến đều.
-- LIVE: kill-switch đã gỡ ("quay lai trade binh thuong"), nhưng **còn bị chặn IP tới ~00:55** ⇒ chưa vào lệnh (nguyên nhân **ngoài code**; guard sẽ tự chờ rồi quét lại).
-- Bug catalog: **43 lớp / 119 test chốt**; sổ harness: `H-20261106-006` (risk/adopted), `H-20261106-007` (tool/adopted).
+| Việc | Kết quả |
+|---|---|
+| TESTNET mở nhiều vị thế? | **CÓ** — 12 vị thế bot đang quản lý; round 1 mở `1000BONK` SHORT; `single-best-setup` = **0** lần |
+| LIVE mở 2 lệnh cùng lúc? | **CÓ** — round 1 mở `1000000MOG` SHORT + `1000CAT` SHORT (trước đây lệnh 2 bị chặn) |
+| LIVE còn chạy? | **KHÔNG** — ngay sau đó kill-switch trip: `daily loss 28.31%` (equity 38.44 → **27.56** USDT). Lúc boot **0 vị thế** ⇒ khoản lỗ đến từ hoạt động **trước/ngoài bot** (6 journal OPEN chưa có CLOSE + có thể lệnh tay) ⇒ **đúng luật bảo vệ**, KHÔNG tự chạy lại |
+| Lỗi còn lại | `1000BONK` bị `-4164` (sau khi nâng lên min 5 USDT, qty step làm notional vẫn < 5) và sàn chặn IP từng lúc (`-1003`, ban ngắn 5 phút) |
+| Test | **1417 test OK** (3 skip) ở cả 2 instance; catalog **43 lớp / 119 test chốt** |
+
+**Việc người vận hành cần xem:** (1) vì sao equity LIVE giảm 38.44 → 27.56 trong ~1 giờ khi bot không giữ vị thế (đối chiếu lịch sử lệnh trên Binance; `python positions.py` trong `atb-live`); (2) TESTNET có **12 vị thế cũ** ăn hết ngân sách risk 1.6% ⇒ lệnh mới bị `SKIP_RISK` cho tới khi chúng đóng — muốn giải phóng thì phải đóng bớt (thao tác tiền, cần người quyết).
 

@@ -247,5 +247,81 @@ class TestEvalDataset(unittest.TestCase):
         self.assertIn("outcome", rows[0])
 
 
+class TestChuanHoaTenModel(unittest.TestCase):
+    """(06/11, B-035) Ten model phai duoc CHUAN HOA o CA noi GHI lan noi DOC.
+
+    Vi sao: journal ghi CUNG 1 model duoi NHIEU ten (tag ollama vs alias llamafile,
+    thieu/thua tien to provider, doi `.env`) ⇒ bang diem bi CHIA NHO, moi dong qua it
+    mau de ket luan, va `skip_lines` de xuat bo 1 nua model (bo "oan").
+    Do that tren journal TESTNET 06/11: `local/llama3.2:3b` 83 phieu +
+    `local/llama3.2-3b-local` 73; `mimo-v2.6-pro` 77 + `cline-pass/mimo-v2.6-pro` 105;
+    `qwen/cline-pass/qwen3.7-plus` (tien to lap); 135 ban ghi `model` RONG.
+    """
+
+    def test_local_tag_ollama_va_alias_llamafile_la_MOT_model(self):
+        for raw in ("local/llama3.2:3b", "llama3.2:3b", "local/llama3.2-3b-local",
+                    "llama3.2-3b-local", "llama3.2:3b-local"):
+            self.assertEqual(CE.normalize_model(raw), "local/llama3.2-3b-local", raw)
+
+    def test_bo_tien_to_provider_bi_LAP(self):
+        self.assertEqual(CE.normalize_model("qwen/cline-pass/qwen3.7-plus"),
+                         "cline-pass/qwen3.7-plus")
+        self.assertEqual(CE.normalize_model("clinepass/mimo-v2.6-pro"),
+                         "cline-pass/mimo-v2.6-pro")
+
+    def test_them_tien_to_cho_model_cline_pass_da_biet(self):
+        self.assertEqual(CE.normalize_model("mimo-v2.6-pro"),
+                         "cline-pass/mimo-v2.6-pro")
+
+    def test_ban_ghi_thieu_model_tra_RONG(self):
+        for raw in (None, "", "   ", "None", "null", "?", "unknown"):
+            self.assertEqual(CE.normalize_model(raw), "", repr(raw))
+
+    def test_hai_model_KHAC_nhau_khong_bi_gop(self):
+        """`claude-sonnet-5` va `claude-sonnet-5.5` la 2 model khac nhau — gop la SAI so lieu."""
+        self.assertNotEqual(CE.normalize_model("claude-sonnet-5"),
+                            CE.normalize_model("claude-sonnet-5.5"))
+
+    def test_dong_skip_khong_con_phan_tu_rong(self):
+        out = CE.skip_lines(["", "mimo-v2.6-pro", "critic_agent"])
+        self.assertEqual(out, ["CLINE_SKIP_MODELS=mimo-v2.6-pro"])
+
+    def test_bang_diem_gop_hai_ten_cu_thanh_MOT_dong(self):
+        t0 = 1_700_000_000.0
+        rows = []
+        for i, name in enumerate(("local/llama3.2:3b", "local/llama3.2-3b-local")):
+            s = "L%d/USDT:USDT" % i
+            rows += [{"event": "AGENT", "ts": t0 + i * 10, "role": "critic",
+                      "status": "COUNCIL", "symbol": s, "direction": "LONG",
+                      "action": "ALLOW", "confidence": 0.6, "provider": "local",
+                      "model": name},
+                     {"event": "CLOSE", "ts": t0 + i * 10 + 5, "pair": s,
+                      "direction": "LONG", "r": 1.0, "won": True}]
+        p = os.path.join(tempfile.mkdtemp(), "j.jsonl")
+        with open(p, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        rep = CE.model_leaderboard(p, min_n=1)
+        self.assertEqual(list(rep["per_model"]), ["local/llama3.2-3b-local"])
+        self.assertEqual(rep["per_model"]["local/llama3.2-3b-local"]["votes"], 2)
+
+    def test_ghi_journal_luu_ten_CHUAN_va_giu_ten_GOC(self):
+        """Noi GHI cung phai chuan hoa: `agent.log_decision` ghi `model` chuan +
+        `model_raw` (de doi chieu) — neu chi sua o noi DOC thi journal tiep tuc
+        sinh ten moi mai."""
+        import types
+
+        import agents as AG
+        p = os.path.join(tempfile.mkdtemp(), "journal.jsonl")
+        stub = types.SimpleNamespace(journal=p, logged=0)
+        AG.AgentLayer.log_decision(stub, {"action": "ALLOW", "confidence": 0.5,
+                                          "model": "local/llama3.2:3b",
+                                          "role": "critic"})
+        rec = CE.load_recs(p)[-1]
+        self.assertEqual(rec["event"], "AGENT")
+        self.assertEqual(rec["model"], "local/llama3.2-3b-local")
+        self.assertEqual(rec["model_raw"], "local/llama3.2:3b")
+
+
 if __name__ == "__main__":
     unittest.main()

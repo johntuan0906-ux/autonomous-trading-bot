@@ -558,5 +558,39 @@ class TestBaoVeTrenSan(unittest.TestCase):
         self.assertIn("KHONG GHI DUOC HANG DOI", log)
 
 
+class TestCanhBaoAgentHetQuota(unittest.TestCase):
+    """(06/11, B-041) Cau dao agent / het quota thang truoc day KHONG ai duoc bao.
+
+    Do that 05-14/10: Copilot het quota thang -> 5 loi lien tiep -> `disabled_by`
+    bat provider `copilot` -> hoi dong mat 1 giong suot 9 ngay, nguoi van hanh chi
+    thay "hoi dong im lang" ma khong biet vi sao.
+    """
+
+    def test_provider_bi_cau_dao_tat_thi_bao(self):
+        rep = {"pid": 1, "supervisor_pid": 2, "hb_age_s": 1.0,
+               "agent_state": {"disabled_by": {"copilot": "loi lien tiep 5 lan"}}}
+        bad = WR.health("TESTNET", rep, pids={1, 2})
+        self.assertTrue(any("copilot" in b and "reset-budget" in b for b in bad), bad)
+
+    def test_tat_toan_cuc_thi_bao(self):
+        rep = {"pid": 1, "supervisor_pid": 2, "hb_age_s": 1.0,
+               "agent_state": {"disabled": "loi lien tiep 5 lan"}}
+        bad = WR.health("LIVE", rep, pids={1, 2})
+        self.assertTrue(any("TAT TOAN CUC" in b for b in bad), bad)
+
+    def test_quota_trong_24h_thi_bao(self):
+        rep = {"pid": 1, "supervisor_pid": 2, "hb_age_s": 1.0,
+               "quota_hits": {"n": 3}}
+        bad = WR.health("TESTNET", rep, pids={1, 2})
+        self.assertTrue(any("monthly quota" in b for b in bad), bad)
+
+    def test_he_khoe_thi_khong_bao(self):
+        rep = {"pid": 1, "supervisor_pid": 2, "hb_age_s": 1.0,
+               "agent_state": {"disabled": "", "disabled_by": {}},
+               "quota_hits": {"n": 0}}
+        self.assertEqual(WR.health("TESTNET", rep, pids={1, 2}), [])
+
+
+
 if __name__ == "__main__":
     unittest.main()

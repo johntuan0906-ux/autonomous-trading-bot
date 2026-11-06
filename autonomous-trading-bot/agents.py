@@ -700,6 +700,48 @@ def _split_cmd(s: str) -> list:
     return out
 
 
+#: (06/11, B-040) Goi npm => wrapper `.cmd`. Tren Windows, `copilot.cmd`/`qwen.cmd`
+#: chuyen tiep tham so qua **cmd.exe**, ma cmd.exe PHA dau nhay kep trong prompt ⇒
+#: chuoi JSON `{"action":"VETO"}` bien thanh lenh shell:
+#:   do that 06/11: `copilot -p '...{"action":"VETO"}...'` ->
+#:   `rc=255: 'VETO' is not recognized as an internal or external command`
+#: ⇒ MOI cuoc goi that bai ⇒ 5 loi lien tiep ⇒ cau dao TAT provider `copilot`
+#: ⇒ hoi dong mat 1 giong (va nguoi van hanh tuong "Copilot het quota").
+#: Goi thang `node <npm-loader.js>` thi argv duoc truyen NGUYEN VEN (khong qua cmd.exe).
+NPM_LOADERS = {
+    "copilot": ("@github/copilot",),
+    "qwen": ("@qwen-code/qwen-code", "@qwen-code/qwen-code-core"),
+}
+
+
+def _npm_loader_cmd(cmd: list) -> list:
+    """Doi wrapper `.cmd`/`.bat` cua npm thanh `[node, <npm-loader.js>]` (argv nguyen ven).
+
+    Chi doi khi TIM THAY `node_modules/<pkg>/npm-loader.js` that; khong thay -> tra
+    nguyen `cmd` (khong lam hong cach cai khac / OS khac). Ham THUAN TUY (chi doc file).
+    """
+    if not cmd:
+        return cmd
+    head = str(cmd[0])
+    low = head.lower()
+    if not (low.endswith(".cmd") or low.endswith(".bat")):
+        return cmd
+    stem = os.path.splitext(os.path.basename(head))[0].lower()
+    pkgs = NPM_LOADERS.get(stem)
+    if not pkgs:
+        return cmd
+    base = os.path.dirname(head)
+    for up in (base, os.path.dirname(base)):
+        if not up:
+            continue
+        for pkg in pkgs:
+            loader = os.path.join(up, "node_modules", *pkg.split("/"), "npm-loader.js")
+            if os.path.isfile(loader):
+                node = _resolve_exe("node") or "node"
+                return [node, loader] + list(cmd[1:])
+    return cmd
+
+
 class CopilotCliProvider:
     """GitHub Copilot CLI (chinh thuc) o che do PROGRAMMATIC: `copilot -p <prompt>`.
 
@@ -723,6 +765,8 @@ class CopilotCliProvider:
         # `node npm-loader.js` thi argv duoc truyen nguyen ven.
         self._base = _split_cmd(bin_path) or ["copilot"]
         self._base[0] = _resolve_exe(self._base[0])
+        # (06/11, B-040) `.cmd` cua npm pha dau nhay trong prompt -> goi thang loader
+        self._base = _npm_loader_cmd(self._base)
         self.bin = self._base[0]
         self.args = list(args or ["-p", "{prompt}"])
         self._runner = runner or _subprocess_runner
@@ -785,6 +829,8 @@ class QwenCliProvider:
         self.model = model or ""
         self._base = _split_cmd(bin_path) or ["qwen"]
         self._base[0] = _resolve_exe(self._base[0])
+        # (06/11, B-040) cung lop loi wrapper `.cmd` nhu CopilotCliProvider
+        self._base = _npm_loader_cmd(self._base)
         self.bin = self._base[0]
         self.args = list(args or ["-p", "{prompt}"])
         self._runner = runner or _subprocess_runner
@@ -1622,6 +1668,21 @@ class AgentLayer:
                 body = dict(dec)
             else:
                 return {}
+            # (06/11, B-035) Ghi ten model DA CHUAN HOA (`normalize_model`): cung 1
+            # model truoc day vao journal duoi nhieu ten (`local/llama3.2:3b` vs
+            # `local/llama3.2-3b-local`, `mimo-v2.6-pro` vs `cline-pass/...`) ⇒ bang
+            # diem EVAL bi chia nho, moi dong qua it mau de ket luan. Ten GOC van
+            # duoc giu o `model_raw` de doi chieu khi can.
+            try:
+                from council_evals import normalize_model
+                raw = str(body.get("model") or "")
+                canon = normalize_model(raw)
+                if canon != raw:
+                    body["model"] = canon
+                    if raw:
+                        body["model_raw"] = raw
+            except Exception:  # noqa: BLE001  (khong de hong viec ghi journal)
+                pass
             rec = {"event": "AGENT", **body}
             rec.update(extra or {})
             rec = log_trade(self.journal, **rec)

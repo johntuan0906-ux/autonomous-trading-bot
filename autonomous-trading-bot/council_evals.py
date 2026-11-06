@@ -179,10 +179,67 @@ def build_eval_dataset(journal_path: str, out_path: str,
 ROLE_LIKE = ("review_agent", "macro_agent", "critic_agent", "arbiter_agent",
              "setup", "council", "selftest")
 
+# ---- (06/11, B-035) CHUAN HOA TEN MODEL --------------------------------------
+# Journal ghi CUNG 1 model duoi NHIEU ten (doi `.env`, doi cach goi: tag ollama vs
+# alias llamafile, thieu/thua tien to provider) ⇒ bang diem bi CHIA NHO thanh nhieu
+# dong, moi dong qua it mau de ket luan (va `skip_lines` de xuat bo 1 nua model).
+# Do that tren journal TESTNET (06/11):
+#   `local/llama3.2:3b` (83 phieu) + `local/llama3.2-3b-local` (73) = MOT model;
+#   `mimo-v2.6-pro` (77) + `cline-pass/mimo-v2.6-pro` (105) = MOT model;
+#   `qwen/cline-pass/qwen3.7-plus` (tien to lap), 135 ban ghi `model` RONG.
+# Ten chuan = ten dang dung trong `.env` (de `skip_lines` copy duoc thang vao .env).
+MODEL_CANON = {
+    # local: tag ollama (`llama3.2:3b`) <-> alias llamafile (`llama3.2-3b-local`)
+    "local/llama3.2:3b": "local/llama3.2-3b-local",
+    "local/llama3.2:3b-local": "local/llama3.2-3b-local",
+    "llama3.2:3b": "local/llama3.2-3b-local",
+    "llama3.2:3b-local": "local/llama3.2-3b-local",
+    "llama3.2-3b-local": "local/llama3.2-3b-local",
+    "llama3.2:3b-instruct": "local/llama3.2-3b-local",
+}
+#: Model `cline-pass/...` DA BIET, viet KHONG tien to (journal cu ghi thieu) —
+#: ten goc duoi gateway (`model_aliases`), khong tinh hau to provider.
+CLINE_MODELS = ("mimo-v2.6-pro", "qwen3.7-plus", "qwen3.8-max", "glm-5.3",
+                "kimi-k3", "claude-sonnet-5.5", "claude-sonnet-5")
+#: Cac chuoi KHONG phai ten model (ban ghi thieu truong `model`).
+EMPTY_NAMES = ("", "none", "null", "nil", "?", "-", "unknown", "n/a", "na")
+
+
+def normalize_model(name) -> str:
+    """Ten CHUAN cua 1 model — gop MOI cach viet cua CUNG 1 model (B-035).
+
+    Quy tac (theo thu tu):
+      1. rong / `None` / chuoi `"None"` / `"?"` -> `""` (= journal thieu du lieu,
+         KHONG phai mot model ten la "?" nhu truoc day);
+      2. alias khai bao trong `MODEL_CANON`;
+      3. bo tien to provider bi LAP (`qwen/cline-pass/x` -> `cline-pass/x`,
+         `clinepass/x` -> `cline-pass/x`);
+      4. them `cline-pass/` cho ten da biet nhung journal ghi thieu tien to.
+
+    Ham THUAN TUY (khong doc file, khong mang) ⇒ dung duoc o CA noi GHI
+    (`agents.log_decision`) lan noi DOC (`_model_of`, bang diem, `skip_lines`).
+    """
+    n = str(name if name is not None else "").strip()
+    if n.lower() in EMPTY_NAMES:
+        return ""
+    if n in MODEL_CANON:
+        return MODEL_CANON[n]
+    low = n.lower()
+    if low.startswith("qwen/cline-pass/"):
+        n = "cline-pass/" + n.split("cline-pass/", 1)[1]
+    elif low.startswith("clinepass/"):
+        n = "cline-pass/" + n.split("/", 1)[1]
+    if "/" not in n and n.lower() in CLINE_MODELS:
+        n = "cline-pass/" + n
+    return MODEL_CANON.get(n, n)
+
 
 def _model_of(case: dict) -> str:
-    """Ten model that (khong phai VAI nhu `critic_agent`)."""
-    return str(case.get("model") or case.get("agent") or case.get("provider") or "?")
+    """Ten model CHUAN (khong phai VAI nhu `critic_agent`); `""` = thieu du lieu."""
+    raw = case.get("model")
+    if raw is None or str(raw).strip() == "":
+        raw = case.get("agent") or case.get("provider") or ""
+    return normalize_model(raw)
 
 
 def _avg_r(cases: list):
@@ -222,8 +279,12 @@ def skip_lines(models: list) -> list:
     """Dong `.env` de bo model (giong `agents.council_health` -> nhat quan cho nguoi van hanh).
 
     CHI voi ten model that: `review_agent`/`critic_agent`... la VAI, khong phai model.
+    (06/11, B-035) Ban ghi THIEU `model` (`""`) cung bi loai — truoc day `""` khong co
+    dau `/` nen bi coi la model Cline ⇒ sinh dong `CLINE_SKIP_MODELS=,mimo-...`
+    (phan tu rong, khong ai doc duoc).
     """
-    names = [m for m in models if str(m).lower() not in ROLE_LIKE]
+    names = [m for m in models
+             if str(m).strip() and str(m).lower() not in ROLE_LIKE]
     cline = [m for m in names if m.startswith("cline-pass/") or "/" not in m]
     local = [m for m in names if m.startswith("local/")]
     qwen = [m for m in names if m.startswith("qwen/")]

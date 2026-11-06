@@ -44,6 +44,22 @@ subprocess.run(["git", "status"], **winproc.hide_kwargs())   # CREATE_NO_WINDOW 
 `serve_glow.py`, `bench_retrieval.py`, `clinepass_review.py`, `agents.py`, và
 `tools/restart_bot.py`. Test chốt: `tests/test_ops_tools.py::TestWinproc`.
 
+**Cửa sổ console MỒ CÔI của agent (06/11 — B-042).** `winproc` chỉ ẩn được cửa sổ do **tiến trình con của bot** sinh ra.
+Cline (và mọi agent) tạo **1 shell cho mỗi lệnh**, shell rỗng vẫn mở **cửa sổ PowerShell THẬT ngoài VS Code**; khi shell đó
+treo, Windows bật hộp thoại **"The window is no longer responding (Keep waiting / Reopen / Close)"** liên tục.
+Hai lớp xử lý (chạy tự động, không cần bấm):
+
+```powershell
+python tools/terminal_hygiene.py --hide-consoles --dry-run   # xem sẽ ẩn cửa sổ nào
+python tools/terminal_hygiene.py --hide-consoles             # XOÁ shell rác + ẨN cửa sổ console mồ côi
+```
+
+* Ẩn = `ShowWindow(SW_HIDE)`: **cửa sổ biến mất, tiến trình VẪN chạy** (chỉ còn trong Task Manager). Chỉ đụng cửa sổ của
+  `powershell/pwsh/cmd/conhost/OpenConsole/WindowsTerminal` — không đụng VS Code/trình duyệt.
+* Chạy nền vĩnh viễn: **`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\ATB-HideConsoles.vbs`** (quét 20 giây/lần,
+  ẩn hoàn toàn). Dùng Startup **vì `schtasks /Create` bị `Access is denied`** (cần quyền admin) — đã thử 06/11.
+* Trong VS Code: task **"Cline: theo doi don terminal (nen)"** đã bật `--hide-consoles` (2 phút/lần).
+
 ---
 
 ## 3. Vì sao "làm hết mục tiêu Next" mất ~3 ngày — và cách rút ngắn

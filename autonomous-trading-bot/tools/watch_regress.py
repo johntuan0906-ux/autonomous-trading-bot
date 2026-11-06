@@ -193,6 +193,20 @@ def health(name: str, rep: dict, pids=None, *, max_hb_sec: float = MAX_HB_SEC,
         elif float(age_c) > float(max_council_hb_sec):
             bad.append("%s: hoi dong NEN im lang %.0fs > %.0fs (task ATB-Council con chay?)"
                        % (name, float(age_c), float(max_council_hb_sec)))
+    # (06/11, B-041) Agent bi TAT / het quota — truoc day chi thay "hoi dong im lang"
+    # ma khong biet vi sao. Cau dao theo provider (`disabled_by`) + tong `disabled`.
+    ags = (rep or {}).get("agent_state") or {}
+    for prov, why in (ags.get("disabled_by") or {}).items():
+        bad.append("%s: provider AI '%s' bi cau dao TAT (%s) -> het quota? "
+                   "go tay: python agents.py --reset-budget" % (name, prov, str(why)[:70]))
+    if str(ags.get("disabled") or ""):
+        bad.append("%s: tang AGENT dang TAT TOAN CUC (%s) -> python agents.py --reset-budget"
+                   % (name, str(ags.get("disabled"))[:80]))
+    q = (rep or {}).get("quota_hits") or {}
+    if int(q.get("n") or 0) > 0:
+        bad.append("%s: %d dong 'exceeded your monthly quota' trong 24h "
+                   "(1 provider AI het quota thang -> hoi dong mat giong)"
+                   % (name, int(q.get("n") or 0)))
     return bad
 
 
@@ -355,6 +369,20 @@ def scan_instance(name: str, base: Path, *, baseline=None, minutes: float = 7.0,
         rep["council_blocked"] = bool(chb.get("blocked"))
         rep["council_spend_today"] = chb.get("spend_today")
         rep["council_topics"] = chb.get("topics")
+    # (06/11, B-041) CAU DAO AGENT: provider AI bi TAT / HET QUOTA thang.
+    # Do that 05-14/10: Copilot het quota thang -> 5 loi lien tiep -> cau dao TAT
+    # provider `copilot` -> hoi dong mat 1 giong trong 9 ngay ma KHONG AI DUOC BAO
+    # (chi thay "hoi dong im lang", khong biet vi sao). Nay doc thang `agent_state.json`
+    # + dem dong "exceeded your monthly quota" trong 24h.
+    rep["agent_state"] = {}
+    try:
+        ags = json.loads((base / "logs" / "agent_state.json").read_text(encoding="utf-8"))
+        rep["agent_state"] = ags if isinstance(ags, dict) else {}
+    except Exception:  # noqa: BLE001
+        rep["agent_state"] = {}
+    rep["quota_hits"] = scan_text(lines, "exceeded your monthly quota",
+                                  since=float(until or time.time()) - 86400.0,
+                                  until=until)
     base_ts = dict((baseline or {}).get("fixed_at") or {})
     rep["sightings"] = {}
     for sig in SIGNATURES:

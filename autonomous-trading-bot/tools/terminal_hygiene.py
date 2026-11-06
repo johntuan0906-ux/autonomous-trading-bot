@@ -28,13 +28,30 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 
 SHELL_NAMES = ("powershell.exe", "pwsh.exe", "cmd.exe")
 CODE_NAME = "Code.exe"
+#: Tien trinh ma cua so cua no la CONSOLE cua nguoi dung (an duoc, khong nguy hiem).
+CONSOLE_PROCS = ("powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe",
+                 "openconsole.exe", "windowsterminal.exe", "wt.exe")
 PS_LIST = ("Get-CimInstance Win32_Process | "
            "Select-Object Name,ProcessId,ParentProcessId,WorkingSetSize | "
            "ConvertTo-Json -Compress")
+
+
+def _hidden_kwargs() -> dict:
+    """kwargs de tien trinh con (tasklist/Stop-Process) KHONG hien cua so console."""
+    try:
+        from pathlib import Path
+        root = str(Path(__file__).resolve().parent.parent)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        import winproc
+        return winproc.hide_kwargs()
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def parse_rows(text: str) -> list:
@@ -145,8 +162,82 @@ def kill_pids(pids, timeout: float = 25.0) -> int:
     return len(pids)
 
 
+def hide_stray_consoles(dry_run: bool = False) -> dict:
+    """An (SW_HIDE) cua so CONSOLE MO COI ngoai VS Code — chi con trong Task Manager.
+
+    Vi sao (06/11): Cline tao **1 shell cho MOI lenh** va tren may nay shell do hien
+    thanh **cua so PowerShell RIENG** (khong nam trong VS Code). Khi shell do khong
+    phan hoi, Windows bat popup **"The window is no longer responding (Keep waiting /
+    Reopen / Close)"** — nguoi van hanh phai bam lien tuc. An cua so ⇒ khong con popup,
+    khong chiem focus; tien trinh VAN chay binh thuong (chi mat phan hien thi).
+
+    Chi dong toi cua so **hien** cua tien trinh console (powershell/pwsh/cmd/conhost/
+    OpenConsole) — KHONG cham cua so trinh duyet/VS Code/ung dung khac.
+    """
+    out: dict = {"found": 0, "hidden": 0, "windows": []}
+    if sys.platform != "win32":
+        return out
+    try:
+        import ctypes
+        from ctypes import wintypes
+        u32 = ctypes.windll.user32
+    except Exception:  # noqa: BLE001
+        return out
+    procs = {}
+    try:
+        p = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True,
+                           text=True, timeout=30, **_hidden_kwargs())
+        for ln in (p.stdout or "").splitlines():
+            parts = [x.strip('"') for x in ln.split('","')]
+            if len(parts) >= 2:
+                try:
+                    procs[int(parts[1])] = parts[0].lower()
+                except ValueError:
+                    continue
+    except Exception:  # noqa: BLE001
+        pass
+    targets = []
+    CB = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def _cb(hwnd, _lparam):
+        try:
+            if not u32.IsWindowVisible(hwnd):
+                return True
+            n = u32.GetWindowTextLengthW(hwnd)
+            buf = ctypes.create_unicode_buffer(n + 2)
+            u32.GetWindowTextW(hwnd, buf, n + 2)
+            title = buf.value
+            pid = wintypes.DWORD()
+            u32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            name = procs.get(int(pid.value), "")
+            if name not in CONSOLE_PROCS:
+                return True
+            targets.append({"hwnd": int(hwnd), "pid": int(pid.value),
+                            "proc": name, "title": title[:80]})
+        except Exception:  # noqa: BLE001
+            return True
+        return True
+
+    try:
+        u32.EnumWindows(CB(_cb), 0)
+    except Exception:  # noqa: BLE001
+        return out
+    out["found"] = len(targets)
+    out["windows"] = targets
+    if dry_run:
+        return out
+    SW_HIDE = 0
+    for t in targets:
+        try:
+            u32.ShowWindow(t["hwnd"], SW_HIDE)
+            out["hidden"] += 1
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
 def run_once(dry_run: bool = False, protect_extra=(), rows=None, kill=True,
-             min_shells: int = 1) -> dict:
+             min_shells: int = 1, hide_consoles: bool = False) -> dict:
     """1 lan don: tra `{found, killed, freed_mb, below_min, shells}`.
 
     `rows` de test (khong goi PowerShell); `kill=False` de chi do luong.
@@ -163,8 +254,17 @@ def run_once(dry_run: bool = False, protect_extra=(), rows=None, kill=True,
     killed = 0
     if shells and not dry_run and kill and not below:
         killed = kill_pids([s["pid"] for s in shells])
+    hid = {"found": 0, "hidden": 0, "windows": []}
+    if hide_consoles:
+        try:
+            hid = hide_stray_consoles(dry_run=dry_run)
+        except Exception:  # noqa: BLE001
+            hid = {"found": 0, "hidden": 0, "windows": []}
     return {"found": len(shells), "killed": killed, "freed_mb": freed,
-            "below_min": below, "shells": shells}
+            "below_min": below, "shells": shells,
+            "consoles_found": int(hid.get("found") or 0),
+            "consoles_hidden": int(hid.get("hidden") or 0),
+            "consoles": hid.get("windows") or []}
 
 
 def main(argv: list | None = None) -> int:
@@ -177,20 +277,31 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--quiet", action="store_true", help="chi in khi co viec lam")
     ap.add_argument("--min-shells", type=int, default=1,
                     help="chi don khi co it nhat N shell rac (dat 5 cho che do nen)")
+    ap.add_argument("--hide-consoles", action="store_true",
+                    help="AN cua so console mo coi (powershell/cmd/conhost) — het popup "
+                         "'The window is no longer responding'")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
     def _once() -> dict:
         rep = run_once(dry_run=args.dry_run, protect_extra=args.protect_pid,
-                       min_shells=args.min_shells)
+                       min_shells=args.min_shells, hide_consoles=args.hide_consoles)
         if args.json:
             print(json.dumps(rep, ensure_ascii=False))
-        elif rep["found"] and not args.quiet:
-            print("terminal rac: %d shell (~%.0f MB)%s"
-                  % (rep["found"], rep["freed_mb"],
-                     " — DRY-RUN (khong xoa)" if args.dry_run else " -> da xoa"))
-            for s in rep["shells"][:8]:
-                print("   pid %-8d %-16s %.1f MB" % (s["pid"], s["name"], s["mb"]))
+        elif not args.quiet:
+            if rep["found"]:
+                print("terminal rac: %d shell (~%.0f MB)%s"
+                      % (rep["found"], rep["freed_mb"],
+                         " — DRY-RUN (khong xoa)" if args.dry_run else " -> da xoa"))
+                for s in rep["shells"][:8]:
+                    print("   pid %-8d %-16s %.1f MB" % (s["pid"], s["name"], s["mb"]))
+            if rep.get("consoles_found"):
+                print("cua so console: %d%s"
+                      % (rep["consoles_found"],
+                         " — DRY-RUN (khong an)" if args.dry_run else " -> da an"))
+                for w in (rep.get("consoles") or [])[:8]:
+                    print("   hwnd %-10d %-16s %s"
+                          % (w["hwnd"], w["proc"], w["title"]))
         return rep
 
     if not args.watch:

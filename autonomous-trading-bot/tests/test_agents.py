@@ -2247,3 +2247,61 @@ class TestRunnerAnCuaSo(unittest.TestCase):
             self.assertNotIn("creationflags", kw, "flag nay chi co tren Windows")
 
 
+
+
+class TestBypassWrapperNpm(unittest.TestCase):
+    """(06/11, B-040) Wrapper `.cmd` cua npm chuyen tiep tham so qua cmd.exe ⇒ DAU
+    NHay KEP trong prompt bi pha. Do that: `copilot -p '...{"action":"VETO"}...'` tra
+    `rc=255: 'VETO' is not recognized as an internal or external command` ⇒ MOI cuoc
+    goi that bai ⇒ 5 loi lien tiep ⇒ cau dao TAT provider `copilot` ⇒ hoi dong mat
+    1 giong (nguoi van hanh tuong "Copilot het quota").
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.A = A
+
+    def _layout(self, name="copilot", pkg="@github/copilot"):
+        d = tempfile.mkdtemp()
+        npm = os.path.join(d, "npm")
+        os.makedirs(npm)
+        cmd = os.path.join(npm, name + ".cmd")
+        with open(cmd, "w", encoding="utf-8") as f:
+            f.write("@echo off\n")
+        loader_dir = os.path.join(npm, "node_modules", *pkg.split("/"))
+        os.makedirs(loader_dir)
+        loader = os.path.join(loader_dir, "npm-loader.js")
+        with open(loader, "w", encoding="utf-8") as f:
+            f.write("// loader\n")
+        return cmd, loader
+
+    def test_wrapper_cmd_duoc_thay_bang_node_loader(self):
+        cmd, loader = self._layout()
+        out = self.A._npm_loader_cmd([cmd, "-p", "{prompt}"])
+        self.assertEqual(out[0], self.A._resolve_exe("node"))
+        self.assertEqual(out[1], loader)
+        self.assertEqual(out[2:], ["-p", "{prompt}"], "tham so phai giu nguyen")
+
+    def test_qwen_cung_duoc_bypass(self):
+        cmd, loader = self._layout("qwen", "@qwen-code/qwen-code")
+        out = self.A._npm_loader_cmd([cmd])
+        self.assertEqual(out[1], loader)
+
+    def test_khong_tim_thay_loader_thi_giu_nguyen(self):
+        cmd = os.path.join(tempfile.mkdtemp(), "copilot.cmd")
+        with open(cmd, "w", encoding="utf-8") as f:
+            f.write("@echo off\n")
+        self.assertEqual(self.A._npm_loader_cmd([cmd, "-p", "x"]), [cmd, "-p", "x"])
+
+    def test_khong_phai_cmd_thi_giu_nguyen(self):
+        self.assertEqual(self.A._npm_loader_cmd(["node", "x.js"]), ["node", "x.js"])
+        self.assertEqual(self.A._npm_loader_cmd([]), [])
+
+    def test_provider_copilot_dung_loader_khi_build_lenh(self):
+        cmd, loader = self._layout()
+        prov = self.A.CopilotCliProvider(bin_path=cmd)
+        built = prov._build_cmd("noi dung prompt")
+        self.assertEqual(built[0], self.A._resolve_exe("node"))
+        self.assertEqual(built[1], loader)
+        self.assertEqual(built[-1], "noi dung prompt")
+

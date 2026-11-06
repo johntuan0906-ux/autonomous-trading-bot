@@ -217,10 +217,11 @@
       "type": "shell",
       "command": "python",
       "args": [
-        "tools/terminal_hygiene.py"
+        "tools/terminal_hygiene.py",
+        "--hide-consoles"
       ],
       "options": {
-        "cwd": "/autonomous-trading-bot"
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
       },
       "problemMatcher": [],
       "presentation": {
@@ -228,7 +229,7 @@
         "panel": "dedicated",
         "close": true
       },
-      "detail": "Xoa shell RANH cua VS Code (Cline tao 1 terminal moi lan chay lenh)"
+      "detail": "Xoa shell RANH cua VS Code + AN cua so PowerShell mo coi (het popup 'The window is no longer responding')"
     },
     {
       "label": "Cline: theo doi don terminal (nen)",
@@ -241,10 +242,11 @@
         "120",
         "--quiet",
         "--min-shells",
-        "5"
+        "5",
+        "--hide-consoles"
       ],
       "options": {
-        "cwd": "/autonomous-trading-bot"
+        "cwd": "${workspaceFolder}/autonomous-trading-bot"
       },
       "isBackground": true,
       "problemMatcher": [],
@@ -252,7 +254,7 @@
         "reveal": "silent",
         "panel": "dedicated"
       },
-      "detail": "Chay nen: cu 2 phut don terminal rac 1 lan"
+      "detail": "Chay nen: cu 2 phut don terminal rac + an cua so console mo coi (B-042)"
     },
     {
       "label": "Kiem tra: tai phat lop loi da va (2 instance)",

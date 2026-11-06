@@ -163,5 +163,37 @@ class TestRunOnce(unittest.TestCase):
         self.assertFalse(rep["below_min"])
 
 
+class TestAnCuaSoConsole(unittest.TestCase):
+    """(06/11) Popup "The window is no longer responding" cua cua so PowerShell MO COI.
+
+    Cline tao 1 shell cho MOI lenh; tren may nay shell hien thanh cua so PowerShell
+    rieng (ngoai VS Code) va khi treo thi Windows bat popup lien tuc. An cua so
+    (SW_HIDE) => khong con popup, tien trinh VAN chay.
+    """
+
+    def test_ham_khong_no_ra_va_tra_du_truong(self):
+        rep = TH.hide_stray_consoles(dry_run=True)
+        self.assertIn("found", rep)
+        self.assertIn("hidden", rep)
+        self.assertEqual(rep["hidden"], 0, "dry-run thi KHONG duoc an cua so nao")
+
+    def test_run_once_bat_co_thi_an_cua_so(self):
+        from unittest import mock
+        fake = {"found": 2, "hidden": 2,
+                "windows": [{"hwnd": 1, "pid": 2, "proc": "powershell.exe", "title": "x"}]}
+        with mock.patch.object(TH, "hide_stray_consoles", return_value=fake):
+            rep = TH.run_once(dry_run=False, rows=[_row("Code.exe", CODE, 1)],
+                              kill=False, hide_consoles=True)
+        self.assertEqual((rep["consoles_found"], rep["consoles_hidden"]), (2, 2))
+
+    def test_khong_bat_co_thi_KHONG_cham_cua_so(self):
+        from unittest import mock
+        with mock.patch.object(TH, "hide_stray_consoles") as m:
+            rep = TH.run_once(dry_run=False, rows=[_row("Code.exe", CODE, 1)], kill=False)
+        m.assert_not_called()
+        self.assertEqual(rep["consoles_found"], 0)
+
+
+
 if __name__ == "__main__":
     unittest.main()

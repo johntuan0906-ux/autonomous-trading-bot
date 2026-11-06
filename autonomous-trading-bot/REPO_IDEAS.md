@@ -1131,3 +1131,10 @@ nguyên nhân khác chính là lý do phải có **B-041** (cảnh báo khi agen
 cổng `council_eval.py --ready`: TESTNET 527 phiếu ghép, brier **0.339** > 0.25 ⇒ **vẫn CHƯA ĐỦ** (giữ SHADOW, chưa cho veto thật);
 cả 2 hàng đợi `ops_queue` về **0 câu chờ**.
 
+
+**Quyết định ĐÓNG (06/11) — KHÔNG nới giới hạn vào lệnh.** Đề xuất "nới `MAX_POSITIONS` (LIVE) / trần risk 1,6% (TESTNET)
+để bot vào thêm lệnh" được người vận hành **BỎ QUA**: giữ nguyên giới hạn rủi ro. Số đo để tham chiếu về sau (06/11):
+LIVE **`SKIP_MAX_POS` 512 lần**, TESTNET **`SKIP_RISK` 386 lần** trong ~3 MB log gần nhất. Ghi vào sổ harness:
+**`H-20261106-005` [risk/rejected]**. ⇒ Phiên AI sau **không hỏi lại** việc này; muốn đổi thì phải có bằng chứng mới
+(ví dụ 7 ngày không có lệnh nào vào vì giới hạn ⇒ mất cơ hội có ý nghĩa thống kê).
+

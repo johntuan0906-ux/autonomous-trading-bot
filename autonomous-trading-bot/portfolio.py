@@ -60,12 +60,20 @@ class PortfolioManager:
     def can_open(self, symbol: str, direction: str) -> tuple[bool, str]:
         if symbol in self.positions:
             return False, f"duplicate blocked: {symbol} already open"
+        # (06/11, B-043) "Single Best Setup" CHI dung khi CHI CO 1 slot.
+        # LOP LOI THAT (do 06/11): dieu kien cu `if self.positions and not
+        # allow_hedge_opposite` chan MOI cap khac khi da co 1 vi the — du
+        # `MAX_POSITIONS=4`. Hau qua: bot "treo 1 lenh" va chi vao lenh moi khi
+        # vi the hien tai cham TP/SL (do that: SKIP_MAX_POS x2777 tren LIVE,
+        # SKIP_RISK x1669+ tren TESTNET; nguoi van hanh bao dung hien tuong nay).
+        # Nay: nhieu slot ⇒ cho phep nhieu cap KHAC SYMBOL cung luc; tran tong
+        # risk van do `can_add_risk(MAX_TOTAL_RISK_PCT)` giu o tang tren.
+        if self.max_positions <= 1 and self.positions:
+            open_sym = next(iter(self.positions))
+            return False, (f"single-best-setup: {open_sym} already open "
+                           f"(MAX_POSITIONS={self.max_positions})")
         if len(self.positions) >= self.max_positions:
             return False, f"max positions {self.max_positions} reached"
-        if self.positions and not self.allow_hedge_opposite:
-            # Single Best Setup: only 1 position at a time, period.
-            open_sym = next(iter(self.positions))
-            return False, f"single-best-setup: {open_sym} already open"
         if self.allow_hedge_opposite:
             for p in self.positions.values():
                 if p.direction == direction:

@@ -445,6 +445,31 @@ CLASSES = [
                   "test_terminal_hygiene.py::TestAnCuaSoConsole::test_run_once_bat_co_thi_an_cua_so",
                   "test_terminal_hygiene.py::TestAnCuaSoConsole::test_khong_bat_co_thi_KHONG_cham_cua_so"],
     },
+    {
+        "code": "B-043", "kind": "rui-ro", "seen": "06/11/2026",
+        "title": "`MAX_POSITIONS>1` VO HIEU: da co 1 vi the thi CHAN MOI cap khac ⇒ bot chi vao lenh khi vi the cu cham TP/SL",
+        "symptom": "Nguoi van hanh bao: 'chi treo 1 lenh, khong vao lenh cap khac, chi cho cap hien tai cham TP/SL'. Do that 06/11: `.env` ca 2 instance dat `MAX_POSITIONS=1` + `RISK_PER_TRADE_PCT=1.2` trong khi `MAX_TOTAL_RISK_PCT=1.6` (1 lenh da an 1.42% ⇒ lenh thu 2 vuot tran: `SKIP_RISK` x1669+); **LIVE `SKIP_MAX_POS` x2777** ('max positions 1 reached'). NANG HON: `PortfolioManager.can_open()` co luat cung `if self.positions and not allow_hedge_opposite: return False, 'single-best-setup'` — chan MOI cap khac **du co 4 slot**, nen tang `MAX_POSITIONS` mot minh KHONG sua duoc (phat hien khi doc code, khong phai doan)",
+        "guard": "`can_open()`: 'single-best-setup' CHI con dung khi `max_positions <= 1`; nhieu slot ⇒ cho phep nhieu cap KHAC SYMBOL, tran tong risk van do `can_add_risk(MAX_TOTAL_RISK_PCT)` giu. `.env`: chia nho risk thay vi tang tong — TESTNET `MAX_POSITIONS=4` + `RISK_PER_TRADE=0.4` (4x0.4=1.6 = tran cu); LIVE `MAX_POSITIONS=3` + `RISK_PER_TRADE=0.6` + tran 3.0% (von 38 USDT: san bat notional toi thieu 5 USDT nen risk that 1 lenh ~0.65-1.2%)",
+        "files": ["portfolio.py", "tests/test_bot.py"],
+        "tests": ["test_bot.py::TestPortfolio::test_nhieu_slot_thi_cho_phep_cap_KHAC_symbol_B043",
+                  "test_bot.py::TestPortfolio::test_1_slot_van_giu_single_best_setup",
+                  "test_bot.py::TestPortfolio::test_trung_symbol_van_bi_chan",
+                  "test_bot.py::TestPortfolio::test_che_do_hedge_van_chan_cung_chieu"],
+    },
+    {
+        "code": "B-044", "kind": "van-hanh", "seen": "06/11/2026",
+        "title": "San chan IP (`-1003` / `418 I'm a teapot`) nhung bot VAN quet moi vong ⇒ tu lam ban dai them",
+        "symptom": "Do that LIVE 06/11: **367** dong `I'm a teapot` tu **16:33 den 23:20**; thong bao that: `{\"code\":-1003,\"msg\":\"Way too many requests; IP(222.253.53.82) banned until 1793987694544\"}` (bi chan toi ~00:55). Bot van gui hang tram request moi vong (40 cap x nhieu endpoint) ⇒ Binance tang thoi gian ban (2 phut -> 3 ngay) ⇒ cang chay cang lau hoi; kem theo `errors` cham tran 5 ⇒ kill-switch TRIP (LIVE dung trade han)",
+        "guard": "`turbo_demo.parse_ban_until()` doc moc `banned until <ms>`; `set_api_ban()` ghi `logs/api_ban.json` (CHI TANG, atomic); vong lap thay moc ⇒ **bo qua vong quet** (`phase=api_ban`, ngu toi moc) va chi bao Telegram 1 lan. File hong ⇒ coi nhu KHONG bi chan (fail-open o day la dung: khong duoc lam bot dung mai)",
+        "files": ["turbo_demo.py", "tests/test_api_ban.py"],
+        "tests": ["test_api_ban.py::TestParseBanUntil::test_doc_moc_mili_giay",
+                  "test_api_ban.py::TestParseBanUntil::test_doc_moc_giay",
+                  "test_api_ban.py::TestParseBanUntil::test_khong_co_moc_thi_0",
+                  "test_api_ban.py::TestApiBanFile::test_ghi_va_doc",
+                  "test_api_ban.py::TestApiBanFile::test_khong_ghi_lui",
+                  "test_api_ban.py::TestApiBanFile::test_moc_0_thi_khong_ghi",
+                  "test_api_ban.py::TestApiBanFile::test_file_hong_thi_coi_nhu_KHONG_chan"],
+    },
 ]
 
 

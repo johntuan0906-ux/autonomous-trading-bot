@@ -1138,3 +1138,44 @@ LIVE **`SKIP_MAX_POS` 512 lần**, TESTNET **`SKIP_RISK` 386 lần** trong ~3 MB
 **`H-20261106-005` [risk/rejected]**. ⇒ Phiên AI sau **không hỏi lại** việc này; muốn đổi thì phải có bằng chứng mới
 (ví dụ 7 ngày không có lệnh nào vào vì giới hạn ⇒ mất cơ hội có ý nghĩa thống kê).
 
+
+---
+
+## 27. "Chỉ treo 1 lệnh" — sửa lỗi đa vị thế + sàn chặn IP (06/11/2026)
+
+**Người vận hành báo:** *"hội đồng chỉ treo 1 lệnh nhưng không vào lệnh của cặp khác, chỉ chờ cặp hiện tại chạm TP/SL mới tiếp lệnh."*
+
+### 27.1 Hai nguyên nhân (một là LỖI CODE, không phải chỉ cấu hình)
+
+| # | Nguyên nhân | Bằng chứng đo được |
+|---|---|---|
+| 1 | **`PortfolioManager.can_open()` có luật cứng "single best setup"**: `if self.positions and not allow_hedge_opposite: return False` ⇒ đã có 1 vị thế là **chặn MỌI cặp khác, bất kể `MAX_POSITIONS`**. Tăng `MAX_POSITIONS` một mình **KHÔNG sửa được** | `portfolio.py:65-68` (gọi từ `bot.py:330`) |
+| 2 | `MAX_POSITIONS=1` + `RISK_PER_TRADE_PCT=1.2` trong khi `MAX_TOTAL_RISK_PCT=1.6` ⇒ 1 lệnh ăn **1.42%**, lệnh 2 vượt trần | `SKIP_RISK` **x1669+** (TESTNET), `SKIP_MAX_POS` **x2777** (LIVE) |
+
+### 27.2 Đã vá (chia nhỏ risk, **không** tăng tổng risk)
+
+| Instance | MAX_POSITIONS | RISK_PER_TRADE | MAX_TOTAL_RISK_PCT | Ghi chú |
+|---|---|---|---|---|
+| TESTNET | **1 → 4** | **1.2 → 0.4** | 1.6 (giữ) | 4 × 0.4 = **1.6%** = trần cũ |
+| LIVE | **1 → 3** | **1.2 → 0.6** | 1.6 → **3.0** | vốn 38 USDT: sàn bắt notional tối thiểu 5 USDT ⇒ risk thật 1 lệnh ~0.65–1.2% |
+
+Code: "single best setup" **chỉ còn đúng khi `max_positions <= 1`**; nhiều slot ⇒ cho phép nhiều cặp **khác symbol**, trần tổng risk vẫn do `can_add_risk()` giữ. Hệ quả có kiểm soát: 3 lệnh cùng chiều là **1 canh bạc tương quan** — nên trần tổng vẫn là hàng rào cuối, không phải số slot.
+
+### 27.3 Ba thứ khác phải sửa trong cùng lần (nếu không thì "mở slot" cũng vô nghĩa)
+
+1. **LIVE kill-switch đang NGƯNG** (21:34: daily loss 9.24% + 5 lỗi API) mà `KILL_AUTO_RESET_HOURS=0` ⇒ treo vĩnh viễn → `risk.py --reset` + đưa `errors/consec_losses` về 0 + đặt **24h** auto-reset.
+2. **TESTNET learner chặn oan**: `edge −0.48…−0.57` (ngưỡng −0.30), 15 lần/giờ → `tools/learner_refit.py --target testnet --write`: holdout 187 lệnh, logloss **0.717 vs base 0.718**, `blocked_pct_test = 0.0` ⇒ hết chặn; backup `.bak-refit`.
+3. **Sàn chặn IP mà bot vẫn quét** (B-044) — xem dưới.
+
+### 27.4 B-044: `418 I'm a teapot` / `-1003`
+
+LIVE: **367** dòng teapot từ **16:33 → 23:20**; thông báo thật `{"code":-1003,"msg":"Way too many requests; IP(222.253.53.82) banned until 1793987694544"}` (≈ **00:55**). Bot vẫn gửi hàng trăm request/vòng (40 cặp × nhiều endpoint) ⇒ Binance **tăng thời gian ban** (2 phút → 3 ngày); cộng dồn lỗi ⇒ `errors` chạm 5 ⇒ **kill-switch TRIP** ⇒ LIVE ngừng trade.
+
+Vá: `parse_ban_until()` (đọc mốc, hiểu **mili giây**) + `logs/api_ban.json` (**chỉ tăng**, atomic) ⇒ vòng lặp **bỏ qua vòng quét** (`phase=api_ban`), báo Telegram 1 lần; file hỏng ⇒ **fail-open** (không được để bot đứng mãi vì file rác).
+
+### 27.5 Kiểm chứng
+
+- TESTNET sau restart: **mở lệnh mới 1000BONK SHORT**, `single-best-setup` = **0** lần trong log, `phase` tiến đều.
+- LIVE: kill-switch đã gỡ ("quay lai trade binh thuong"), nhưng **còn bị chặn IP tới ~00:55** ⇒ chưa vào lệnh (nguyên nhân **ngoài code**; guard sẽ tự chờ rồi quét lại).
+- Bug catalog: **43 lớp / 119 test chốt**; sổ harness: `H-20261106-006` (risk/adopted), `H-20261106-007` (tool/adopted).
+

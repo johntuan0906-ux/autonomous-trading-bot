@@ -43,6 +43,19 @@
 
 **B-042 — cửa sổ PowerShell mồ côi + popup "The window is no longer responding" (06/11).** Cline tạo **1 shell cho mỗi lệnh**; shell rỗng vẫn mở **cửa sổ thật ngoài VS Code**, khi treo thì Windows bật hộp thoại *Keep waiting / Reopen / Close* liên tục (người vận hành đã chụp màn hình). Vá: `tools/terminal_hygiene.py --hide-consoles` → `hide_stray_consoles()` dùng `EnumWindows` + `tasklist`, **ẩn** (`SW_HIDE`) cửa sổ console đang HIỆN của `powershell/pwsh/cmd/conhost/OpenConsole/WindowsTerminal` (không đụng VS Code/trình duyệt); mặc định **TẮT** (opt-in), có `--dry-run`.
 
+**B-043 — "CHỈ TREO 1 LỆNH" (06/11, người vận hành báo).** Hiện tượng: bot giữ 1 vị thế và **không vào cặp khác**, chỉ chờ cặp đó chạm TP/SL. Có **2 nguyên nhân cộng dồn**:
+1. **LỖI CODE**: `PortfolioManager.can_open()` có luật cứng *"single best setup"* — `if self.positions and not allow_hedge_opposite: return False` ⇒ đã có 1 vị thế thì **chặn MỌI cặp khác, dù `MAX_POSITIONS=4`**. Tăng `MAX_POSITIONS` một mình **không sửa được** (phát hiện bằng đọc code, không phải đoán). Vá: "single best setup" **chỉ còn đúng khi `max_positions <= 1`**; nhiều slot ⇒ cho phép nhiều cặp khác symbol, trần tổng risk vẫn do `can_add_risk(MAX_TOTAL_RISK_PCT)` giữ.
+2. **CẤU HÌNH**: `MAX_POSITIONS=1` + `RISK_PER_TRADE_PCT=1.2` trong khi `MAX_TOTAL_RISK_PCT=1.6` ⇒ 1 lệnh đã ăn **1.42%**, lệnh thứ 2 vượt trần ⇒ `SKIP_RISK` **x1669+** (TESTNET) và `SKIP_MAX_POS` **x2777** (LIVE).
+
+**Đã áp (chia nhỏ risk, KHÔNG tăng tổng risk):** TESTNET `MAX_POSITIONS=4` + `RISK_PER_TRADE_PCT=0.4` (**4×0.4 = 1.6%** = trần cũ); LIVE `MAX_POSITIONS=3` + `RISK_PER_TRADE_PCT=0.6` + `MAX_TOTAL_RISK_PCT=3.0` (vốn 38 USDT: sàn bắt notional tối thiểu 5 USDT nên risk thật 1 lệnh ~0.65–1.2%). Backup `.env.bak-b043`.
+
+**Sửa thêm trong cùng lần:** (a) **LIVE kill-switch đang NGƯNG** từ 21:34 (daily loss 9.24% + 5 lỗi API) mà `KILL_AUTO_RESET_HOURS=0` ⇒ treo vĩnh viễn → đã `risk.py --reset`, đưa `errors/consec_losses` về 0, và đặt `KILL_AUTO_RESET_HOURS=24` (trip do lỗi API không treo cả ngày); (b) **TESTNET learner chặn** setup (`edge -0.48…-0.57`, ngưỡng `-0.30`, 15 lần/giờ) → `tools/learner_refit.py --target testnet --write` (holdout 187 lệnh: logloss **0.717 vs base 0.718**, `blocked_pct_test=0.0` ⇒ không chặn oan; backup `.bak-refit`).
+
+**B-044 — SÀN CHẶN IP mà bot vẫn quét ⇒ tự làm bịn dài thêm (06/11).** LIVE có **367** dòng `418 I'm a teapot` từ **16:33 → 23:20**; thông báo thật: `{"code":-1003,"msg":"Way too many requests; IP(222.253.53.82) banned until 1793987694544"}` (chặn tới ~00:55). Bot vẫn gửi hàng trăm request mỗi vòng (40 cặp × nhiều endpoint) ⇒ Binance tăng thời gian ban (2 phút → 3 ngày); cộng dồn lỗi ⇒ `errors` chạm trần 5 ⇒ **kill-switch TRIP** ⇒ LIVE ngừng trade. Vá: `turbo_demo.parse_ban_until()` + `logs/api_ban.json` (chỉ tăng, atomic) ⇒ vòng lặp **bỏ qua vòng quét** (`phase=api_ban`) tới mốc, báo Telegram 1 lần; file hỏng ⇒ coi như không bị chặn (fail-open đúng chỗ).
+
+**Kết quả kiểm chứng (06/11 23:2x):** TESTNET sau restart **đã mở lệnh mới 1000BONK SHORT** (round 1, `single-best-setup` = **0** lần trong log); LIVE: kill-switch đã gỡ ("quay lai trade binh thuong"), nhưng **đang bị chặn IP tới ~00:55** ⇒ chưa vào lệnh được (nguyên nhân NGOÀI code). Bug catalog **43 lớp / 119 test chốt**.
+
+
 Đọc theo thứ tự: **CONTEXT.md (file này) → `OPERATIONS.md` (vận hành hằng ngày: 3 lệnh, shell, restart an toàn) → `STATE.md` → AGENTS.md → README.md mục 13–15 → `REPO_IDEAS.md` (9 repo tham khảo + việc áp dụng)**. Sau đó chạy:
 
 ```bash

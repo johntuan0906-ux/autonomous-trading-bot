@@ -97,6 +97,47 @@ class TestPortfolio(unittest.TestCase):
         ok, _ = pm.can_open("ETH/USDT:USDT", "LONG")
         self.assertFalse(ok)  # single best setup
 
+    def test_nhieu_slot_thi_cho_phep_cap_KHAC_symbol_B043(self):
+        """(06/11, B-043) `MAX_POSITIONS>1` phai cho phep nhieu cap KHAC SYMBOL.
+
+        LOP LOI THAT: dieu kien cu `if self.positions and not allow_hedge_opposite`
+        chan MOI cap khac khi da co 1 vi the — du 4 slot ⇒ bot "treo 1 lenh" va chi
+        vao lenh moi khi vi the hien tai cham TP/SL (do that: SKIP_MAX_POS x2777
+        tren LIVE, SKIP_RISK x1669+ tren TESTNET).
+        """
+        pm = PortfolioManager(max_positions=3)
+        self.assertTrue(pm.can_open("ETH/USDT:USDT", "LONG")[0])
+        pm.open(Position("BTC/USDT:USDT", "LONG", 100, 1, 97, 106))
+        ok, why = pm.can_open("ETH/USDT:USDT", "LONG")
+        self.assertTrue(ok, why)
+        pm.open(Position("ETH/USDT:USDT", "LONG", 200, 1, 194, 212))
+        self.assertTrue(pm.can_open("SOL/USDT:USDT", "SHORT")[0])
+        pm.open(Position("SOL/USDT:USDT", "SHORT", 50, 1, 52, 47))
+        ok, why = pm.can_open("XRP/USDT:USDT", "LONG")      # slot thu 4 > 3
+        self.assertFalse(ok)
+        self.assertIn("max positions 3", why)
+
+    def test_1_slot_van_giu_single_best_setup(self):
+        """Che do 1 slot (LIVE cu) phai giu nguyen hanh vi: chi 1 vi the tai 1 thoi diem."""
+        pm = PortfolioManager(max_positions=1)
+        pm.open(Position("BTC/USDT:USDT", "LONG", 100, 1, 97, 106))
+        ok, why = pm.can_open("ETH/USDT:USDT", "LONG")
+        self.assertFalse(ok)
+        self.assertIn("single-best-setup", why)
+
+    def test_trung_symbol_van_bi_chan(self):
+        pm = PortfolioManager(max_positions=4)
+        pm.open(Position("BTC/USDT:USDT", "LONG", 100, 1, 97, 106))
+        ok, why = pm.can_open("BTC/USDT:USDT", "LONG")
+        self.assertFalse(ok)
+        self.assertIn("duplicate", why)
+
+    def test_che_do_hedge_van_chan_cung_chieu(self):
+        pm = PortfolioManager(max_positions=4, allow_hedge_opposite=True)
+        pm.open(Position("BTC/USDT:USDT", "LONG", 100, 1, 97, 106))
+        self.assertFalse(pm.can_open("ETH/USDT:USDT", "LONG")[0])
+        self.assertTrue(pm.can_open("ETH/USDT:USDT", "SHORT")[0])
+
     def test_sl_tp_exit(self):
         pm = PortfolioManager()
         pm.open(Position("BTC/USDT:USDT", "LONG", 100, 1, 97, 106))

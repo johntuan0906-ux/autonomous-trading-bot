@@ -14,6 +14,7 @@ import concurrent.futures as _fut
 import json
 import logging
 import os
+import re
 import socket
 import sys
 import tempfile
@@ -134,7 +135,63 @@ def max_positions_block(cfg, positions, symbol: str, bypass=None) -> tuple[bool,
     return False, ""
 
 
+BAN_PATH = "logs/api_ban.json"
+BAN_RE = re.compile(r"banned until (\d{10,13})")
+BAN_FALLBACK_SEC = 900.0        # 418 khong kem moc thoi gian -> nghi 15 phut
+
+
+def parse_ban_until(text) -> float:
+    """Moc HET bi san chan IP (epoch GIAY) doc tu thong bao `-1003`/`418`; 0 = khong thay.
+
+    Do that 06/11 (LIVE): `{"code":-1003,"msg":"Way too many requests; IP(...) banned
+    until 1793987694544"}`. Do dai chuoi la ms ⇒ phai chia 1000 (neu > 1e11).
+    Ham THUAN TUY -> test duoc.
+    """
+    m = BAN_RE.search(str(text or ""))
+    if not m:
+        return 0.0
+    try:
+        v = float(m.group(1))
+    except ValueError:
+        return 0.0
+    return v / 1000.0 if v > 1e11 else v
+
+
+def api_ban_until(path=BAN_PATH) -> float:
+    """Moc dang bi chan (0 = khong bi chan / khong doc duoc)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        return float((d or {}).get("until") or 0.0)
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+def set_api_ban(until: float, reason: str = "", path=BAN_PATH) -> bool:
+    """Ghi moc bi chan; CHI TANG (khong ghi lui) de vong sau khong mo khoa som."""
+    until = float(until or 0.0)
+    if until <= 0:
+        return False
+    old = api_ban_until(path)
+    if until <= old:
+        return False
+    try:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"until": until, "reason": str(reason)[:160],
+                       "ts": time.time(),
+                       "readable": time.strftime("%Y-%m-%d %H:%M:%S",
+                                                 time.localtime(until))},
+                      f, ensure_ascii=False, indent=1)
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        return False
+
+
 def heartbeat(extra: dict | None = None, path=None) -> None:
+
     """Ghi nhip tim nguyen tu (tmp + os.replace). Loi -> im lang (khong lam chet bot).
 
     (19/10) LOP LOI B-021 — ban cu LUON ghi vao `_HEARTBEAT` (state cua instance THAT).
@@ -1500,6 +1557,18 @@ def main() -> None:
     while True:
         i += 1
         heartbeat({"round": i, "phase": "start"})
+        # (06/11, B-044) SAN CHAN IP (`-1003` / `418`): moi request tiep theo lam ban
+        # dai them (Binance: 2 phut -> 3 ngay). Do that LIVE: 367 dong "I'm a teapot",
+        # `banned until ...` lap lai tu 16:33 -> 23:20 vi bot van quet 40 cap moi vong.
+        # Nay: co moc bi chan ⇒ BO QUA vong quet (khong gui request), chi ngu.
+        _ban = api_ban_until()
+        if _ban > time.time():
+            log.warning("API BAN: san dang chan IP toi %s -> bo qua vong quet "
+                        "(khong gui them request)",
+                        time.strftime("%H:%M:%S", time.localtime(_ban)))
+            heartbeat({"round": i, "phase": "api_ban"})
+            time.sleep(max(5.0, min(60.0, _ban - time.time())))
+            continue
         # P0-2: kiem tra kill-switch NGAY trong vong lap that (ban cu khong he goi).
         # (02/10) Mac dinh khong thoat han nua: chuyen sang MONITOR-ONLY (van quan ly vi the
         # dang mo, khong mo lenh moi). Dat KILL_MONITOR_ONLY=false de quay lai hanh vi cu.
@@ -1551,6 +1620,18 @@ def main() -> None:
             log.exception("round %d loi: %s", i, e)
             tg(cfg, f"⚠️ Bot loi round {i}: {str(e)[:200]}")
             res = [{"status": "ERROR", "reason": str(e)[:200]}]
+        # (06/11, B-044) Ghi moc bi chan IP neu thay trong ket qua vong nay ⇒ vong sau
+        # KHONG quet nua (tranh lam ban dai them) va nguoi van hanh duoc bao 1 lan.
+        try:
+            _blob = json.dumps(res, ensure_ascii=False)
+        except Exception:  # noqa: BLE001
+            _blob = str(res)
+        _until = parse_ban_until(_blob)
+        if _until > time.time() and set_api_ban(_until, reason="-1003/418"):
+            log.error("API BAN: san chan IP toi %s (-1003) -> TAM DUNG quet den luc do",
+                      time.strftime("%H:%M:%S", time.localtime(_until)))
+            tg(cfg, f"⚠️ Sàn chặn IP tới {time.strftime('%H:%M', time.localtime(_until))} "
+                    f"(-1003) → tạm dừng quét, tự chạy lại sau đó.")
         if i % 20 == 0:
             log.info("learner state n=%s w=%s b=%.3f", _learner.n_updates,
                      {k: round(v, 3) for k, v in _learner.w.items()}, _learner.b)

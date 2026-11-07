@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 07/11/2026 20:45:45 · commit `?`
+- **Cập nhật**: 07/11/2026 21:15:45 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `89420` · round `312` · nhịp tim cách đây 103.8s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3188.88 USDT
+- **Bot**: pid `89420` · round `319` · nhịp tim cách đây 139.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3192.69 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2936 lệnh đóng, WR 40.77%, E(R) 0.2266, PnL -1104.0$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 15 | 13.33 | 0.358 | 0.404 | -0.4485 | -66.88 |
 | 14 ngày | 29 | 13.79 | 0.671 | 0.322 | -0.2271 | -133.14 |
-| 30 ngày | 2687 | 38.37 | 1.858 | 0.739 | 0.2433 | -1210.09 |
+| 30 ngày | 2679 | 38.26 | 1.86 | 0.737 | 0.2439 | -1214.01 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.358 < 1.2; PF($) cua so 7 ngay = 0.404 < 1.1; PF(R) cua so 14 ngay = 0.671 < 1.2; PF($) cua so 14 ngay = 0.322 < 1.1; PF($) cua so 30 ngay = 0.739 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 0.358 < 1.2; PF($) cua so 7 ngay = 0.404 < 1.1; PF(R) cua so 14 ngay = 0.671 < 1.2; PF($) cua so 14 ngay = 0.322 < 1.1; PF($) cua so 30 ngay = 0.737 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -49,7 +49,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | ADA/USDT:USDT | SHORT | 567.0 | 0.1879 | 0.19495 | 0.1738 | False | False | 0.823 |
 | AERO/USDT:USDT | SHORT | 143.7 | 0.6046 | 0.632434 | 0.548932 | False | False | 0.345 |
 | ALT/USDT:USDT | SHORT | 19047.0 | 0.00554 | 0.00575 | 0.00512 | False | False | 0.714 |
-| APE/USDT:USDT | SHORT | 211.7682 | 0.1102 | 0.1100898 | 0.103852 | False | False | 21.779 |
+| APE/USDT:USDT | SHORT | 211.7682 | 0.1102 | 0.1100898 | 0.103852 | False | False | 27.223 |
 | APR/USDT:USDT | LONG | 1171.0 | 0.04391 | 0.040496 | 0.050738 | False | False | 0.513 |
 | ASTER/USDT:USDT | SHORT | 194.0 | 0.684 | 0.704532 | 0.642936 | False | False | 0.487 |
 | AVAX/USDT:USDT | SHORT | 16.0 | 8.407 | 8.65546 | 7.91008 | False | False | 0.745 |

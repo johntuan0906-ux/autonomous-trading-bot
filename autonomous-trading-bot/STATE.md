@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/11/2026 00:46:06 · commit `?`
+- **Cập nhật**: 09/11/2026 01:16:06 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `80472` · round `156` · nhịp tim cách đây 27.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3230.98 USDT
+- **Bot**: pid `80472` · round `163` · nhịp tim cách đây 109.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3225.38 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2977 lệnh đóng, WR 41.08%, E(R) 0.2255, PnL -1087.7$)
@@ -43,12 +43,12 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 83333.0 | 0.002773 | 0.002821 | 0.002677 | False | False | 0.333 |
-| 1000SHIB/USDT:USDT | SHORT | 95238.0 | 0.004468 | 0.00451 | 0.004384 | False | False | 0.905 |
+| 1000BONK/USDT:USDT | SHORT | 83333.0 | 0.002773 | 0.002821 | 0.002677 | False | False | 0.208 |
+| 1000SHIB/USDT:USDT | SHORT | 95238.0 | 0.004468 | 0.00451 | 0.004384 | False | False | 0.69 |
 | ACE/USDT:USDT | SHORT | 1642.9 | 0.1236 | 0.1234764 | 0.120192 | True | True | 1.937 |
-| AERO/USDT:USDT | SHORT | 238.1 | 0.5872 | 0.603994 | 0.553612 | False | False | 0.06 |
+| AERO/USDT:USDT | SHORT | 238.1 | 0.5872 | 0.603994 | 0.553612 | False | False | 0.107 |
 | ALGO/USDT:USDT | LONG | 1196.8 | 0.09543 | 0.092088 | 0.102114 | False | False | 0.242 |
-| APE/USDT:USDT | SHORT | 912.38 | 0.1058 | 0.1056942 | 0.101504 | True | True | 25.52 |
+| APE/USDT:USDT | SHORT | 638.666 | 0.1058 | 0.1056942 | 0.101504 | True | True | 22.684 |
 | APT/USDT:USDT | SHORT | 246.61 | 0.5929 | 0.5923071 | 0.570196 | True | True | 1.048 |
 | ARB/USDT:USDT | LONG | 866.9 | 0.169 | 0.164386 | 0.178228 | False | False | 0.368 |
 | ASTER/USDT:USDT | SHORT | 315.0 | 0.6799 | 0.692584 | 0.654532 | False | False | 0.418 |

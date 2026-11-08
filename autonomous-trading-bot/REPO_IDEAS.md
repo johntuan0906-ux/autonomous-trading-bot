@@ -1185,3 +1185,166 @@ Vá: `parse_ban_until()` (đọc mốc, hiểu **mili giây**) + `logs/api_ban.j
 
 **Việc người vận hành cần xem:** (1) vì sao equity LIVE giảm 38.44 → 27.56 trong ~1 giờ khi bot không giữ vị thế (đối chiếu lịch sử lệnh trên Binance; `python positions.py` trong `atb-live`); (2) TESTNET có **12 vị thế cũ** ăn hết ngân sách risk 1.6% ⇒ lệnh mới bị `SKIP_RISK` cho tới khi chúng đóng — muốn giải phóng thì phải đóng bớt (thao tác tiền, cần người quyết).
 
+
+---
+
+## 28. Nghiên cứu 16 repo + 3 nền tảng inference + Blockworks Data API (07/11/2026)
+
+Mục tiêu: đọc thật từng link (fetch nội dung, không đoán), rồi trả lời **"repo này áp được gì vào
+hệ bot này"** — kèm ưu tiên và chi phí. Cột "Áp dụng" chỉ ghi việc **làm được trong repo này**,
+không phải mô tả chung.
+
+### 28.1 Mười sáu repo
+
+| # | Repo | Là gì (theo README thật) | Áp dụng được gì vào đây | Ưu tiên |
+|---|---|---|---|---|
+| 1 | `github/spec-kit` | Toolkit Spec-Driven Development: `constitution` → `specify` → `plan` → `tasks`, thêm nhánh `assess` (go / needs-clarification / **kill**) và "living specs" | Đã có `CONTEXT.md`/`OPERATIONS.md`/`ops_queue`; thiếu **"constitution"**: 5–8 luật bất biến (không sửa risk khi kill-switch trip, không bật LIVE khi test đỏ, mọi thay đổi risk phải có log bằng chứng…). Rẻ, chặn đúng loại lỗi đã xảy ra (`MAX_TOTAL_RISK_PCT=3.0` → crash-loop) | P2 |
+| 2 | `rohitg00/ai-engineering-from-scratch` | Khoá AI-engineering nhiều phase; có track **"Agent harness"** (loop hợp đồng, tool registry + schema, plan-execute, **verification gates + observation budget**, sandbox denylist/path jail, **eval harness với fixture task**) | `tools/council_eval.py` **đã** lấy ý tưởng phase G (ghi trong docstring). Còn 2 thứ chưa lấy: (a) **verification gate** — trước khi ghi `risk_state`/`.env` phải chạy `live_guard` + test chốt; (b) **fixture task** — bộ 10–20 tình huống giả (IP bị ban, equity lệch, file state hỏng) chạy lại được sau mỗi refactor | **P1** |
+| 3 | `google/elephant-goldfish-model` (EGM) | Plugin thiết kế/review: **Elephant** (đủ context) brainstorm → **Goldfish** = reviewer với **context SẠCH** (chỉ thấy tài liệu + code, **không** thấy hội thoại trước) review 5 bước; có `drift report` so tài liệu ↔ code hiện tại | **Đúng lỗ hổng lớn nhất của quy trình hiện tại**: agent tự review code của chính mình trong cùng context ⇒ tự xác nhận. Tiền lệ thật: `REPO_IDEAS.md` bị cắt 854 → 8 dòng mà không ai phát hiện. Việc làm: (a) bước review bằng **context sạch** (đưa diff + test, không đưa lịch sử chat); (b) `drift report` định kỳ `CONTEXT.md`/`OPERATIONS.md` vs code/`.env` thật | **P0** |
+| 4 | `cloudflare/security-audit-skill` | Skill audit 6 pha: recon (`architecture.md` + **`coverage-ledger.json`**) → hunters theo ledger → **candidate validation bởi agent KHÁC** → `findings.json` theo schema + validator 0-dependency | Trước khi LIVE tiền thật: audit (a) `.env`/`logs` có lộ key, (b) prompt-injection từ dữ liệu sàn/news vào council, (c) path jail khi tool đọc/ghi file. Hay nhất: **ledger đếm "đã soi chỗ nào"** (chống "audit 0 lỗi" giả) + **agent khác kiểm lại** | P1 |
+| 5 | `Orkas-AI/Orkas` | App desktop MIT: **Commander** biến mục tiêu thành to-do, điều phối 16 agent + điều khiển CLI agent | Không dùng code (Electron/TS). Chỉ xác nhận kiến trúc "Commander → to-do" mà `ops_queue.py` đã làm | skip |
+| 6 | `cheaper-inference/OmniRoute` | Gateway MIT: 1 endpoint cho **375 provider (150+ free)**, 1.400 model, **fallback theo quota**, nén token 15–95% | B-041 cho thấy council **chết hàng loạt khi 1 provider hết quota**; `AGENT_COUNCIL_FALLBACKS` đang **rỗng** ⇒ điền fallback, hoặc trỏ `AGENT_PROVIDER=openai_compat` vào 1 gateway. Không cần self-host cả OmniRoute — chỉ cần 1 `base_url` | P2 |
+| 7 | `openclaw/openclaw` | Gateway assistant đa kênh (Telegram/Slack/Discord…), tools/skills/plugins, sandbox, **pairing** người lạ | Đã có `notify.py` + `telegram_bridge.py` ⇒ **không thay**. Chỉ lấy: dữ liệu vào là **untrusted**, "pairing" trước khi nhận lệnh điều khiển | P3 |
+| 8 | `microsoft/BitNet` | `bitnet.cpp` — framework inference cho **LLM 1-bit** (ternary), chạy CPU x86/ARM | Model local của council (`llama3.2-3b-local`) đã bị **ignore vì value_r −1.303**. BitNet **nhanh/nhẹ hơn**, không làm model **khôn** hơn ⇒ không giải quyết vấn đề hiện tại | P3 |
+| 9 | `tashfeenahmed/freellmapi` | Gộp **34 free provider / 635 endpoint** sau 1 `/v1`; README tự ghi *"personal experimentation only"*, không SLA, "trí tuệ endpoint giảm dần trong ngày" | Chỉ để **thử nhiều model** cho `council_eval`. **KHÔNG** dùng cho quyết định tiền/LIVE | P3 |
+| 10 | `vercel-labs/agent-desktop` | Computer-use CLI: đọc **accessibility tree** (không screenshot), 60 lệnh, có MCP server; Windows 10 1809+ | Thay `pyautogui` khi buộc phải thao tác GUI (Binance web) — chính xác + kiểm chứng được bằng ref. Chỉ dùng khi **không có API** (vd đối chiếu lịch sử lệnh — đúng việc đang chờ người) | P2 |
+| 11 | `stablyai/orca` | IDE/desktop chạy **fleet coding agent**, worktrees, automations theo lịch, computer use | Ý tưởng "automation theo lịch" đã có (`schtasks`, `watch_regress`). Không dùng code | skip |
+| 12 | `ls1intum/Artemis` | LMS autograding (TUM), Java, CI/CD + test tự động | Không liên quan bot trade | skip |
+| 13 | `msitarzewski/agency-agents` | ~100 "agent" dạng **prompt/persona** theo phòng ban; có vai **Reality Checker**, **Evidence Collector** | Mượn 2 persona đó cho bước review/kiểm chứng (chỉ là prompt ⇒ rẻ). **Không** dùng kiểu "nhiều agent = thông minh hơn" | P2 |
+| 14 | `affaan-m/ECC` | "Agent harness performance system": skills, **hooks** (PreToolUse/PostToolUse), instincts/memory, **quality-gate**, multi-agent, `/checkpoint`, `/verify`, python-review | Khớp **nguyên văn** 5 yêu cầu trong đề bài (Parallel, independent context, automated testing, **Quality Gate** chỉ commit khi test xanh + `git diff` đúng phạm vi, activity logging). Đã có 4/5; thiếu **gate tự động chặn commit theo phạm vi diff** | **P1** |
+| 15 | `patchy631/ai-engineering-hub` | Repo tutorial agent/RAG/MCP/eval, có mục **"Evaluation and Observability"**, "Portfolio Analysis Agent" | Tham khảo cách làm eval + observability cho LLM (Comet/Opik) khi muốn dashboard chất lượng council | P3 |
+| 16 | `awesome-selfhosted` | Danh mục self-host | Chỉ để tra công cụ (uptime, queue) | skip |
+
+### 28.2 Sáu thuật ngữ kiến trúc trong đề bài ↔ thực trạng repo
+
+| Thuật ngữ | Đã có gì | Thiếu gì |
+|---|---|---|
+| Orchestration | `ops_queue.py` (OPEN/CLOSED), `.vscode/tasks.json`, `logs/harness_ledger.jsonl` | Không có DAG/luồng phụ thuộc — bot trade **không cần** |
+| Trigger | Vòng lặp `turbo_demo` + `schtasks` (watch_regress, hide-consoles) + `telegram_bridge` poll | **Không có webhook** ⇒ trễ tối đa 1 chu kỳ |
+| Task Queue | `ops_queue.py` + `recon_queue` (mục OPEN) | Không có retry/backoff theo loại; nên: mỗi bug tối đa **1** việc OPEN |
+| Memory / State | `memory.db` + `memory_graph.py`/`graph_memory.py` (dài hạn); `managed_state`, `risk_state.json`, `heartbeat.json` (ngắn hạn) | Không có "tóm tắt phiên" tự động ⇒ mất ngữ cảnh giữa phiên (lý do phải có `CONTEXT.md`) |
+| Agent Loop | `agents.AgentLayer`, `COUNCIL_ROUNDS=2`, `AGENT_RETRY_ATTEMPTS=2`, cache 900s | Không có trần vòng lặp cứng như khuyến nghị (thêm `AGENT_MAX_LOOPS=3`) |
+| Approval Checkpoint (HITL) | `AGENTS_SHADOW=true`, `AGENT_AUTO_APPLY=false`, `KILL_MONITOR_ONLY=true`, interlock `live_guard` | Đúng hình: **mọi thay đổi tiền đang chờ người** (§28.6) |
+
+### 28.3 Ba nền tảng inference (số liệu đọc từ tài liệu chính thức, 07/11/2026)
+
+| | **Groq Cloud** | **OpenRouter** | **NVIDIA NIM (build.nvidia.com)** |
+|---|---|---|---|
+| Endpoint | OpenAI-compatible (`/openai/v1`) | OpenAI-compatible (`/api/v1`) | **`https://integrate.api.nvidia.com/v1`**, OpenAI-compatible |
+| Free tier | Theo **model**: vd `openai/gpt-oss-120b` = **30 RPM / 1.000 RPD / 8K TPM / 200K TPD**; model nhỏ hơn 3–30 RPM | Model free: **20 RPM**; **50 req/ngày** nếu credit <10, **1.000 req/ngày** nếu ≥10 credit; có BYOK | **1.000 credit/tháng** (~1 credit/lần gọi), ~**40 RPM**; cần license AI Enterprise nếu production |
+| Điểm mạnh | **Độ trễ thấp** (LPU) — tốt cho "phiếu khẩn cấp" trong 1 chu kỳ trade | Nhiều model/1 key, có route + fallback, BYOK | Model **context 1M** (Nemotron 3, DeepSeek V4) — đọc cả journal dài |
+| Dùng cho gì ở đây | Lớp dự phòng nhanh khi `cline` hết quota (B-041) | So nhiều model rẻ cho `council_eval` | Đọc ngữ cảnh lớn (audit lịch sử lệnh, review tài liệu) |
+| Cảnh báo | 200K TPD ⇒ ~150–400 phiếu/ngày, đủ nhưng **không** để train | Không SLA; free model đổi liên tục | 1.000 credit/tháng ⇒ hết nhanh nếu để auto |
+
+**Cách cắm vào repo (đã có sẵn, không phải viết provider mới):** `agents.OpenAICompatProvider` +
+`AGENT_PROVIDER=openai_compat`, `AGENT_COMPAT_BASE_URL`, `AGENT_COMPAT_API_KEY`,
+`AGENT_COMPAT_MODEL` (đã ghi trong `.env` dạng comment). Tức là **đổi provider = đổi 4 dòng `.env`**.
+
+> **Quan trọng:** thêm provider **không** làm hội đồng khôn hơn. Bằng chứng §28.6: hội đồng sai vì
+> **quá tự tin** (brier 0.341) và vì **thiếu dữ liệu ghép**, không phải vì thiếu model.
+
+### 28.4 Blockworks Data API — đã test thật, **key hiện KHÔNG dùng được**
+
+Tài liệu chính thức (`docs.blockworks.com`): base `https://api.blockworks.com`, header
+**`X-Blockworks-API-Key`**, envelope `{error, data}`, 2 loại model `tabular` (bảng, lọc/sort/page) và
+`timeseries` (`/query/timeseries/<model>/<granularity>[/<id>]`). Có cả **MCP server** và danh mục
+phong phú: market, exchanges, derivatives (funding rates), **protocol revenue**, token unlocks,
+ETF flows, fundraising, **mindshare/sentiment**.
+
+Kết quả gọi thật từ máy này (`_bw_test.py`, `_bw_test2.py`, `curl.exe`):
+
+| Thử | Kết quả |
+|---|---|
+| Python `urllib` UA mặc định | **Cloudflare `Error 1010`** — "browser signature banned" ⇒ phải đặt `User-Agent` thật |
+| Không gửi key | `HTTP 401 {"error":"this model requires authentication"}` |
+| Key đã cho (`X-Blockworks-API-Key`) | **`HTTP 403 Forbidden`** — trên **mọi** path, kể cả path **không tồn tại** |
+| Key rác `abc123` | **`HTTP 403`** (giống hệt key thật) ⇒ 403 **không** phải "key sai", mà là **bị từ chối ở tầng quyền/edge** |
+| `Authorization: Bearer` | `HTTP 403` |
+| `curl.exe` (TLS khác) | `HTTP 403`, `tls_verify=0` ⇒ **không** phải lỗi TLS |
+
+⇒ Kết luận trung thực: **chưa xác minh được key** (không phải lỗi code của mình). Việc cần:
+(1) tạo key mới ở `app.blockworks.com/account/api` và xem **tier/quyền** của tài khoản;
+(2) thử đúng 1 request trong **browser** (nơi docs nói chạy được) để tách "key" vs "mạng/edge";
+(3) **rotate key này** — nó đã bị dán vào chat.
+
+Nếu thông được, thứ tự ưu tiên dùng (chỉ 3, tránh ôm dữ liệu chết):
+**token unlocks** (chặn LONG trước mở khoá lớn) → **funding rates/perp volume** (lọc symbol, thay
+`news_features` hiện tại) → **mindshare/sentiment** (feature cho `learner`). Luật: module riêng
+`data_blockworks.py` + cache đĩa + **fail-open** (API chết không được chặn vòng trade).
+
+### 28.5 "5 giai đoạn huấn luyện AI Agent" ↔ cái repo này **đã có** gì
+
+Điểm quan trọng: 3/5 giai đoạn **đã tồn tại dưới dạng khác tên** — không cần GPU, không cần SFT.
+
+| Giai đoạn (theo bài) | Tương đương trong repo | Trạng thái | Có nên làm bản "thật"? |
+|---|---|---|---|
+| 1. **SFT** (học từ agent traces đúng) | `logs/decisions.jsonl` + `journal.jsonl` = **trace** (quyết định → kết quả). Hiện chỉ dùng để **chấm**, chưa dùng để **dạy** | Có dữ liệu, chưa khai thác | **Không** — không GPU; thay bằng few-shot "lệnh vàng" (rẻ, hiệu quả tức thì) |
+| 2. **Distillation** (model nhỏ học model mạnh) | `model_leaderboard` + `MODEL_CANON` (B-035) đã gom phiếu theo model; thiếu: lấy lời giải của model **thắng** làm chuẩn để chấm model yếu | Một nửa | Không cần train: dùng làm **nhãn so sánh** |
+| 3. **RL / GRPO** (reward từ kết quả) | `learner.OnlineLearner` + bandit chọn model theo `value_r` (`council_eval`), reward = **R thật** | **Đã có** (bản online 1 bước) | Không cần GRPO: reward ở đây **thưa & nhiễu**, GRPO sẽ overfit |
+| 4. **RL Environments** (môi trường nhiều lượt) | `hyperopt.py` (grid SL/TP/partial/BE/trail trên journal), `--target testnet` refit, TESTNET thật | **Đã có** | Đã đủ |
+| 5. **Harness & Scale** | `tests/` + `bug_catalog.py` (43 lớp / 119 test chốt) + `watch_regress.py` + `harness_ledger.jsonl` | **Đã có** | Nên **tăng** (P0: reviewer context sạch; P1: quality gate) |
+
+**Kết luận §28.5:** bài viết đúng về nguyên tắc, nhưng với repo này **giá trị nằm ở giai đoạn 5
+(harness) và kỷ luật dữ liệu (ghép phiếu → kết quả)**, không nằm ở việc đi train model. Bỏ qua
+SFT/distill/GRPO là quyết định **có căn cứ**, không phải lười.
+
+### 28.6 Trả lời thẳng: hội đồng **đã thông minh chưa**? Đã **tự làm mọi thứ** chưa?
+
+Số liệu thật, lấy ngay trong phiên này (`tools/council_eval.py`, 720 giờ):
+
+| Chỉ số | TESTNET | LIVE | Ngưỡng để "dùng được" |
+|---|---|---|---|
+| Phiếu ghép được với lệnh CLOSE | **608** | **145** | ≥30 để *kết luận* (đủ), nhưng… |
+| Model có `n_ghep ≥ 30` | **0** | 0 | ≥1 |
+| `brier` (calibration) | **0.341** | 0.340 | **≤0.25** |
+| Khai 0.8–1.0 tự tin → thắng thật | **57%** (n=56) | 33% (n=3) | ≈80% |
+| Khai 0.6–0.8 → thắng thật | 24% (n=33) | 60% (n=5) | ≈70% |
+| `value_r` tốt nhất | **None** (qwen3.8-max n=31, không có ALLOW nào để so) | None | **>0** với n≥30 |
+| Model tệ nhất | `local/llama3.2-3b-local` **−1.303** ⇒ đã `AGENT_COUNCIL_IGNORE` | — | — |
+| Cổng `--ready` | **CHƯA ĐỦ** | CHƯA ĐỦ | — |
+
+**Trả lời 1 — "hội đồng thật sự thông minh chưa?" → CHƯA.** Ba lý do đo được, không phải cảm tính:
+
+1. **Quá tự tin (overconfident).** Khi hội đồng nói "83% chắc", thực tế thắng **57%**. Đây là lỗi
+   hiệu chuẩn, sửa bằng **prompt + luật**, không sửa bằng thêm model: bắt khai `confidence` = "tần
+   suất thắng thật của loại setup này trong 30 ngày" (lấy từ `lessons.json`), cấm khai số >0.7 nếu
+   `n<20`.
+2. **Không model nào đủ mẫu để xếp hạng.** 608 phiếu ghép nhưng **rải** cho 13 model ⇒ model tốt
+   nhất chỉ có 31 phiếu ghép và **0 lệnh ALLOW** để so sánh. Nói cách khác: hội đồng đang **nói
+   nhiều, được kiểm chứng ít** — vì đa số phiếu **không ghép được** với lệnh nào (133 phiếu chỉ 31
+   ghép ở TESTNET).
+3. **Đa dạng model là giả.** 7 model "khác nhau" đều đi qua **cùng một provider** (`cline-pass/...`)
+   ⇒ sai cùng lúc, đúng cùng lúc. Bỏ phiếu 7 model như vậy ≠ 7 ý kiến độc lập.
+
+**Trả lời 2 — "đã tự làm mọi thứ chưa?" → CHƯA, và hiện tại *không được phép* tự làm.**
+Đây là **thiết kế đúng**, không phải thiếu sót: `AGENTS_SHADOW=true` (chỉ ghi nhận, **không veto**),
+`AGENT_AUTO_APPLY=false` (không tự sửa tham số), `KILL_MONITOR_ONLY=true`, interlock `live_guard`
+chặn `MAX_TOTAL_RISK_PCT>2`. Ba việc **đang chờ người**, hội đồng không được tự quyết:
+
+1. Vì sao equity LIVE **38.44 → 27.56 USDT** khi bot giữ **0 vị thế** lúc boot (6 journal OPEN không
+   có CLOSE) → phải đối chiếu lịch sử lệnh Binance.
+2. LIVE kill-switch: giữ auto-reset 24h hay reset ngay (hiện `tripped`, `monitor_only`).
+3. TESTNET: 12 vị thế cũ ăn hết ngân sách risk 1.6% ⇒ lệnh mới `SKIP_RISK`; đóng bớt là **thao tác
+   tiền**.
+
+**Cần thêm thông tin gì để hội đồng "khôn" lên** (theo thứ tự tác động/chi phí):
+(a) **ghép phiếu chặt hơn** (vote → đúng lệnh, bằng `symbol + direction + entry ±0.2% + cửa sổ 5'`,
+thay vì cửa sổ 30' rộng) ⇒ tăng `n_ghep` mà **không** thêm lệnh; (b) **giữ 1 nhánh đối chứng** khi
+bật veto thật (nếu chặn 100% thì mất luôn khả năng đo "nếu vào thì thắng hay thua" — hiện SHADOW
+cho phép đo cả 2 nhánh, đó là tài sản phải giữ); (c) **bắt buộc trích bằng chứng** trong phiếu
+(`lessons` bucket + `n`), phiếu không có bằng chứng ⇒ loại; (d) mới tính chuyện thêm provider/model
+(Groq/NIM) — **sau** khi (a)–(c) xong.
+
+### 28.7 Việc nên làm tiếp (đã xếp hạng, không làm gì thêm ngoài danh sách này)
+
+| # | Việc | Vì sao | Công |
+|---|---|---|---|
+| 1 | **Reviewer context sạch** cho mỗi lần sửa lớn (EGM "Goldfish") + `drift report` docs↔code | Chặn đúng loại lỗi im lặng (file bị cắt, docs lệch code) | S  |
+| 2 | **Prompt hiệu chuẩn** confidence + bắt buộc trích `lessons` | brier 0.341 → mục tiêu <0.25 | S |
+| 3 | **Ghép phiếu chặt** trong `council_eval` | n_ghep ≥30 cho ≥1 model, có kết luận | S |
+| 4 | **Quality gate** chặn commit (test xanh + `git diff` đúng phạm vi) | 5/6 yêu cầu harness đã có, thiếu gate này | M |
+| 5 | Fixture-task eval harness (10–20 tình huống giả: ban IP, equity lệch, state hỏng) | Refactor an toàn | M |
+| 6 | Security audit theo khung Cloudflare (trước khi LIVE chạy tiền thật) | Key/`.env`/prompt-injection | M |
+| 7 | Lớp dự phòng inference qua `openai_compat` (Groq/NIM) | B-041: council chết khi hết quota | S |
+| 8 | `data_blockworks.py` — **chỉ khi** key hoạt động | 3 use case ở §28.4 | M |
+

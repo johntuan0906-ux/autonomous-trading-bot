@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 08/11/2026 20:16:03 · commit `?`
+- **Cập nhật**: 08/11/2026 20:46:03 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `80472` · round `89` · nhịp tim cách đây 91.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3194.98 USDT
+- **Bot**: pid `80472` · round `96` · nhịp tim cách đây 180.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3204.14 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 2977 lệnh đóng, WR 41.08%, E(R) 0.2255, PnL -1087.7$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 55 | 50.91 | 1.02 | 0.738 | 0.0068 | -37.56 |
 | 14 ngày | 70 | 42.86 | 0.98 | 0.514 | -0.0082 | -116.84 |
-| 30 ngày | 2571 | 37.88 | 1.904 | 0.728 | 0.2569 | -1184.85 |
+| 30 ngày | 2569 | 37.84 | 1.903 | 0.727 | 0.2569 | -1184.92 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.020 < 1.2; PF($) cua so 7 ngay = 0.738 < 1.1; PF(R) cua so 14 ngay = 0.980 < 1.2; PF($) cua so 14 ngay = 0.514 < 1.1; PF($) cua so 30 ngay = 0.728 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.020 < 1.2; PF($) cua so 7 ngay = 0.738 < 1.1; PF(R) cua so 14 ngay = 0.980 < 1.2; PF($) cua so 14 ngay = 0.514 < 1.1; PF($) cua so 30 ngay = 0.727 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,18 +44,18 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000BONK/USDT:USDT | SHORT | 83333.0 | 0.002773 | 0.002821 | 0.002677 | False | False | 0.0 |
-| 1000SHIB/USDT:USDT | SHORT | 95238.0 | 0.004468 | 0.00451 | 0.004384 | False | False | 0.0 |
-| ACE/USDT:USDT | SHORT | 1642.9 | 0.1236 | 0.1234764 | 0.120192 | True | True | 1.115 |
+| 1000SHIB/USDT:USDT | SHORT | 95238.0 | 0.004468 | 0.00451 | 0.004384 | False | False | 0.238 |
+| ACE/USDT:USDT | SHORT | 1642.9 | 0.1236 | 0.1234764 | 0.120192 | True | True | 1.232 |
 | AIOT/USDT:USDT | LONG | 289.8 | 0.1273 | 0.1274273 | 0.146608 | False | False | 0.0 |
 | ALGO/USDT:USDT | LONG | 1196.8 | 0.09543 | 0.092088 | 0.102114 | False | False | 0.242 |
-| APE/USDT:USDT | SHORT | 1862.0 | 0.1058 | 0.107948 | 0.101504 | False | False | 0.419 |
+| APE/USDT:USDT | SHORT | 1862.0 | 0.1058 | 0.107948 | 0.101504 | False | False | 0.698 |
 | APT/USDT:USDT | SHORT | 352.3 | 0.5929 | 0.604252 | 0.570196 | False | False | 0.449 |
-| ARB/USDT:USDT | LONG | 866.9 | 0.169 | 0.164386 | 0.178228 | False | False | 0.347 |
+| ARB/USDT:USDT | LONG | 866.9 | 0.169 | 0.164386 | 0.178228 | False | False | 0.368 |
 | ASTER/USDT:USDT | SHORT | 315.0 | 0.6799 | 0.692584 | 0.654532 | False | False | 0.15 |
-| ATOM/USDT:USDT | SHORT | 154.0 | 1.363 | 1.388974 | 1.311052 | False | False | 0.385 |
+| ATOM/USDT:USDT | SHORT | 154.0 | 1.363 | 1.388974 | 1.311052 | False | False | 0.616 |
 | AXS/USDT:USDT | SHORT | 247.0 | 0.817 | 0.833194 | 0.784612 | False | False | 0.124 |
-| BR/USDT:USDT | SHORT | 299.0 | 0.4476 | 0.46095 | 0.4209 | False | False | 0.562 |
-| CAKE/USDT:USDT | SHORT | 149.0 | 1.8981 | 1.924872 | 1.844556 | False | False | 0.396 |
+| BR/USDT:USDT | SHORT | 299.0 | 0.4476 | 0.46095 | 0.4209 | False | False | 0.563 |
+| CAKE/USDT:USDT | SHORT | 149.0 | 1.8981 | 1.924872 | 1.844556 | False | False | 0.407 |
 | GTC/USDT:USDT | SHORT | 159.4 | 0.1736 | 0.18614 | 0.14852 | False | False | 0.287 |
 
 ---

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/11/2026 21:39:47 · commit `dc2206d`
+- **Cập nhật**: 09/11/2026 22:09:47 · commit `1f691dd`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `74300` · round `14` · nhịp tim cách đây 123.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3172.52 USDT
+- **Bot**: pid `74300` · round `22` · nhịp tim cách đây 23.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3169.66 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3025 lệnh đóng, WR 41.06%, E(R) 0.2336, PnL -1030.41$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 103 | 45.63 | 2.051 | 1.097 | 0.3462 | 19.73 |
-| 14 ngày | 118 | 41.53 | 1.78 | 0.801 | 0.2942 | -59.55 |
+| 14 ngày | 117 | 41.88 | 1.822 | 0.835 | 0.3054 | -47.26 |
 | 30 ngày | 2582 | 37.76 | 1.958 | 0.744 | 0.272 | -1126.87 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 1.097 < 1.1; PF($) cua so 14 ngay = 0.801 < 1.1; PF($) cua so 30 ngay = 0.744 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 1.097 < 1.1; PF($) cua so 14 ngay = 0.835 < 1.1; PF($) cua so 30 ngay = 0.744 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,9 +44,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ARB/USDT:USDT | LONG | 351.0 | 0.183 | 0.171606 | 0.205788 | False | False | 0.097 |
-| ASTER/USDT:USDT | SHORT | 218.0 | 0.6393 | 0.657606 | 0.602688 | False | False | 0.038 |
+| ASTER/USDT:USDT | SHORT | 218.0 | 0.6393 | 0.657606 | 0.602688 | False | False | 0.0 |
 | BNB/USDT:USDT | SHORT | 0.36 | 684.99 | 695.890398 | 663.189204 | False | False | 0.06 |
-| CAKE/USDT:USDT | SHORT | 86.0 | 1.8614 | 1.90778 | 1.76864 | False | False | 0.037 |
+| CAKE/USDT:USDT | SHORT | 86.0 | 1.8614 | 1.90778 | 1.76864 | False | False | 0.0 |
 
 ---
 

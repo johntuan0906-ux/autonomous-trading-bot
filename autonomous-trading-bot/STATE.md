@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 10/11/2026 01:53:15 · commit `f9e3b46`
+- **Cập nhật**: 10/11/2026 02:23:15 · commit `7247137`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `112020` · round `30` · nhịp tim cách đây 150.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3165.71 USDT
+- **Bot**: pid `112020` · round `38` · nhịp tim cách đây 26.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3165.8 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3025 lệnh đóng, WR 41.06%, E(R) 0.2336, PnL -1030.41$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 102 | 45.1 | 2.0 | 0.995 | 0.3326 | -1.05 |
 | 14 ngày | 117 | 41.88 | 1.822 | 0.835 | 0.3054 | -47.26 |
-| 30 ngày | 2581 | 37.74 | 1.957 | 0.744 | 0.272 | -1129.75 |
+| 30 ngày | 2580 | 37.75 | 1.96 | 0.745 | 0.2725 | -1119.24 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.995 < 1.1; PF($) cua so 14 ngay = 0.835 < 1.1; PF($) cua so 30 ngay = 0.744 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.995 < 1.1; PF($) cua so 14 ngay = 0.835 < 1.1; PF($) cua so 30 ngay = 0.745 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,10 +39,11 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (3)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
+| 1000BONK/USDT:USDT | LONG | 35087.0 | 0.002827 | 0.002713 | 0.003055 | False | False | 0.14 |
 | ARB/USDT:USDT | LONG | 351.0 | 0.183 | 0.171606 | 0.205788 | False | False | 0.097 |
 | AVAX/USDT:USDT | LONG | 6.0 | 8.726 | 8.089772 | 9.998456 | False | False | 0.047 |
 | BNB/USDT:USDT | SHORT | 0.36 | 684.99 | 695.890398 | 663.189204 | False | False | 0.06 |

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/11/2026 13:16:24 · commit `?`
+- **Cập nhật**: 09/11/2026 13:46:25 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `77604` · round `52` · nhịp tim cách đây 160.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3231.46 USDT
+- **Bot**: pid `77604` · round `59` · nhịp tim cách đây 134.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3234.42 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3014 lệnh đóng, WR 41.04%, E(R) 0.234, PnL -1035.85$)
@@ -45,16 +45,16 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 |---|---|---|---|---|---|---|---|---|
 | 1000PEPE/USDT:USDT | LONG | 12106.0 | 0.0051324 | 0.004802 | 0.005792 | False | False | 0.0 |
 | ARB/USDT:USDT | LONG | 448.3 | 0.1715 | 0.162578 | 0.189344 | False | False | 0.37 |
-| ASTER/USDT:USDT | SHORT | 148.0 | 0.6437 | 0.67064 | 0.58982 | False | False | 0.234 |
+| ASTER/USDT:USDT | SHORT | 148.0 | 0.6437 | 0.67064 | 0.58982 | False | False | 0.527 |
 | BR/USDT:USDT | SHORT | 237.0 | 0.4221 | 0.43893 | 0.38844 | False | False | 0.107 |
 | CYBER/USDT:USDT | SHORT | 199.5 | 0.269 | 0.289046 | 0.228908 | False | False | 0.449 |
-| DOT/USDT:USDT | SHORT | 117.3 | 0.8721 | 0.906186 | 0.803928 | False | False | 0.29 |
-| ETH/USDT:USDT | SHORT | 0.049 | 2152.88 | 2233.168052 | 1992.303896 | False | False | 0.308 |
-| GALA/USDT:USDT | SHORT | 66666.0 | 0.001523 | 0.001583 | 0.001403 | False | False | 0.283 |
+| DOT/USDT:USDT | SHORT | 117.3 | 0.8721 | 0.906186 | 0.803928 | False | False | 0.378 |
+| ETH/USDT:USDT | SHORT | 0.049 | 2152.88 | 2233.168052 | 1992.303896 | False | False | 0.552 |
+| GALA/USDT:USDT | SHORT | 66666.0 | 0.001523 | 0.001583 | 0.001403 | False | False | 0.35 |
 | GTC/USDT:USDT | LONG | 216.8 | 0.185 | 0.166556 | 0.221888 | False | False | 0.271 |
-| HYPE/USDT:USDT | SHORT | 1.33 | 75.052 | 78.039112 | 69.077776 | False | False | 0.356 |
-| IO/USDT:USDT | SHORT | 830.2 | 0.1142 | 0.119018 | 0.104564 | False | False | 0.353 |
-| LSK/USDT:USDT | SHORT | 479.0 | 0.1699 | 0.17824 | 0.15322 | False | False | 0.24 |
+| HYPE/USDT:USDT | SHORT | 1.33 | 75.052 | 78.039112 | 69.077776 | False | False | 0.362 |
+| IO/USDT:USDT | SHORT | 830.2 | 0.1142 | 0.119018 | 0.104564 | False | False | 0.56 |
+| LSK/USDT:USDT | SHORT | 479.0 | 0.1699 | 0.17824 | 0.15322 | False | False | 0.3 |
 | QNT/USDT:USDT | LONG | 0.3 | 198.3 | 188.030586 | 218.838828 | False | False | 0.252 |
 
 ---

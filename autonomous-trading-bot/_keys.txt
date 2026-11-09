@@ -1,0 +1,13 @@
+
+===== logs/journal.jsonl  lines=7071  bad=0  kinds=4
+-- AGENT        rows=2629  keys: ts, event, action, confidence, reasons, model, status, role, agent, risk_flags, provider, shadow, cache_hit, latency_ms, tokens_in, tokens_out, cost_usd, note, raw_text, symbol, direction, final_action, abstained, stage, consensus, kind, question, verdict, model_raw
+-- CLOSE        rows=3415  keys: ts, event, pair, direction, timeframe, entry, qty, exit_price, r, won, pnl, reason, partial, mfe_r, reconciled, recon_src, recon_legs, recon_filled_qty, recon_pnl_exchange, recon_at, r_valid
+-- OPEN         rows=1023  keys: ts, event, pair, direction, timeframe, entry, sl, tp, qty, leverage, risk_pct, rr, alpha, score100, market_regime, btc_regime, htf_bias, setup_type, candlestick, volume_ratio, vwap_side, sweep, retest, oi_chg, funding, ls_ratio, long_liq, short_liq, news_score, econ_event, sentiment_n, strategy, kelly_size_mult, feats, size_base, risk_usdt
+-- ?            rows=4     keys: ts, pair, direction, timeframe, entry, sl, tp, qty, leverage, risk_pct, rr, alpha, score100, market_regime, btc_regime, htf_bias, setup_type, candlestick, volume_ratio, vwap_side, sweep, retest, oi_chg, funding, ls_ratio, long_liq, short_liq, news_score, econ_event, sentiment_n, strategy, kelly_size_mult
+
+===== ../atb-live/logs/journal.jsonl  lines=2951  bad=0  kinds=5
+-- AGENT        rows=1599  keys: ts, event, action, confidence, reasons, model, status, role, agent, risk_flags, provider, shadow, cache_hit, latency_ms, tokens_in, tokens_out, cost_usd, note, raw_text, symbol, direction, final_action, abstained, stage, consensus, kind, question, verdict
+-- OPEN         rows=616   keys: ts, event, pair, direction, timeframe, entry, sl, tp, qty, leverage, risk_pct, rr, alpha, score100, market_regime, btc_regime, htf_bias, setup_type, candlestick, volume_ratio, vwap_side, sweep, retest, oi_chg, funding, ls_ratio, long_liq, short_liq, news_score, econ_event, sentiment_n, strategy, kelly_size_mult, feats, size_base, risk_usdt
+-- CLOSE        rows=675   keys: ts, event, pair, direction, timeframe, entry, qty, exit_price, r, won, pnl, reason, partial, mfe_r, reconciled, recon_src, recon_legs, recon_filled_qty, recon_pnl_exchange, recon_at, r_valid
+-- OPS          rows=57    keys: event, ts, status, symbol, note, qty, verdict
+-- ?            rows=4     keys: ts, pair, direction, timeframe, entry, sl, tp, qty, leverage, risk_pct, rr, alpha, score100, market_regime, btc_regime, htf_bias, setup_type, candlestick, volume_ratio, vwap_side, sweep, retest, oi_chg, funding, ls_ratio, long_liq, short_liq, news_score, econ_event, sentiment_n, strategy, kelly_size_mult

@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/11/2026 09:16:11 · commit `?`
+- **Cập nhật**: 09/11/2026 09:46:12 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `80472` · round `282` · nhịp tim cách đây 163.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3227.33 USDT
+- **Bot**: pid `77604` · round `5` · nhịp tim cách đây 52.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3222.16 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 2998 lệnh đóng, WR 41.06%, E(R) 0.2344, PnL -1046.5$)
+## Hiệu suất (journal: 3014 lệnh đóng, WR 41.04%, E(R) 0.234, PnL -1035.85$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 76 | 47.37 | 2.196 | 1.021 | 0.4185 | 3.64 |
-| 14 ngày | 91 | 41.76 | 1.83 | 0.72 | 0.3391 | -75.64 |
-| 30 ngày | 2555 | 37.73 | 1.962 | 0.739 | 0.2733 | -1142.95 |
+| 7 ngày | 92 | 45.65 | 2.119 | 1.076 | 0.3723 | 14.29 |
+| 14 ngày | 107 | 41.12 | 1.808 | 0.773 | 0.3113 | -64.99 |
+| 30 ngày | 2571 | 37.73 | 1.96 | 0.742 | 0.2726 | -1132.31 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 1.021 < 1.1; PF($) cua so 14 ngay = 0.720 < 1.1; PF($) cua so 30 ngay = 0.739 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 1.076 < 1.1; PF($) cua so 14 ngay = 0.773 < 1.1; PF($) cua so 30 ngay = 0.742 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,22 +39,23 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (12)
+## Vị thế đang quản lý (13)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | LONG | 13628.0 | 0.0050965 | 0.004803 | 0.005685 | False | False | 0.185 |
-| ACE/USDT:USDT | LONG | 1058.0 | 0.1203 | 0.112788 | 0.127224 | False | False | 0.186 |
-| ADA/USDT:USDT | SHORT | 701.0 | 0.1733 | 0.179 | 0.1619 | False | False | 0.0 |
-| AERO/USDT:USDT | SHORT | 166.67 | 0.5872 | 0.5866128 | 0.553612 | True | True | 1.304 |
-| AKE/USDT:USDT | LONG | 8888.0 | 0.005355 | 0.004905 | 0.006255 | False | False | 0.055 |
-| ALT/USDT:USDT | SHORT | 27777.0 | 0.00518 | 0.005324 | 0.004892 | False | False | 0.0 |
-| APR/USDT:USDT | SHORT | 1637.3 | 0.03917 | 0.039130830000000005 | 0.03575 | True | True | 1.006 |
-| AVAX/USDT:USDT | SHORT | 16.0 | 7.861 | 8.100064 | 7.382872 | False | False | 0.067 |
-| BANK/USDT:USDT | SHORT | 3875.0 | 0.02236 | 0.023392 | 0.020296 | False | False | 0.0 |
-| BAT/USDT:USDT | SHORT | 698.8 | 0.11729 | 0.123014 | 0.105842 | False | False | 0.0 |
-| BCH/USDT:USDT | SHORT | 0.539 | 239.84 | 247.252568 | 225.014864 | False | False | 0.197 |
-| QNT/USDT:USDT | LONG | 0.3 | 198.6 | 188.535912 | 218.728176 | False | False | 0.087 |
+| 1000PEPE/USDT:USDT | LONG | 12106.0 | 0.0051324 | 0.004802 | 0.005792 | False | False | 0.0 |
+| ARB/USDT:USDT | LONG | 448.3 | 0.1715 | 0.162578 | 0.189344 | False | False | 0.202 |
+| ASTER/USDT:USDT | SHORT | 148.0 | 0.6437 | 0.67064 | 0.58982 | False | False | 0.0 |
+| BR/USDT:USDT | SHORT | 237.0 | 0.4221 | 0.43893 | 0.38844 | False | False | 0.107 |
+| CYBER/USDT:USDT | SHORT | 199.5 | 0.269 | 0.289046 | 0.228908 | False | False | 0.15 |
+| DOT/USDT:USDT | SHORT | 117.3 | 0.8721 | 0.906186 | 0.803928 | False | False | 0.0 |
+| ETH/USDT:USDT | SHORT | 0.049 | 2152.88 | 2233.168052 | 1992.303896 | False | False | 0.0 |
+| GALA/USDT:USDT | SHORT | 66666.0 | 0.001523 | 0.001583 | 0.001403 | False | False | 0.0 |
+| GTC/USDT:USDT | LONG | 216.8 | 0.185 | 0.166556 | 0.221888 | False | False | 0.271 |
+| HYPE/USDT:USDT | SHORT | 1.33 | 75.052 | 78.039112 | 69.077776 | False | False | 0.0 |
+| IO/USDT:USDT | SHORT | 830.2 | 0.1142 | 0.119018 | 0.104564 | False | False | 0.0 |
+| LSK/USDT:USDT | SHORT | 479.0 | 0.1699 | 0.17824 | 0.15322 | False | False | 0.072 |
+| QNT/USDT:USDT | LONG | 0.3 | 198.3 | 188.030586 | 218.838828 | False | False | 0.036 |
 
 ---
 

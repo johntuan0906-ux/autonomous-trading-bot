@@ -1,0 +1,32 @@
+{
+ "ts": 1794193230.0399466,
+ "n": 26,
+ "digest": {
+  "syn-feats-clip": "c0c10397c572411b",
+  "syn-feats-flat-market": "d5949f47a566ff73",
+  "syn-feats-neutral-default": "9fd3ad9a789856cb",
+  "syn-learn-neutral-never-blocks": "82565ea59fc1d740",
+  "syn-learn-strong-long": "82bec12f9523405a",
+  "syn-learn-short-mirror": "2e14d00067bbe233",
+  "syn-learn-bias-long": "59c1079276be4b89",
+  "syn-learn-bias-short-not-mirror": "eb8309b57a7a403d",
+  "syn-strategy-range-reversal": "f0ad9d5e7be25b28",
+  "syn-strategy-none": "750630f5193fa952",
+  "syn-strategy-trend-pullback": "7a5885c8b6cd684c",
+  "syn-strategy-sweep-reclaim": "e27da60e08651ffb",
+  "syn-gate-none-always-open": "f17e053dff52b4f1",
+  "syn-gate-blocklist": "ecbfef9b57597b43",
+  "syn-gate-insufficient-sample": "3b6d944305c65cb0",
+  "syn-gate-negative-data": "362d5fe6a5f3fbcf",
+  "syn-lessons-gate-hit": "08dee3fcc25f7bb4",
+  "syn-lessons-gate-small-n": "2f8526410180dfa1",
+  "syn-risk-cap-blocked": "73f306cc6573ee3e",
+  "syn-risk-cap-ok": "79bab219649b76b4",
+  "syn-risk-cap-boundary": "79bab219649b76b4",
+  "syn-portfolio-multi-slot": "6ea06afc999a6455",
+  "syn-portfolio-single-slot": "090a20b346b9b424",
+  "syn-portfolio-duplicate": "2968fdf565eeabdb",
+  "syn-portfolio-max-reached": "dd54118821329f71",
+  "jrn-feats-integrity": "8a6d42f5fead2365"
+ }
+}

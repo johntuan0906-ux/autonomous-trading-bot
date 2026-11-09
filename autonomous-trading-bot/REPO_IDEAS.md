@@ -1348,3 +1348,76 @@ cho phép đo cả 2 nhánh, đó là tài sản phải giữ); (c) **bắt bu�
 | 7 | Lớp dự phòng inference qua `openai_compat` (Groq/NIM) | B-041: council chết khi hết quota | S |
 | 8 | `data_blockworks.py` — **chỉ khi** key hoạt động | 3 use case ở §28.4 | M |
 
+
+---
+
+## 29. Đối chiếu 3 tài liệu giải pháp (Golden-Set Eval · Decision Log · Measured Context) — 09/11
+
+Đã đọc 3 tài liệu và **đối chiếu từng mục với code thật** (không đoán): grep `reason_code|
+golden|trace_id|holdout|slippage`, đọc `learner.py` / `strategy.py` / `lessons.py` /
+`portfolio.py` / `trade_mgmt.py` / `tools/learner_refit.py` / `tools/council_eval.py`, và **đo
+schema thật** của `logs/journal.jsonl` (root 7.071 dòng, `atb-live` 2.951 dòng).
+
+### 29.1 Kết quả đối chiếu (cái gì đã có — không làm lại)
+
+| Trụ cột của tài liệu | Trạng thái | Bằng chứng trong repo |
+|---|---|---|
+| **Measured Context**: quyết định dựa trên **số đo**, không phải văn bản | **ĐÃ CÓ (mạnh)** | `OPEN` record có **36 trường** gồm vector `feats` 20 chiều, `score100`, `market_regime`, `btc_regime`, `htf_bias`, `setup_type`, `volume_ratio`, `sweep`, `retest`, `oi_chg`, `funding`, `ls_ratio`, `long_liq/short_liq`, `news_score`, `sentiment_n`, `alpha`, `risk_usdt` |
+| **Decision Log**: mọi quyết định ghi lại được, có chi phí/độ trễ | **ĐÃ CÓ (khá)** | `AGENT` record: `action/confidence/reasons/risk_flags/shadow/latency_ms/tokens_in/out/cost_usd/model/model_raw/consensus/abstained/stage`; `CLOSE` có `mfe_r`, `recon_*` (đối soát sàn) |
+| **Holdout / chống overfit** | **ĐÃ CÓ** | `tools/learner_refit.py`: train 80% cũ / **holdout 20% mới**, so logloss với base-rate, không thắng ⇒ learner **TRUNG TÍNH** (không chặn) — B-033 |
+| **Chi phí trong mô phỏng** | **ĐÃ CÓ** | `trade_mgmt.FEE_ROUNDTRIP_PCT=0.1%`, `SLIPPAGE_PCT`, `COST_ROUNDTRIP_PCT`; `backtest.py` khớp **bi quan** (1 nến chạm cả SL và TP ⇒ tính SL); `tools/stress_harness.py`, `tools/atr_quality_probe.py` (cost_r) |
+| **Đo chất lượng bằng kết quả thật** | **ĐÃ CÓ** | `tools/council_eval.py` (brier, value_r theo model), `tools/model_audit.py`, `strategy_stats` + `gate_check` |
+| **Eval dạng CA CỐ ĐỊNH (deterministic)** | **THIẾU → ĐÃ BỔ SUNG (§29.2)** | trước 09/11: **0** kết quả cho `golden|golden_set` |
+| **Reason code chuẩn hoá** | **THIẾU → ĐÃ BỔ SUNG (§29.2)** | trước 09/11: **0** kết quả cho `reason_code`; lý do chỉ là văn bản tự do |
+| **Lineage**: `decision_id`/`trace_id` nối phiếu ↔ lệnh | **THIẾU** | không có trong `OPEN`/`AGENT`; hệ quả trực tiếp: §28.6 phải ghép phiếu bằng `(symbol,direction,±0,2%,cửa sổ 30')` và chỉ ghép được **31/133** phiếu |
+| **Freshness / TTL theo từng nguồn** | **THIẾU** | có `parse_ban_until`/`api_ban.json` (B-044) nhưng không có "dữ liệu này cũ bao lâu thì bỏ" |
+| **Autonomy ladder** (cấp quyền theo bằng chứng) | **MỘT PHẦN** | có SHADOW ↔ veto + kill-switch, nhưng **không** có định nghĩa "đủ điều kiện lên cấp" thành luật kiểm tra được |
+
+### 29.2 Đã áp dụng ngay (đợt này)
+
+**(1) `tools/golden_set.py` + `tools/golden_build.py` + `golden/cases.jsonl` (26 ca) — B-046.**
+Bộ ca **có đáp án, chạy offline ~0,2 s**, gọi **thẳng hàm thật** (`learner.extract_features`,
+`OnlineLearner.edge`, `strategy.classify_strategy/gate_check`, `lessons.gate_list`,
+`portfolio.can_add_risk`, `PortfolioManager.can_open`, và đọc `feats` **thật** trong journal).
+Phủ **8 cổng**, chia 3 nhóm theo tài liệu: `normal` 11 · `edge` 10 · `failure` 5.
+
+```powershell
+python tools\golden_build.py                 # sinh lại bộ ca (chỉ khi CỐ Ý đổi bộ ca)
+python tools\golden_set.py --verbose         # chạy + in từng ca
+python tools\golden_set.py --check           # exit 1 nếu có ca FAIL hoặc DRIFT so với baseline
+python tools\golden_set.py --write-baseline  # chốt hành vi hiện tại (chỉ khi 100% PASS)
+```
+
+Cơ chế **DRIFT**: mỗi ca lưu `sha1(output)` vào `golden/baseline.json` ⇒ cùng ca, cùng đáp án,
+nhưng hành vi **đổi** (vd sửa `can_add_risk`) thì `--check` **vẫn kêu** dù ca không "sai". Đây
+là thứ `tests/` không làm được (test chỉ khẳng định điều mình đã viết ra).
+
+**(2) `reason_codes.py` — từ vựng lý do** (31 mã / 7 nhóm: data · context · reasoning · policy ·
+tool · execution · decision) + `classify_text()` đọc được lý do **cũ** trong journal
+("tran risk danh muc" → `RISK_CAP`, "teapot/-1003" → `API_BAN`, "quota" → `QUOTA_EXCEEDED`).
+Chưa gắn vào đường ghi của bot (để ở §29.3-1, tránh phải restart LIVE ngay).
+
+**(3) Test chốt**: `tests/test_golden_set.py` — **20 test** (ngữ nghĩa `must`/`must_not`, ca hỏng
+phải FAIL chứ không biến mất, id trùng, drift, journal hỏng phải báo).
+
+> **Lỗi tự bắt được khi làm** (bằng chứng harness có tác dụng): bản đầu gộp `must`/`must_not`
+> vào một hàm ⇒ `must_not` bị **đảo nghĩa** (rule đúng lại bị báo vi phạm); và `extract_features`
+> có 2 tham số bắt buộc nên ca "trung tính" ném `TypeError`. Cả 2 do **ca FAIL** phát hiện.
+
+### 29.3 Việc còn lại, theo thứ tự (thay bảng §28.7)
+
+| # | Việc | Vì sao (số đo) | Công |
+|---|---|---|---|
+| 1 | **`decision_id` + `reason_code` vào đường ghi** (`turbo_demo` OPEN/SKIP, `agents.log_decision`) | ghép phiếu ↔ lệnh hiện chỉ **31/133** (§28.6) ⇒ hội đồng không học được; cần restart 2 bot (LIVE đang dừng nên là thời điểm tốt) | S |
+| 2 | **Prompt hiệu chuẩn**: bắt buộc trích `lessons` bucket + `n`, trần confidence ≤0,7 khi `n<20` | brier **0,341** > 0,25; "tự tin 83% nhưng thắng 57%" | S |
+| 3 | **Ghép phiếu chặt** trong `council_eval` (dùng `decision_id` ở #1) | mục tiêu ≥1 model có `n≥30` mới kết luận được | S |
+| 4 | **Freshness/TTL** theo nguồn (nến, OI, tin) + hiển thị "tuổi dữ liệu" trong context gửi LLM | tài liệu Measured Context; hiện chỉ chặn IP (B-044), không biết dữ liệu cũ | M |
+| 5 | **Autonomy ladder** thành luật (`lên cấp khi brier<0,25 & n≥30 & value_r>0`) | thay "cảm tính" bằng điều kiện kiểm tra được | S |
+| 6 | **Mở rộng golden set**: `entries_gate` pause, `api_ban`, `risk_state`/kill-switch, `state_sync` equity lệch | 4 tình huống tài liệu nêu mà bộ ca hiện **chưa** phủ (mock file, không cần mạng) | M |
+| 7 | Reviewer context sạch + `drift report` docs↔code | giữ nguyên từ §28.7 | S |
+| 8 | **Quality gate** chặn commit: thêm `golden_set --check` vào chuỗi (đã có `bug_catalog --check`, `watch_regress`) | thiếu đúng bước golden | S |
+
+**Không đổi**: vẫn **không** cấp quyền veto thật cho hội đồng (brier 0,341). Golden set đo
+**tính nhất quán**, không đo **lợi nhuận** — đừng nhầm hai thứ này.
+
+

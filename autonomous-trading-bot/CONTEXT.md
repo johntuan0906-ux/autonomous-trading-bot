@@ -429,3 +429,24 @@ Yêu cầu: vừa TESTNET để học vừa LIVE để thực tế nhanh hơn; *
 
 Watch: TESTNET kill-switch trip lai (6 loi lien tiep, muc 12) — reset demo-only; LIVE co
 1 `LIVE INTERLOCK` trong cua so (xem tiep).
+
+**B-046 — "đã test xanh" không có nghĩa là "hành vi không đổi" (09/11, 3 tài liệu giải pháp).**
+Đối chiếu 3 tài liệu (Golden-Set Eval / Decision Log / Measured Context) với code: hai trụ cột
+đầu **đã có** ở mức tốt (`OPEN` 36 trường + `feats` 20 chiều; `AGENT` có cost/latency/shadow;
+`learner_refit` holdout 80/20 + lưới trung tính; `backtest` tính phí + khớp bi quan). Thiếu đúng
+**lớp giữa**: (a) bộ ca **cố định, có đáp án** chạy được trước khi đổi code; (b) **mã lý do** để
+đếm/so sánh được thay vì văn bản tự do (grep `reason_code` = **0** kết quả trong 7.071 dòng
+journal); (c) `decision_id` nối phiếu ↔ lệnh (vì thiếu nên §28.6 chỉ ghép được **31/133** phiếu).
+Đã làm (a)+(b): `tools/golden_build.py` sinh `golden/cases.jsonl` **26 ca** (normal 11 / edge 10 /
+failure 5) phủ **8 cổng** — ca gọi **thẳng** `learner.extract_features`/`OnlineLearner.edge`/
+`strategy.classify_strategy`/`gate_check`/`lessons.gate_list`/`portfolio.can_add_risk`/
+`can_open` và đọc `feats` **thật** trong journal; `tools/golden_set.py` so `sha1(output)` với
+`golden/baseline.json` ⇒ `--check` **kêu cả khi ca vẫn "xanh" nhưng hành vi đã đổi** (DRIFT) —
+đúng thứ `tests/` không làm được; `reason_codes.py` = 31 mã / 7 nhóm + `classify_text()` đọc
+được lý do **cũ** ("tran risk danh muc" → `RISK_CAP`). Test chốt `tests/test_golden_set.py`
+(**20**): suite **1437 OK**. Tự bắt 2 lỗi của chính harness khi chạy (gộp `must`/`must_not` ⇒
+`must_not` bị **đảo nghĩa**; `extract_features` có 2 tham số bắt buộc ⇒ ca "trung tính" ném
+`TypeError`) — giữ lại làm bằng chứng harness có tác dụng. **Chưa làm**: gắn `reason_code` +
+`decision_id` vào đường GHI của bot (cần restart 2 instance), TTL/freshness theo nguồn, golden
+set cho `entries_gate`/`api_ban`/kill-switch/equity lệch. Chi tiết + thứ tự: `REPO_IDEAS.md` §29.
+

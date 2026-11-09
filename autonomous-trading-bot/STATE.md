@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/11/2026 21:09:46 · commit `ce42364`
+- **Cập nhật**: 09/11/2026 21:39:47 · commit `dc2206d`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `74300` · round `7` · nhịp tim cách đây 11.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3171.61 USDT
+- **Bot**: pid `74300` · round `14` · nhịp tim cách đây 123.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3172.52 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3025 lệnh đóng, WR 41.06%, E(R) 0.2336, PnL -1030.41$)
@@ -44,9 +44,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ARB/USDT:USDT | LONG | 351.0 | 0.183 | 0.171606 | 0.205788 | False | False | 0.097 |
-| ASTER/USDT:USDT | SHORT | 218.0 | 0.6393 | 0.657606 | 0.602688 | False | False | 0.005 |
-| BNB/USDT:USDT | SHORT | 0.36 | 684.99 | 695.890398 | 663.189204 | False | False | 0.04 |
-| CAKE/USDT:USDT | SHORT | 86.0 | 1.8614 | 1.90778 | 1.76864 | False | False | 0.015 |
+| ASTER/USDT:USDT | SHORT | 218.0 | 0.6393 | 0.657606 | 0.602688 | False | False | 0.038 |
+| BNB/USDT:USDT | SHORT | 0.36 | 684.99 | 695.890398 | 663.189204 | False | False | 0.06 |
+| CAKE/USDT:USDT | SHORT | 86.0 | 1.8614 | 1.90778 | 1.76864 | False | False | 0.037 |
 
 ---
 

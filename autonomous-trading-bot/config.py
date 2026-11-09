@@ -284,6 +284,16 @@ class Settings:
         default_factory=lambda: _get_int("AGENT_CALIB_N_FULL", 20))
     agent_calib_max_conf: float = field(
         default_factory=lambda: _get_float("AGENT_CALIB_MAX_CONF", 0.7))
+    # ---- (09/11, #4 REPO_IDEAS §29.3) TUOI DU LIEU (freshness/TTL theo nguon) ------
+    # Truoc day: nen fetch moi vong, OI/funding cache 600 s, tin tuc khong co moc thoi
+    # gian ⇒ hoi dong quyet dinh tren "boi canh" ma khong biet phan nao da cu.
+    data_ttl_sec: str = field(default_factory=lambda: _get("DATA_TTL_SEC", ""))
+    data_ttl_hard_mult: float = field(
+        default_factory=lambda: _get_float("DATA_TTL_HARD_MULT", 3.0))
+    data_ttl_candles_base: float = field(
+        default_factory=lambda: _get_float("DATA_TTL_CANDLES_BASE", 0.0))
+    # Chan cung khi co nguon CHET (qua TTL*he_so). Tat = chi canh bao (van quyet dinh).
+    data_ttl_enforce: bool = field(default_factory=lambda: _get_bool("DATA_TTL_ENFORCE", True))
     agent_state_path: str = field(
         default_factory=lambda: _get("AGENT_STATE_PATH", "logs/agent_state.json"))
     # Phase 3: agent phan tich -> de xuat -> gate tat dinh -> file cho nguoi duyet.

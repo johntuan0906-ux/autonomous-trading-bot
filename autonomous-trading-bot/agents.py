@@ -1548,7 +1548,10 @@ _CALIB_SUFFIX = (
     "HIEU CHUAN (bat buoc): (1) neu payload co 'lessons_hint' thi moi nhan dinh phai "
     "trich DUNG bucket + n cua no trong 'reasons'; (2) khong co bang chung (khong co "
     "lessons_hint) thi confidence <= 0.5; (3) n < 20 thi confidence <= 0.7 — "
-    "mo hinh KHONG duoc tu tin hon so mau no co."
+    "mo hinh KHONG duoc tu tin hon so mau no co.\n"
+    "TUOI DU LIEU: neu co 'data_age'/'data_stale' thi phai noi ro nguon nao cu trong "
+    "'reasons'; nguon cu thi confidence phai THAP hon (khong danh dong gia tri nhu nhau "
+    "cho nen 20 giay va nen 3 gio)."
 )
 
 
@@ -1811,12 +1814,46 @@ def setup_payload(symbol: str, direction: str, alpha: float, strat: str,
 
 def review_payload(symbol: str, direction: str, r_multiple: float, won: bool,
                    reason: str, strat: str, extra: dict | None = None) -> dict:
-    """Payload cho agent review (sau khi dong lenh)."""
+    """Payload cho agent review (sau khi dong lenh).
+
+    (09/11, #7) CONTEXT SACH: chi giu cac truong CO NGHIA cho viec rut kinh nghiem, bo
+    het phan con lai. Vi sao: `extra` do noi goi truyen vao tu do, va prompt la duong
+    dua du lieu ra ngoai — mot khoa la (balance/api key/ten file noi bo) lot vao day la
+    ro ri ma khong ai thay. Danh sach TRANG (khong phai danh sach den) cung lam payload
+    on dinh ⇒ cache va so sanh giua cac lan chay co nghia.
+    """
     p = {"symbol": symbol, "direction": str(direction).upper(),
          "r_multiple": round(_f(r_multiple), 3), "won": bool(won),
          "exit_reason": str(reason), "strategy": strat}
-    p.update(extra or {})
+    p.update(sanitize_review(extra))
     return p
+
+
+#: Truong DUOC PHEP di vao payload review (danh sach TRANG — xem `review_payload`).
+REVIEW_KEYS = ("entry", "sl", "tp", "mfe_r", "pnl", "partial", "hold_min",
+               "had_feats", "decision_id", "reason", "note", "setup_type", "regime")
+#: Tran ky tu cho 1 truong chuoi trong payload review (chan bom prompt).
+REVIEW_TEXT_MAX = 120
+
+
+def sanitize_review(extra: dict | None) -> dict:
+    """Loc `extra` cua review: chi giu `REVIEW_KEYS`, bo dict/list long nhau (ham THUAN TUY).
+
+    Gia tri long nhau bi BO (khong phai bi cat): payload review khong can cau truc sau, va
+    nhanh nhat de ro ri la de nguyen mot dict do nguoi khac truyen vao.
+    """
+    out: dict = {}
+    for k, v in dict(extra or {}).items():
+        if k not in REVIEW_KEYS:
+            continue
+        if isinstance(v, bool) or v is None:
+            out[k] = v
+        elif isinstance(v, (int, float)):
+            out[k] = v
+        elif isinstance(v, str):
+            out[k] = v[:REVIEW_TEXT_MAX]
+        # dict/list/khac: bo (khong dua vao prompt)
+    return out
 
 
 def council_health(journal_path: str = JOURNAL_PATH, *, hours: float = 48.0,

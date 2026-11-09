@@ -500,6 +500,33 @@ CLASSES = [
                   "test_golden_set.py::TestBoCa::test_phu_het_cac_cong",
                   "test_golden_set.py::TestJournalThat::test_bat_feats_thieu_key_va_ngoai_dai"],
     },
+    {
+        "code": "B-047", "kind": "du-lieu", "seen": "09/11/2026",
+        "title": "Tai lieu lech code (so lieu, ten tool, ma ly do) va digest DRIFT tinh ca so lieu tam thoi ⇒ bao dong gia, drift that bi chim",
+        "symptom": "Trong 1 ngay lam viec, tai lieu lech code **3 lan** (31->38 ma ly do, 26->45 ca golden, 43->45 lop bug catalog) — moi lan chi do NGUOI tinh co phat hien; **6 tool** trong `tools/` khong duoc tai lieu nao nhac ten. DONG THOI golden set bao DRIFT gia moi ngay: ca `jrn-feats-integrity` doc journal THAT nen digest gom `n_checked`/`n_open_rows` (so nay TANG theo du lieu) ⇒ `--check` exit 1 du hanh vi khong doi",
+        "guard": "`tools/drift_docs.py`: so khop tung 'loi khai' trong tai lieu (regex) voi gia tri TINH TU CODE (`len(reason_codes.CODES)`, so ca/cong golden, so lop/test bug catalog), kiem moi `tools/*.py` phai duoc nhac ten, bat ma ly do go sai bang khoang cach sua <= 2 (mien tru bien moi truong doc tu `config.py`); muc `warn` (ma lop loi lich su) khong chan commit. `tools/golden_set.py`: digest DRIFT chi tinh tren `_contract_view()` = cac key DA KHAI trong `expect.output` ⇒ so lieu tam thoi tang khong con lam bao dong gia",
+        "files": ["tools/drift_docs.py", "tools/golden_set.py", "tests/test_selfops.py",
+                  "tests/test_golden_set.py"],
+        "tests": ["test_selfops.py::TestDriftDocs::test_so_lieu_lech_bi_bao",
+                  "test_selfops.py::TestDriftDocs::test_tai_lieu_doi_cau_chu_lam_mat_dau_vet_cung_la_LECH",
+                  "test_selfops.py::TestDriftDocs::test_bien_moi_truong_khong_bi_bao_nham",
+                  "test_selfops.py::TestDriftDocs::test_report_that_tren_repo_phai_sach",
+                  "test_golden_set.py::TestDigestHopDong::test_contract_view_bo_key_khong_khai",
+                  "test_golden_set.py::TestDigestHopDong::test_so_lieu_khong_khai_TRONG_digest_thi_khong_bao_drift"],
+    },
+    {
+        "code": "B-048", "kind": "van-hanh", "seen": "09/11/2026",
+        "title": "Hoi dong KHONG tu biet minh thieu gi va khong tu van hanh duoc ⇒ moi buoc phai cho nguoi, hoac (neu cho tu do) se tu dong vao state cua tai khoan THAT",
+        "symptom": "Do that 09/11: `brier 0.3467` (>0.25), ghep phieu->lenh **0% chinh xac** (chua co `decision_id`), 11 model chua du mau, 1 model `value_r <= 0` — nhung khong co ban danh sach nao noi 'dang thieu gi'. Neu cho he thong tu xu ly khong gioi han thi buoc tiep theo la tu restart / tu go kill-switch tren LIVE (tai khoan that) — rui ro lon hon loi no dinh sua",
+        "guard": "`tools/council_gaps.py`: moi thieu hut sinh TU SO LIEU (khong phai y kien), bat buoc co `metric`/`value`/`target`/`needs`/`action`/`auto`; xuat `COUNCIL_GAPS.md` (ke hoach tu hoc) + `logs/council_gaps.json`. `tools/selfops.py`: `plan()` THUAN TUY tu state + gaps; `run()` mac dinh DRY-RUN, moi viec ghi `logs/autonomy.jsonl` (ly do + bang chung + rc); CHAN CUNG: viec dung vao state (`restart`, `kill_reset`) khong tu chay tren LIVE tru khi `--allow-live-state`, va tren TESTNET chi tu go kill-switch khi da sang ngay UTC + khong con vi the; refit learner chi khi du mau va da >= 12 gio (moc lay tu nhat ky, vi refit ket luan 'trung tinh' thi khong ghi file)",
+        "files": ["tools/council_gaps.py", "tools/selfops.py", "tests/test_selfops.py"],
+        "tests": ["test_selfops.py::TestGaps::test_so_lieu_tot_thi_KHONG_bao_thieu_hut",
+                  "test_selfops.py::TestGaps::test_moi_thieu_hut_phai_co_needs_va_action",
+                  "test_selfops.py::TestSelfOps::test_live_state_bi_chan_khi_chua_cho_phep",
+                  "test_selfops.py::TestSelfOps::test_chi_tu_go_kill_switch_khi_flat_va_sang_ngay_moi",
+                  "test_selfops.py::TestSelfOps::test_dry_run_khong_chay_gi",
+                  "test_selfops.py::TestSelfOps::test_refit_chi_khi_du_mau_va_da_lau"],
+    },
 ]
 
 

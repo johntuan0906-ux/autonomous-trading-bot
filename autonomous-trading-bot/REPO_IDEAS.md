@@ -1411,11 +1411,11 @@ phải FAIL chứ không biến mất, id trùng, drift, journal hỏng phải b
 | 1 | **`decision_id` + `reason_code` vào đường ghi** (`turbo_demo` OPEN/SKIP, `agents.log_decision`) | ghép phiếu ↔ lệnh hiện chỉ **31/133** (§28.6) ⇒ hội đồng không học được; cần restart 2 bot (LIVE đang dừng nên là thời điểm tốt) | S |
 | 2 | **Prompt hiệu chuẩn**: bắt buộc trích `lessons` bucket + `n`, trần confidence ≤0,7 khi `n<20` | brier **0,341** > 0,25; "tự tin 83% nhưng thắng 57%" | S |
 | 3 | **Ghép phiếu chặt** trong `council_eval` (dùng `decision_id` ở #1) | mục tiêu ≥1 model có `n≥30` mới kết luận được | S |
-| 4 | **Freshness/TTL** theo nguồn (nến, OI, tin) + hiển thị "tuổi dữ liệu" trong context gửi LLM | tài liệu Measured Context; hiện chỉ chặn IP (B-044), không biết dữ liệu cũ | M |
+| 4 | ✅ **xong đợt 3** — **Freshness/TTL** theo nguồn (`freshness.py`) + tuổi dữ liệu trong context gửi LLM | tài liệu Measured Context; trước đợt 3 chỉ chặn IP (B-044), **không biết** dữ liệu cũ | M |
 | 5 | **Autonomy ladder** thành luật (`lên cấp khi brier<0,25 & n≥30 & value_r>0`) | thay "cảm tính" bằng điều kiện kiểm tra được | S |
 | 6 | **Mở rộng golden set**: `entries_gate` pause, `api_ban`, `risk_state`/kill-switch, `state_sync` equity lệch | 4 tình huống tài liệu nêu mà bộ ca hiện **chưa** phủ (mock file, không cần mạng) | M |
-| 7 | Reviewer context sạch + `drift report` docs↔code | giữ nguyên từ §28.7 | S |
-| 8 | **Quality gate** chặn commit: thêm `golden_set --check` vào chuỗi (đã có `bug_catalog --check`, `watch_regress`) | thiếu đúng bước golden | S |
+| 7 | ✅ **xong đợt 3** — Reviewer context sạch (`REVIEW_KEYS` allowlist) + `drift_docs` (docs↔code, máy kiểm) | giữ nguyên từ §28.7; đợt 3 đo được tài liệu lệch code **3 lần/ngày**, **6 tool** không được nhắc tên | S |
+| 8 | ✅ **xong đợt 3** — **Quality gate** chặn commit: `bug_catalog --check` → `golden_set --check` → `drift_docs --check` → `unittest discover` | thiếu bước golden (đợt 2 đã thêm), đợt 3 thêm bước drift để tài liệu không lệch lại | S |
 
 **Không đổi**: vẫn **không** cấp quyền veto thật cho hội đồng (brier 0,341). Golden set đo
 **tính nhất quán**, không đo **lợi nhuận** — đừng nhầm hai thứ này.
@@ -1439,12 +1439,34 @@ import nặng `turbo_demo`/`state_sync`).
 drift report docs↔code; và **bắt buộc restart** 2 instance thì `decision_id`/`reason_code` mới
 xuất hiện trong journal (code đã sẵn, dữ liệu cũ vẫn phải đọc bằng `classify_text`).
 
-> **Lỗi thật bắt được ngay trong đợt 2** (nhờ chạy lại toàn suite, không phải nhờ đọc code):
-> (a) `insufficient` khớp nhầm `DATA_MISSING` ⇒ lệnh `-2019 Margin is insufficient` bị xếp vào
-> nhóm **data** thay vì **execution** (ca `syn-api-ban-none` FAIL); (b) câu lệnh hiệu chuẩn làm
-> prompt vượt ngân sách token (`1140 > 1000` ký tự) — `test_build_prompt_cat_theo_ngan_sach`
-> bắt; (c) hạ trần confidence làm đổi kết quả test council cũ ⇒ phải **viết lại test cho đúng
-> luật mới** (kèm test ngược: đủ mẫu thì KHÔNG hạ), thay vì nới ngưỡng cho xanh.
+### 29.5 Đã làm tiếp (09/11, đợt 3) — hội đồng tự biết thiếu gì, tự vận hành CÓ GIỚI HẠN, tài liệu bị máy kiểm
+
+| Việc | Cách làm (kiểm tra được) | Bằng chứng / số đo |
+|---|---|---|
+| **Tuổi dữ liệu theo nguồn** (#4) | `freshness.py`: `TTL_SEC` (nến 900 s · phái sinh 1200 s), `REQUIRED=("candles",)`, `level_of()` → `ok/warn/stale/dead`, `evaluate()`, `ttl_from_cfg()` | `turbo_demo` ghi `candles_ts`/`deriv_ts`/`liq_ts` → `data_age` vào payload + `OPEN`; quá **3× TTL** ⇒ `SKIP_STALE` (chặn quyết định); dòng tuổi dữ liệu nằm trong prompt hội đồng. Test `tests/test_freshness.py` |
+| **Ngữ cảnh review sạch** (#7a) | `agents.review_payload`/`sanitize_review`: allowlist `REVIEW_KEYS`, cắt text dài, phiếu mang `decision_id` | model không còn thấy journal thô; review vote ghép được theo id |
+| **B-047 Drift tài liệu ↔ code** (#7b) | `tools/drift_docs.py`: mỗi "lời khai" trong tài liệu (regex) ↔ giá trị **tính từ code**; bắt tool không được nhắc tên; bắt mã lý do gõ sai (khoảng cách sửa ≤ 2, miễn trừ env đọc từ `config.py`) | Lần chạy đầu bắt **3 lệch** (45/133 vs 47/145, …) — tức chính tài liệu này đã lệch; nay `drift_docs --check` = **0 lệch**, 1 cảnh báo lịch sử (B-034) |
+| **DRIFT giả của golden set** | digest chỉ hash `_contract_view()` = các key **đã khai** trong `expect.output` | ca `jrn-feats-integrity` đọc journal thật nên `n_checked` tăng mỗi ngày → trước đây đỏ mỗi ngày; nay `--check` = 0 và **vẫn** bắt drift khi giá trị key đã khai đổi (2 test chốt 2 chiều) |
+| **B-048 Gap analysis** | `tools/council_gaps.py`: thiếu hụt **sinh từ số liệu**, mỗi mục bắt buộc `metric/value/target/needs/action/auto`; xuất `COUNCIL_GAPS.md` + `logs/council_gaps.json` | Đọc số thật: `brier 0,3467` (>0,25), ghép phiếu **0% chính xác**, 11 model chưa đủ mẫu, 1 model `value_r ≤ 0` ⇒ 4 thiếu hụt, mỗi cái có việc tự làm |
+| **B-048 Tự vận hành có giới hạn** | `tools/selfops.py`: `plan()` thuần tuý; `run()` mặc định **DRY-RUN**; mọi việc ghi `logs/autonomy.jsonl` (lý do + bằng chứng + rc) | **Chặn cứng**: việc đụng state (`restart`, `kill_reset`) không tự chạy trên instance LIVE (trừ `--allow-live-state`); TESTNET chỉ gỡ kill-switch khi **đã sang ngày UTC + không còn vị thế**; refit chỉ khi đủ mẫu **và** ≥ 12 h (mốc lấy từ nhật ký, vì refit "trung tính" không ghi file) |
+| **Bug catalog** | B-047 (`du-lieu`), B-048 (`van-hanh`) + test chốt | **47 lớp / 145 test chốt**, `--check` OK |
+
+**Số đo đợt 3 (TESTNET, chạy lại toàn bộ)**: golden set **45/45 PASS / 14 cổng**, `--check` = 0 (có DRIFT
+theo hợp đồng) · `drift_docs --check` **0 lệch** · `bug_catalog --check` OK (**47 lớp / 145 test**) ·
+`unittest discover` **1496 test OK** (3 skip). `reason_codes`: **38 mã / 7 nhóm**.
+
+> **Ba lỗi của chính harness, bắt được vì chạy nó** (không phải vì đọc code): (a) digest "ổn định" vẫn đổi
+> theo ngày; (b) `TestBaseline` cũ coi **thêm key không khai** là drift — trái với luật mới; (c) test so
+> digest với một contract view **bằng chính nó** nên không bao giờ bắt được gì. Đã viết lại theo luật
+> "đổi giá trị key **đã khai** ⇒ PHẢI drift / thêm key **không khai** ⇒ KHÔNG drift", **không** nới ngưỡng.
+> Ngoài ra `selfops` tự bắt lỗi của mình: chạy `--instance live` vẫn dùng tool của **root** ⇒ đã sửa để
+> `plan(..., root=)` + `cwd=` theo instance (nếu không thì "kiểm tra LIVE" lại kiểm tra TESTNET).
+
+**Còn chờ người vận hành** (không tự làm vì là hành động tiền / quyết định): (a) đối soát equity LIVE
+**27,56 USDT** so với lịch sử lệnh Binance; (b) quyết định đóng **12 vị thế legacy TESTNET** đang chiếm hết
+ngân sách rủi ro (mọi entry mới bị `SKIP_RISK`); (c) **xoay key Blockworks** (403 ở mọi đường dẫn, kể cả
+key rác ⇒ không phải lỗi gõ). Sau khi restart, `decision_id`/`reason_code`/`data_age` mới có trong journal.
+
 
 
 

@@ -42,6 +42,7 @@ from trade_mgmt import record_protection
 from portfolio import Position, can_add_risk, planned_risk_usd
 from position_sync import adopt as adopt_positions
 import entries_gate
+import freshness
 import reason_codes as RC
 from ranking import Candidate, composite_alpha, sentiment_veto
 from reconcile import reconcile as reconcile_journal
@@ -392,6 +393,9 @@ def _fetch_one(args):
     try:
         out["df"] = bot.exchange.fetch_ohlcv(sym, cfg.timeframe, cfg.ohlcv_limit)
         out["t"] = technical_score(out["df"], cfg.atr_period)
+        # (09/11, #4) MOC THOI GIAN tung nguon: khong co moc thi khong biet du lieu cu bao
+        # lau (nen lay tu cache cua san van "trong nhu moi"). Nen = luc FETCH xong.
+        out["candles_ts"] = time.time()
     except Exception as e:  # noqa: BLE001
         out["error"] = f"DATA_FAIL {str(e)[:120]}"
         return out
@@ -402,13 +406,17 @@ def _fetch_one(args):
     try:
         out["deriv"] = _cached_ctx(_DERIV_CACHE, ("deriv", sym), _CTX_TTL,
                                    fetch_oi_funding, sym)
+        out["deriv_ts"] = float((_DERIV_CACHE.get(("deriv", sym)) or {}).get("at") or 0.0)
     except Exception:
         out["deriv"] = {"oi": 0.0, "oi_chg_24h": 0.0, "funding": 0.0, "ls_ratio": 0.0}
+        out["deriv_ts"] = 0.0
     try:
         out["liq"] = _cached_ctx(_LIQ_CACHE, ("liq", sym), _CTX_TTL,
                                  fetch_liquidations, sym)
+        out["liq_ts"] = float((_LIQ_CACHE.get(("liq", sym)) or {}).get("at") or 0.0)
     except Exception:
         out["liq"] = {"long_liq": 0.0, "short_liq": 0.0, "total": 0.0, "dominance": 0.0}
+        out["liq_ts"] = 0.0
     return out
 
 
@@ -419,7 +427,11 @@ _CTX_TTL = 600.0  # 10 phut cho OI/funding/thanh ly (boi canh cham)
 
 def _cached_ctx(cache: dict, key, ttl: float, fn, *args):
     """Cache TTL + jitter (0-240s/entry) de cac cap khong refetch dong loat.
-    Mang loi -> keo dai TTL cu (khong bo ngang boi canh)."""
+    Mang loi -> keo dai TTL cu (khong bo ngang boi canh).
+
+    (09/11, #4) `ts` la moc DU KIEN het han (co jitter) — KHONG dung lam "moc du lieu".
+    Them `at` = thoi diem FETCH THAT de tinh tuoi du lieu (`freshness.age_sec`).
+    """
     import time as _t
     now = _t.time()
     ent = cache.get(key)
@@ -427,7 +439,7 @@ def _cached_ctx(cache: dict, key, ttl: float, fn, *args):
         return ent["v"]
     try:
         v = fn(*args)
-        cache[key] = {"ts": now + (hash(str(key)) % 240), "v": v}
+        cache[key] = {"ts": now + (hash(str(key)) % 240), "at": now, "v": v}
         return v
     except Exception:  # noqa: BLE001
         if ent is not None:
@@ -618,7 +630,8 @@ def _provider_label(model: str) -> str:
 
 
 def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
-                     tech: dict, senti, regime: str, decision_id: str = "") -> None:
+                     tech: dict, senti, regime: str, decision_id: str = "",
+                     data_age: dict | None = None) -> None:
     """Ghi y kien agent cho 1 setup — CHAY NEN, khong doi hanh vi/khong chan.
 
     Che do (AGENTS_COUNCIL):
@@ -644,6 +657,12 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
         pay.update(_lessons_hint_for(cfg, pay))
     except Exception:  # noqa: BLE001
         pass
+    # (09/11, #4) "Tuoi du lieu" phai nam TRONG context: hoi dong can biet phan nao da cu
+    # de khong danh dong gia tri nhu nhau cho nen 20 giay va nen 3 gio.
+    if data_age:
+        pay["data_age"] = {str(k): v for k, v in dict(data_age).items()}
+        pay["data_stale"] = sorted(k for k, v in dict(data_age).items()
+                                   if str((v or {}).get("level")) in ("stale", "dead"))
 
     use_council = bool(getattr(cfg, "agents_council", False))
     tg_votes = bool(getattr(cfg, "agent_tg_votes", False))
@@ -837,7 +856,8 @@ def agent_veto(cfg, sym: str, direction: str, alpha: float, strat: str, tech: di
 
 
 def agent_vote_review(cfg, sym: str, direction: str, r_multiple: float, won: bool,
-                      reason: str, strat: str, extra: dict | None = None) -> None:
+                      reason: str, strat: str, extra: dict | None = None,
+                      decision_id: str = "") -> None:
     """Ghi y kien review sau khi dong lenh — CHAY NEN, chi ghi nhan.
 
     `extra` (01/10): truoc day review chi duoc gui symbol/direction/R/strategy ->
@@ -862,7 +882,12 @@ def agent_vote_review(cfg, sym: str, direction: str, r_multiple: float, won: boo
     except Exception:  # noqa: BLE001
         pass
     try:
-        pay = review_payload(sym, direction, r_multiple, won, reason, strat, extra)
+        _ex = dict(extra or {})
+        # (09/11, #7) Noi review voi LENH da dong: cung `decision_id` ⇒ phieu hau kiem
+        # khong con "mo coi" (truoc day khong co khoa nao).
+        if decision_id:
+            _ex["decision_id"] = str(decision_id)
+        pay = review_payload(sym, direction, r_multiple, won, reason, strat, _ex)
     except Exception as e:  # noqa: BLE001
         log.warning("AGENTS: payload review loi (bo qua): %s", e)
         return
@@ -870,7 +895,8 @@ def agent_vote_review(cfg, sym: str, direction: str, r_multiple: float, won: boo
     def _job():
         d = layer.vote("review", pay)
         layer.log_decision(d, extra={"symbol": sym, "direction": direction,
-                                     "status": "CLOSED"})
+                                     "status": "CLOSED",
+                                     "decision_id": str(decision_id or "")})
 
     _agent_submit(_job)
 
@@ -972,6 +998,27 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                             "reason": "ATR %.2f%% >= %.2f%% (bien dong cao)"
                                       % (100.0 * _atr, 100.0 * _atr_max)})
             continue
+        # (09/11, #4 REPO_IDEAS §29.3) TUOI DU LIEU theo tung nguon: nen phai tuoi, con
+        # OI/thanh ly/tin tuc chi la boi canh (cu thi GHI RO trong context, khong chan).
+        # Truoc day khong co buoc nay ⇒ nen 20 giay va nen 3 gio cho ra cung quyet dinh.
+        _now = time.time()
+        _ages: dict = {"candles": freshness.age_sec(fr.get("candles_ts"), _now)}
+        for _src, _key in (("deriv", "deriv_ts"), ("liq", "liq_ts")):
+            if fr.get(_key):
+                _ages[_src] = freshness.age_sec(fr.get(_key), _now)
+        _news_ts = getattr(senti, "ts", None)
+        if _news_ts:
+            _ages["news"] = freshness.age_sec(_news_ts, _now)
+        _fresh = freshness.evaluate(_ages, freshness.ttl_from_cfg(cfg, cfg.timeframe),
+                                    freshness.hard_mult_from_cfg(cfg))
+        if not _fresh["ok"]:
+            _why = ("du lieu CHET: %s (tuoi/ttl vuot %.0fx) — khong quyet dinh tren du lieu nay"
+                    % (", ".join(_fresh["blocking"]), freshness.hard_mult_from_cfg(cfg)))
+            if bool(getattr(cfg, "data_ttl_enforce", True)):
+                results.append({"symbol": sym, "status": "SKIP_STALE", "reason": _why,
+                                "data_age": _fresh["by_source"]})
+                continue
+            log.warning("DATA CU (van chay vi DATA_TTL_ENFORCE=false): %s %s", sym, _why)
         mtf_b = fr.get("mtf_b", 0)
         deriv = fr.get("deriv", {})
         liq = fr.get("liq", {})
@@ -1214,12 +1261,15 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             _mng = bot._managed_for(sym, bot.portfolio.positions[sym])
             _pending_feats[sym] = {"feats": feats, "direction": direction,
                                    "strategy": strat, "entry": lv["entry"],
-                                   "sl": lv["sl"], "tp": lv["tp"]}
+                                   "sl": lv["sl"], "tp": lv["tp"],
+                                   "decision_id": _did}
+
             # Nhat ky giao dich day du (muc 17): regime/struct/OI/funding/news/score100
             # (09/11, B-045) `decision_id` + `reason_code`: cung khoa voi phieu hoi dong
             # o tren ⇒ dem duoc "vi sao VAO" va ghep phieu <-> lenh chinh xac.
             log_trade(event="OPEN", pair=sym, direction=direction, timeframe=cfg.timeframe,
                       decision_id=_did, reason_code=RC.STATUS_CODES["OPENED"],
+                      data_age=_fresh["by_source"],
                       entry=lv["entry"], sl=lv["sl"], tp=lv["tp"], qty=qty,
                       leverage=cfg.leverage, risk_pct=cfg.risk_per_trade_pct,
                       rr=lv.get("rr"), alpha=alpha, score100=sig100["total"],
@@ -1249,7 +1299,8 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                             "qty": qty, "alpha": alpha, "orderId": oid})
             # Phase 1: agent CHI CO VAN — ghi y kien macro/critic vao journal.
             agent_vote_setup(cfg, sym, direction, alpha, strat, t, senti,
-                             str(reg.get("regime", "")), decision_id=_did)
+                             str(reg.get("regime", "")), decision_id=_did,
+                             data_age=_fresh["by_source"])
             # P0-fix (01/10): ARM SL/TP la buoc CO THE THAT BAI — demo hay tra
             # -4045 "Reach max stop order limit" theo kieu han ngach (luc cho luc
             # khong). Vi the DA MO va DA ghi so o tren, nen arm loi chi duoc coi la
@@ -1275,7 +1326,8 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                 _mng = bot._managed_for(sym, pos)
                 _pending_feats[sym] = {"feats": feats, "direction": direction,
                                        "strategy": strat, "entry": lv["entry"],
-                                       "sl": lv["sl"], "tp": lv["tp"]}
+                                       "sl": lv["sl"], "tp": lv["tp"],
+                                       "decision_id": _did}
                 try:                       # arm loi KHONG duoc lam mat vi the
                     _res = bot.exchange.stop_tp_orders(sym, direction, landed,
                                                        lv["sl"], lv["tp"])
@@ -1420,7 +1472,8 @@ def manage_open_positions(bot, cfg, log) -> dict:
                                  "mfe_r": exr.get("mfe_r"),
                                  "pnl": exr.get("pnl"),
                                  "partial": exr.get("partial"),
-                                 "had_feats": bool(pend)})
+                                 "had_feats": bool(pend)},
+                          decision_id=str((pend or {}).get("decision_id") or ""))
         if pend:
             try:
                 # (28/10) B-032 — nhan cho learner phai la SU THAT TIEN (`pnl > 0`), khong dung

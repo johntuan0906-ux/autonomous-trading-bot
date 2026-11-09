@@ -473,4 +473,38 @@ OK**, bug catalog **45 lớp / 133 test**.
 > **Chưa có hiệu lực trên bot đang chạy**: `decision_id`/`reason_code` chỉ xuất hiện sau khi
 > restart TESTNET (LIVE đang dừng bởi kill-switch — chờ người vận hành quyết định).
 
+**Đợt 3 (09/11) — hội đồng tự biết mình thiếu gì, tự vận hành có giới hạn, và tài liệu bị máy kiểm.**
+Bốn việc còn thiếu của §29 đã xong; số đo lấy từ máy, không chép tay.
+
+- **#4 Tuổi dữ liệu theo nguồn** — `freshness.py`: `TTL_SEC` (nến 900 s, phái sinh 1200 s), `REQUIRED=("candles",)`,
+  `level_of()` → `ok/warn/stale/dead`. `turbo_demo` ghi `candles_ts`/`deriv_ts`/`liq_ts`, tính `data_age`,
+  dữ liệu quá **3× TTL** ⇒ `SKIP_STALE` (chặn quyết định, không chỉ cảnh báo); `data_age` vào payload + `OPEN`;
+  prompt hội đồng có dòng tuổi dữ liệu để model **nói được** "tôi đang nhìn dữ liệu cũ". Test: `tests/test_freshness.py`.
+- **#7 Ngữ cảnh sạch cho phiếu review** — `agents.review_payload`/`sanitize_review` chỉ cho qua `REVIEW_KEYS`
+  (allowlist), cắt text dài, phiếu mang `decision_id` ⇒ hết chuyện model thấy cả journal thô.
+- **B-047 Tài liệu lệch code + DRIFT giả (09/11).** Trong một ngày tài liệu lệch code **3 lần** (31→38 mã,
+  26→45 ca, 43→47 lớp) — mỗi lần chỉ do người tình cờ thấy; **6 tool** trong `tools/` không tài liệu nào nhắc tên.
+  Đồng thời `golden_set --check` báo DRIFT **mỗi ngày**: ca `jrn-feats-integrity` đọc journal thật nên digest
+  gồm `n_checked`/`n_open_rows` (số tăng theo dữ liệu) ⇒ đỏ dù hành vi không đổi. Sửa: `tools/drift_docs.py`
+  so **từng lời khai** trong tài liệu với giá trị **tính từ code**, bắt tool không được nhắc, bắt mã lý do gõ sai
+  (khoảng cách sửa ≤ 2, miễn trừ biến môi trường đọc từ `config.py`); `golden_set` chỉ hash `_contract_view()`
+  = các key **đã khai** trong `expect.output`. Test: `tests/test_selfops.py::TestDriftDocs`, `tests/test_golden_set.py::TestDigestHopDong`.
+- **B-048 Không tự biết thiếu gì / không tự vận hành được (09/11).** Đo: `brier 0,3467` (>0,25), ghép phiếu→lệnh
+  **0% chính xác** (chưa có `decision_id`), 11 model chưa đủ mẫu, 1 model `value_r ≤ 0` — nhưng không có danh sách
+  nào nói "đang thiếu gì"; nếu cho tự xử lý **không giới hạn** thì bước tiếp theo là tự restart / tự gỡ kill-switch
+  trên **tài khoản thật**. Sửa: `tools/council_gaps.py` sinh thiếu hụt **từ số liệu** (bắt buộc `metric/value/target/
+  needs/action/auto`) → `COUNCIL_GAPS.md`; `tools/selfops.py` `plan()` thuần tuý, `run()` mặc định **DRY-RUN**,
+  ghi `logs/autonomy.jsonl`; **chặn cứng**: việc đụng state (`restart`, `kill_reset`) chỉ tự chạy trên instance
+  không phải LIVE, và trên TESTNET chỉ gỡ kill-switch khi **đã sang ngày UTC + không còn vị thế**; refit chỉ khi
+  đủ mẫu và ≥ 12 giờ. Chạy `python tools/selfops.py --instance live` **không** đụng state LIVE trừ khi thêm
+  `--allow-live-state` (và việc bị chặn vẫn được ghi log, không im lặng). Test: `tests/test_selfops.py`.
+
+> Lỗi thứ ba của chính harness: digest "ổn định" ban đầu vẫn đổi theo ngày, và **hai test cũ chốt sai luật**
+> (đổi *key không khai* từng bị coi là drift; so digest với một view **bằng** chính nó). Đã viết lại test theo
+> luật mới: **đổi giá trị key đã khai ⇒ PHẢI drift**, thêm key không khai ⇒ **KHÔNG** drift — không nới ngưỡng.
+> Số đo đợt 3 (TESTNET): golden **45/45 PASS / 14 cổng** + `--check` = 0, `drift_docs --check` **0 lệch**,
+> bug catalog **47 lớp / 145 test**, suite **1496 test OK**. `reason_codes` giữ **38 mã / 7 nhóm**.
+> Vẫn chờ người vận hành: (a) đối soát equity LIVE 27,56 USDT, (b) quyết định đóng 12 vị thế legacy TESTNET
+> đang chiếm hết ngân sách rủi ro, (c) xoay key Blockworks (403 ở mọi đường dẫn).
+
 

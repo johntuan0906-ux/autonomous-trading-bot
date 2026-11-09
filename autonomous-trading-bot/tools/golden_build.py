@@ -236,6 +236,29 @@ def curated() -> list:
               {"rep": {"cases": 40, "calibration": {"brier": 0.20},
                        "per_model": {"m1": {"matched": 40, "value_r": 0.12}}}},
               {"ready": True, "cases": 40, "models_ok": ["m1"]}),
+
+        # ---- (09/11) TUOI DU LIEU theo nguon (#4): nen chet thi KHONG duoc quyet dinh --
+        _case("syn-fresh-all-fresh", "normal", "freshness",
+              "nen 20 s + OI 600 s => moi nguon tuoi, duoc quyet dinh",
+              {"ages": {"candles": 20.0, "deriv": 600.0, "liq": 600.0}},
+              {"ok": True, "blocking": [], "stale": [], "reason_code": ""}),
+        _case("syn-fresh-candles-stale", "edge", "freshness",
+              "nen 1500 s > TTL 900 s: CU nhung chua chet => van duoc quyet dinh (co canh bao)",
+              {"ages": {"candles": 1500.0}}, {"ok": True, "blocking": []},
+              ["by_source.candles.level:==:stale"]),
+        _case("syn-fresh-candles-dead", "failure", "freshness",
+              "nen 5000 s > 3x TTL => CHET, phai chan quyet dinh + ma DATA_STALE",
+              {"ages": {"candles": 5000.0, "deriv": 60.0}},
+              {"ok": False, "blocking": ["candles"], "reason_code": "DATA_STALE"}),
+        _case("syn-fresh-missing-candles", "failure", "freshness",
+              "KHONG co moc thoi gian nen => coi nhu CHET (khong duoc coi la moi)",
+              {"ages": {"deriv": 60.0}},
+              {"ok": False, "blocking": ["candles"], "reason_code": "DATA_STALE"}),
+        _case("syn-fresh-context-dead-not-blocking", "edge", "freshness",
+              "OI/thanh ly chet chi la THIEU BOI CANH, khong duoc chan lenh",
+              {"ages": {"candles": 10.0, "deriv": 99999.0}},
+              {"ok": True, "blocking": [], "reason_code": ""},
+              ["dead:contains:deriv"]),
     ]
 
 

@@ -2,7 +2,8 @@
 
 Vi sao co (09/11): golden set la thuoc do "ban moi co lam MAT hanh vi cu khong". Neu chinh
 thuoc do sai (rule `must_not` bi dao nghia, adapter bo qua ca hong, baseline khong phat hien
-doi hanh vi) thi ca 26 ca xanh van la xanh GIA — dung lop loi "im lang" cua du an.
+doi hanh vi, digest tinh ca so lieu tam thoi) thi ca **45 ca** xanh van la xanh GIA — dung lop loi
+"im lang" cua du an.
 
 Kiem o day: ngu nghia `must` / `must_not`, ca hong phai FAIL chu khong bien mat, id trung bi
 bat, drift so voi baseline duoc bao, va `classify_text` khong doan bua.
@@ -169,10 +170,10 @@ class TestBaseline(unittest.TestCase):
         rep1 = GS.evaluate([c])
         base = {"digest": rep1["digest"]}
         self.assertEqual(GS.evaluate([c], base)["drift"], [])
-        # cung input, nhung output adapter tra them key ⇒ digest doi ⇒ phai bao DRIFT
+        # cung input, nhung output adapter doi GIA TRI cua mot key DA KHAI ⇒ phai bao DRIFT
         orig = GS.ADAPTERS["risk_cap"]
         try:
-            GS.ADAPTERS["risk_cap"] = lambda inp: dict(orig(inp), extra=1)
+            GS.ADAPTERS["risk_cap"] = lambda inp: dict(orig(inp), ok=not orig(inp)["ok"])
             rep2 = GS.evaluate([c], base)
         finally:
             GS.ADAPTERS["risk_cap"] = orig
@@ -231,5 +232,44 @@ class TestBuilder(unittest.TestCase):
         for c in a:
             self.assertEqual(GS.validate_case(c), "", c["id"])
         self.assertIn("jrn-feats-integrity", ids)
+
+
+class TestDigestHopDong(unittest.TestCase):
+    """Digest DRIFT chi tinh tren phan DA KHAI (hop dong), khong tinh so lieu tam thoi.
+
+    Lop loi that (09/11): ca `jrn-feats-integrity` doc journal THAT nen `n_checked` tang moi
+    ngay ⇒ digest doi moi ngay ⇒ `--check` bao DRIFT gia lien tuc, va DRIFT THAT bi chim.
+    """
+
+    def test_so_lieu_khong_khai_TRONG_digest_thi_khong_bao_drift(self):
+        base = {"id": "c1", "kind": "normal", "component": "risk_cap",
+                "input": {"equity": 1000.0, "cap_pct": 2.0, "new_risk_usd": 6.0,
+                          "positions": {}},
+                "expect": {"output": {"ok": True}}}
+        r1 = GS.run_case(base)
+        r2 = GS.run_case(base)                       # cung ca, cung output
+        self.assertEqual(r1["digest"], r2["digest"])
+
+    def test_doi_gia_tri_DA_KHAI_thi_digest_doi(self):
+        c = {"id": "c2", "kind": "normal", "component": "risk_cap",
+             "input": {"equity": 1000.0, "cap_pct": 2.0, "new_risk_usd": 6.0,
+                       "positions": {}},
+             "expect": {"output": {"ok": True}}}
+        actual = GS.run_case(c)["digest"]
+        # (a) GIA TRI cua key DA KHAI doi ⇒ digest DOI (drift that phai bat duoc)
+        self.assertNotEqual(actual, GS._digest(
+            GS._contract_view({"ok": False}, c["expect"])))
+        # (b) key KHONG khai xuat hien / doi so lieu ⇒ digest KHONG doi (khong bao dong gia)
+        self.assertEqual(actual, GS._digest(
+            GS._contract_view({"ok": True, "n_checked": 999, "x": 1}, c["expect"])))
+
+    def test_contract_view_bo_key_khong_khai(self):
+        view = GS._contract_view({"ok": True, "n_checked": 999, "violations": []},
+                                 {"output": {"violations": []}})
+        self.assertEqual(view, {"violations": []})
+
+    def test_contract_view_rong_thi_giu_nguyen(self):
+        full = {"a": 1}
+        self.assertEqual(GS._contract_view(full, {"output": {}}), full)
 
 

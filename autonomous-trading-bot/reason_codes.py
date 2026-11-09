@@ -150,6 +150,7 @@ STATUS_CODES: dict[str, str] = {
     # du lieu
     "DATA_FAIL": "DATA_MISSING",
     "SKIP_DATA": "DATA_INVALID",
+    "SKIP_STALE": "DATA_STALE",
     # ngu canh thi truong
     "SKIP_VOL": "VOL_EXTREME",
     "WAIT": "ALPHA_LOW",

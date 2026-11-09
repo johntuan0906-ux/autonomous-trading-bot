@@ -51,7 +51,8 @@ BASELINE_PATH = ROOT / "golden" / "baseline.json"
 #: Cac "cong" duoc kiem dinh. Them cong moi = them adapter + ca (khong doi runner).
 COMPONENTS = ("feats", "learner_edge", "strategy_classify", "strategy_gate",
               "lessons_gate", "risk_cap", "portfolio_open", "journal_feats",
-              "entries_gate", "api_ban", "kill_switch", "go_live", "council_ready")
+              "entries_gate", "api_ban", "kill_switch", "go_live", "council_ready",
+              "freshness")
 OPS = ("==", "!=", "<", "<=", ">", ">=", "contains", "not_contains", "in")
 #: Sai so so sanh so thuc (float) — 6 chu so thap phan la du cho cac cong nay.
 TOL = 1e-6
@@ -366,6 +367,18 @@ def _ad_go_live(inp: dict) -> dict:
     return {"ok": bool(ok), "why": str(why)}
 
 
+def _ad_freshness(inp: dict) -> dict:
+    """TUOI DU LIEU theo nguon (#4): nguon nao cu / chet, co chan duoc quyet dinh khong."""
+    import freshness as F
+    rep = F.evaluate(inp.get("ages") or {}, inp.get("ttl") or {},
+                     float(inp.get("hard_mult") or F.HARD_MULT),
+                     required=inp.get("required"))
+    return {"ok": bool(rep["ok"]), "blocking": list(rep["blocking"]),
+            "dead": list(rep["dead"]), "stale": list(rep["stale"]),
+            "worst": rep["worst"], "reason_code": rep["reason_code"],
+            "by_source": rep["by_source"]}
+
+
 def _ad_council_ready(inp: dict) -> dict:
     """Cong NANG hoi dong SHADOW -> VETO THAT (`council_eval.readiness`) = autonomy ladder."""
     import council_eval as CEL
@@ -390,6 +403,7 @@ ADAPTERS = {
     "kill_switch": _ad_kill_switch,
     "go_live": _ad_go_live,
     "council_ready": _ad_council_ready,
+    "freshness": _ad_freshness,
 }
 
 
@@ -458,6 +472,20 @@ def load_cases(path=None):
     return cases, errors
 
 
+def _contract_view(out: dict, exp: dict) -> dict:
+    """Chi giu nhung KEY duoc KHAI trong `expect.output` — dung de lam digest DRIFT.
+
+    Vi sao (09/11): ca `jrn-feats-integrity` doc journal THAT, nen output co `n_checked`/
+    `n_open_rows` — so nay TANG moi ngay. Lay digest ca output thi moi ngay deu bao DRIFT
+    (nhieu gia) va DRIFT that bi chim. Hop dong la `violations == []`, nen chi dong dau
+    nhung key da khai; dem so lieu kiem bang rule `n_checked:>=:100` (khong vao digest).
+    """
+    want = (exp or {}).get("output") or {}
+    if not isinstance(want, dict) or not want:
+        return out
+    return {k: out[k] for k in want if isinstance(out, dict) and k in out}
+
+
 def run_case(case: dict) -> dict:
     """Chay 1 ca: adapter -> so khop `expect.output` -> rule must/must_not."""
     comp = str(case.get("component"))
@@ -479,7 +507,7 @@ def run_case(case: dict) -> dict:
     return {"id": str(case.get("id")), "kind": str(case.get("kind")),
             "component": comp, "title": str(case.get("title") or ""),
             "source": str(case.get("source") or ""), "ok": not why, "why": why,
-            "output": _r6(out), "digest": _digest(out)}
+            "output": _r6(out), "digest": _digest(_contract_view(out, exp))}
 
 
 def evaluate(cases, baseline: dict | None = None) -> dict:

@@ -113,16 +113,25 @@ def gaps_from(data: dict, min_n: int = MIN_N_MODEL) -> list:
     # 1) GHEP PHIEU <-> LENH: neu khong chinh xac thi moi chi so ben duoi deu la DOAN.
     exact = match.get("exact_rate")
     if match.get("matched") and (exact is None or float(exact) < TARGET_EXACT_MATCH):
+        # (09/11) Tach 2 ly do khac nhau: (a) CHUA NOI duoc theo id (code chua chay /
+        # chua restart) va (b) DA NOI duoc nhung lenh chua DONG nen chua co ket qua.
+        # Gop 2 thu lam mot thi gap bao sai viec can lam.
+        needs = []
+        if not match.get("joined_by_id"):
+            needs.append("journal co `decision_id` o CA `AGENT` va `OPEN` (code da san, phai restart)")
+        else:
+            needs.append("%d/%d phieu NOI duoc theo id nhung chi %d/%d da co lenh DONG de cham diem "
+                         "⇒ can them ket qua (cho lenh dong)"
+                         % (match.get("joined_by_id"), match.get("n"),
+                            match.get("matched"), match.get("n")))
+        needs += [">= 30 phieu/model co `decision_id` de so sanh",
+                  "10 cap ghep mau (phieu -> lenh) de kiem tay bang `tools/trace_trade.py`"]
         gaps.append({
             "id": "match_exact", "severity": SEV_HIGH,
             "metric": "ty le ghep CHINH XAC (decision_id)", "value": exact,
             "target": TARGET_EXACT_MATCH,
-            "needs": [
-                "journal co `decision_id` o CA `AGENT` va `OPEN` (code da san, phai restart)",
-                ">= 30 phieu/model co `decision_id` de so sanh",
-                "10 cap ghep mau (phieu -> lenh) de kiem tay bang `tools/trace_trade.py`",
-            ],
-            "action": "restart 2 instance roi chay lai `python tools/council_eval.py`",
+            "needs": needs,
+            "action": "chay lai `python tools/council_eval.py` sau khi co them lenh dong",
             "auto": True,
         })
     if not match.get("matched"):

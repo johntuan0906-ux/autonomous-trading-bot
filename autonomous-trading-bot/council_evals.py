@@ -140,6 +140,11 @@ def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
             "role": r.get("role"), "provider": r.get("provider"),
             "model": r.get("model"), "status": r.get("status"),
             "decision_id": did, "match_via": via,
+            # (09/11) CO NOI DUOC THEO ID khong: phieu co `decision_id` va ton tai ban ghi
+            # `OPEN` cung id. Khac `match_via`: lenh chua DONG thi chua co ket qua that de
+            # cham diem, nhung phep noi da dung — tach ra de khong doc "0 chinh xac" nham
+            # la "co che hong".
+            "open_id": bool(did and did in opens_by_did),
             "features": feats, "matched_close": outcome is not None,
             "outcome": outcome,
         })
@@ -151,14 +156,19 @@ def match_stats(cases: list) -> dict:
 
     `via_decision_id` la so phieu ghep CHINH XAC; `via_heuristic` la so phieu chi ghep
     duoc nho cua so thoi gian (con co the ghep NHAM). Dung de biet bang diem co dang tin.
+    `joined_by_id` = so phieu NOI duoc theo id (ke ca lenh chua dong) — do "co che noi"
+    tach khoi "da co ket qua de cham".
     """
     cs = list(cases or [])
     n = len(cs)
     by_did = sum(1 for c in cs if c.get("match_via") == "decision_id")
     by_heur = sum(1 for c in cs if c.get("match_via") == "heuristic")
+    joined = sum(1 for c in cs if c.get("open_id"))
     matched = by_did + by_heur
     return {"n": n, "matched": matched,
             "via_decision_id": by_did, "via_heuristic": by_heur,
+            "joined_by_id": joined,
+            "join_rate": round(joined / n, 4) if n else None,
             "rate": round(matched / n, 4) if n else None,
             "exact_rate": round(by_did / matched, 4) if matched else None}
 

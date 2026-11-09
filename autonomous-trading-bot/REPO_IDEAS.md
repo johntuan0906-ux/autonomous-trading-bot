@@ -1449,11 +1449,11 @@ xuất hiện trong journal (code đã sẵn, dữ liệu cũ vẫn phải đọ
 | **DRIFT giả của golden set** | digest chỉ hash `_contract_view()` = các key **đã khai** trong `expect.output` | ca `jrn-feats-integrity` đọc journal thật nên `n_checked` tăng mỗi ngày → trước đây đỏ mỗi ngày; nay `--check` = 0 và **vẫn** bắt drift khi giá trị key đã khai đổi (2 test chốt 2 chiều) |
 | **B-048 Gap analysis** | `tools/council_gaps.py`: thiếu hụt **sinh từ số liệu**, mỗi mục bắt buộc `metric/value/target/needs/action/auto`; xuất `COUNCIL_GAPS.md` + `logs/council_gaps.json` | Đọc số thật: `brier 0,3467` (>0,25), ghép phiếu **0% chính xác**, 11 model chưa đủ mẫu, 1 model `value_r ≤ 0` ⇒ 4 thiếu hụt, mỗi cái có việc tự làm |
 | **B-048 Tự vận hành có giới hạn** | `tools/selfops.py`: `plan()` thuần tuý; `run()` mặc định **DRY-RUN**; mọi việc ghi `logs/autonomy.jsonl` (lý do + bằng chứng + rc) | **Chặn cứng**: việc đụng state (`restart`, `kill_reset`) không tự chạy trên instance LIVE (trừ `--allow-live-state`); TESTNET chỉ gỡ kill-switch khi **đã sang ngày UTC + không còn vị thế**; refit chỉ khi đủ mẫu **và** ≥ 12 h (mốc lấy từ nhật ký, vì refit "trung tính" không ghi file) |
-| **Bug catalog** | B-047 (`du-lieu`), B-048 (`van-hanh`) + test chốt | **47 lớp / 145 test chốt**, `--check` OK |
+| **Bug catalog** | B-047 (`du-lieu`), B-048 (`van-hanh`) + test chốt | **47 lớp / 148 test chốt**, `--check` OK |
 
 **Số đo đợt 3 (TESTNET, chạy lại toàn bộ)**: golden set **45/45 PASS / 14 cổng**, `--check` = 0 (có DRIFT
-theo hợp đồng) · `drift_docs --check` **0 lệch** · `bug_catalog --check` OK (**47 lớp / 145 test**) ·
-`unittest discover` **1496 test OK** (3 skip). `reason_codes`: **38 mã / 7 nhóm**.
+theo hợp đồng) · `drift_docs --check` **0 lệch** · `bug_catalog --check` OK (**47 lớp / 148 test**) ·
+`unittest discover` **1499 test OK** (3 skip). `reason_codes`: **38 mã / 7 nhóm**.
 
 > **Ba lỗi của chính harness, bắt được vì chạy nó** (không phải vì đọc code): (a) digest "ổn định" vẫn đổi
 > theo ngày; (b) `TestBaseline` cũ coi **thêm key không khai** là drift — trái với luật mới; (c) test so

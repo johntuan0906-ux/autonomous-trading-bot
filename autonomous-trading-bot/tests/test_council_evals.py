@@ -105,6 +105,65 @@ class TestPairCases(unittest.TestCase):
         self.assertEqual(len(pair_cases(jp)), 2)
 
 
+class TestNoiTheoId(unittest.TestCase):
+    """(09/11) `decision_id` phai NOI duoc phieu <-> lenh, va phai tach "chua noi duoc" khoi
+    "noi duoc nhung lenh chua dong".
+
+    Do that tren TESTNET 19:1x sau restart: 3 lenh `OPEN` va 7 phieu `AGENT` deu co
+    `decision_id`, 2 id trung nhau, nhung `council_eval` in **"chinh xac (decision_id) 0"**
+    — dung la chua co lenh DONG de cham diem, khong phai co che hong. Khong tach 2 thu nay
+    thi nguoi van hanh doc "0" va di sua code khong can thiet.
+    """
+
+    def _jp(self, rows: list) -> str:
+        p = os.path.join(tempfile.mkdtemp(), "j.jsonl")
+        with open(p, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        return p
+
+    def _rows(self, did_open: str = "d-1", did_vote: str = "d-1", close: bool = False) -> list:
+        t0 = 1_700_000_000.0
+        rows = [
+            {"event": "AGENT", "ts": t0, "role": "critic", "status": "SETUP",
+             "symbol": "APE/USDT:USDT", "direction": "LONG", "action": "ALLOW",
+             "confidence": 0.6, "model": "cline-pass/kimi-k3", "decision_id": did_vote},
+            {"event": "OPEN", "ts": t0 + 5, "pair": "APE/USDT:USDT", "direction": "LONG",
+             "decision_id": did_open, "reason_code": "TAKE"},
+        ]
+        if close:
+            rows.append({"event": "CLOSE", "ts": t0 + 600, "pair": "APE/USDT:USDT",
+                         "direction": "LONG", "r": 1.0, "won": True, "pnl": 5.0})
+        return rows
+
+    def test_lenh_chua_dong_van_NOI_duoc_theo_id(self):
+        cases = pair_cases(self._jp(self._rows()))
+        self.assertEqual(len(cases), 1)
+        c = cases[0]
+        self.assertTrue(c["open_id"])                 # noi duoc theo id
+        self.assertFalse(c["matched_close"])          # nhung chua co ket qua
+        self.assertIsNone(c["match_via"])
+        mt = CE.match_stats(cases)
+        self.assertEqual(mt["joined_by_id"], 1)
+        self.assertEqual(mt["matched"], 0)
+        self.assertIsNone(mt["exact_rate"])           # chua cham diem duoc
+        self.assertEqual(mt["join_rate"], 1.0)
+
+    def test_lenh_da_dong_thi_ghep_CHINH_XAC(self):
+        cases = pair_cases(self._jp(self._rows(close=True)))
+        self.assertEqual(cases[0]["match_via"], "decision_id")
+        self.assertTrue(cases[0]["matched_close"])
+        mt = CE.match_stats(cases)
+        self.assertEqual(mt["via_decision_id"], 1)
+        self.assertEqual(mt["via_heuristic"], 0)
+        self.assertEqual(mt["exact_rate"], 1.0)
+
+    def test_phieu_co_id_nhung_lenh_dung_id_KHAC_thi_khong_ban_noi(self):
+        cases = pair_cases(self._jp(self._rows(did_open="d-1", did_vote="d-2")))
+        self.assertFalse(cases[0]["open_id"])
+        self.assertEqual(CE.match_stats(cases)["joined_by_id"], 0)
+
+
 class TestAbReport(unittest.TestCase):
     def test_bao_cao_veto_vs_allow(self):
         jp = _journal(os.path.join(tempfile.mkdtemp(), "j.jsonl"))

@@ -503,7 +503,7 @@ Bốn việc còn thiếu của §29 đã xong; số đo lấy từ máy, không
 > (đổi *key không khai* từng bị coi là drift; so digest với một view **bằng** chính nó). Đã viết lại test theo
 > luật mới: **đổi giá trị key đã khai ⇒ PHẢI drift**, thêm key không khai ⇒ **KHÔNG** drift — không nới ngưỡng.
 > Số đo đợt 3 (TESTNET): golden **45/45 PASS / 14 cổng** + `--check` = 0, `drift_docs --check` **0 lệch**,
-> bug catalog **47 lớp / 145 test**, suite **1496 test OK**. `reason_codes` giữ **38 mã / 7 nhóm**.
+> bug catalog **47 lớp / 148 test**, suite **1499 test OK**. `reason_codes` giữ **38 mã / 7 nhóm**.
 > Vẫn chờ người vận hành: (a) đối soát equity LIVE 27,56 USDT, (b) quyết định đóng 12 vị thế legacy TESTNET
 > đang chiếm hết ngân sách rủi ro, (c) xoay key Blockworks (403 ở mọi đường dẫn).
 

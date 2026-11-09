@@ -484,7 +484,10 @@ CLASSES = [
                   "test_reason_codes_wiring.py::TestPairByDecisionId::test_phieu_bi_chan_thi_KHONG_gan_bua_vao_lenh",
                   "test_reason_codes_wiring.py::TestCalibration::test_ha_tran_khi_mau_it",
                   "test_reason_codes_wiring.py::TestVoteLogsReasonCode::test_log_decision_tu_suy_ma_tu_van_ban",
-                  "test_agents.py::TestCouncil::test_co_bang_chung_du_thi_khong_ha_tran"],
+                  "test_agents.py::TestCouncil::test_co_bang_chung_du_thi_khong_ha_tran",
+                  "test_council_evals.py::TestNoiTheoId::test_lenh_chua_dong_van_NOI_duoc_theo_id",
+                  "test_council_evals.py::TestNoiTheoId::test_lenh_da_dong_thi_ghep_CHINH_XAC",
+                  "test_council_evals.py::TestNoiTheoId::test_phieu_co_id_nhung_lenh_dung_id_KHAC_thi_khong_ban_noi"],
     },
     {
         "code": "B-046", "kind": "du-lieu", "seen": "09/11/2026",

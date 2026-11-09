@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 10/11/2026 02:53:15 · commit `b2990a8`
+- **Cập nhật**: 10/11/2026 03:23:15 · commit `50249d2`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `112020` · round `45` · nhịp tim cách đây 143.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3164.96 USDT
+- **Bot**: pid `112020` · round `53` · nhịp tim cách đây 37.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3164.59 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3025 lệnh đóng, WR 41.06%, E(R) 0.2336, PnL -1030.41$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 102 | 45.1 | 2.0 | 0.995 | 0.3326 | -1.05 |
 | 14 ngày | 117 | 41.88 | 1.822 | 0.835 | 0.3054 | -47.26 |
-| 30 ngày | 2579 | 37.73 | 1.959 | 0.744 | 0.2724 | -1124.97 |
+| 30 ngày | 2577 | 37.68 | 1.958 | 0.742 | 0.2723 | -1133.31 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.995 < 1.1; PF($) cua so 14 ngay = 0.835 < 1.1; PF($) cua so 30 ngay = 0.744 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 0.995 < 1.1; PF($) cua so 14 ngay = 0.835 < 1.1; PF($) cua so 30 ngay = 0.742 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | LONG | 35087.0 | 0.002827 | 0.002713 | 0.003055 | False | False | 0.202 |
+| 1000BONK/USDT:USDT | LONG | 35087.0 | 0.002827 | 0.002713 | 0.003055 | False | False | 0.061 |
 | ARB/USDT:USDT | LONG | 351.0 | 0.183 | 0.171606 | 0.205788 | False | False | 0.097 |
 | AVAX/USDT:USDT | LONG | 6.0 | 8.726 | 8.089772 | 9.998456 | False | False | 0.047 |
 | BNB/USDT:USDT | SHORT | 0.36 | 684.99 | 695.890398 | 663.189204 | False | False | 0.06 |

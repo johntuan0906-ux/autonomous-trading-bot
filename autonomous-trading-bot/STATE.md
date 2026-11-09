@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 09/11/2026 18:16:35 · commit `?`
+- **Cập nhật**: 09/11/2026 18:46:38 · commit `?`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `77604` · round `123` · nhịp tim cách đây 122.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3193.08 USDT
+- **Bot**: pid `77604` · round `130` · nhịp tim cách đây 126.3s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3186.99 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3015 lệnh đóng, WR 41.03%, E(R) 0.2336, PnL -1039.88$)
@@ -39,15 +39,11 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (13)
+## Vị thế đang quản lý (9)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 41666.0 | 0.002677 | 0.002773 | 0.002485 | False | False | 0.0 |
-| 1000PEPE/USDT:USDT | LONG | 12106.0 | 0.0051324 | 0.004802 | 0.005792 | False | False | 0.0 |
-| ADA/USDT:USDT | SHORT | 734.0 | 0.1749 | 0.180348 | 0.164004 | False | False | 0.0 |
-| ARB/USDT:USDT | LONG | 448.3 | 0.1715 | 0.162578 | 0.189344 | False | False | 0.729 |
-| ASTER/USDT:USDT | SHORT | 148.0 | 0.6437 | 0.67064 | 0.58982 | False | False | 0.601 |
+| ARB/USDT:USDT | LONG | 448.3 | 0.1715 | 0.162578 | 0.189344 | False | False | 0.885 |
 | CYBER/USDT:USDT | SHORT | 199.5 | 0.269 | 0.289046 | 0.228908 | False | False | 0.599 |
 | DOT/USDT:USDT | SHORT | 117.3 | 0.8721 | 0.906186 | 0.803928 | False | False | 0.619 |
 | ETH/USDT:USDT | SHORT | 0.049 | 2152.88 | 2233.168052 | 1992.303896 | False | False | 0.814 |
@@ -55,7 +51,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | GTC/USDT:USDT | LONG | 216.8 | 0.185 | 0.166556 | 0.221888 | False | False | 0.271 |
 | IO/USDT:USDT | SHORT | 830.2 | 0.1142 | 0.119018 | 0.104564 | False | False | 0.851 |
 | LSK/USDT:USDT | SHORT | 479.0 | 0.1699 | 0.17824 | 0.15322 | False | False | 0.48 |
-| QNT/USDT:USDT | LONG | 0.3 | 198.3 | 188.030586 | 218.838828 | False | False | 0.35 |
+| QNT/USDT:USDT | LONG | 0.3 | 198.3 | 188.030586 | 218.838828 | False | False | 0.404 |
 
 ---
 

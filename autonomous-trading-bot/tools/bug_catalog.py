@@ -530,6 +530,28 @@ CLASSES = [
                   "test_selfops.py::TestSelfOps::test_dry_run_khong_chay_gi",
                   "test_selfops.py::TestSelfOps::test_refit_chi_khi_du_mau_va_da_lau"],
     },
+    {
+        "code": "B-049", "kind": "rui-ro", "seen": "09/11/2026",
+        "title": "Tran TONG risk tinh tren mau so KHAC goc von voi tu so (equity san vs size_base) ⇒ tran 1,6% cho phep 12-13 vi the; MAX_POSITIONS lai bi bypass o DEMO nen khong con chot nao",
+        "symptom": "Do that TESTNET 09/11: journal co **13 lenh OPEN trong 45 giay** (09:27:41 → 09:28:07), tren san con **20 vi the** (12 bot quan ly + 8 mo tay/dust) va moi entry sau do bi `SKIP_RISK`: \"tran risk danh muc: dang 1,59% + moi 0,13% > 1,60%\". Vi sao lot: `position_size()` tinh risk tren `bot.balance = min(BALANCE_USDT, equity)` = **1000** (moi lenh 4 USDT = 0,4%) nhung `can_add_risk()` duoc goi voi `bot.equity` THAT cua vi demo (**~3000**) ⇒ moi lenh chi con **0,13%** ⇒ tran 1,6% cho phep ~12 vi the thay vi 4. Chot thu hai (`max_positions_block`) **co y bo qua o DEMO** nen khong co gi chan lai",
+        "guard": "`portfolio.risk_cap_base(balance, equity)` = `min(balance, equity)` — dung CUNG goc von voi tu so; `turbo_demo` truyen `_cap_base` vao CA HAI cho goi `can_add_risk` (truoc va sau khi nang qty len minNotional) va ghi `cap_base` vao ket qua `SKIP_RISK` de doc duoc bang so. Test chot **SO VI THE TOI DA** (khong chi chot gia tri ham): mo phong mo lien tiep ⇒ **4** vi the voi `risk_cap_base`, va **12** neu dung mau so cu (giu lai lam bang chung loi)",
+        "files": ["portfolio.py", "turbo_demo.py", "tests/test_risk_cap_base.py"],
+        "tests": ["test_risk_cap_base.py::TestRiskCapBase::test_SO_VI_THE_TOI_DA_la_4_khong_phai_12",
+                  "test_risk_cap_base.py::TestRiskCapBase::test_mau_so_bang_size_base_khi_equity_lon_hon",
+                  "test_risk_cap_base.py::TestRiskCapBase::test_equity_nho_hon_balance_thi_lay_equity",
+                  "test_risk_cap_base.py::TestRiskCapBase::test_thieu_du_lieu_thi_khong_chia_cho_0",
+                  "test_risk_cap_base.py::TestRiskCapBase::test_risk_moi_lenh_dung_bang_risk_pct_cua_size_base"],
+    },
+    {
+        "code": "B-050", "kind": "du-lieu", "seen": "09/11/2026",
+        "title": "So sach noi LAI trong khi vi LO: journal khong tach duoc lenh do BOT mo khoi lenh do NGUOI dat tay ⇒ kill-switch trip bi hieu sai la \"chien luoc thua\"",
+        "symptom": "LIVE 09/11: vi that **27,90 USDT** (dinh 38,44), kill-switch trip \"daily loss 28,31%\", nhung doc journal thi **675 dong CLOSE co tong pnl +124,50** (duong) — neu tin journal se ket luan nguoc han. Doi chieu **fill that tren san** (7 ngay, 720 fill): **102 vong lenh**, chi **3** khop `OPEN` trong journal, **99 vong KHONG co OPEN** = nguoi dat tay, PnL **-4,61 USDT**; bot **0** vong trong cua so. Dong thoi 1 `CLOSE` bi thieu (1000CAT 05/11) va 1 vi the ETH **mo tay** nam ngoai `managed_state` (bot khong dat SL/TP)",
+        "guard": "`reconcile.py` (da co tu P0) duoc dung nhu BUOC BAT BUOC khi so sanh tien: `plan_backfill()` giu **2 ngan rieng** — `closes` (khop OPEN trong journal = bot) va `unmatched_episodes` (khong co OPEN = tay); `--apply` chi ghi bu `CLOSE` thieu (backup `journal.jsonl.bak-*`), KHONG sua `risk_state`, KHONG gui lenh. Quy trinh ghi vao `OPERATIONS.md`: doi soat `reconcile.py` + `positions.py` TRUOC khi ket luan ve chien luoc hay go kill-switch; phan biet ro `journal.pnl` (lich su ghi chep) vs `equity` (su that duy nhat)",
+        "files": ["reconcile.py", "positions.py", "OPERATIONS.md", "tests/test_reconcile.py"],
+        "tests": ["test_reconcile.py::TestTachLenTayVaBot::test_hai_ngan_rieng_bot_va_tay",
+                  "test_reconcile.py::TestTachLenTayVaBot::test_pnl_tung_ngan_khop_fill_that",
+                  "test_reconcile.py::TestTachLenTayVaBot::test_khong_co_fill_thi_khong_suy_dien"],
+    },
 ]
 
 

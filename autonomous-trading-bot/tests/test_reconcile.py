@@ -245,6 +245,66 @@ class TestPlanBackfill(unittest.TestCase):
             self.assertEqual(R.orphan_opens(jp), [])
 
 
+class TestTachLenTayVaBot(unittest.TestCase):
+    """B-050 — tach PnL "lenh do BOT mo" khoi "lenh NGUOI dat tay" bang FILL THAT.
+
+    Vi sao co (09/11): LIVE tut 38,44 -> 27,90 USDT va kill-switch trip voi
+    "daily loss 28,31%". Journal khong the tra loi: tong `pnl` cua 675 dong CLOSE la
+    **+124,50** (duong), trong khi vi that chi con 27,90 ⇒ doc journal mot minh se ket
+    luan nguoc han. Doi chieu fill san moi ra: trong 7 ngay co **102 vong lenh**, chi
+    **3** khop OPEN trong journal; **99 vong khong co OPEN** = nguoi dat tay, PnL
+    **-4,61 USDT**; bot **0** vong. Tức khoan lo la do lenh tay, KHONG phai chien luoc.
+
+    Test chot: `plan_backfill()` phai tra ve 2 NGAN rieng (matched = bot,
+    unmatched_episodes = tay) — neu gop lai thi khong bao gio tra loi duoc cau hoi
+    "tien mat di dau".
+    """
+
+    def _setup(self):
+        T = 1_700_000_000_000
+        opens = [_mkopen(SYM, "SHORT", 100.0, 10.0, 102.0, 95.0, T / 1000.0)]
+        closes: list = []
+        fills = [
+            # (1) vong lenh DO BOT: co OPEN trong journal
+            _mkfill(SYM, "SELL", 10.0, 100.0, T, 0.0),
+            _mkfill(SYM, "BUY", 10.0, 99.0, T + 60_000, 10.0),
+            # (2) vong lenh TAY: khong co OPEN nao
+            _mkfill("ETH/USDT:USDT", "BUY", 0.5, 2000.0, T + 120_000, 0.0),
+            _mkfill("ETH/USDT:USDT", "SELL", 0.5, 1990.0, T + 180_000, -5.0),
+            # (3) vong lenh TAY thu 2
+            _mkfill("XRP/USDT:USDT", "BUY", 100.0, 1.0, T + 240_000, 0.0),
+            _mkfill("XRP/USDT:USDT", "SELL", 100.0, 1.02, T + 300_000, 2.0),
+        ]
+        return opens, closes, fills
+
+    def test_hai_ngan_rieng_bot_va_tay(self):
+        opens, closes, fills = self._setup()
+        plan = R.plan_backfill(opens, closes, fills)
+        self.assertEqual(plan["episodes"], 3)              # 3 vong lenh tren san
+        self.assertEqual(plan["matched"], 1)               # 1 vong do bot
+        tay = plan["unmatched_episodes"]
+        self.assertEqual(len(tay), 2)                       # 2 vong cua nguoi
+        self.assertEqual({e["symbol"] for e in tay},
+                         {"ETH/USDT:USDT", "XRP/USDT:USDT"})
+
+    def test_pnl_tung_ngan_khop_fill_that(self):
+        opens, closes, fills = self._setup()
+        plan = R.plan_backfill(opens, closes, fills)
+        bot = sum(float(c["recon_pnl_exchange"]) for c in plan["closes"])
+        tay = sum(float(e["realized_pnl"]) for e in plan["unmatched_episodes"])
+        self.assertAlmostEqual(bot, 10.0, places=6)        # bot: +10
+        self.assertAlmostEqual(tay, -3.0, places=6)        # tay: -5 + 2
+        self.assertNotEqual(round(bot, 6), round(tay, 6))
+
+    def test_khong_co_fill_thi_khong_suy_dien(self):
+        """Khong co fill ⇒ khong duoc "doan" PnL (nguyen tac cua reconcile)."""
+        opens, closes, _fills = self._setup()
+        plan = R.plan_backfill(opens, closes, [])
+        self.assertEqual(plan["episodes"], 0)
+        self.assertEqual(plan["closes"], [])
+        self.assertEqual(plan["unmatched_episodes"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
 

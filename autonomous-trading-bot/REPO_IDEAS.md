@@ -1449,8 +1449,7 @@ xuất hiện trong journal (code đã sẵn, dữ liệu cũ vẫn phải đọ
 | **DRIFT giả của golden set** | digest chỉ hash `_contract_view()` = các key **đã khai** trong `expect.output` | ca `jrn-feats-integrity` đọc journal thật nên `n_checked` tăng mỗi ngày → trước đây đỏ mỗi ngày; nay `--check` = 0 và **vẫn** bắt drift khi giá trị key đã khai đổi (2 test chốt 2 chiều) |
 | **B-048 Gap analysis** | `tools/council_gaps.py`: thiếu hụt **sinh từ số liệu**, mỗi mục bắt buộc `metric/value/target/needs/action/auto`; xuất `COUNCIL_GAPS.md` + `logs/council_gaps.json` | Đọc số thật: `brier 0,3467` (>0,25), ghép phiếu **0% chính xác**, 11 model chưa đủ mẫu, 1 model `value_r ≤ 0` ⇒ 4 thiếu hụt, mỗi cái có việc tự làm |
 | **B-048 Tự vận hành có giới hạn** | `tools/selfops.py`: `plan()` thuần tuý; `run()` mặc định **DRY-RUN**; mọi việc ghi `logs/autonomy.jsonl` (lý do + bằng chứng + rc) | **Chặn cứng**: việc đụng state (`restart`, `kill_reset`) không tự chạy trên instance LIVE (trừ `--allow-live-state`); TESTNET chỉ gỡ kill-switch khi **đã sang ngày UTC + không còn vị thế**; refit chỉ khi đủ mẫu **và** ≥ 12 h (mốc lấy từ nhật ký, vì refit "trung tính" không ghi file) |
-| **Bug catalog** | B-047 (`du-lieu`), B-048 (`van-hanh`) + test chốt | **47 lớp / 148 test chốt**, `--check` OK |
-
+| **Bug catalog** | B-047 (`du-lieu`), B-048 (`van-hanh`) + test chốt | **47 lớp / 148 test chốt** (thời điểm đợt 3; nay **49 lớp / 156 test** — xem §29.6), `--check` OK |
 **Số đo đợt 3 (TESTNET, chạy lại toàn bộ)**: golden set **45/45 PASS / 14 cổng**, `--check` = 0 (có DRIFT
 theo hợp đồng) · `drift_docs --check` **0 lệch** · `bug_catalog --check` OK (**47 lớp / 148 test**) ·
 `unittest discover` **1499 test OK** (3 skip). `reason_codes`: **38 mã / 7 nhóm**.
@@ -1462,10 +1461,23 @@ theo hợp đồng) · `drift_docs --check` **0 lệch** · `bug_catalog --check
 > Ngoài ra `selfops` tự bắt lỗi của mình: chạy `--instance live` vẫn dùng tool của **root** ⇒ đã sửa để
 > `plan(..., root=)` + `cwd=` theo instance (nếu không thì "kiểm tra LIVE" lại kiểm tra TESTNET).
 
-**Còn chờ người vận hành** (không tự làm vì là hành động tiền / quyết định): (a) đối soát equity LIVE
-**27,56 USDT** so với lịch sử lệnh Binance; (b) quyết định đóng **12 vị thế legacy TESTNET** đang chiếm hết
-ngân sách rủi ro (mọi entry mới bị `SKIP_RISK`); (c) **xoay key Blockworks** (403 ở mọi đường dẫn, kể cả
-key rác ⇒ không phải lỗi gõ). Sau khi restart, `decision_id`/`reason_code`/`data_age` mới có trong journal.
+**Ba việc "chờ người vận hành" ghi ở đợt 3** (đối soát equity LIVE · đóng vị thế legacy TESTNET · key
+Blockworks) — **đã thi hành ở §29.6**, kèm con số mới.
+
+### 29.6 Đợt 4 (09/11 đêm) — thi hành 4 việc "chờ người quyết" và lỗi tiền thứ 5
+
+| Việc | Kết quả ĐO ĐƯỢC | Trạng thái |
+|---|---|---|
+| Đối soát LIVE (B-050) | ví **27,90 USDT**; journal 675 `CLOSE` tổng `pnl` **+124,50** (ngược dấu!); fill thật 7 ngày: **102 vòng lệnh**, **99 vòng không có `OPEN`** = lệnh tay **−4,61 USDT**, bot **0 vòng** | ✅ đã ghi bù 1 `CLOSE` thiếu (`reconcile.py --apply`, có backup) |
+| TESTNET: 21 vị thế legacy | do B-049 (trần risk sai mẫu số 1000 vs 3239 ⇒ 13 `OPEN` trong 45 giây) | ✅ đóng **20/21** (+8,87 uPnL); **1 dust AXS qty=1** không đóng được (`-2022` khi `reduceOnly`, `-4164` khi không) |
+| B-049 — sửa gốc | mẫu số = `risk_cap_base(balance, equity)` = `min`; test mô phỏng: **4 vị thế** (mới) vs **12** (cũ) | ✅ sau restart bot mở đúng **4** lệnh rồi chặn: "đang 1,59 % + mới 0,40 % > 1,60 %" |
+| LIVE: có nên chạy lại? | equity 27,90 ⇒ risk 0,6 % = 0,17 USDT < notional tối thiểu 5 ⇒ `SIZE_TO_MIN_NOTIONAL` đẩy risk thật ~1,7 %/lệnh (sát trần 2 %) | ⏸ **giữ MONITOR-ONLY** (kill-switch treo) nhưng **đã chạy code mới**; mở lại bằng `tools/restart_bot.py --target live --reset` khi anh quyết |
+| Blockworks | `grep -i blockworks` toàn repo = **0** (`*.py`, `tools/`, `*.md`), `.env` không có biến | ✅ kết luận: **không nằm trong code** — chỉ cần **thu hồi key** ở `app.blockworks.com` |
+
+> Tác dụng phụ đã đo: restart LIVE làm bot **adopt** vị thế ETH mở tay → chốt 30 % tại 1,87R, dời SL về hoà vốn.
+> Bảo vệ tốt hơn, nhưng là vị thế của người ⇒ ghi lại để lần sau restart LIVE phải kiểm `positions.py` trước.
+> **Số đo đợt 4**: bug catalog **49 lớp / 156 test chốt**, golden **45/45 / 14 cổng** (`--check`=0),
+> `drift_docs --check` 0 lệch, suite **1507 test OK** (TESTNET & LIVE).
 
 
 

@@ -51,6 +51,25 @@ def can_add_risk(positions: dict, equity: float, cap_pct: float,
     return True, "ok"
 
 
+def risk_cap_base(balance: float, equity: float) -> float:
+    """Mau so PHAI dung cho `can_add_risk` — CUNG GOC voi `size_base` = min(BALANCE_USDT, equity).
+
+    LOP LOI THAT (09/11, B-049): risk/lanh duoc tinh tren `size_base`
+    (= `min(BALANCE_USDT, equity)`, TESTNET = 1000) nhung TRAN TONG risk lai tinh tren
+    `equity` THAT cua san (demo testnet ~3000). Moi lenh 4 USDT vi vay chi chiem **0,13%**
+    thay vi **0,4%** ⇒ tran 1,6% cho phep ~12 vi the thay vi 4. Do that tren TESTNET:
+    **13 vi the mo trong 45 giay** (09:27:41 → 09:28:07) va **20 vi the** con mo, dot het
+    ngan sach rui ro ⇒ moi entry sau do bi `SKIP_RISK` ("dang 1,59% + moi 0,13% > 1,60%").
+
+    Nguyen tac: tu so va mau so phai cung mot goc von. Neu khong, "tran %" chi la con so
+    trang tri — dung lop loi "cau hinh co chu nhung khong co tac dung".
+    """
+    b, e = float(balance or 0.0), float(equity or 0.0)
+    if b > 0 and e > 0:
+        return min(b, e)
+    return b or e or 1.0
+
+
 @dataclass
 class PortfolioManager:
     max_positions: int = 1

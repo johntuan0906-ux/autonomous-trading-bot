@@ -507,4 +507,42 @@ Bốn việc còn thiếu của §29 đã xong; số đo lấy từ máy, không
 > Vẫn chờ người vận hành: (a) đối soát equity LIVE 27,56 USDT, (b) quyết định đóng 12 vị thế legacy TESTNET
 > đang chiếm hết ngân sách rủi ro, (c) xoay key Blockworks (403 ở mọi đường dẫn).
 
+**Đợt 4 (09/11 đêm) — THI HÀNH 4 việc "chờ người quyết", và lỗi thật thứ 5 lộ ra trong lúc thi hành.**
+
+1. **Đối soát LIVE (B-050).** Vi thật **27,90 USDT** (đỉnh 38,44), kill-switch trip "daily loss 28,31 %".
+   Journal nói ngược: 675 dòng `CLOSE`, tổng `pnl` **+124,50**. Đối chiếu **fill thật** (7 ngày, 720 fill):
+   **102 vòng lệnh**, chỉ **3** khớp `OPEN` trong journal, **99 vòng KHÔNG có `OPEN`** = người đặt tay,
+   PnL **−4,61 USDT**; **bot 0 vòng** trong cửa sổ đó. ⇒ Khoản lỗ **không phải do chiến lược**. Đã
+   `reconcile.py --apply` ghi bù **1 `CLOSE`** thiếu (backup `journal.jsonl.bak-20261109-195958`);
+   `positions.py` xác nhận **1 vị thế ETH mở tay** ngoài `managed_state`.
+2. **B-049 — trần tổng risk tính sai mẫu số (lỗi thật, do số liệu bắt được).** `position_size()` tính risk
+   trên `size_base = min(BALANCE_USDT, equity)` = **1000** nhưng `can_add_risk()` được gọi với `bot.equity`
+   thật của ví demo (**3239**) ⇒ mỗi lệnh 4 USDT chỉ chiếm **0,13 %** thay vì **0,40 %** ⇒ trần 1,6 % cho phép
+   ~12 vị thế; chốt thứ hai (`max_positions_block`) lại **cố ý bỏ qua ở DEMO** ⇒ không còn gì chặn. Bằng chứng:
+   journal **13 `OPEN` trong 45 giây** (09:27:41 → 09:28:07) và **21 vị thế** còn mở. Sửa:
+   `portfolio.risk_cap_base(balance, equity)` + truyền `_cap_base` vào **cả hai** chỗ gọi `can_add_risk`,
+   ghi `cap_base` vào kết quả `SKIP_RISK`. Test chốt **số vị thế tối đa** (mô phỏng mở liên tiếp): **4** với
+   hàm mới, **12** nếu dùng mẫu số cũ (giữ lại làm bằng chứng). Sau khi restart: bot mở đúng **4 lệnh**
+   (20:43:10 → 20:43:22) rồi các ứng viên sau bị chặn với lý do **"đang 1,59 % + mới 0,40 % > 1,60 %"**
+   (trước khi sửa: "mới 0,13 %").
+3. **Dọn TESTNET về trạng thái phẳng.** Dừng bot → đóng **20/21** vị thế bằng `BinanceFutures.close_position()`
+   (đường `_close_exact`, vì `reduceOnly` bị sàn từ chối `-2022`; `STOP_MARKET closePosition` trả `-4120`
+   "dùng Algo Order API") → xoá `managed_state` (backup) → chạy lại. Tổng uPnL lúc đóng **+8,87 USDT**.
+   Còn **1 vị thế dust AXS qty=1 (notional 0,83 USDT)** không thể đóng: `reduceOnly` → `-2022`,
+   không `reduceOnly` → `-4164` (notional < 5) ⇒ **giới hạn của sàn demo**, ghi lại thay vì lách.
+4. **LIVE: giữ MONITOR-ONLY có chủ đích** (kill-switch vẫn treo), nhưng **chạy code mới** để thống nhất bản
+   revision. Quyết định dựa trên số: equity 27,90 USDT ⇒ risk 0,6 % = **0,17 USDT/lệnh**, mà sàn đòi notional
+   ≥ 5 ⇒ `SIZE_TO_MIN_NOTIONAL` sẽ nâng qty lên 5 USDT ⇒ risk thật ~0,5 USDT ≈ **1,7 %** mỗi lệnh, sát trần 2 %
+   — chưa xứng đáng khi hội đồng còn `brier 0,34`. Một lệnh để mở lại khi anh quyết:
+   `python tools/restart_bot.py --target live --reset`. **Lưu ý đã đo được**: restart LIVE làm bot **adopt**
+   vị thế mở tay (ETH short) và chốt 30 % tại 1,87R + dời SL về hoà vốn (bảo vệ tốt hơn, nhưng là vị thế của người).
+5. **Blockworks: KHÔNG có trong code.** `grep -i blockworks` trên toàn repo (`*.py`, `tools/`, `*.md`) = **0 kết quả**,
+   `.env` không có biến nào ⇒ key chỉ dùng trong lần khảo sát §28.4. Việc cần làm duy nhất là **thu hồi key**
+   ở `app.blockworks.com` (không phải sửa code).
+
+> Số đo sau đợt 4 (TESTNET & LIVE): bug catalog **49 lớp / 156 test chốt** (`--check` OK),
+> golden **45/45 PASS / 14 cổng** (`--check` = 0), `drift_docs --check` **0 lệch**, suite **1507 test OK**.
+> Đây là lần thứ ba liên tiếp một lỗi **tiền/đo lường** chỉ lộ ra khi *chạy trên dữ liệu thật* — nên
+> quy trình từ nay: mọi kết luận về tiền phải đi qua `reconcile.py` + `positions.py` trước.
+
 

@@ -39,7 +39,7 @@ from notify import fmt_close, fmt_kill, fmt_open, send as tg_send
 from managed_state import load as ms_load, load_into as ms_load_into
 from managed_state import save as ms_save
 from trade_mgmt import record_protection
-from portfolio import Position, can_add_risk, planned_risk_usd
+from portfolio import Position, can_add_risk, planned_risk_usd, risk_cap_base
 from position_sync import adopt as adopt_positions
 import entries_gate
 import freshness
@@ -1195,13 +1195,18 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             continue
         # P0-6: tran TONG risk danh muc. 4 cap crypto tuong quan ~1 -> 4 vi the 1%
         # KHONG phai 4 canh bac doc lap ma la mot canh bac 4%, vuot tran lo ngay 2%.
+        # (09/11, B-049) MAU SO = `size_base` (cung goc von voi tu so), KHONG phai
+        # `bot.equity` tho: do that TESTNET equity demo ~3000 > BALANCE_USDT 1000 nen
+        # tran 1,6% tung cho phep 13 vi the (mo trong 45 giay) va dot het ngan sach.
         new_risk = planned_risk_usd(lv["entry"], lv["sl"], qty)
+        _cap_base = risk_cap_base(size_base, bot.equity)
         ok_risk, why_risk = can_add_risk(
-            bot.portfolio.positions, bot.equity or bot.balance, cfg.max_total_risk_pct,
+            bot.portfolio.positions, _cap_base, cfg.max_total_risk_pct,
             new_risk, {s: m.initial_sl for s, m in bot.managed.items()})
         if not ok_risk:
             results.append({"symbol": sym, "status": "SKIP_RISK", "reason": why_risk,
-                            "new_risk_usdt": round(new_risk, 2)})
+                            "new_risk_usdt": round(new_risk, 2),
+                            "cap_base": round(_cap_base, 2)})
             continue
         # (13/10) Chan SOM khi notional qua nho: san TU CHOI `-4164 Order's notional
         # must be no smaller than 5` (LIVE equity ~19 USDT + SL xa => notional < 5).
@@ -1226,17 +1231,18 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                 continue
             _risk2 = planned_risk_usd(lv["entry"], lv["sl"], _floor_q)
             _ok2, _why2 = can_add_risk(
-                bot.portfolio.positions, bot.equity or bot.balance, cfg.max_total_risk_pct,
+                bot.portfolio.positions, _cap_base, cfg.max_total_risk_pct,
                 _risk2, {s: m.initial_sl for s, m in bot.managed.items()})
             if not _ok2:
                 results.append({"symbol": sym, "status": "SKIP_RISK",
                                 "reason": _why2 + " (sau khi nang qty len minNotional)",
-                                "new_risk_usdt": round(_risk2, 2)})
+                                "new_risk_usdt": round(_risk2, 2),
+                                "cap_base": round(_cap_base, 2)})
                 continue
             log.info("SIZE %s: notional %.2f < minNotional -> nang len %.2f "
-                     "(risk %.2f USDT = %.2f%% equity)", sym, _notional,
+                     "(risk %.2f USDT = %.2f%% cua size_base)", sym, _notional,
                      _floor_q * float(lv["entry"]), _risk2,
-                     _risk2 / max(float(bot.equity or bot.balance), 1e-9) * 100)
+                     _risk2 / max(float(_cap_base), 1e-9) * 100)
             qty = _floor_q
             risk_usdt = _risk2
             _notional = _floor_q * float(lv["entry"])

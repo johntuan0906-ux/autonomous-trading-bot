@@ -63,9 +63,16 @@ def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
     """Ghep quyet dinh AGENT voi lenh CLOSE dau tien cung symbol/direction trong cua so.
 
     Moi lenh CLOSE chi duoc ghep 1 lan (dung `id()` de danh dau) — giong agent_authority().
+
+    (09/11, B-045) UU TIEN `decision_id`: neu ca phieu va ban ghi `OPEN` deu co cung
+    `decision_id` thi phep ghep la TRA CUU CHINH XAC (khong phu thuoc cua so thoi gian).
+    Vi sao: do that tren journal TESTNET, kieu ghep (symbol, huong, 1 gio) chi ghep duoc
+    **31/133** phieu ⇒ bang diem 7 model dua tren qua it mau de ket luan. Moi case ghi
+    them `match_via` = "decision_id" | "heuristic" | None de do duoc ty le ghep CHINH XAC.
     """
     recs = load_recs(journal_path)
     closes: dict = {}
+    opens_by_did: dict = {}          # decision_id -> ban ghi OPEN (co ts = moc bat dau)
     for r in recs:
         if r.get("event") == "AGENT":
             continue
@@ -74,6 +81,10 @@ def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
             continue
         k = (pair.upper(), str(r.get("direction") or "").upper())
         closes.setdefault(k, []).append(r)
+    for r in recs:
+        did = str(r.get("decision_id") or "")
+        if did and str(r.get("event") or "").upper() in ("OPEN", ""):
+            opens_by_did.setdefault(did, r)
     for v in closes.values():
         v.sort(key=lambda c: float(c.get("ts") or 0))
     used: set = set()
@@ -87,16 +98,32 @@ def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
         if act not in ("ALLOW", "VETO"):
             continue
         k = (str(r.get("symbol") or "").upper(), str(r.get("direction") or "").upper())
-        t0 = float(r.get("ts") or 0)
+        did = str(r.get("decision_id") or "")
         matched = None
-        for c in closes.get(k, []):
-            if id(c) in used:
-                continue
-            tc = float(c.get("ts") or 0)
-            if t0 <= tc <= t0 + window_sec:
-                used.add(id(c))
-                matched = c
-                break
+        via = None
+        # (1) duong CHINH XAC: phieu va lenh cung `decision_id`
+        if did and did in opens_by_did:
+            t_open = float(opens_by_did[did].get("ts") or 0)
+            for c in closes.get(k, []):
+                if id(c) in used:
+                    continue
+                if float(c.get("ts") or 0) >= t_open:
+                    used.add(id(c))
+                    matched = c
+                    via = "decision_id"
+                    break
+        # (2) duong CU (giu nguyen de tuong thich ban ghi chua co decision_id)
+        if matched is None:
+            t0 = float(r.get("ts") or 0)
+            for c in closes.get(k, []):
+                if id(c) in used:
+                    continue
+                tc = float(c.get("ts") or 0)
+                if t0 <= tc <= t0 + window_sec:
+                    used.add(id(c))
+                    matched = c
+                    via = "heuristic"
+                    break
         feats = {fk: r.get(fk) for fk in FEAT_KEYS if r.get(fk) is not None}
         outcome = None
         if matched is not None:
@@ -107,14 +134,34 @@ def pair_cases(journal_path: str, window_sec: float = 3600.0) -> list:
             outcome = {"won": won, "r": float(matched.get("r") or 0),
                        "pnl": float(matched.get("pnl") or 0)}
         cases.append({
-            "ts": t0, "symbol": r.get("symbol"), "direction": r.get("direction"),
+            "ts": float(r.get("ts") or 0), "symbol": r.get("symbol"),
+            "direction": r.get("direction"),
             "action": act, "confidence": float(r.get("confidence") or 0),
             "role": r.get("role"), "provider": r.get("provider"),
             "model": r.get("model"), "status": r.get("status"),
+            "decision_id": did, "match_via": via,
             "features": feats, "matched_close": outcome is not None,
             "outcome": outcome,
         })
     return cases
+
+
+def match_stats(cases: list) -> dict:
+    """Ty le ghep phieu->lenh, tach theo duong ghep (ham THUAN TUY).
+
+    `via_decision_id` la so phieu ghep CHINH XAC; `via_heuristic` la so phieu chi ghep
+    duoc nho cua so thoi gian (con co the ghep NHAM). Dung de biet bang diem co dang tin.
+    """
+    cs = list(cases or [])
+    n = len(cs)
+    by_did = sum(1 for c in cs if c.get("match_via") == "decision_id")
+    by_heur = sum(1 for c in cs if c.get("match_via") == "heuristic")
+    matched = by_did + by_heur
+    return {"n": n, "matched": matched,
+            "via_decision_id": by_did, "via_heuristic": by_heur,
+            "rate": round(matched / n, 4) if n else None,
+            "exact_rate": round(by_did / matched, 4) if matched else None}
+
 
 
 def _stat(cs: list) -> dict:
@@ -150,6 +197,7 @@ def council_ab_report(journal_path: str, window_sec: float = 3600.0) -> dict:
         "veto": _stat(veto),
         "allow": _stat(allow),
         "veto_precision": precision,
+        "match": match_stats(cases),
         "window_sec": window_sec,
     }
 
@@ -355,4 +403,5 @@ def model_leaderboard(journal_path: str, *, window_sec: float = 3600.0,
     return {"window_h": hours, "cases": len(cases), "per_model": out,
             "keep": sorted(keep), "drop": sorted(drop), "thin": sorted(thin),
             "skip_lines": skip_lines(sorted(drop)),
+            "match": match_stats(cases),
             "calibration": calibration(cases)}

@@ -42,6 +42,7 @@ from trade_mgmt import record_protection
 from portfolio import Position, can_add_risk, planned_risk_usd
 from position_sync import adopt as adopt_positions
 import entries_gate
+import reason_codes as RC
 from ranking import Candidate, composite_alpha, sentiment_veto
 from reconcile import reconcile as reconcile_journal
 from risk import atr_levels, load_state as load_risk_state, position_size
@@ -617,7 +618,7 @@ def _provider_label(model: str) -> str:
 
 
 def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
-                     tech: dict, senti, regime: str) -> None:
+                     tech: dict, senti, regime: str, decision_id: str = "") -> None:
     """Ghi y kien agent cho 1 setup — CHAY NEN, khong doi hanh vi/khong chan.
 
     Che do (AGENTS_COUNCIL):
@@ -646,6 +647,9 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
 
     use_council = bool(getattr(cfg, "agents_council", False))
     tg_votes = bool(getattr(cfg, "agent_tg_votes", False))
+    # (09/11, B-045) Cung 1 `decision_id` cho MOI phieu cua cung 1 setup ⇒ ghep
+    # phieu <-> lenh la tra cuu chinh xac (xem `council_evals.pair_cases`).
+    _did = str(decision_id or "")
 
     def _tg_once(text: str) -> None:
         if not (tg_votes and text):
@@ -673,6 +677,7 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
                     "symbol": sym, "direction": direction,
                     "status": "COUNCIL", "model": mname,
                     "provider": _provider_label(mname),
+                    "decision_id": _did,
                     "final_action": res.get("action")})
             # Log ca model treo (abstained) de co so lieu day du
             skipped = res.get("skipped") or {}
@@ -686,6 +691,7 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
                     "symbol": sym, "direction": direction,
                     "status": "COUNCIL", "model": mname,
                     "provider": _provider_label(mname),
+                    "decision_id": _did,
                     "abstained": True, "final_action": res.get("action")})
             action = str(res.get("action") or "NO_OPINION").upper()
             conf = float(res.get("confidence") or 0)
@@ -712,6 +718,7 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
                 layer.log_decision(d, extra={
                     "symbol": sym, "direction": direction, "stage": role,
                     "consensus": res.get("consensus"),
+                    "decision_id": _did,
                     "final_action": res.get("action"),
                     "status": "COUNCIL" if role == "arbiter" else "SETUP"})
             if res.get("action") == "VETO":
@@ -730,7 +737,7 @@ def agent_vote_setup(cfg, sym: str, direction: str, alpha: float, strat: str,
             d = layer.vote(role, pay)
             cached = cached or bool(d.cache_hit)
             layer.log_decision(d, extra={"symbol": sym, "direction": direction,
-                                         "status": "SETUP"})
+                                         "status": "SETUP", "decision_id": _did})
             lines.append(f"{role}: {d.action} {float(d.confidence or 0):.2f}")
             if d.action == "VETO":
                 log.warning("AGENT %s VETO %s %s (conf=%.2f): %s [shadow=%s]",
@@ -768,7 +775,7 @@ def agent_authority_cached(cfg, ttl_sec: float = 3600.0) -> dict:
 
 
 def agent_veto(cfg, sym: str, direction: str, alpha: float, strat: str, tech: dict,
-               senti, regime: str) -> dict:
+               senti, regime: str, decision_id: str = "") -> dict:
     """Phase 4 (opt-in): hoi agent DONG BO truoc khi mo lenh -> co the BO QUA lenh.
 
     An toan:
@@ -816,7 +823,9 @@ def agent_veto(cfg, sym: str, direction: str, alpha: float, strat: str, tech: di
                              "latency_ms", "tokens_in", "tokens_out", "cost_usd",
                              "ts", "note", "raw_text") if k in dec})
             layer.log_decision(d, extra={"symbol": sym, "direction": direction,
-                                         "status": "VETO_ENFORCED"})
+                                         "status": "VETO_ENFORCED",
+                                         "decision_id": str(decision_id or ""),
+                                         "reason_code": RC.code_for_status("VETO_ENFORCED")})
             reason = "; ".join(d.reasons)[:140]
             log.warning("AGENT VETO CHAN LENH %s %s (conf=%.2f): %s",
                         direction, sym, d.confidence, reason)
@@ -878,7 +887,8 @@ def turbo_round(bot: TradingBot) -> list[dict]:
     if _paused:
         log.warning("ENTRIES PAUSED: %s -> bo qua vong danh gia (khong mo lenh moi)", _why)
         heartbeat({"phase": "entries_paused", "reason": _why[:120]})
-        return [{"symbol": "-", "status": "PAUSED", "reason": _why}]
+        return [{"symbol": "-", "status": "PAUSED", "reason": _why,
+                 "reason_code": RC.code_for_status("PAUSED")}]
     syms = active_symbols(cfg)  # SYMBOLS + EXTRA_SYMBOLS (env) — giu nguong mo lenh nguyen
     bot._max_atr_pct = 0.0  # P0-2: ATR% lon nhat trong vong -> cho kill-switch bien dong
     senti = bot.sentiment.get(cfg.cryptopanic_token)
@@ -1073,12 +1083,16 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             continue
         # Phase 4 (opt-in): VETO cua agent — CHI khi da duoc cap quyen bang bang chung
         # shadow (agent_authority) va AGENTS_VETO_ENABLED=true. Chi BO QUA lenh.
+        # (09/11, B-045) `decision_id`: khoa NOI phieu hoi dong <-> quyet dinh VAO lenh.
+        # Truoc day khong co khoa nay nen `council_eval` phai ghep theo (symbol, huong,
+        # 1 gio) va chi ghep duoc 31/133 phieu. Nay cung 1 id duoc ghi o CA HAI dau.
+        _did = RC.new_id("d")
         _v = agent_veto(cfg, sym, direction, alpha, strat, t, senti,
-                        str(reg.get("regime", "")))
+                        str(reg.get("regime", "")), decision_id=_did)
         if _v.get("block"):
             results.append({"symbol": sym, "status": "SKIP_AGENT_VETO",
                             "reason": _v.get("reason", ""), "direction": direction,
-                            "alpha": alpha})
+                            "alpha": alpha, "decision_id": _did})
             continue
         # (11/10) Du lieu xau (close/atr = 0) tung lam HONG CA VONG khi quet ~460 cap
         # (`ValueError: entry and atr must be positive`) -> chan rieng tung cap.
@@ -1202,7 +1216,10 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                                    "strategy": strat, "entry": lv["entry"],
                                    "sl": lv["sl"], "tp": lv["tp"]}
             # Nhat ky giao dich day du (muc 17): regime/struct/OI/funding/news/score100
+            # (09/11, B-045) `decision_id` + `reason_code`: cung khoa voi phieu hoi dong
+            # o tren ⇒ dem duoc "vi sao VAO" va ghep phieu <-> lenh chinh xac.
             log_trade(event="OPEN", pair=sym, direction=direction, timeframe=cfg.timeframe,
+                      decision_id=_did, reason_code=RC.STATUS_CODES["OPENED"],
                       entry=lv["entry"], sl=lv["sl"], tp=lv["tp"], qty=qty,
                       leverage=cfg.leverage, risk_pct=cfg.risk_per_trade_pct,
                       rr=lv.get("rr"), alpha=alpha, score100=sig100["total"],
@@ -1232,7 +1249,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                             "qty": qty, "alpha": alpha, "orderId": oid})
             # Phase 1: agent CHI CO VAN — ghi y kien macro/critic vao journal.
             agent_vote_setup(cfg, sym, direction, alpha, strat, t, senti,
-                             str(reg.get("regime", "")))
+                             str(reg.get("regime", "")), decision_id=_did)
             # P0-fix (01/10): ARM SL/TP la buoc CO THE THAT BAI — demo hay tra
             # -4045 "Reach max stop order limit" theo kieu han ngach (luc cho luc
             # khong). Vi the DA MO va DA ghi so o tren, nen arm loi chi duoc coi la
@@ -1268,11 +1285,17 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                 log.warning("TURBO OPEN %s %s bao loi nhung vi the DA mo qty=%s -> "
                             "ghi nhan (recovered)", direction, sym, landed)
                 results.append({"symbol": sym, "status": "OPENED", "direction": direction,
-                                "qty": landed, "recovered": True,
+                                "qty": landed, "recovered": True, "decision_id": _did,
                                 "reason": str(e)[:200]})
             else:
                 results.append({"symbol": sym, "status": "ORDER_FAILED",
-                                "reason": str(e)[:200]})
+                                "reason": str(e)[:200], "decision_id": _did})
+    # (09/11, B-045) Gan MA LY DO chuan hoa cho MOI ket qua cua vong quet o MOT cho:
+    # sua 20 nhanh `results.append(...)` de them ma la 20 cho de quen (va nhanh moi se
+    # quen tiep). Map o day ⇒ khong nhanh nao bi bo sot.
+    for _r in results:
+        if not _r.get("reason_code"):
+            _r["reason_code"] = RC.code_for_status(_r.get("status"))
     return results
 
 

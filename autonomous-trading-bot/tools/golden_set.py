@@ -50,7 +50,8 @@ CASES_PATH = ROOT / "golden" / "cases.jsonl"
 BASELINE_PATH = ROOT / "golden" / "baseline.json"
 #: Cac "cong" duoc kiem dinh. Them cong moi = them adapter + ca (khong doi runner).
 COMPONENTS = ("feats", "learner_edge", "strategy_classify", "strategy_gate",
-              "lessons_gate", "risk_cap", "portfolio_open", "journal_feats")
+              "lessons_gate", "risk_cap", "portfolio_open", "journal_feats",
+              "entries_gate", "api_ban", "kill_switch", "go_live", "council_ready")
 OPS = ("==", "!=", "<", "<=", ">", ">=", "contains", "not_contains", "in")
 #: Sai so so sanh so thuc (float) — 6 chu so thap phan la du cho cac cong nay.
 TOL = 1e-6
@@ -296,6 +297,85 @@ def _ad_journal_feats(inp: dict) -> dict:
             "n_violations": len(violations), "violations": violations[:20]}
 
 
+# ---- (09/11, B-046) 5 CONG AN TOAN moi theo tai lieu -----------------------
+# Bo ca cu phu 8 cong "tinh toan" (feats/edge/classify/risk cap...). Thieu dung cac
+# cong lam bot DUNG LAI — ma sai o day moi ton tien that: tam dung vao lenh, chan IP
+# cua san, kill-switch, doi sang LIVE, va cong nang quyen hoi dong.
+def _ad_entries_gate(inp: dict) -> dict:
+    """Cong tam dung vao lenh: dang tam dung / het han tu mo lai / file hong (fail-safe)."""
+    import entries_gate as EG
+    now = float(inp.get("now") or 1_700_000_000.0)
+    adv = float(inp.get("advance_sec") or 0.0)
+    with tempfile.TemporaryDirectory() as td:
+        p = str(Path(td) / "entries_pause.json")
+        if inp.get("corrupt"):
+            Path(p).write_text("{khong-phai-json", encoding="utf-8")
+        elif inp.get("paused"):
+            EG.pause(str(inp.get("reason") or "test"), path=p, now=lambda: now,
+                     hours=inp.get("hours"))
+        is_paused, why = EG.paused(path=p, now=lambda: now + adv)
+        d = EG.read(path=p)
+        return {"paused": bool(is_paused), "reason": str(why),
+                "until_set": bool(d.get("until")), "corrupt": bool(d.get("corrupt"))}
+
+
+def _ad_api_ban(inp: dict) -> dict:
+    """Doc thong bao chan IP cua san -> moc het bi chan + ma ly do (API_BAN)."""
+    import reason_codes as RC
+    text = str(inp.get("text") or "")
+    code = RC.classify_text(text)
+    try:
+        import turbo_demo as TD
+        until = float(TD.parse_ban_until(text))
+    except Exception as e:  # noqa: BLE001  (import nang -> bao RO, khong doan)
+        return {"error": "khong import duoc turbo_demo: %s" % str(e)[:120],
+                "code": code, "until": 0.0}
+    return {"code": code, "until": until, "banned": until > 0}
+
+
+def _ad_kill_switch(inp: dict) -> dict:
+    """Kill-switch: chuoi thua / lo trong ngay / loi API / loss DUST (B-027)."""
+    import risk as R
+    ks = R.KillSwitch(start_balance=float(inp.get("start_balance") or 1000.0),
+                      start_equity=float(inp.get("start_equity") or 0.0),
+                      max_daily_loss_pct=float(inp.get("max_daily_loss_pct") or 2.0),
+                      max_consec_losses=int(inp.get("max_consec_losses") or 5),
+                      max_errors=int(inp.get("max_errors") or 5))
+    bal = float(inp.get("balance") or 1000.0)
+    pnl = inp.get("loss_pnl")
+    pnl = -1.0 if pnl is None else float(pnl)
+    for _ in range(int(inp.get("losses") or 0)):
+        ks.register_close(False, bal, pnl=pnl)
+    for _ in range(int(inp.get("errors") or 0)):
+        ks.register_error()
+    halt = bool(ks.check(bal, float(inp.get("atr_pct") or 0.0)))
+    return {"halt": halt, "tripped": bool(ks.tripped), "reason": str(ks.reason),
+            "consec_losses": int(ks.consec_losses),
+            "dd_pct": round(ks.daily_dd_pct(bal), 4)}
+
+
+def _ad_go_live(inp: dict) -> dict:
+    """Quyet dinh TU SANG LIVE (`state_sync.decide_go_live`) — cong chan tien that."""
+    import state_sync as SS
+    ok, why = SS.decide_go_live(
+        inp.get("ready") or {}, inp.get("guard") or {}, inp.get("equity"),
+        bool(inp.get("armed")), bool(inp.get("already_flipped")),
+        min_equity=float(inp.get("min_equity") or 20.0),
+        live_keys=bool(inp.get("live_keys", True)),
+        key_stable=inp.get("key_stable"))
+    return {"ok": bool(ok), "why": str(why)}
+
+
+def _ad_council_ready(inp: dict) -> dict:
+    """Cong NANG hoi dong SHADOW -> VETO THAT (`council_eval.readiness`) = autonomy ladder."""
+    import council_eval as CEL
+    rep = inp.get("rep") or {}
+    d = CEL.readiness(rep, min_n=int(inp.get("min_n") or CEL.MIN_N_GATE),
+                      max_brier=float(inp.get("max_brier") or CEL.MAX_BRIER_GATE))
+    return {"ready": bool(d.get("ready")), "reasons": list(d.get("reasons") or []),
+            "models_ok": list(d.get("models_ok") or []), "cases": int(d.get("cases") or 0)}
+
+
 ADAPTERS = {
     "feats": _ad_feats,
     "learner_edge": _ad_learner_edge,
@@ -305,6 +385,11 @@ ADAPTERS = {
     "risk_cap": _ad_risk_cap,
     "portfolio_open": _ad_portfolio_open,
     "journal_feats": _ad_journal_feats,
+    "entries_gate": _ad_entries_gate,
+    "api_ban": _ad_api_ban,
+    "kill_switch": _ad_kill_switch,
+    "go_live": _ad_go_live,
+    "council_ready": _ad_council_ready,
 }
 
 

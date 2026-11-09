@@ -27,6 +27,7 @@ import concurrent.futures as _fut
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -1513,6 +1514,11 @@ def build_prompt(role: str, payload: dict, max_tokens: int = 1200) -> tuple:
     (14/10) Payload di qua `prompt_guard.sanitize_payload()` truoc khi vao prompt:
     du lieu ngoai lai (ten cap, pattern/regime/ly do...) la KHONG dang tin — bo mau
     chi thi, URL, ky tu dieu khien. Xem `prompt_guard.py`.
+
+    (09/11, B-045) Them CAU LENH HIEU CHUAN vao cuoi prompt nguoi dung: do that
+    `brier 0.341 > 0.25` (hoi dong "tu tin 83% nhung chi thang 57%"). Prompt chi NHAC;
+    phan CHAN cung nam o `cap_confidence()` (chay sau khi parse, khong phu thuoc model
+    co nghe loi hay khong).
     """
     system = _system_prompt(str(role))
     try:
@@ -1521,10 +1527,65 @@ def build_prompt(role: str, payload: dict, max_tokens: int = 1200) -> tuple:
     except Exception:  # noqa: BLE001
         body_data = {"role": role, **(payload or {})}
     body = json.dumps(body_data, ensure_ascii=False, sort_keys=True, default=str)
-    limit = max(200, int(max_tokens) * 4)
+    # (09/11, B-045) Ngan sach token la cua CA prompt: phan cau lenh hieu chuan cung an
+    # vao do, neu khong tong se vuot (test `test_build_prompt_cat_theo_ngan_sach` bat duoc
+    # ngay: 1140 > 1000 ky tu). Tru theo do dai suffix thay vi noi ngan sach.
+    limit = max(200, int(max_tokens) * 4 - len(_CALIB_SUFFIX))
     if len(body) > limit:
         body = body[:limit] + "...(cat bot)"
-    return system, "DU LIEU (JSON):\n" + body + "\nTRA VE JSON, KHONG giai thich them."
+    return system, ("DU LIEU (JSON):\n" + body + "\n" + _CALIB_SUFFIX
+                     + "\nTRA VE JSON, KHONG giai thich them.")
+
+
+# ---- (09/11, B-045) HIEU CHUAN DO TIN: tran confidence khi bang chung it ----------
+# Do that tren journal TESTNET: `brier 0.341` (> 0.25 = doan bua) va hoi dong khai
+# bao 83% trong khi chi thang 57% ⇒ loi he thong la QUA TU TIN khi mau it. Prompt
+# khong du (model co the bo qua loi dan), nen phai CHAN BANG CODE sau khi parse.
+CALIB_N_FULL = 20      # n >= 20 mau bang chung moi duoc khai bao > tran
+CALIB_CAP = 0.7        # tran confidence khi n < CALIB_N_FULL
+_N_EVIDENCE_RE = re.compile(r"n\s*[=:]\s*(\d+)")
+_CALIB_SUFFIX = (
+    "HIEU CHUAN (bat buoc): (1) neu payload co 'lessons_hint' thi moi nhan dinh phai "
+    "trich DUNG bucket + n cua no trong 'reasons'; (2) khong co bang chung (khong co "
+    "lessons_hint) thi confidence <= 0.5; (3) n < 20 thi confidence <= 0.7 — "
+    "mo hinh KHONG duoc tu tin hon so mau no co."
+)
+
+
+def evidence_n(payload: dict) -> int:
+    """So mau BANG CHUNG payload dua ra — doc tu `lessons_hint` (ham THUAN TUY).
+
+    Dinh dang that cua `lessons.hint()`: `"A|B|C|LONG n=42 avgR=-0.312 WR=38%"`.
+    Khong parse duoc -> 0 (coi nhu KHONG co bang chung ⇒ bi ha tran, huong an toan).
+    """
+    n = 0
+    for h in (payload or {}).get("lessons_hint") or []:
+        text = json.dumps(h, ensure_ascii=False) if isinstance(h, dict) else str(h)
+        m = _N_EVIDENCE_RE.search(text)
+        if m:
+            n = max(n, int(m.group(1)))
+    for k in ("evidence_n", "lessons_n", "bucket_n"):
+        try:
+            n = max(n, int((payload or {}).get(k) or 0))
+        except (TypeError, ValueError):
+            continue
+    return n
+
+
+def cap_confidence(conf, n_evidence, cap: float = CALIB_CAP,
+                   n_full: int = CALIB_N_FULL) -> float:
+    """Ha `conf` xuong <= `cap` khi so mau `< n_full` (ham THUAN TUY, test duoc).
+
+    Khong bao gio TANG confidence (chi ha), khong bao gio ra ngoai [0, 1].
+    """
+    try:
+        c = float(conf)
+    except (TypeError, ValueError):
+        return 0.0
+    c = max(0.0, min(1.0, c))
+    if int(n_evidence or 0) < int(n_full):
+        c = min(c, float(cap))
+    return round(c, 4)
 
 
 # ---- Tang agent -------------------------------------------------------------
@@ -1638,6 +1699,21 @@ class AgentLayer:
             if used_attempts > 1:
                 base.note += f" (retry x{used_attempts - 1})"
             base.raw_text = str(res.get("text") or "")[:4000]
+            # (09/11, B-045) CHAN CUNG hieu chuan: co the coi thuong ngay ca khi agent
+            # khong nghe loi dan trong prompt. Ghi lai vao `note` de doc duoc DA bi ha.
+            if bool(getattr(self.cfg, "agent_calib_cap", True)):
+                try:
+                    _n = evidence_n(payload or {})
+                    _n_full = _i(getattr(self.cfg, "agent_calib_n_full", CALIB_N_FULL))
+                    _max = _f(getattr(self.cfg, "agent_calib_max_conf", CALIB_CAP), CALIB_CAP)
+                    _capped = cap_confidence(base.confidence, _n, cap=_max, n_full=_n_full)
+                    if abs(_capped - float(base.confidence or 0)) > 1e-9:
+                        base.note = ("%s (calib: n=%d<%d -> conf %.2f->%.2f)"
+                                     % (base.note, _n, _n_full,
+                                        float(base.confidence or 0), _capped))
+                        base.confidence = _capped
+                except Exception:  # noqa: BLE001  (khong duoc lam hong cuoc goi)
+                    pass
             self.budget.note(cost=base.cost_usd, ok=True, provider=_prov)
         except Exception as e:  # noqa: BLE001  (fail-open tuyet doi)
             base.action = "NO_OPINION"
@@ -1685,6 +1761,20 @@ class AgentLayer:
                 pass
             rec = {"event": "AGENT", **body}
             rec.update(extra or {})
+            # (09/11, B-045) Ma LY DO chuan hoa: truoc day journal chi co van ban tu do
+            # (`note`/`reasons`) nen muon dem "vi sao bi chan" phai grep chuoi — sai ngay
+            # khi doi cau chu. Uu tien ma do noi goi truyen vao; khong co thi doan tu
+            # chinh van ban cua phieu (de ban ghi CU cung phan loai duoc).
+            try:
+                import reason_codes as _RC
+                if not rec.get("reason_code"):
+                    _txt = " ".join([str(x) for x in (rec.get("reasons") or [])]
+                                    + [str(rec.get("note") or "")])
+                    _code = _RC.normalize(rec.get("reason_code"), _txt)
+                    if _code:
+                        rec["reason_code"] = _code
+            except Exception:  # noqa: BLE001  (khong de hong viec ghi journal)
+                pass
             rec = log_trade(self.journal, **rec)
             self.logged += 1
             return rec

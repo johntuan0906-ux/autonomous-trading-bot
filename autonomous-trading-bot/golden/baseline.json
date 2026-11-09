@@ -1,6 +1,6 @@
 {
- "ts": 1794193230.0399466,
- "n": 26,
+ "ts": 1794199944.2182894,
+ "n": 40,
  "digest": {
   "syn-feats-clip": "c0c10397c572411b",
   "syn-feats-flat-market": "d5949f47a566ff73",
@@ -27,6 +27,20 @@
   "syn-portfolio-single-slot": "090a20b346b9b424",
   "syn-portfolio-duplicate": "2968fdf565eeabdb",
   "syn-portfolio-max-reached": "dd54118821329f71",
+  "syn-entries-paused-blocks": "15f84b36dc111417",
+  "syn-entries-expired-resumes": "45f3ab52edd49847",
+  "syn-entries-corrupt-failsafe": "d67505f183c9b2ce",
+  "syn-api-ban-1003": "2477268087260b9c",
+  "syn-api-ban-none": "17035955295feb10",
+  "syn-kill-3-losses-ok": "9baca562d7e9a87e",
+  "syn-kill-5-losses-trip": "41ac85a81598f40f",
+  "syn-kill-daily-dd": "747af8b8e7731929",
+  "syn-kill-dust-not-counted": "57913eedf7c2434a",
+  "syn-golive-no-keys": "835ebf9719183747",
+  "syn-golive-equity-low": "31e89e7dd0c08d51",
+  "syn-golive-ok": "38a8553cdcdd010c",
+  "syn-council-ready-no": "c2afcb132300cb99",
+  "syn-council-ready-yes": "7dee520a7f1d04d4",
   "jrn-feats-integrity": "8a6d42f5fead2365"
  }
 }

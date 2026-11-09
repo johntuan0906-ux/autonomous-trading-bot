@@ -450,3 +450,27 @@ failure 5) phủ **8 cổng** — ca gọi **thẳng** `learner.extract_features
 `decision_id` vào đường GHI của bot (cần restart 2 instance), TTL/freshness theo nguồn, golden
 set cho `entries_gate`/`api_ban`/kill-switch/equity lệch. Chi tiết + thứ tự: `REPO_IDEAS.md` §29.
 
+**B-045 — không có mã lý do và không có khoá nối phiếu↔lệnh (09/11, đợt 2).** Đo trên
+`logs/journal.jsonl`: **0** trường `reason_code` (7.071 dòng) và **0** khoá chung giữa `AGENT`
+và `OPEN` ⇒ `council_eval` chỉ ghép được **31/133** phiếu, còn `brier 0,341` (hội đồng khai 83%
+nhưng thắng 57%) không có cơ chế nào chặn. Đã sửa: `reason_codes.py` **40 mã** + `STATUS_CODES`
+(status thật của vòng quét → mã) + `new_id()`; `turbo_round` gán mã cho **mọi** kết quả ở **một
+chỗ** cuối vòng, ghi `decision_id`+`reason_code` vào `OPEN`, truyền cùng id vào mọi phiếu `AGENT`;
+`pair_cases` ưu tiên ghép theo `decision_id` và `match_stats()` tách "chính xác" khỏi "đoán";
+`agents.cap_confidence` **hạ trần confidence về 0,7 khi n<20 mẫu** (env `AGENT_CALIB_*`), lý do
+ghi vào `note`. Test: `tests/test_reason_codes_wiring.py` (**18 test**).
+
+**B-046 (tiếp) — golden set 26 → 40 ca, 8 → 13 cổng (09/11, đợt 2).** Thêm `entries_gate`
+(pause / hết hạn tự mở / file hỏng), `api_ban` (-1003 đọc mốc ms), `kill_switch` (5 lỗ liên tiếp,
+lỗ ngày 28,3%, loss DUST), `go_live` (thiếu key LIVE, ví < ngưỡng), `council_ready` (autonomy
+ladder thành luật kiểm tra được). Số đo: golden **40/40 PASS** + `--check` = 0, suite **1456 test
+OK**, bug catalog **45 lớp / 133 test**.
+
+> Ba lỗi **thật** bắt được trong đợt 2: `insufficient` khớp nhầm `DATA_MISSING` (lệnh `-2019` bị
+> xếp nhóm data thay vì execution); câu lệnh hiệu chuẩn làm prompt vượt ngân sách token
+> (`1140 > 1000` ký tự); và hạ trần confidence làm đổi kết quả test council cũ ⇒ phải **viết lại
+> test cho đúng luật mới** + thêm test ngược (đủ mẫu thì KHÔNG hạ), không nới ngưỡng cho xanh.
+> **Chưa có hiệu lực trên bot đang chạy**: `decision_id`/`reason_code` chỉ xuất hiện sau khi
+> restart TESTNET (LIVE đang dừng bởi kill-switch — chờ người vận hành quyết định).
+
+

@@ -1420,4 +1420,31 @@ phải FAIL chứ không biến mất, id trùng, drift, journal hỏng phải b
 **Không đổi**: vẫn **không** cấp quyền veto thật cho hội đồng (brier 0,341). Golden set đo
 **tính nhất quán**, không đo **lợi nhuận** — đừng nhầm hai thứ này.
 
+### 29.4 Đã làm tiếp (09/11, đợt 2) — và số đo mới
+
+| # (theo §29.3) | Việc | Bằng chứng |
+|---|---|---|
+| 1 | `decision_id` + `reason_code` vào **đường ghi** | `turbo_demo` sinh 1 id cho mỗi setup → ghi vào `AGENT` (mọi phiếu) **và** `OPEN`; mã lý do gán cho **mọi** kết quả vòng quét ở **một chỗ** (`code_for_status`) thay vì sửa 20 nhánh |
+| 2 | Prompt hiệu chuẩn + **chặn bằng code** | `agents.cap_confidence`: `n<20` ⇒ conf ≤ 0,7; `evidence_n` đọc `n=` từ `lessons_hint`; lý do bị hạ ghi vào `note`. Prompt thêm khối `HIEU CHUAN` (ngân sách token trừ đi phần này — test bắt được 1140 > 1000 ký tự) |
+| 3 | Ghép phiếu chặt | `council_evals.pair_cases` ưu tiên `decision_id` (tra cứu chính xác, không phụ thuộc cửa sổ thời gian) + `match_stats()` tách "chính xác" / "đoán"; báo cáo in `Ghep phieu->lenh: x/y` |
+| 5 | Autonomy ladder thành luật | đã có `council_eval.readiness` (brier ≤ 0,25 & value_r > 0 & n ≥ 30) — nay **có ca golden** `council_ready` chốt cả 2 chiều (đủ / chưa đủ) |
+| 6 | Mở rộng golden set | **26 → 40 ca**, **8 → 13 cổng**: thêm `entries_gate` (pause / hết hạn tự mở / file hỏng), `api_ban` (-1003 đọc mốc ms), `kill_switch` (5 lỗ liên tiếp, lỗ ngày 28,3%, loss DUST), `go_live` (thiếu key LIVE, ví < ngưỡng), `council_ready` |
+| 8 | Chuỗi kiểm tra trước commit | ghi thành quy trình: `bug_catalog --check` → `golden_set --check` → `unittest discover` (**không** cài git hook: repo không dùng hook, và cổng phải chạy được cả khi agent commit) |
+
+**Số đo sau đợt 2**: golden set **40/40 PASS**, `--check` = 0, suite **1456 test OK** (1457 viết,
+3 skip), bug catalog **45 lớp / 133 test chốt** (`--check` OK), thời gian golden ~2 s (có 2 adapter
+import nặng `turbo_demo`/`state_sync`).
+
+**Còn lại** (giữ nguyên thứ tự ưu tiên): #4 freshness/TTL theo nguồn; #7 reviewer context sạch +
+drift report docs↔code; và **bắt buộc restart** 2 instance thì `decision_id`/`reason_code` mới
+xuất hiện trong journal (code đã sẵn, dữ liệu cũ vẫn phải đọc bằng `classify_text`).
+
+> **Lỗi thật bắt được ngay trong đợt 2** (nhờ chạy lại toàn suite, không phải nhờ đọc code):
+> (a) `insufficient` khớp nhầm `DATA_MISSING` ⇒ lệnh `-2019 Margin is insufficient` bị xếp vào
+> nhóm **data** thay vì **execution** (ca `syn-api-ban-none` FAIL); (b) câu lệnh hiệu chuẩn làm
+> prompt vượt ngân sách token (`1140 > 1000` ký tự) — `test_build_prompt_cat_theo_ngan_sach`
+> bắt; (c) hạ trần confidence làm đổi kết quả test council cũ ⇒ phải **viết lại test cho đúng
+> luật mới** (kèm test ngược: đủ mẫu thì KHÔNG hạ), thay vì nới ngưỡng cho xanh.
+
+
 

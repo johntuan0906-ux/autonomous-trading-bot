@@ -398,6 +398,19 @@ class TestCouncil(unittest.TestCase):
         res = A.council_decision(_layer(p), {"symbol": "BTC/USDT:USDT", "direction": "LONG"})
         self.assertEqual(res["action"], "VETO", "dong thuan VETO khong the bi ghi de")
         self.assertEqual(res["consensus"], "unanimous_veto")
+        # (09/11, B-045) Quorum GIU NGUYEN, nhung confidence bi HA TRAN khi payload
+        # khong co bang chung (n=0 < 20): do that `brier 0.341` = hoi dong qua tu tin.
+        self.assertAlmostEqual(res["confidence"], A.CALIB_CAP, places=6)
+
+    def test_co_bang_chung_du_thi_khong_ha_tran(self):
+        """n >= 20 mau (lessons_hint) => confidence giu nguyen 0.8 (khong ha vo co)."""
+        p = _RoleProvider({"macro": {"action": "VETO", "confidence": 0.8},
+                           "critic": {"action": "VETO", "confidence": 0.7},
+                           "arbiter": {"action": "ALLOW", "confidence": 0.9}})
+        pay = {"symbol": "BTC/USDT:USDT", "direction": "LONG",
+               "lessons_hint": ["A|B|UP|LONG n=40 avgR=-0.2 WR=40%"]}
+        res = A.council_decision(_layer(p), pay)
+        self.assertEqual(res["action"], "VETO")
         self.assertAlmostEqual(res["confidence"], 0.8, places=6)
 
     def test_chia_phieu_thi_chu_toa_quyet(self):

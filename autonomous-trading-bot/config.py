@@ -277,6 +277,13 @@ class Settings:
     agent_max_errors: int = field(default_factory=lambda: _get_int("AGENT_MAX_ERRORS", 5))
     agent_max_prompt_tokens: int = field(
         default_factory=lambda: _get_int("AGENT_MAX_PROMPT_TOKENS", 1200))
+    # (09/11, B-045) Hieu chuan: ha tran confidence khi bang chung it mau.
+    # Do that: brier 0.341 (>0.25 = doan bua) ⇒ hoi dong khai 83% ma chi thang 57%.
+    agent_calib_cap: bool = field(default_factory=lambda: _get_bool("AGENT_CALIB_CAP", True))
+    agent_calib_n_full: int = field(
+        default_factory=lambda: _get_int("AGENT_CALIB_N_FULL", 20))
+    agent_calib_max_conf: float = field(
+        default_factory=lambda: _get_float("AGENT_CALIB_MAX_CONF", 0.7))
     agent_state_path: str = field(
         default_factory=lambda: _get("AGENT_STATE_PATH", "logs/agent_state.json"))
     # Phase 3: agent phan tich -> de xuat -> gate tat dinh -> file cho nguoi duyet.

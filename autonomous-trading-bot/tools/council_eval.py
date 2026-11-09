@@ -46,6 +46,15 @@ def _fmt(v, dash: str = "-") -> str:
 def render(rep: dict, min_n: int) -> str:
     lines = ["=== EVAL HOI DONG (theo KET QUA that) | %s gio | %d phieu ghep duoc ==="
              % (rep.get("window_h") or "toan bo", rep.get("cases") or 0)]
+    mt = rep.get("match") or {}
+    if mt.get("n"):
+        # (09/11) Tach "ghep CHINH XAC" (cung decision_id) khoi "ghep doan" (cua so thoi gian):
+        # neu ty le chinh xac thap thi bang diem ben duoi KHONG dang tin, du no dep.
+        lines.append("Ghep phieu->lenh: %d/%d (%.0f%%) | chinh xac (decision_id) %d"
+                     " | doan theo thoi gian %d"
+                     % (mt.get("matched") or 0, mt.get("n") or 0,
+                        100.0 * float(mt.get("rate") or 0.0),
+                        mt.get("via_decision_id") or 0, mt.get("via_heuristic") or 0))
     rows = sorted((rep.get("per_model") or {}).items(),
                   key=lambda kv: (-(kv[1].get("matched") or 0), kv[0]))
     lines.append("%-34s %5s %5s %9s %9s %8s %6s %6s"

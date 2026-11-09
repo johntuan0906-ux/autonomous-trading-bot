@@ -15,6 +15,9 @@ grep chuoi — sai ngay khi doi cau chu.
 """
 from __future__ import annotations
 
+import time as _time
+import uuid as _uuid
+
 #: 6 nhom loi (data -> execution) + nhom "decision" cho quyet dinh VAO lenh.
 KINDS = ("data", "context", "reasoning", "policy", "tool", "execution", "decision")
 
@@ -29,6 +32,10 @@ CODES: dict[str, tuple[str, str]] = {
     "CTX_TRUNCATED": ("context", "ngu canh bi cat (vuot ngan sach token)"),
     "CTX_NO_EVIDENCE": ("context", "khong co bang chung (lessons rong) de dua ra y kien"),
     "CTX_CONTRADICT": ("context", "ngu canh mau thuan (khung thoi gian nguoc nhau)"),
+    "ALPHA_LOW": ("context", "alpha duoi nguong vao lenh (tin hieu yeu)"),
+    "SCORE_LOW": ("context", "score100 grade NO / khong co setup ro"),
+    "NEWS_URGENT": ("context", "qua nhieu tin khan cap cung chieu"),
+    "SENTIMENT_BLOCKED": ("context", "sentiment veto (block_long_below/block_short_above)"),
     # --- reasoning: model/agent ---------------------------------------------
     "LEARN_NEG_EDGE": ("reasoning", "learner du doan edge am (ky vong lo)"),
     "MODEL_UNCALIBRATED": ("reasoning", "model chua qua kiem dinh calibration"),
@@ -42,6 +49,11 @@ CODES: dict[str, tuple[str, str]] = {
     "DUP_SYMBOL": ("policy", "cap da co vi the"),
     "ENTRIES_PAUSED": ("policy", "cong tam dung vao lenh dang bat"),
     "KILL_SWITCH": ("policy", "kill-switch da trip"),
+    "AGENT_VETO": ("policy", "hoi dong/agent co quyen veto da chan lenh"),
+    "COOLDOWN": ("policy", "dang trong thoi gian nguoi sau khi dong lenh cung cap"),
+    "VOL_EXTREME": ("policy", "ATR% cap do vuot nguong bien dong"),
+    "MARGIN_LOW": ("policy", "margin kha dung khong du cho lenh moi"),
+    "QTY_ZERO": ("policy", "qty sau quantize = 0 (von qua nho)"),
     "SPREAD_WIDE": ("policy", "spread/phi vuot nguong cho phep"),
     "MIN_NOTIONAL": ("policy", "notional < muc toi thieu cua san"),
     # --- tool: san / provider ------------------------------------------------
@@ -74,10 +86,13 @@ _TEXT_HINTS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("spread",), "SPREAD_WIDE"),
     (("notional", "min_notional", "-4164"), "MIN_NOTIONAL"),
     (("equity",), "EQUITY_MISMATCH"),
+    # (09/11) `reject` phai DUNG TRUOC `insufficient`: `-2019 Margin is insufficient`
+    # la lenh bi TU CHOI (execution), khong phai "thieu du lieu" (data). Do that: bo ca
+    # `syn-api-ban-none` FAIL vi bi phan loai thanh DATA_MISSING.
+    (("reject", "-2010", "-2019", "insufficient"), "ORDER_REJECT"),
     (("stale", "cu hon"), "DATA_STALE"),
-    (("thieu du lieu", "insufficient", "missing"), "DATA_MISSING"),
+    (("thieu du lieu", "missing"), "DATA_MISSING"),
     (("parse_error", "invalid"), "DATA_INVALID"),
-    (("reject", "-2010", "-2019"), "ORDER_REJECT"),
     (("timeout", "-2015", "http 5"), "API_ERROR"),
     (("abstain", "khong bo phieu"), "AGENT_ABSTAIN"),
 )
@@ -120,3 +135,65 @@ def normalize(code: str, text: str = "") -> str:
     if known(c):
         return c
     return classify_text(text)
+
+
+#: `status` THAT trong `turbo_demo.turbo_round()` -> ma ly do.
+#: Vi sao co bang nay (09/11): vong quet ghi `status` bang van ban tu do o ~20 nhanh
+#: `results.append(...)`. Sua tung nhanh de them ma la 20 cho de quen; thay vao do map
+#: MOT lan o cuoi vong (`code_for_status`) ⇒ khong nhanh nao bi bo sot, va them status
+#: moi thi chi can them 1 dong o day.
+STATUS_CODES: dict[str, str] = {
+    # vao duoc lenh
+    "OPENED": "TAKE",
+    # dung ca vong
+    "PAUSED": "ENTRIES_PAUSED",
+    # du lieu
+    "DATA_FAIL": "DATA_MISSING",
+    "SKIP_DATA": "DATA_INVALID",
+    # ngu canh thi truong
+    "SKIP_VOL": "VOL_EXTREME",
+    "WAIT": "ALPHA_LOW",
+    "NO_TRADE": "SCORE_LOW",
+    "BLOCKED_URGENT": "NEWS_URGENT",
+    "BLOCKED_SENT": "SENTIMENT_BLOCKED",
+    # chinh sach / hoc may
+    "BLOCKED_LEARN": "LEARN_NEG_EDGE",
+    "BLOCKED_STRAT": "STRATEGY_BLOCKED",
+    "SKIP_LESSON": "LESSONS_GATE",
+    "SKIP_AGENT_VETO": "AGENT_VETO",
+    "VETO_ENFORCED": "AGENT_VETO",
+    "SKIP_OPEN": "DUP_SYMBOL",
+    "COOLDOWN": "COOLDOWN",
+    "BLOCKED_QTY": "QTY_ZERO",
+    "SKIP_MARGIN": "MARGIN_LOW",
+    "SKIP_MAX_POS": "MAX_POSITIONS",
+    "SKIP_RISK": "RISK_CAP",
+    "SKIP_NOTIONAL": "MIN_NOTIONAL",
+    "SKIP_SPREAD": "SPREAD_WIDE",
+    # execution
+    "ORDER_FAILED": "ORDER_REJECT",
+}
+
+
+def code_for_status(status: str) -> str:
+    """Ma ly do cho 1 `status` cua vong quet; status la -> '' (KHONG nem loi).
+
+    Tra '' thay vi ma gia: bo trong = "chua phan loai" (dem duoc), con ma gia thi
+    lam bao cao SAI ma khong ai biet.
+    """
+    return STATUS_CODES.get(str(status or "").strip().upper(), "")
+
+
+def new_id(prefix: str = "d", ts: float | None = None) -> str:
+    """Sinh `decision_id` ngan, sap xep duoc theo thoi gian: `d-20261109-101530-a1b2c3`.
+
+    Vi sao can (09/11): journal hien khong co khoa nao noi PHIEU hoi dong voi LENH, nen
+    `council_eval` phai ghep theo (symbol, huong, cua so 1 gio) ⇒ do that chi ghep duoc
+    **31/133** phieu. Co `decision_id` ghi o CA HAI dau (AGENT + OPEN) thi phep ghep la
+    TRA CUU CHINH XAC, khong con phu thuoc thoi gian.
+    Phan ngau nhien 6 hex de 2 quyet dinh cung giay khong trung; ham THUAN TUY (test duoc).
+    """
+    t = float(ts if ts is not None else _time.time())
+    stamp = _time.strftime("%Y%m%d-%H%M%S", _time.gmtime(t))
+    return "%s-%s-%s" % (str(prefix or "d")[:4], stamp, _uuid.uuid4().hex[:6])
+

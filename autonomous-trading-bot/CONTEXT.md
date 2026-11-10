@@ -567,9 +567,12 @@ Bốn việc còn thiếu của §29 đã xong; số đo lấy từ máy, không
    "claude-haiku-4.5" from --model flag is not available.` Đo lại bằng `tools/probe_cline.py --copilot`:
    **15/15** tên model trong tài liệu CLI đều `MODEL_GATED`, **chỉ `--model auto` chạy được** (rc=0, 24 s);
    `auto` + 4 model Cline ⇒ **5 phiếu**. Đã sửa: `agents.classify_provider_error()`
-   (`OK/MODEL_GATED/AUTH/QUOTA/RATE/ERR`), `probe_cline --copilot` (đo từng model, `{prompt}` là MỘT đối số),
+   (`OK/MODEL_GATED/AUTH/QUOTA/ERR/RATE`), `probe_cline --copilot` (đo từng model, `{prompt}` là MỘT đối số),
    `.env` cả 2 instance → `AGENT_COUNCIL_MODELS=auto` (kèm ngày + bằng chứng). Sau restart:
    TESTNET `hoi dong 5 model: 0A/4V`, LIVE `5 model: 1A/4V`.
+   **Kiểm lại sau khi đăng nhập OAuth** (`copilot login` → "Signed in as johntuan0906-ux"): vẫn **1/4**
+   (`auto` OK 20 s; `claude-sonnet-5.5`, `gpt-6.1-sol`, `grok-4.7` đều `MODEL_GATED`) ⇒ gói này **chỉ có
+   `auto`**, nên `auto` là cấu hình ĐÚNG, không phải giải pháp tạm.
 
 > **Bài học lặp lại lần thứ 4**: cả ba việc trên đều "im lặng" — không dòng log nào *nói* nguyên nhân.
 > Quy ước ghi vào `OPERATIONS.md`: mỗi lần "hội đồng im" phải chạy `tools/probe_cline.py --copilot`

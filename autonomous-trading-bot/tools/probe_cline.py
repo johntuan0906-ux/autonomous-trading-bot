@@ -1,4 +1,4 @@
-"""Do model hoi dong qua CHINH code cua bot (ClineProvider) — chay SONG SONG.
+ quyạn"""Do model hoi dong qua CHINH code cua bot (ClineProvider) — chay SONG SONG.
 
     python tools/_probe_cline.py                      # bo mac dinh
     python tools/_probe_cline.py cline-pass/x cline-pass/y
@@ -78,8 +78,8 @@ def main(argv: list | None = None) -> int:
     if "--copilot" in argv:
         argv.remove("--copilot")
         import os
-        models = argv or [m.strip() for m in
-                          os.environ.get("AGENT_COUNCIL_MODELS", "").split(",") if m.strip()]
+        raw = argv or [os.environ.get("AGENT_COUNCIL_MODELS", "")]
+        models = [m.strip() for item in raw for m in str(item).split(",") if m.strip()]
         models = models or ["auto"]
         t0 = time.time()
         rows = [probe_copilot(m) for m in models]

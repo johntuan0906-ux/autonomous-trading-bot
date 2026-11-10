@@ -546,3 +546,33 @@ Bốn việc còn thiếu của §29 đã xong; số đo lấy từ máy, không
 > quy trình từ nay: mọi kết luận về tiền phải đi qua `reconcile.py` + `positions.py` trước.
 
 
+
+**Đợt 5 (10/11) — đóng nốt 3 việc tồn: dust, mở lại LIVE, và hội đồng "câm" vì tên model.**
+
+1. **Dust AXS (notional 0,83 USDT) — đã đóng được, đường làm rõ ràng.** Thử theo thứ tự:
+   `reduceOnly` → `-2022`; market không `reduceOnly` → `-4164` (notional < 5); `STOP_MARKET
+   closePosition` qua endpoint thường → `-4120` ("dùng Algo Order API"); Algo API trigger cách xa →
+   treo (không kích hoạt), trigger sát → `-2021 Order would immediately trigger`.
+   **Đường duy nhất chạy được**: nâng vị thế lên ≥ 5 USDT bằng 1 lệnh cùng chiều (7 hợp đồng,
+   notional 5,78) rồi đóng TOÀN BỘ 8 hợp đồng bằng market không `reduceOnly` (notional 6,6 — chính
+   đường `_close_exact` của bot). Kết quả: **`DA PHANG`**. TESTNET còn đúng **4 vị thế** do code mới mở.
+2. **Mở lại LIVE** (`tools/restart_bot.py --target live --reset`): kill-switch gỡ, bot vào lại đường
+   giao dịch. Bằng chứng ngay sau đó: `TURBO OPEN LONG 1000000MOG qty=53.9 … | size_base=27.88
+   risk=0.20$ (0.60% cua size_base)`; các cặp khác bị `SKIP_MAX_POS` ("max positions 2 reached") ⇒
+   **cả hai chốt (risk% và MAX_POSITIONS) đều hoạt động**. Journal LIVE có `OPEN` với
+   `decision_id = d-20261109-162812-064d20`, `reason_code = TAKE`, `data_age` ⇒ telemetry mới đã chạy
+   trên tài khoản thật.
+3. **B-051 — hội đồng "câm" vì tên model không có trong GÓI.** Log chỉ ghi `critic loi -> NO_OPINION`
+   rồi `2/2 model copilot deu abstain -> provider 'copilot' bi chan (pause)`. Đọc kỹ: `Error: Model
+   "claude-haiku-4.5" from --model flag is not available.` Đo lại bằng `tools/probe_cline.py --copilot`:
+   **15/15** tên model trong tài liệu CLI đều `MODEL_GATED`, **chỉ `--model auto` chạy được** (rc=0, 24 s);
+   `auto` + 4 model Cline ⇒ **5 phiếu**. Đã sửa: `agents.classify_provider_error()`
+   (`OK/MODEL_GATED/AUTH/QUOTA/RATE/ERR`), `probe_cline --copilot` (đo từng model, `{prompt}` là MỘT đối số),
+   `.env` cả 2 instance → `AGENT_COUNCIL_MODELS=auto` (kèm ngày + bằng chứng). Sau restart:
+   TESTNET `hoi dong 5 model: 0A/4V`, LIVE `5 model: 1A/4V`.
+
+> **Bài học lặp lại lần thứ 4**: cả ba việc trên đều "im lặng" — không dòng log nào *nói* nguyên nhân.
+> Quy ước ghi vào `OPERATIONS.md`: mỗi lần "hội đồng im" phải chạy `tools/probe_cline.py --copilot`
+> **trước** khi sửa code; mỗi lần "không đóng được vị thế" phải ghi **mã lỗi sàn** (`-2022`/`-4164`/
+> `-4120`/`-2021`) vào CONTEXT, không thử mò.
+

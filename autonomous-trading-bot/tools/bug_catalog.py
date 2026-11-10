@@ -552,6 +552,23 @@ CLASSES = [
                   "test_reconcile.py::TestTachLenTayVaBot::test_pnl_tung_ngan_khop_fill_that",
                   "test_reconcile.py::TestTachLenTayVaBot::test_khong_co_fill_thi_khong_suy_dien"],
     },
+    {
+        "code": "B-051", "kind": "cau-hinh", "seen": "09/11/2026",
+        "title": "Ten model hoi dong KHONG co trong GOI cua tai khoan ⇒ hoi dong abstain 100% va bi pause, log chi ghi 'NO_OPINION' (loi cau hinh bi doc thanh loi mang)",
+        "symptom": "LIVE 09/11 23:28: `agents: critic loi (loi provider: copilot CLI rc=1: Error: Model \"claude-haiku-4.5\" from --model flag is not available.) -> NO_OPINION` roi `COUNCIL: 2/2 model copilot deu abstain -> provider 'copilot' bi chan (pause)` ⇒ hoi dong CAM. Do lai bang `tools/probe_cline.py --copilot`: **15/15** ten model co trong tai lieu CLI deu `MODEL_GATED` (`claude-sonnet-5.5`, `gpt-6.1-sol`, `gemini-4-argon`, `grok-4.7`, …) — goi Copilot cua tai khoan nay **chi cho `--model auto`** (rc=0 sau 24 s)",
+        "guard": "`agents.classify_provider_error(rc, text)` → ma may doc duoc (`OK`/`MODEL_GATED`/`AUTH`/`QUOTA`/`RATE`/`ERR`) thay cho chuoi tu do; `tools/probe_cline.py --copilot` do TUNG model qua CLI that (doc `.env` nhu runtime, `{prompt}` la MOT doi so) va in ma phan loai + goi y; `.env` ca 2 instance doi sang `AGENT_COUNCIL_MODELS=auto` (kem bang chung + ngay) va da dang nho `AGENT_COUNCIL_CLINE` (4 model). Sau khi sua: TESTNET `hoi dong 5 model 0A/4V`, LIVE `5 model 1A/4V`",
+        "files": ["agents.py", "tools/probe_cline.py", ".env", "tests/test_provider_probe.py"],
+        "tests": ["test_provider_probe.py::TestClassifyProviderError::test_model_bi_chan_theo_goi",
+                  "test_provider_probe.py::TestClassifyProviderError::test_chua_dang_nhap",
+                  "test_provider_probe.py::TestClassifyProviderError::test_het_quota_thang_va_rate_limit",
+                  "test_provider_probe.py::TestClassifyProviderError::test_thanh_cong_va_loi_la",
+                  "test_provider_probe.py::TestCopilotCmd::test_prompt_la_MOT_doi_so",
+                  "test_provider_probe.py::TestCopilotCmd::test_khong_chen_model_neu_da_co",
+                  "test_provider_probe.py::TestCopilotCmd::test_model_duoc_chen_sau_cung",
+                  "test_provider_probe.py::TestProbeCopilot::test_rc0_la_OK",
+                  "test_provider_probe.py::TestProbeCopilot::test_model_gated_duoc_bao_dung_ma",
+                  "test_provider_probe.py::TestProbeCopilot::test_ngoai_le_khong_lam_chet_probe"],
+    },
 ]
 
 

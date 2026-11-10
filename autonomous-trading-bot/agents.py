@@ -169,6 +169,38 @@ def _complete_with_retry(provider, system: str, user: str, *, timeout: float = 8
     raise last  # pragma: no cover
 
 
+def classify_provider_error(rc: int, text: str = "") -> str:
+    """Phan loai ket qua 1 lan goi provider CLI -> ma MAY doc duoc (ham THUAN TUY).
+
+    LOP LOI THAT (09/11, B-051): tren LIVE hoi dong abstain **2/2** va bi pause, log chi ghi
+    `critic loi (...) -> NO_OPINION`. Doc ky thong bao moi thay:
+    `Error: Model "gemini-3.8-flash" from --model flag is not available.` — tuc **ten model
+    CO trong tai lieu CLI nhung KHONG co trong GOI** cua tai khoan: do la loi CAU HINH, khong
+    phai loi mang. Do lai bang `tools/probe_cline.py --copilot`: **15/15 ten model deu
+    `MODEL_GATED`**, chi `--model auto` chay duoc (rc=0, tra "OK"). Khong co ma phan loai thi
+    nguoi van hanh chi thay "im lang" va se di sua lung tung.
+
+    Ma tra ve: OK · MODEL_GATED · AUTH · QUOTA · RATE · ERR
+    """
+    t = str(text or "").lower()
+    if rc == 0 and "not available" not in t:
+        if "exceeded your monthly quota" in t or "insufficient quota" in t:
+            return "QUOTA"
+        return "OK"
+    if "not available" in t:
+        return "MODEL_GATED"
+    if ("no authentication information" in t or "not logged in" in t
+            or "authentication" in t and "token" in t):
+        return "AUTH"
+    if "exceeded your monthly quota" in t or "quota" in t:
+        return "QUOTA"
+    if "rate limit" in t or "429" in t or "too many requests" in t:
+        return "RATE"
+    if rc == 0:
+        return "OK"
+    return "ERR"
+
+
 def parse_decision(text: str, *, role: str = "", agent: str = "") -> dict:
     """Doc JSON agent tra ve -> dict chuan hoa. Sai -> NO_OPINION (fail-open).
 

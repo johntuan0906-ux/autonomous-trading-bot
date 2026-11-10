@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 10/11/2026 10:23:20 · commit `fe9fa93`
+- **Cập nhật**: 10/11/2026 10:53:21 · commit `82c4520`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `112020` · round `158` · nhịp tim cách đây 53.2s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3161.67 USDT
+- **Bot**: pid `112020` · round `165` · nhịp tim cách đây 136.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3163.31 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3025 lệnh đóng, WR 41.06%, E(R) 0.2336, PnL -1030.41$)
+## Hiệu suất (journal: 3026 lệnh đóng, WR 41.04%, E(R) 0.2332, PnL -1034.44$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 101 | 45.54 | 2.062 | 1.059 | 0.3459 | 11.16 |
-| 14 ngày | 117 | 41.88 | 1.822 | 0.835 | 0.3054 | -47.26 |
-| 30 ngày | 2561 | 37.88 | 1.972 | 0.751 | 0.2759 | -1081.2 |
+| 7 ngày | 102 | 45.1 | 2.001 | 1.037 | 0.3327 | 7.12 |
+| 14 ngày | 118 | 41.53 | 1.78 | 0.824 | 0.2943 | -51.29 |
+| 30 ngày | 2562 | 37.86 | 1.97 | 0.75 | 0.2754 | -1085.24 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 1.059 < 1.1; PF($) cua so 14 ngay = 0.835 < 1.1; PF($) cua so 30 ngay = 0.751 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 7 ngay = 1.037 < 1.1; PF($) cua so 14 ngay = 0.824 < 1.1; PF($) cua so 30 ngay = 0.750 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,7 +44,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000BONK/USDT:USDT | LONG | 35087.0 | 0.002827 | 0.002713 | 0.003055 | False | False | 0.0 |
-| ARB/USDT:USDT | LONG | 351.0 | 0.183 | 0.171606 | 0.205788 | False | False | 0.097 |
+| 1000PEPE/USDT:USDT | LONG | 22271.0 | 0.0051276 | 0.004948 | 0.005488 | False | False | 0.122 |
 | AVAX/USDT:USDT | LONG | 6.0 | 8.726 | 8.089772 | 9.998456 | False | False | 0.047 |
 | BNB/USDT:USDT | SHORT | 0.36 | 684.99 | 695.890398 | 663.189204 | False | False | 0.06 |
 

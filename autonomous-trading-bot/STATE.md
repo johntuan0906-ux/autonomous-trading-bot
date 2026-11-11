@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 11/11/2026 10:53:41 · commit `cac00de`
+- **Cập nhật**: 11/11/2026 11:23:41 · commit `d096d65`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `112020` · round `520` · nhịp tim cách đây 142.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3178.44 USDT
+- **Bot**: pid `112020` · round `528` · nhịp tim cách đây 50.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3178.43 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3028 lệnh đóng, WR 41.08%, E(R) 0.2333, PnL -1031.64$)
@@ -39,11 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (2)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ACE/USDT:USDT | LONG | 1058.0 | 0.1183 | 0.113834 | 0.125732 | False | False | 0.202 |
+| 1000BONK/USDT:USDT | LONG | 35087.0 | 0.002827 | 0.002713 | 0.003055 | False | False | 0.158 |
+| 1000PEPE/USDT:USDT | LONG | 13059.0 | 0.0053273 | 0.005021 | 0.005939 | False | False | 0.222 |
+| ACE/USDT:USDT | LONG | 1058.0 | 0.1183 | 0.113834 | 0.125732 | False | False | 0.224 |
 | AVAX/USDT:USDT | LONG | 6.0 | 8.726 | 8.089772 | 9.998456 | False | False | 0.047 |
 
 ---

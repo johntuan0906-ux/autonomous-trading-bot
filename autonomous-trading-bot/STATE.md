@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 12/11/2026 05:53:55 · commit `4659c9f`
+- **Cập nhật**: 12/11/2026 06:23:55 · commit `cbee4d7`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `112020` · round `805` · nhịp tim cách đây 26.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3170.3 USDT
+- **Bot**: pid `83300` · round `2` · nhịp tim cách đây 98.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3168.54 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3029 lệnh đóng, WR 41.07%, E(R) 0.2329, PnL -1036.07$)
+## Hiệu suất (journal: 3036 lệnh đóng, WR 41.04%, E(R) 0.2317, PnL -1044.88$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 102 | 47.06 | 2.144 | 1.212 | 0.3585 | 35.68 |
-| 14 ngày | 120 | 42.5 | 1.795 | 0.859 | 0.295 | -39.98 |
-| 30 ngày | 2398 | 37.03 | 2.033 | 0.719 | 0.2929 | -1087.35 |
+| 7 ngày | 109 | 45.87 | 1.978 | 1.146 | 0.3194 | 26.86 |
+| 14 ngày | 127 | 41.73 | 1.699 | 0.836 | 0.265 | -48.79 |
+| 30 ngày | 2397 | 36.84 | 2.024 | 0.711 | 0.2914 | -1116.7 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.859 < 1.1; PF($) cua so 30 ngay = 0.719 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.836 < 1.1; PF($) cua so 30 ngay = 0.711 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | LONG | 35087.0 | 0.002827 | 0.002713 | 0.003055 | False | False | 0.0 |
-| ACE/USDT:USDT | LONG | 1058.0 | 0.1183 | 0.113834 | 0.125732 | False | False | 0.246 |
-| AVAX/USDT:USDT | LONG | 6.0 | 8.726 | 8.089772 | 9.998456 | False | False | 0.047 |
-| QNT/USDT:USDT | SHORT | 0.35 | 177.86 | 177.68214 | 164.21078 | True | True | 1.292 |
+| AERO/USDT:USDT | SHORT | 170.1 | 0.5347 | 0.558202 | 0.487696 | False | False | 0.017 |
+| ASTER/USDT:USDT | LONG | 201.0 | 0.6525 | 0.632628 | 0.692244 | False | False | 0.0 |
+| AVAX/USDT:USDT | LONG | 12.0 | 8.433 | 8.103696 | 9.091608 | False | False | 0.0 |
+| BANK/USDT:USDT | SHORT | 5420.0 | 0.02147 | 0.022208 | 0.019994 | False | False | 0.014 |
 
 ---
 

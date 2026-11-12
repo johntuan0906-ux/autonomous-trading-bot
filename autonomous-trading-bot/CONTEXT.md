@@ -611,5 +611,17 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - `tools/probe_cline.py --copilot [--candidates]` **ghi cache** (nguyên tử, qua `.tmp` + `os.replace`).
    - Vòng đời sau khi nâng gói: `python tools/probe_cline.py --copilot --candidates` → lần đo kế tiếp
      hội đồng tự có thêm phiếu; **không cần sửa `.env`, không cần restart**.
+5. **Nghiên cứu 80 repo/link → 12 việc cụ thể + 4 runbook thành skill.** Xem `RESEARCH_1211.md`
+   (đọc kỹ 47 repo; phần còn lại là biến thể của 3 mẫu). Ba kết luận đáng nhớ:
+   - **`foreman`** định nghĩa 12 "cách crew nói dối"; repo còn thiếu 3: *roster drift* (khai 5 model,
+     thực tế 1 phiếu — đúng B-051/B-052), *dormant model* (0 phiếu N giờ), *silent routine* (việc định
+     kỳ không chạy). Đây là việc kế tiếp của `selfops`.
+   - **`quantstats`/`freqtrade`** cho phần đo lường: repo mới có PF(R); thiếu sharpe/sortino/calmar/
+     maxDD theo equity và thiếu **cooldown theo cặp sau lệnh thua** (`risk.py` chỉ trip theo tổng).
+   - **Local LLM (colibri/airllm/bitnet) = SKIP có bằng chứng**: `local/llama3.2-3b-local` value_r
+     **−1,303** (64 phiếu) nên đã bị `AGENT_COUNCIL_IGNORE`; model nhỏ trả JSON kém ⇒ không cứu được.
+   4 runbook đã thành `skills/<name>/SKILL.md` (`council-silent`, `close-dust`, `reconcile-first`,
+   `drift-report`) + test chốt `tests/test_skills_spec.py` (frontmatter hợp spec, tên khớp thư mục,
+   thân skill phải nhắc tool thật).
 
 

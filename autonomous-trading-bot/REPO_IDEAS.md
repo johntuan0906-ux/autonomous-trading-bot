@@ -1,5 +1,8 @@
 # REPO_IDEAS.md — 9 repo tham khảo: áp dụng được gì cho dự án này
 
+> **Bản mới hơn (12/11/2026): xem `RESEARCH_1211.md`** — 80 link, đọc kỹ 47 repo, ra 12 việc cụ thể
+> xếp theo giá-trị/công, kèm mục "KHÔNG nên làm" có bằng chứng. File này giữ lại làm lịch sử đợt 12/10.
+
 > Đọc 12/10/2026 theo yêu cầu. Mỗi mục: repo là gì → **áp dụng cụ thể** (P1 = làm
 > ngay/đã làm, P2 = làm khi rảnh, P3 = chỉ để tham khảo, KHÔNG cài).
 > Nguyên tắc: chỉ thêm phụ thuộc khi thật sự giảm rủi ro/ thời gian vận hành.

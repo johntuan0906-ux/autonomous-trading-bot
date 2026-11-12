@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/11/2026 00:36:15 · commit `4b6dddb`
+- **Cập nhật**: 13/11/2026 01:06:15 · commit `fefe6a5`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `7` · nhịp tim cách đây 102.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3171.72 USDT
+- **Bot**: pid `65600` · round `15` · nhịp tim cách đây 14.9s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3171.5 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3038 lệnh đóng, WR 41.05%, E(R) 0.232, PnL -1039.71$)
@@ -15,7 +15,7 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 108 | 47.22 | 2.182 | 1.409 | 0.3632 | 63.47 |
 | 14 ngày | 129 | 41.86 | 1.715 | 0.855 | 0.2709 | -43.63 |
-| 30 ngày | 2293 | 35.94 | 2.084 | 0.705 | 0.308 | -1047.06 |
+| 30 ngày | 2292 | 35.91 | 2.084 | 0.705 | 0.308 | -1048.93 |
 
 ## Cổng sang LIVE
 
@@ -43,7 +43,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000SHIB/USDT:USDT | SHORT | 33333.0 | 0.004295 | 0.004415 | 0.004055 | False | False | 0.075 |
+| 1000SHIB/USDT:USDT | SHORT | 33333.0 | 0.004295 | 0.004415 | 0.004055 | False | False | 0.0 |
 | ACE/USDT:USDT | SHORT | 1024.0 | 0.11 | 0.113906 | 0.102188 | False | False | 0.051 |
 | AERO/USDT:USDT | SHORT | 119.1 | 0.5347 | 0.5341653 | 0.487696 | True | True | 1.345 |
 | AVAX/USDT:USDT | LONG | 12.0 | 8.433 | 8.103696 | 9.091608 | False | False | 0.768 |

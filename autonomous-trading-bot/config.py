@@ -313,6 +313,20 @@ class Settings:
         default_factory=lambda: _get_bool("AGENTS_COUNCIL_MULTI_MODEL", False))
     agent_council_models: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_MODELS", ""))
+    # (12/11, B-052) Model Copilot DU PHONG: chi duoc tu them vao hoi dong khi
+    # `tools/probe_cline.py --copilot` da do thay chung chay duoc (cache
+    # `logs/model_probe.json`). Muc dich: khi nang goi Copilot, KHONG phai sua `.env`
+    # hay restart — lan do ke tiep tu dua ten model vao hoi dong.
+    # Vi sao can: ten model trong tai lieu CLI khong co trong goi => `MODEL_GATED`
+    # (15/15 o B-051); neu dat thang vao AGENT_COUNCIL_MODELS thi MOI vong sinh them
+    # 1 cuoc goi that bai + 1 phieu abstain (rac journal, doi khi con lam provider
+    # bi coi la "het").
+    agent_council_models_candidates: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_MODELS_CANDIDATES", ""))
+    # (12/11, B-052) Ket qua do model con dung duoc bao lau (ngay). Qua han => hoi dong
+    # KHONG tu them candidate nua (tranh dung ten model vua bi go khoi goi).
+    agent_council_probe_ttl_days: float = field(
+        default_factory=lambda: _get_float("AGENT_COUNCIL_PROBE_TTL_DAYS", 7.0))
     # (15/10) Model bi LOAI khoi phieu (csv). Bang chung: tools/council_eval.py do duoc
     # `local/llama3.2-3b-local` value_r = -1.303 => phieu cua no lam nguoc ket qua.
     # Van ghi journal (de do tiep), chi KHONG tinh vao ket qua hoi dong.

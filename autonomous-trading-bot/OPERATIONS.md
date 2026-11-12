@@ -233,7 +233,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Hiệu chuẩn độ tin của hội đồng** (B-045) | `.env`: `AGENT_CALIB_CAP=true` (mặc định) · `AGENT_CALIB_N_FULL=20` (dưới ngưỡng mẫu ⇒ hạ trần) · `AGENT_CALIB_MAX_CONF=0.7`. Trần **chặn bằng code** (không chỉ nhắc trong prompt); lý do bị hạ ghi vào `note` của bản ghi `AGENT` |
 | **Tự vận hành (autonomy, có giới hạn)** (B-048) | `python tools\council_gaps.py` (thiếu hụt + kế hoạch tự học → `COUNCIL_GAPS.md`) · `python tools\selfops.py` (in kế hoạch) · `python tools\selfops.py --apply` (chạy việc AN TOÀN: gaps/drift/golden/refit) · `--instance live` **không** đụng state LIVE trừ khi thêm `--allow-live-state` · nhật ký: `logs/autonomy.jsonl` |
 | **Drift tài liệu ↔ code** (B-047) | `python tools\drift_docs.py [--check]` — so số liệu trong tài liệu (mã lý do, số ca/cổng golden, lớp bug catalog) với code thật, kiểm mọi tool có được nhắc tên, bắt mã lý do gõ sai (khoảng cách sửa ≤ 2) |
-| **Chuỗi kiểm tra trước khi commit** | `python tools\bug_catalog.py --check` (**50 lớp / 166 test chốt**) → `python tools\golden_set.py --check` (45 ca / 14 cổng, có DRIFT) → `python tools\drift_docs.py --check` (tài liệu ↔ code) → `python -m unittest discover -s tests -t .` |
+| **Chuỗi kiểm tra trước khi commit** | `python tools\bug_catalog.py --check` (**51 lớp / 176 test chốt**) → `python tools\golden_set.py --check` (45 ca / 14 cổng, có DRIFT) → `python tools\drift_docs.py --check` (tài liệu ↔ code) → `python -m unittest discover -s tests -t .` |
 | **Đối soát sổ ↔ sàn (LIVE)** (B-050) | `python reconcile.py` (xem trước) · `python reconcile.py --apply` (ghi bù `CLOSE` bị thiếu, có backup `journal.jsonl.bak-*`) · `python positions.py` (3 nguồn: sàn / journal / `managed_state`) · vòng lệnh **không có `OPEN` trong journal** = lệnh do NGƯỜI đặt tay, không phải bot |
 | **Đóng vị thế DEMO hàng loạt** | `python close_position.py --pair BTC/USDT:USDT` (từng cặp) — dùng `BinanceFutures.close_position()` để có fallback `-2022 → _close_exact`; vị thế **dust** (notional < 5 USDT) có thể KHÔNG đóng được (`-2022` + `-4164`) ⇒ ghi lại, đừng cố bằng tay |
 | **Tool phụ trợ ít dùng** (vẫn phải có tài liệu) | `tools\diag_review.py` (soi 1 phiên review) · `tools\instance_env.py` (chẩn đoán `.env` file vs OS vs `Settings()`) · `tools\margin_audit.py` (kiểm kê margin/ký quỹ) · `tools\ops_artifact.py` (artifact chuẩn hoá 1 sự cố) · `tools\probe_local_json.py` (thử JSON của model local) · `tools\wait_btw_isolate.py` (đợi hết vị thế rồi đặt ISOLATED) |
@@ -297,4 +297,42 @@ Muốn đúng 100% phải sửa `trade_mgmt` (partial không dời SL).
 
 **Lệnh tay của người vận hành:** thêm symbol vào `ADOPT_SKIP_SYMBOLS` (hiện `BTW,BICO`) để bot
 **không bao giờ** adopt/dời SL/chốt — kiểm chứng: dòng `ADOPT vi the san: ... skipped=[...]`.
+
+
+## 8. Hội đồng đa dạng hơn: 3 việc rõ ràng (12/11, B-052)
+
+**Hiện trạng đo được**: `auto` (Copilot) = **1 phiếu thật**; 4 model Cline chỉ có phiếu khi gateway còn
+credit — 12/11 đo được **5/5 trả `402 Payment Required`**. Muốn biết chắc, chạy 3 lệnh đo:
+
+| Việc | Lệnh | Kết quả |
+|---|---|---|
+| Đo lại Copilot | `python tools/probe_cline.py --copilot` | in mã từng model + **ghi cache** `logs/model_probe.json` |
+| Đo lại Cline | `python tools/probe_cline.py` | `OK` / `PAYMENT` (hết credit) / `LOI` |
+| Đo lại Qwen CLI | `python tools/probe_cline.py --qwen openai/<id>` | `MODEL_FORMAT` = id sai định dạng |
+
+**A. Nạp credit Cline (việc của người vận hành)** — nạp tại cline.bot. Bot tự gỡ chặn thanh toán sau
+12 giờ (`AGENT_PROVIDER_BILLING_PAUSE_SEC=43200`) nên **không bắt buộc restart**; muốn có phiếu ngay thì
+`python tools/restart_bot.py --target both` (restart là sạch trạng thái session).
+
+**B. Nâng gói Copilot (đã thiết lập sẵn — KHÔNG phải sửa `.env`)** — sau khi nâng gói chỉ chạy:
+
+    python tools/probe_cline.py --copilot --candidates
+
+rồi kiểm bằng `python agents.py --council-health --hours 1` (hoặc đọc dòng log `hoi dong N model`).
+Hội đồng tự thêm bất kỳ model nào cache ghi `OK` trong 7 ngày (`AGENT_COUNCIL_PROBE_TTL_DAYS`); danh
+sách model được đọc lại **mỗi vòng** nên **không cần restart**.
+
+**C. Qwen** — hiện KHÔNG thể vì 2 chặn thật: (1) OAuth miễn phí đã ngừng 15/04/2026; (2) `~/.qwen/.env`
+trỏ vào gateway Cline mà gateway dùng id **có dấu `/`** (`xiaomi/mimo-v2.6-pro`) trong khi Qwen CLI bắt
+buộc `modelType/model`. Khi có provider id không có dấu `/` (DashScope / OpenRouter / gói Qwen Coding
+Plan) thì điền 1 dòng:
+
+    AGENT_COUNCIL_QWEN=openai/qwen3-max
+
+Qwen family hiện được phủ bởi `qwen3.8-max` + `qwen3.7-plus` trong `AGENT_COUNCIL_CLINE` (có số đo).
+
+**Nguyên tắc: KHÔNG thêm model chỉ để "đông".** Trước khi thêm, đo
+`python tools/council_eval.py --hours 720`: model phải có `prec` > 0,5 và đủ mẫu (`n_ghep` ≥ 8).
+Đã bị loại vì lý do này: `minimax-m3` (prec **0,500** = ném đồng xu), `muse-spark-1.3-contributor`
+(probe OK nhưng **không tạo được phiếu**, 3/3 lần), `local/llama3.2-3b-local` (value_r **−1,303**).
 

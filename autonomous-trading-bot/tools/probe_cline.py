@@ -1,4 +1,4 @@
- quyạn"""Do model hoi dong qua CHINH code cua bot (ClineProvider) — chay SONG SONG.
+"""Do model hoi dong qua CHINH code cua bot (ClineProvider) — chay SONG SONG.
 
     python tools/_probe_cline.py                      # bo mac dinh
     python tools/_probe_cline.py cline-pass/x cline-pass/y
@@ -73,12 +73,72 @@ def probe_copilot(model: str, prompt: str = "Tra loi dung mot tu: OK",
         return (model, "ERR", "%.0fs" % (time.time() - t0), str(e)[:100])
 
 
+def write_probe_cache(rows: list, path: str | None = None,
+                      now: float | None = None) -> str:
+    """Ghi ket qua do (rows cua `probe_copilot`) -> `logs/model_probe.json`.
+
+    (12/11, B-052) Day la CACH hoi dong biet "goi Copilot da nang chua": `agents._council_models`
+    doc cache nay (`agents.read_probe_cache`) va tu them candidate nao co `code == "OK"`.
+    Nho vay nguoi van hanh KHONG phai sua `.env` / restart khi doi goi.
+    """
+    import json
+    import os
+    p = path or os.path.join(ROOT, "logs", "model_probe.json")
+    results = {}
+    for row in rows:
+        mid, code = str(row[0]), str(row[1])
+        results[mid] = {"code": code, "secs": row[2] if len(row) > 2 else ""}
+    data = {"probed_at": float(now if now is not None else time.time()),
+            "results": results}
+    os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, p)          # ghi nguyen tu: hoi dong khong bao gio doc file do dang
+    return p
+
+
+def qwen_cmd(prompt: str, model: str = "", env: dict | None = None) -> list:
+    """Lenh Qwen Code CLI headless cho 1 model (ham THUAN TUY, test duoc)."""
+    import os
+    env = env if env is not None else os.environ
+    base = (env.get("AGENT_QWEN_BIN", "qwen") or "qwen").split()
+    args = (env.get("AGENT_QWEN_ARGS", "-p {prompt}") or "-p {prompt}").split()
+    parts = [prompt if a == "{prompt}" else a for a in args]
+    if model and not any(a in ("--model", "-m") for a in parts):
+        parts += ["-m", model]
+    return base + parts
+
+
+def probe_qwen(model: str, prompt: str = "Tra loi dung mot tu: OK",
+               timeout: float = 150.0) -> tuple:
+    """Goi Qwen CLI voi 1 model -> (model, ma_phan_loai, giay, thong_bao)."""
+    import subprocess
+    t0 = time.time()
+    try:
+        r = subprocess.run(qwen_cmd(prompt, model), capture_output=True, text=True,
+                           timeout=timeout)
+        txt = ((r.stdout or "") + " " + (r.stderr or "")).strip().replace("\n", " ")
+        from agents import classify_provider_error
+        return (model, classify_provider_error(r.returncode, txt),
+                "%.0fs" % (time.time() - t0), txt[:100])
+    except Exception as e:  # noqa: BLE001
+        return (model, "ERR", "%.0fs" % (time.time() - t0), str(e)[:100])
+
+
 def main(argv: list | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
     if "--copilot" in argv:
         argv.remove("--copilot")
+        write = "--no-cache" not in argv
+        if "--no-cache" in argv:
+            argv.remove("--no-cache")
         import os
-        raw = argv or [os.environ.get("AGENT_COUNCIL_MODELS", "")]
+        if "--candidates" in argv:          # do dung danh sach du phong trong `.env`
+            argv.remove("--candidates")
+            raw = [os.environ.get("AGENT_COUNCIL_MODELS_CANDIDATES", "")]
+        else:
+            raw = argv or [os.environ.get("AGENT_COUNCIL_MODELS", "")]
         models = [m.strip() for item in raw for m in str(item).split(",") if m.strip()]
         models = models or ["auto"]
         t0 = time.time()
@@ -90,10 +150,25 @@ def main(argv: list | None = None) -> int:
                 ok.append(mid)
         print("\nDUNG DUOC (%d/%d) sau %.0fs: %s"
               % (len(ok), len(models), time.time() - t0, ",".join(ok) or "(khong co)"))
+        if write:
+            p = write_probe_cache(rows)
+            print("Da ghi cache: %s (%d model) -> hoi dong tu them model OK o lan do sau."
+                  % (p, len(rows)))
         if not ok:
             print("Goi y: dat AGENT_COUNCIL_MODELS=auto (tai khoan nay chi cho 'auto'),"
                   " va de hoi dong da dang bang AGENT_COUNCIL_CLINE.")
         return 0 if ok else 1
+    if "--qwen" in argv:
+        argv.remove("--qwen")
+        models = [m.strip() for m in argv if m.strip()] or [""]
+        t0 = time.time()
+        for mid in models:
+            m, code, secs, info = probe_qwen(mid)
+            print("%-28s -> %-12s %-6s %s" % (mid or "(mac dinh)", code, secs, info))
+        print("\nQwen CLI: %.0fs. `PAYMENT` = gateway het credit; `MODEL_GATED` = ten model"
+              " sai dinh dang `openai/<id>` (id KHONG duoc chua dau '/')."
+              % (time.time() - t0))
+        return 0
     models = argv or DEFAULT
     t0 = time.time()
     with _fut.ThreadPoolExecutor(max_workers=len(models)) as ex:

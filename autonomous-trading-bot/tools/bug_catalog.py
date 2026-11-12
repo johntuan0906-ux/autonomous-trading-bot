@@ -569,6 +569,24 @@ CLASSES = [
                   "test_provider_probe.py::TestProbeCopilot::test_model_gated_duoc_bao_dung_ma",
                   "test_provider_probe.py::TestProbeCopilot::test_ngoai_le_khong_lam_chet_probe"],
     },
+    {
+        "code": "B-052", "kind": "cau-hinh", "seen": "12/11/2026",
+        "title": "Gateway Cline tra 402 Payment Required cho CA danh sach hoi dong ⇒ hoi dong con 1 phieu ma khong co ma loi nao noi 'het credit'; ten model Copilot du phong cung khong the tu dung sau khi nang goi",
+        "symptom": "12/11: `tools/probe_cline.py` goi 5 model con lai trong catalog ⇒ **5/5** tra `402 Client Error: Payment Required` (`xiaomi/mimo-v2.6-pro`, `qwen/qwen3.8-max`, `meta/muse-spark-1.2-contributor`, `minimax/minimax-m3`, `xiaomi/mimo-v2.5-pro`) ⇒ hoi dong thuc chat chi con 1 phieu (`auto` cua Copilot). Truoc do loi nay roi vao ma `ERR` (hoac bi doc thanh `OK` khi CLI thoat rc=0 du in thong bao loi) nen khong phan biet duoc voi loi mang. Cung ngay: Qwen CLI (`~/.qwen/.env` tro vao chinh gateway Cline) tra `400 invalid model format` vi gateway dung id co dau '/' (`xiaomi/...`) trong khi Qwen bat buoc `modelType/model`; Qwen OAuth mien phi da ngung 15/04/2026",
+        "guard": "`agents.classify_provider_error()` them **`PAYMENT`** (402/payment required/insufficient credit/billing/out of credits) — tach khoi `QUOTA` vi quota thang TU RESET con credit thi phai NAP; va them **`MODEL_FORMAT`**; nhan dien ca khi `rc == 0` (CLI in loi ra stdout roi thoat 0). `_BILLING_HINTS`/`_mark_provider_exhausted` da co san => chan 12 gio + log `loi THANH TOAN/HET CREDIT` (khong tu het, khong restart khi da nap). Chieu 'nang goi Copilot': `.env` them `AGENT_COUNCIL_MODELS_CANDIDATES` + `AGENT_COUNCIL_PROBE_TTL_DAYS`; `agents.read_probe_cache()` + `promote_copilot_candidates()` doc `logs/model_probe.json` (do `probe_cline.py --copilot` ghi, nguyen tu qua `.tmp`+`os.replace`) => nang goi xong chi chay `--candidates`, hoi dong TU them phieu, khong sua `.env`, khong restart. Chieu Qwen: `probe_cline.py --qwen` de do lai + ghi san 1 dong bat khi co provider id khong co '/'",
+        "files": ["agents.py", "config.py", "tools/probe_cline.py", "tools/instance_env.py", ".env",
+                  "CONTEXT.md", "tests/test_provider_probe.py"],
+        "tests": ["test_provider_probe.py::TestPaymentVaModelFormat::test_402_het_credit_la_PAYMENT",
+                  "test_provider_probe.py::TestPaymentVaModelFormat::test_cac_cach_noi_het_credit_khac",
+                  "test_provider_probe.py::TestPaymentVaModelFormat::test_qwen_sai_dinh_dang_model",
+                  "test_provider_probe.py::TestPaymentVaModelFormat::test_payment_khac_quota",
+                  "test_provider_probe.py::TestProbeCacheVaCandidate::test_ghi_roi_doc_lai",
+                  "test_provider_probe.py::TestProbeCacheVaCandidate::test_file_thieu_hong_qua_han_deu_fail_open",
+                  "test_provider_probe.py::TestProbeCacheVaCandidate::test_chi_them_model_DA_DO_OK",
+                  "test_provider_probe.py::TestProbeCacheVaCandidate::test_khong_co_candidate_thi_khong_lam_gi",
+                  "test_provider_probe.py::TestProbeCacheVaCandidate::test_hoi_dong_tu_mo_rong_khi_cache_bao_OK",
+                  "test_provider_probe.py::TestProbeCacheVaCandidate::test_qwen_cmd_ghep_dung"],
+    },
 ]
 
 

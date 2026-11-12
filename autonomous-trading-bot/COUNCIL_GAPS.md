@@ -2,13 +2,13 @@
 
 | # | Thieu hut | Do (hien tai -> can) | Tu lam |
 |---|---|---|---|
-| 1 | calibration | brier: 0.344 -> <= 0.25 | co |
-| 2 | match_exact | ty le ghep CHINH XAC (decision_id): 0.0215 -> 0.8 | co |
+| 1 | calibration | brier: 0.3398 -> <= 0.25 | co |
+| 2 | match_exact | ty le ghep CHINH XAC (decision_id): 0.099 -> 0.8 | co |
 | 3 | thin_models | so model co n_ghep < min_n: 11 -> 0 | co |
 | 4 | value_negative | model co value_r <= 0: 1 -> 0 | KHONG (can nguoi) |
 
 ## calibration (high)
-- Do: **brier = 0.344** (can: <= 0.25)
+- Do: **brier = 0.3398** (can: <= 0.25)
 - Can thu thap / lam:
   - [ ] >= 30 phieu co `confidence` VA co ket qua that
   - [ ] phan bo confidence theo khoang (calibration bins) de biet lech o dau
@@ -17,9 +17,9 @@
 - Tu lam duoc: CO
 
 ## match_exact (high)
-- Do: **ty le ghep CHINH XAC (decision_id) = 0.0215** (can: 0.8)
+- Do: **ty le ghep CHINH XAC (decision_id) = 0.099** (can: 0.8)
 - Can thu thap / lam:
-  - [ ] 42/715 phieu NOI duoc theo id nhung chi 93/715 da co lenh DONG de cham diem ⇒ can them ket qua (cho lenh dong)
+  - [ ] 56/729 phieu NOI duoc theo id nhung chi 101/729 da co lenh DONG de cham diem ⇒ can them ket qua (cho lenh dong)
   - [ ] >= 30 phieu/model co `decision_id` de so sanh
   - [ ] 10 cap ghep mau (phieu -> lenh) de kiem tay bang `tools/trace_trade.py`
 - Viec phai lam: chay lai `python tools/council_eval.py` sau khi co them lenh dong

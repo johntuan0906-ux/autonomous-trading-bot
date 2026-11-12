@@ -579,3 +579,37 @@ Bốn việc còn thiếu của §29 đã xong; số đo lấy từ máy, không
 > **trước** khi sửa code; mỗi lần "không đóng được vị thế" phải ghi **mã lỗi sàn** (`-2022`/`-4164`/
 > `-4120`/`-2021`) vào CONTEXT, không thử mò.
 
+**Đợt 6 (12/11) — hội đồng đa dạng hơn: Cline hết credit, Qwen bị 2 chặn, Copilot nâng gói thì tự mở rộng.**
+
+Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen, và thiết lập sẵn sẽ nâng gói Copilot sau".
+Đo trước, sửa sau — kết quả đo (12/11):
+
+1. **Cline: hết credit (402), không phải lỗi tên model.** `probe_cline.py` gọi 5 model còn lại
+   trong catalog: **5/5 `402 Payment Required`** (`xiaomi/mimo-v2.6-pro`, `qwen/qwen3.8-max`,
+   `meta/muse-spark-1.2-contributor`, `minimax/minimax-m3`, `xiaomi/mimo-v2.5-pro`) ⇒ hội đồng
+   thực tế chỉ còn **1 phiếu** (`auto`). Đây là lớp lỗi **mới** (mã `PAYMENT`), khác `QUOTA`
+   (quota tháng tự reset, credit thì phải **nạp**) ⇒ thêm mã vào `classify_provider_error()`
+   + tách khỏi `QUOTA` + test.
+2. **Qwen: hai chặn thật, ghi lại thay vì đoán.** (a) Qwen OAuth miễn phí **đã ngừng 15/04/2026**
+   (`--auth-type qwen-oauth` → "Qwen OAuth free tier was discontinued"). (b) `~/.qwen/.env` đang trỏ
+   vào **chính gateway Cline** (`OPENAI_BASE_URL=https://api.cline.bot/api/v1`) nhưng gateway dùng id
+   **có dấu `/`** (`xiaomi/mimo-v2.6-pro`) trong khi Qwen CLI bắt buộc `modelType/model` ⇒
+   `400 invalid model format` (mã `MODEL_FORMAT`). ⇒ Giữ `AGENT_COUNCIL_QWEN=` rỗng, nhưng thêm
+   `probe_cline.py --qwen` để đo lại, và ghi sẵn dòng bật (1 dòng) khi có provider id không có `/`.
+   **"Dùng Qwen" hiện thực tế** = `qwen3.8-max` + `qwen3.7-plus` trong `AGENT_COUNCIL_CLINE`
+   (có số đo: 157 và 162 phiếu).
+3. **Không thêm model chỉ để "đông" — giữ 4 model Cline vì có số đo** (`council_eval --hours 720`):
+   `qwen3.8-max` 157 phiếu/33 ghép, VETO_R **-0.189**, prec **0.758**; `qwen3.7-max` 163/14 (-0.197,
+   0.571); `qwen3.7-plus` 162/7 (-0.237, 0.571); `mimo-v2.6-pro` 147/5 (-0.354, 0.600).
+   `minimax-m3` chỉ 20 phiếu/4 ghép, prec **0.500** (= ném đồng xu) ⇒ **không** thêm.
+   `muse-spark-1.3-contributor` probe OK nhưng **không tạo được phiếu** (3/3) ⇒ vẫn ngoài danh sách.
+4. **Thiết lập sẵn cho việc nâng gói Copilot (không phải sửa `.env` lần nữa).**
+   - `.env`: `AGENT_COUNCIL_MODELS=auto` + **`AGENT_COUNCIL_MODELS_CANDIDATES=claude-sonnet-5.5,
+     claude-haiku-4.5,gemini-3.8-flash,gpt-6.1-sol,grok-4.7`** + `AGENT_COUNCIL_PROBE_TTL_DAYS=7`.
+   - `agents.promote_copilot_candidates()` + `agents.read_probe_cache()`: hội đồng đọc
+     `logs/model_probe.json` và **tự thêm** model nào đã đo được `OK` (hết hạn 7 ngày thì thôi).
+   - `tools/probe_cline.py --copilot [--candidates]` **ghi cache** (nguyên tử, qua `.tmp` + `os.replace`).
+   - Vòng đời sau khi nâng gói: `python tools/probe_cline.py --copilot --candidates` → lần đo kế tiếp
+     hội đồng tự có thêm phiếu; **không cần sửa `.env`, không cần restart**.
+
+

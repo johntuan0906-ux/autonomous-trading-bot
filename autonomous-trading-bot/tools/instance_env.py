@@ -21,6 +21,10 @@ from pathlib import Path
 KEYS = ("BINANCE_TESTNET", "BINANCE_API_KEY", "BINANCE_API_SECRET",
         "BINANCE_LIVE_API_KEY", "AGENT_PROVIDER", "AGENT_MODEL",
         "AGENT_COUNCIL_CLINE", "AGENT_COUNCIL_LOCAL", "AGENT_COUNCIL_QWEN",
+        # (12/11, B-052) danh sach model Copilot DU PHONG + han cache do model: phai
+        # dong bo 2 instance, neu khong LIVE se khong tu mo rong hoi dong sau khi nang goi.
+        "AGENT_COUNCIL_MODELS", "AGENT_COUNCIL_MODELS_CANDIDATES",
+        "AGENT_COUNCIL_PROBE_TTL_DAYS",
         "CLINE_SKIP_MODELS", "LOCAL_SKIP_MODELS", "AGENT_COUNCIL_SINGLE_BELOW",
         "LIVE_CONFIRM", "DRY_RUN")
 

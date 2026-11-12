@@ -180,15 +180,29 @@ def classify_provider_error(rc: int, text: str = "") -> str:
     `MODEL_GATED`**, chi `--model auto` chay duoc (rc=0, tra "OK"). Khong co ma phan loai thi
     nguoi van hanh chi thay "im lang" va se di sua lung tung.
 
-    Ma tra ve: OK · MODEL_GATED · AUTH · QUOTA · RATE · ERR
+    Ma tra ve: OK · MODEL_GATED · AUTH · PAYMENT · QUOTA · RATE · ERR
+
+    (12/11, B-052) Them `PAYMENT`: do that 12/11 bang `tools/probe_cline.py` — gateway
+    Cline tra **`402 Payment Required`** cho CA 5 model (`xiaomi/mimo-v2.6-pro`,
+    `qwen/qwen3.8-max`, `meta/muse-spark-1.2-contributor`, `minimax/minimax-m3`,
+    `xiaomi/mimo-v2.5-pro`) => hoi dong con dung 1 phieu (Copilot `auto`) ma khong co
+    dong log nao noi "het credit". `402` KHAC `QUOTA` (quota thang tu reset; credit thi
+    phai NAP) nen phai co ma rieng de nguoi van hanh biet dung viec can lam.
     """
     t = str(text or "").lower()
-    if rc == 0 and "not available" not in t:
+    # (12/11, B-052) Loi CAU HINH/THANH TOAN phai duoc nhan dien CA KHI rc==0: vai CLI in
+    # thong bao loi ra stdout roi van thoat 0 -> truoc day bi doc thanh "OK" (im lang).
+    if "payment required" in t or "402" in t or "insufficient credit" in t \
+            or "billing" in t or "out of credits" in t:
+        return "PAYMENT"
+    if "not available" in t:
+        return "MODEL_GATED"
+    if "invalid model format" in t or "model format" in t:
+        return "MODEL_FORMAT"
+    if rc == 0:
         if "exceeded your monthly quota" in t or "insufficient quota" in t:
             return "QUOTA"
         return "OK"
-    if "not available" in t:
-        return "MODEL_GATED"
     if ("no authentication information" in t or "not logged in" in t
             or "authentication" in t and "token" in t):
         return "AUTH"
@@ -196,8 +210,6 @@ def classify_provider_error(rc: int, text: str = "") -> str:
         return "QUOTA"
     if "rate limit" in t or "429" in t or "too many requests" in t:
         return "RATE"
-    if rc == 0:
-        return "OK"
     return "ERR"
 
 
@@ -2334,14 +2346,81 @@ _MODEL_PREFIX_PROVIDER = ((CLINE_PREFIX, "cline"), (MUSE_PREFIX, "muse"),
                           ("qwen/", "qwen"), ("local/", "local"))
 
 
+PROBE_CACHE_PATH = "logs/model_probe.json"
+
+
+def read_probe_cache(path: str | None = None, *, ttl_days: float = 7.0,
+                     now: float | None = None) -> dict:
+    """Doc cache ket qua do model (`logs/model_probe.json`) -> {model: code}.
+
+    Dinh dang (do `tools/probe_cline.py` ghi):
+        {"probed_at": <epoch>, "results": {"auto": {"code": "OK", "secs": 20.0}}}
+
+    Ham THUAN TUY (chi doc file): file thieu/hong/qua han => {} (fail-open, KHONG nem).
+    Vi sao can fail-open: hoi dong khong duoc phep chet vi mot file cache hong.
+    """
+    p = path or PROBE_CACHE_PATH
+    try:
+        with open(p, encoding="utf-8") as f:
+            js = json.load(f)
+    except Exception:  # noqa: BLE001
+        return {}
+    if not isinstance(js, dict):
+        return {}
+    at = js.get("probed_at")
+    try:
+        at = float(at)
+    except (TypeError, ValueError):
+        at = 0.0
+    ttl = max(0.0, float(ttl_days)) * 86400.0
+    ts = float(time.time() if now is None else now)
+    if ttl and ts - at > ttl:
+        return {}
+    res = js.get("results")
+    if not isinstance(res, dict):
+        return {}
+    out: dict = {}
+    for m, v in res.items():
+        code = (v.get("code") if isinstance(v, dict) else v)
+        code = str(code or "").upper()
+        if code:
+            out[str(m)] = code
+    return out
+
+
+def promote_copilot_candidates(cfg, cache: dict | None = None) -> list:
+    """Model Copilot du phong DA DO DUOC -> danh sach them vao hoi dong.
+
+    (12/11, B-052) Vong doi: `.env` ghim `AGENT_COUNCIL_MODELS=auto` (goi hien tai chi
+    cho `auto`) + `AGENT_COUNCIL_MODELS_CANDIDATES=claude-sonnet-5.5,...`. Khi nang goi,
+    chay `python tools/probe_cline.py --copilot` -> cache ghi lai model nao `OK`; tu lan
+    do sau `_council_models` tu them cac model do. Het han `AGENT_COUNCIL_PROBE_TTL_DAYS`
+    => thoi them (tranh dung ten model vua bi go khoi goi).
+    """
+    raw = str(getattr(cfg, "agent_council_models_candidates", "") or "")
+    cands = [m.strip() for m in raw.split(",") if m.strip()]
+    if not cands:
+        return []
+    if cache is None:
+        cache = read_probe_cache(
+            ttl_days=_f(getattr(cfg, "agent_council_probe_ttl_days", 7.0), 7.0))
+    have = {m.strip() for m in str(getattr(cfg, "agent_council_models", "") or "").split(",")
+            if m.strip()}
+    return [m for m in cands if cache.get(m) == "OK" and m not in have]
+
+
 def _council_models(cfg) -> list:
     """Danh sach model hoi dong, tu loai bo provider het quota.
 
     (05/10) Copilot het -> Cline lam 100%; Cline het -> Copilot lam 100%.
     Ca 2 deu chan -> council rong, log canh bao.
+    (12/11, B-052) Them candidate Copilot DA DO duoc (cache `logs/model_probe.json`):
+    nang goi Copilot xong chi can chay `probe_cline.py --copilot`, lan do sau hoi dong
+    tu co them phieu — khong sua `.env`, khong restart.
     """
     raw = str(getattr(cfg, "agent_council_models", "") or "")
     copilot_models = [m.strip() for m in raw.split(",") if m.strip()] or list(COUNCIL_MULTI_MODELS)
+    copilot_models = _dedup_models(copilot_models + promote_copilot_candidates(cfg))
     cline_models = _cline_council_models(cfg)
     muse_models = _muse_council_models(cfg)
     muse_cli_models = _muse_cli_council_models(cfg)

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 12/11/2026 22:24:06 · commit `9970bee`
+- **Cập nhật**: 12/11/2026 22:54:06 · commit `638f212`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `83300` · round `240` · nhịp tim cách đây 85.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3173.59 USDT
+- **Bot**: pid `83300` · round `247` · nhịp tim cách đây 164.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3174.15 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3036 lệnh đóng, WR 41.04%, E(R) 0.2317, PnL -1044.88$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 106 | 47.17 | 2.167 | 1.383 | 0.3578 | 58.3 |
 | 14 ngày | 127 | 41.73 | 1.699 | 0.836 | 0.265 | -48.79 |
-| 30 ngày | 2309 | 35.99 | 2.066 | 0.7 | 0.3037 | -1088.03 |
+| 30 ngày | 2307 | 35.98 | 2.07 | 0.701 | 0.3044 | -1078.72 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.836 < 1.1; PF($) cua so 30 ngay = 0.700 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.836 < 1.1; PF($) cua so 30 ngay = 0.701 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,12 +39,14 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (2)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | AERO/USDT:USDT | SHORT | 119.07 | 0.5347 | 0.5341653 | 0.487696 | True | True | 1.345 |
+| ASTER/USDT:USDT | LONG | 201.0 | 0.6525 | 0.632628 | 0.692244 | False | False | 0.242 |
 | AVAX/USDT:USDT | LONG | 12.0 | 8.433 | 8.103696 | 9.091608 | False | False | 0.768 |
+| BANK/USDT:USDT | SHORT | 5420.0 | 0.02147 | 0.022208 | 0.019994 | False | False | 0.068 |
 
 ---
 

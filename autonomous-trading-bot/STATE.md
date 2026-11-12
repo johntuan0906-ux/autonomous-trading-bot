@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 12/11/2026 07:23:56 · commit `bfb36e2`
+- **Cập nhật**: 12/11/2026 07:53:56 · commit `71060f0`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `83300` · round `17` · nhịp tim cách đây 137.8s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3165.91 USDT
+- **Bot**: pid `83300` · round `25` · nhịp tim cách đây 20.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3164.95 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3036 lệnh đóng, WR 41.04%, E(R) 0.2317, PnL -1044.88$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 109 | 45.87 | 1.978 | 1.146 | 0.3194 | 26.86 |
 | 14 ngày | 127 | 41.73 | 1.699 | 0.836 | 0.265 | -48.79 |
-| 30 ngày | 2389 | 36.63 | 2.019 | 0.702 | 0.2909 | -1151.29 |
+| 30 ngày | 2386 | 36.55 | 2.014 | 0.693 | 0.2898 | -1185.87 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.836 < 1.1; PF($) cua so 30 ngay = 0.702 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.836 < 1.1; PF($) cua so 30 ngay = 0.693 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -44,8 +44,8 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | AERO/USDT:USDT | SHORT | 170.1 | 0.5347 | 0.558202 | 0.487696 | False | False | 0.017 |
-| ASTER/USDT:USDT | LONG | 201.0 | 0.6525 | 0.632628 | 0.692244 | False | False | 0.176 |
-| AVAX/USDT:USDT | LONG | 12.0 | 8.433 | 8.103696 | 9.091608 | False | False | 0.352 |
+| ASTER/USDT:USDT | LONG | 201.0 | 0.6525 | 0.632628 | 0.692244 | False | False | 0.186 |
+| AVAX/USDT:USDT | LONG | 12.0 | 8.433 | 8.103696 | 9.091608 | False | False | 0.486 |
 | BANK/USDT:USDT | SHORT | 5420.0 | 0.02147 | 0.022208 | 0.019994 | False | False | 0.0 |
 
 ---

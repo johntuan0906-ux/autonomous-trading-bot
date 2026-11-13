@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/11/2026 14:36:25 · commit `6b64c31`
+- **Cập nhật**: 13/11/2026 15:06:25 · commit `7475250`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `218` · nhịp tim cách đây 129.2s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3161.8 USDT
+- **Bot**: pid `65600` · round `226` · nhịp tim cách đây 37.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3161.78 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3040 lệnh đóng, WR 41.05%, E(R) 0.232, PnL -1037.54$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 109 | 47.71 | 2.222 | 1.526 | 0.3739 | 77.65 |
 | 14 ngày | 127 | 41.73 | 1.76 | 0.868 | 0.2856 | -37.32 |
-| 30 ngày | 2233 | 35.02 | 2.114 | 0.704 | 0.3181 | -1009.73 |
+| 30 ngày | 2231 | 35.01 | 2.117 | 0.705 | 0.3186 | -1003.12 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.868 < 1.1; PF($) cua so 30 ngay = 0.704 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.868 < 1.1; PF($) cua so 30 ngay = 0.705 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,13 +39,14 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (5)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000BONK/USDT:USDT | SHORT | 37037.0 | 0.002601 | 0.002709 | 0.002385 | False | False | 0.0 |
 | 1000SHIB/USDT:USDT | SHORT | 23333.1 | 0.004295 | 0.0042907050000000006 | 0.004055 | False | False | 0.0 |
 | ACE/USDT:USDT | SHORT | 1024.0 | 0.11 | 0.113906 | 0.102188 | False | False | 0.819 |
+| AERO/USDT:USDT | LONG | 119.1 | 0.4884821998321 | 0.461424 | 0.536052 | False | False | 0.0 |
 | AVAX/USDT:USDT | SHORT | 31.0 | 8.099096774194 | 8.43571 | 7.37758 | False | False | 0.214 |
 
 ---

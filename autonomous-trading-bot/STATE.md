@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/11/2026 23:06:31 · commit `28e544d`
+- **Cập nhật**: 13/11/2026 23:36:32 · commit `7335cc6`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `348` · nhịp tim cách đây 104.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3160.06 USDT
+- **Bot**: pid `65600` · round `356` · nhịp tim cách đây 75.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3159.57 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3042 lệnh đóng, WR 41.03%, E(R) 0.2312, PnL -1052.18$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 110 | 47.27 | 2.159 | 1.505 | 0.3617 | 75.56 |
+| 7 ngày | 105 | 48.57 | 2.174 | 1.466 | 0.3708 | 63.76 |
 | 14 ngày | 129 | 41.09 | 1.688 | 0.826 | 0.2656 | -51.96 |
-| 30 ngày | 2176 | 33.87 | 2.113 | 0.652 | 0.32 | -1142.99 |
+| 30 ngày | 2173 | 33.78 | 2.11 | 0.646 | 0.3196 | -1161.85 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.826 < 1.1; PF($) cua so 30 ngay = 0.652 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.826 < 1.1; PF($) cua so 30 ngay = 0.646 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,9 +43,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | SHORT | 18050.0 | 0.0045624 | 0.004784 | 0.004118 | False | False | 0.474 |
+| 1000PEPE/USDT:USDT | SHORT | 18050.0 | 0.0045624 | 0.004784 | 0.004118 | False | False | 0.583 |
 | ACE/USDT:USDT | SHORT | 1024.0 | 0.11 | 0.113906 | 0.102188 | False | False | 0.819 |
-| ADA/USDT:USDT | SHORT | 872.0 | 0.1716 | 0.176184 | 0.162432 | False | False | 0.48 |
+| ADA/USDT:USDT | SHORT | 872.0 | 0.1716 | 0.176184 | 0.162432 | False | False | 0.349 |
 | AERO/USDT:USDT | LONG | 119.1 | 0.4884821998321 | 0.461424 | 0.536052 | False | False | 0.137 |
 
 ---

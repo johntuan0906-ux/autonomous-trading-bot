@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/11/2026 20:36:30 · commit `27def91`
+- **Cập nhật**: 13/11/2026 21:06:30 · commit `d97e56a`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `309` · nhịp tim cách đây 65.8s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3155.59 USDT
+- **Bot**: pid `65600` · round `317` · nhịp tim cách đây 40.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3155.53 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3042 lệnh đóng, WR 41.03%, E(R) 0.2312, PnL -1052.18$)
@@ -15,11 +15,11 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 110 | 47.27 | 2.159 | 1.505 | 0.3617 | 75.56 |
 | 14 ngày | 129 | 41.09 | 1.688 | 0.826 | 0.2656 | -51.96 |
-| 30 ngày | 2188 | 34.05 | 2.104 | 0.654 | 0.3179 | -1151.68 |
+| 30 ngày | 2185 | 34.05 | 2.111 | 0.657 | 0.3191 | -1134.07 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.826 < 1.1; PF($) cua so 30 ngay = 0.654 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.826 < 1.1; PF($) cua so 30 ngay = 0.657 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | SHORT | 18050.0 | 0.0045624 | 0.004784 | 0.004118 | False | False | 0.109 |
+| 1000PEPE/USDT:USDT | SHORT | 18050.0 | 0.0045624 | 0.004784 | 0.004118 | False | False | 0.078 |
 | ACE/USDT:USDT | SHORT | 1024.0 | 0.11 | 0.113906 | 0.102188 | False | False | 0.819 |
 | ADA/USDT:USDT | SHORT | 872.0 | 0.1716 | 0.176184 | 0.162432 | False | False | 0.0 |
-| AERO/USDT:USDT | LONG | 119.1 | 0.4884821998321 | 0.461424 | 0.536052 | False | False | 0.052 |
+| AERO/USDT:USDT | LONG | 119.1 | 0.4884821998321 | 0.461424 | 0.536052 | False | False | 0.137 |
 
 ---
 

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 13/11/2026 17:06:26 · commit `12c85e4`
+- **Cập nhật**: 13/11/2026 17:36:26 · commit `40fd626`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `256` · nhịp tim cách đây 139.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3163.18 USDT
+- **Bot**: pid `65600` · round `264` · nhịp tim cách đây 51.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3161.51 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3040 lệnh đóng, WR 41.05%, E(R) 0.232, PnL -1037.54$)
@@ -15,18 +15,18 @@
 |---|---|---|---|---|---|---|
 | 7 ngày | 108 | 48.15 | 2.293 | 1.668 | 0.3871 | 90.2 |
 | 14 ngày | 127 | 41.73 | 1.76 | 0.868 | 0.2856 | -37.32 |
-| 30 ngày | 2214 | 34.64 | 2.119 | 0.695 | 0.32 | -1027.34 |
+| 30 ngày | 2210 | 34.52 | 2.114 | 0.684 | 0.319 | -1062.06 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.868 < 1.1; PF($) cua so 30 ngay = 0.695 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.868 < 1.1; PF($) cua so 30 ngay = 0.684 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `0.4%` · trần tổng `1.6%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 768 lần cập nhật trọng số · Hội đồng AI: **5 model**
+- Learner: 769 lần cập nhật trọng số · Hội đồng AI: **5 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -39,12 +39,11 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (5)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | 1000BONK/USDT:USDT | SHORT | 37037.0 | 0.002601 | 0.002709 | 0.002385 | False | False | 0.0 |
-| 1000SHIB/USDT:USDT | SHORT | 23333.1 | 0.004295 | 0.0042907050000000006 | 0.004055 | False | False | 0.0 |
 | ACE/USDT:USDT | SHORT | 1024.0 | 0.11 | 0.113906 | 0.102188 | False | False | 0.819 |
 | AERO/USDT:USDT | LONG | 119.1 | 0.4884821998321 | 0.461424 | 0.536052 | False | False | 0.0 |
 | AVAX/USDT:USDT | SHORT | 31.0 | 8.099096774194 | 8.43571 | 7.37758 | False | False | 0.214 |

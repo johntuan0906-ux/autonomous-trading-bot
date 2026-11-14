@@ -26,6 +26,9 @@ KEYS = ("BINANCE_TESTNET", "BINANCE_API_KEY", "BINANCE_API_SECRET",
         "AGENT_COUNCIL_MODELS", "AGENT_COUNCIL_MODELS_CANDIDATES",
         "AGENT_COUNCIL_PROBE_TTL_DAYS",
         "CLINE_SKIP_MODELS", "LOCAL_SKIP_MODELS", "AGENT_COUNCIL_SINGLE_BELOW",
+        # (15/11, B-057) cooldown theo cap: doi thi doi CA 2 instance, neu khong LIVE/TESTNET
+        # se hanh xu khac nhau tren cung 1 journal.
+        "PAIR_COOLDOWN_MIN",
         "LIVE_CONFIRM", "DRY_RUN")
 
 

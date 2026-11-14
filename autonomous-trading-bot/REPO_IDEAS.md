@@ -1498,6 +1498,9 @@ Blockworks) — **đã thi hành ở §29.6**, kèm con số mới.
 | **Đóng dust AXS** (còn lại của §29.6) | nâng qty lên `minNotional` rồi `_close_exact` | ✅ đóng được; sau đó `restart_bot.py --target live --reset` mở lại LIVE |
 | **RESEARCH_1211.md** | 80 link, **47** đọc sâu ⇒ **12** mục adopt/adapt có thứ tự + bảng "**đừng làm**" kèm số đo | ✅ 4 mục đầu vào roadmap; mục 3 (đo/cooldown theo cặp) **hoãn theo yêu cầu** |
 | **SECURITY_AUDIT.md** (Bước 2 của roadmap) | 6 pha của `cloudflare/security-audit-skill`; bằng chứng máy kiểm được: `security/findings.json` + `tools/security_audit.py --check` | ✅ **6 phát hiện** (high 1 · medium 2 · low 3), **3 đã sửa** (F-01 `.env` lộ qua `serve_glow` — đo 200/29.804 byte, nay 404; F-02 allowlist Telegram fail-open; F-04 token trong log), **5 kiểm soát** xác nhận bằng AST |
+| **`tools/perf_report.py`** (Bước 3 roadmap) | 8 chỉ số: CAGR · Sharpe · Sortino · Calmar · MaxDD · Ulcer · PF · kỳ vọng; ghép OPEN→CLOSE FIFO để tách theo `setup_type`/`market_regime` | ✅ chạy trên journal thật (TESTNET 7 ngày: **PF 1,38 · WR 66,4% · MaxDD 4,69%** · 125 lệnh); tự cảnh báo khi kỳ vọng **R và USDT ngược dấu** (B-050) hoặc vốn ≤ 0 |
+| **Cooldown theo cặp** (B-057) | `entries_gate.in_cooldown()` + `PAIR_COOLDOWN_MIN=60`: cặp vừa **THUA** không vào lại 60′; đọc journal nên sống qua restart; lệnh **thắng không bị chặn** | ✅ 9 test, trong đó có đúng ca nghiệm thu "cặp vừa SL không vào lại trong 60′" |
+| **Một bảng phân loại lỗi sàn** (B-056) | `exchange.classify_error()`: 13 nhóm + `retryable` + `ban_until`; `is_reduce_only_rejected()`/`parse_ban_until()` thành vỏ | ✅ 9 test; sửa lớp lỗi "cùng 1 lỗi hiểu 3 cách" (đã từng làm golden `syn-api-ban-none` FAIL) |
 
 > **Luật mới, sinh ra từ số đo chứ không từ cảm tính**: **không thêm model vào hội đồng để "trông có vẻ
 > đông"** — phải qua `tools/council_eval.py --hours 720` với `prec > 0,5` **và** `n_ghep ≥ 8`. Đã loại:

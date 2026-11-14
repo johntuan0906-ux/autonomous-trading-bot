@@ -183,6 +183,9 @@ class Settings:
     be_at_r: float = field(default_factory=lambda: _get_float("BE_AT_R", 1.0))
     trail_atr_mult: float = field(default_factory=lambda: _get_float("TRAIL_ATR_MULT", 1.0))
     cooldown_sec: int = field(default_factory=lambda: _get_int("COOLDOWN_SEC", 0))
+    # (15/11, B-057) Cooldown THEO CAP sau 1 lenh THUA, doc tu JOURNAL (song qua restart).
+    # Khac `COOLDOWN_SEC`: cai do la RAM + doi xung (thang cung nghi). 0 = tat.
+    pair_cooldown_min: float = field(default_factory=lambda: _get_float("PAIR_COOLDOWN_MIN", 60.0))
     tg_token: str = field(default_factory=lambda: _get("TELEGRAM_BOT_TOKEN"))
     tg_chat: str = field(default_factory=lambda: _get("TELEGRAM_CHAT_ID"))
 

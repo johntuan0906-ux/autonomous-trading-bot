@@ -39,8 +39,66 @@ def is_reduce_only_rejected(err) -> bool:
     ngay tai thoi diem bot gui lenh dong ⇒ san tu choi lenh giam vi the bang `-2022`.
     Day KHONG phai loi he thong ma la "dua nhau ve dich": phai xu ly tuong minh.
     """
+    return classify_error(err)["code"] == "REDUCE_ONLY"
+
+
+#: (15/11, B-056) MOT bang phan loai cho moi loi san. Truoc day moi noi tu do regex mot kieu:
+#: `is_reduce_only_rejected` tim "-2022", `parse_ban_until` tim "banned until", turbo_demo bat
+#: "-1003" bang chuoi con ⇒ cung 1 loi duoc hieu khac nhau o 3 cho. Bang nay la nguon duy nhat.
+#: Thu tu QUAN TRONG: cu the truoc, tong quat sau (vd `-2019 Margin is insufficient` phai la
+#: INSUFFICIENT_MARGIN, khong duoc roi vao ORDER_REJECT).
+_ERROR_RULES: tuple = (
+    # (ma, dau hieu) — dau hieu khop case-insensitive trong chuoi loi
+    ("API_BAN", ("-1003", "way too many", "teapot", "banned until")),
+    ("RATE_LIMIT", ("-1015", "too many orders", "rate limit")),
+    ("TIMESTAMP", ("-1021", "timestamp for this request")),
+    ("AUTH", ("-2015", "invalid api-key", "api-key format", "signature for this request")),
+    ("REDUCE_ONLY", ("-2022", "reduceonly order is rejected")),
+    ("INSUFFICIENT_MARGIN", ("-2019", "margin is insufficient")),
+    ("MIN_NOTIONAL", ("-4164", "-4014", "notional")),
+    ("PROTECTION_LIMIT", ("-4045", "-4130", "stop order")),
+    ("LEVERAGE", ("-4048", "-4028", "leverage")),
+    ("POSITION_SIDE", ("-4061", "position side")),
+    ("PRICE_FILTER", ("-4131", "price filter", "percent price")),
+    ("QTY_RULE", ("-4003", "-1111", "quantity")),
+    ("NETWORK", ("timeout", "timed out", "connection", "temporarily unavailable",
+                 "network", "ssl", "proxy")),
+)
+
+
+def classify_error(err) -> dict:
+    """Phan loai 1 loi san -> dict (ma, ma Binance, retryable, moc het bi chan, tho).
+
+    Tra: {"code", "binance", "retryable", "ban_until", "text"}
+      - `code`    : ma trong `reason_codes` (API_BAN/AUTH/...) hoac ORDER_REJECT
+      - `binance` : so loi Binance neu doc duoc (-1003, -2019, ...), nguoc lai 0
+      - `retryable`: loi TAM THOI (mang, rate limit, timestamp) ⇒ thu lai duoc
+      - `ban_until`: epoch GIAY neu bi chan IP (0 = khong bi chan)
+    """
     s = str(err or "")
-    return "-2022" in s or "ReduceOnly Order is rejected" in s
+    low = s.lower()
+    code = "ORDER_REJECT"
+    for name, hints in _ERROR_RULES:
+        if any(h in low for h in hints):
+            code = name
+            break
+    m = re.search(r"-(\d{4})", s)
+    num = -int(m.group(1)) if m else 0
+    ban = 0.0
+    if code == "API_BAN":
+        mb = re.search(r"banned until (\d{10,13})", s)
+        if mb:
+            try:
+                v = float(mb.group(1))
+            except ValueError:
+                v = 0.0
+            ban = v / 1000.0 if v > 1e11 else v
+        if ban <= 0:
+            ban = time.time() + 900.0        # 418 khong kem moc -> nghi 15 phut (nhu truoc)
+    return {"code": code, "binance": num,
+            "retryable": code in ("NETWORK", "RATE_LIMIT", "TIMESTAMP"),
+            "ban_until": ban, "text": s[:200]}
+
 
 
 def _row_side(p) -> str | None:

@@ -27,7 +27,7 @@ from agents import (COUNCIL_ROLES, AgentLayer, council_decision,               #
                      review_payload, setup_payload)
 from config import Settings
 from derivatives import derivatives_guard, fetch_liquidations, fetch_oi_funding
-from exchange import BinanceFutures
+from exchange import BinanceFutures, classify_error
 from indicators import (liquidity_sweep, market_regime, mtf_trend, retest_ok,
                         technical_score, vwap)
 from journal import log_trade
@@ -147,16 +147,10 @@ def parse_ban_until(text) -> float:
 
     Do that 06/11 (LIVE): `{"code":-1003,"msg":"Way too many requests; IP(...) banned
     until 1793987694544"}`. Do dai chuoi la ms ⇒ phai chia 1000 (neu > 1e11).
-    Ham THUAN TUY -> test duoc.
+    (15/11, B-056) Chi con MOT nguon phan loai: `exchange.classify_error()` — truoc day moi noi
+    tu regex mot kieu nen cung 1 loi duoc hieu khac nhau.
     """
-    m = BAN_RE.search(str(text or ""))
-    if not m:
-        return 0.0
-    try:
-        v = float(m.group(1))
-    except ValueError:
-        return 0.0
-    return v / 1000.0 if v > 1e11 else v
+    return float(classify_error(text)["ban_until"])
 
 
 def api_ban_until(path=BAN_PATH) -> float:
@@ -977,6 +971,14 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         if sym in _last_close and (time.time() - _last_close[sym]) < cfg.cooldown_sec:
             results.append({"symbol": sym, "status": "COOLDOWN"})
             continue
+        # (15/11, B-057) Cooldown THEO CAP doc tu JOURNAL: cap vua THUA thi khong vao lai trong
+        # `PAIR_COOLDOWN_MIN` phut. Khac cai tren (RAM, doi xung, mat khi restart) ⇒ day la thu
+        # duy nhat con hieu luc sau khi bot restart giua luc cap do vua SL.
+        _cd, _cd_why = entries_gate.in_cooldown(sym, cfg)
+        if _cd:
+            results.append({"symbol": sym, "status": "COOLDOWN", "reason": _cd_why,
+                            "reason_code": "COOLDOWN"})
+            continue
         fr = fetched.get(sym, {})
         if fr.get("error"):
             results.append({"symbol": sym, "status": "DATA_FAIL", "reason": fr["error"]})
@@ -1708,8 +1710,9 @@ def main() -> None:
             _blob = json.dumps(res, ensure_ascii=False)
         except Exception:  # noqa: BLE001
             _blob = str(res)
-        _until = parse_ban_until(_blob)
-        if _until > time.time() and set_api_ban(_until, reason="-1003/418"):
+        _cls = classify_error(_blob)
+        _until = float(_cls["ban_until"])
+        if _until > time.time() and set_api_ban(_until, reason=_cls["code"]):
             log.error("API BAN: san chan IP toi %s (-1003) -> TAM DUNG quet den luc do",
                       time.strftime("%H:%M:%S", time.localtime(_until)))
             tg(cfg, f"⚠️ Sàn chặn IP tới {time.strftime('%H:%M', time.localtime(_until))} "

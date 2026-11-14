@@ -651,5 +651,15 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      động tiền), F-05 (`state_sync` ghi key vào `.env`), F-06 (`restart_bot` kill PID từ file).
    - Loại (không đủ bằng chứng): "prompt injection từ tin tức" ⇒ ghi thành hardening note kèm điều kiện
      đổi trạng thái (trước khi bật `AGENT_VETO_AUTHORITY`).
+8. **Bước 3 roadmap: đo lường tử tế (B-056, B-057).**
+   - `tools/perf_report.py` — 8 chỉ số (CAGR · Sharpe · Sortino · Calmar · MaxDD · Ulcer · PF · kỳ vọng)
+     từ **journal thật**, tách theo `setup_type`/`market_regime`, ghép context OPEN→CLOSE FIFO.
+     Đo trên TESTNET 7 ngày: **PF 1,38 · WR 66,4% · MaxDD 4,69% · Ulcer 3,15%** (125 lệnh).
+     Hai cảnh báo tự động: kỳ vọng R và USDT **ngược dấu** (dấu vết B-050), và vốn về ≤ 0.
+   - `PAIR_COOLDOWN_MIN=60` trong `entries_gate.in_cooldown()` — cặp **vừa THUA** không vào lại
+     trong 60′; đọc journal (sống qua restart), **không** chặn lệnh thắng (khác `COOLDOWN_SEC` đối
+     xứng + chỉ trong RAM). Cache theo `(path, mtime, size)` vì hàm chạy cho ~460 cặp mỗi vòng.
+   - `exchange.classify_error()` — **một** bảng phân loại lỗi sàn (13 nhóm + `retryable` + `ban_until`);
+     `is_reduce_only_rejected()` và `turbo_demo.parse_ban_until()` chỉ còn là vỏ của nó.
 
 

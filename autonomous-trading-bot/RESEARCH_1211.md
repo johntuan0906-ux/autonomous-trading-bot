@@ -170,6 +170,10 @@ hoặc kết luận "không có" kèm bằng chứng.
 `PAIR_COOLDOWN_MIN` trong `entries_gate`, ánh xạ lỗi ccxt. *Nghiệm thu*: báo cáo chạy trên journal thật;
 cooldown có test "cặp vừa SL không vào lại trong 60′"; mọi mã lỗi sàn đi qua 1 hàm phân loại duy nhất.
 
+> **ĐÃ XONG 15/11**: `tools/perf_report.py` (8 chỉ số, chạy trên journal TESTNET: PF 1,38 · WR 66,4% ·
+> MaxDD 4,69% · 125 lệnh/7 ngày), `entries_gate.in_cooldown()` + `PAIR_COOLDOWN_MIN=60` (9 test, có đúng
+> ca "cặp vừa SL không vào lại trong 60′"), `exchange.classify_error()` (1 bảng, 9 test; 2 hàm cũ thành vỏ).
+
 ## 9. Nguồn (đọc 12/11/2026)
 
 ruflo · anthropics/skills · claude-plugins-official · knowledge-work-plugins · financial-services ·

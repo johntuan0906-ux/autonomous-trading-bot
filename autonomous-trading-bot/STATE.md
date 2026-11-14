@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 14/11/2026 23:36:49 · commit `e4ee77f`
+- **Cập nhật**: 15/11/2026 00:06:51 · commit `c091aa5`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `725` · nhịp tim cách đây 15.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3218.39 USDT
+- **Bot**: pid `65600` · round `732` · nhịp tim cách đây 77.2s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3218.46 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3047 lệnh đóng, WR 40.99%, E(R) 0.2328, PnL -1048.28$)
@@ -39,15 +39,16 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (5)
+## Vị thế đang quản lý (6)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 41666.0 | 0.002479 | 0.002575 | 0.002287 | False | False | 0.885 |
+| 1000BONK/USDT:USDT | SHORT | 20416.34 | 0.002479 | 0.0024765209999999998 | 0.002287 | True | True | 35.902 |
+| 1000PEPE/USDT:USDT | SHORT | 16253.0 | 0.0038949 | 0.004141 | 0.003403 | False | False | 0.003 |
 | 1000SHIB/USDT:USDT | SHORT | 24560.9 | 0.004161 | 0.004156839 | 0.003933 | False | False | 0.0 |
-| ADA/USDT:USDT | SHORT | 709.0 | 0.1594 | 0.16504 | 0.14812 | False | False | 0.887 |
-| AERO/USDT:USDT | SHORT | 205.4 | 0.4563 | 0.47577 | 0.41736 | False | False | 0.945 |
-| CKB/USDT:USDT | SHORT | 77777.7 | 0.000904 | 0.0009030959999999999 | 0.000832 | True | True | 1.778 |
+| ADA/USDT:USDT | SHORT | 709.0 | 0.1594 | 0.16504 | 0.14812 | False | False | 0.851 |
+| AERO/USDT:USDT | SHORT | 205.4 | 0.4563 | 0.47577 | 0.41736 | False | False | 0.981 |
+| CKB/USDT:USDT | SHORT | 77777.7 | 0.000904 | 0.0009030959999999999 | 0.000832 | True | True | 1.806 |
 
 ---
 

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/11/2026 01:06:59 · commit `364f465`
+- **Cập nhật**: 15/11/2026 01:37:11 · commit `0121209`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `745` · nhịp tim cách đây 0.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3213.68 USDT
+- **Bot**: pid `65600` · round `751` · nhịp tim cách đây 93.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3214.88 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3047 lệnh đóng, WR 40.99%, E(R) 0.2328, PnL -1048.28$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 110 | 47.27 | 2.316 | 1.483 | 0.4089 | 67.66 |
-| 14 ngày | 126 | 42.86 | 1.816 | 0.958 | 0.2957 | -11.16 |
+| 14 ngày | 125 | 43.2 | 1.86 | 1.007 | 0.3067 | 1.86 |
 | 30 ngày | 2110 | 33.18 | 2.135 | 0.589 | 0.3259 | -1266.39 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 0.958 < 1.1; PF($) cua so 30 ngay = 0.589 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay = 1.007 < 1.1; PF($) cua so 30 ngay = 0.589 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,12 +43,12 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 14291.438 | 0.002479 | 0.0024765209999999998 | 0.002287 | True | True | 27.834 |
+| 1000BONK/USDT:USDT | SHORT | 10004.0066 | 0.002479 | 0.0024765209999999998 | 0.002287 | True | True | 23.397 |
 | 1000PEPE/USDT:USDT | SHORT | 16253.0 | 0.0038949 | 0.004141 | 0.003403 | False | False | 0.0 |
 | 1000SHIB/USDT:USDT | SHORT | 24560.9 | 0.004161 | 0.004156839 | 0.003933 | False | False | 0.0 |
 | ADA/USDT:USDT | SHORT | 709.0 | 0.1594 | 0.16504 | 0.14812 | False | False | 0.727 |
 | AERO/USDT:USDT | SHORT | 143.78 | 0.4563 | 0.45584369999999996 | 0.41736 | True | True | 1.032 |
-| CKB/USDT:USDT | SHORT | 77777.7 | 0.000904 | 0.0009030959999999999 | 0.000832 | True | True | 1.806 |
+| CKB/USDT:USDT | SHORT | 77777.7 | 0.000904 | 0.0009030959999999999 | 0.000832 | True | True | 1.833 |
 
 ---
 

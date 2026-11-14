@@ -3,17 +3,17 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/11/2026 01:37:11 · commit `0121209`
+- **Cập nhật**: 15/11/2026 02:07:08 · commit `a3f1c17`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `751` · nhịp tim cách đây 93.7s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3214.88 USDT
+- **Bot**: pid `65600` · round `758` · nhịp tim cách đây 20.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3217.35 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3047 lệnh đóng, WR 40.99%, E(R) 0.2328, PnL -1048.28$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 110 | 47.27 | 2.316 | 1.483 | 0.4089 | 67.66 |
+| 7 ngày | 109 | 47.71 | 2.386 | 1.524 | 0.4218 | 71.49 |
 | 14 ngày | 125 | 43.2 | 1.86 | 1.007 | 0.3067 | 1.86 |
 | 30 ngày | 2110 | 33.18 | 2.135 | 0.589 | 0.3259 | -1266.39 |
 
@@ -43,12 +43,12 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 10004.0066 | 0.002479 | 0.0024765209999999998 | 0.002287 | True | True | 23.397 |
+| 1000BONK/USDT:USDT | SHORT | 10004.0066 | 0.002479 | 0.0024765209999999998 | 0.002287 | True | True | 30.658 |
 | 1000PEPE/USDT:USDT | SHORT | 16253.0 | 0.0038949 | 0.004141 | 0.003403 | False | False | 0.0 |
 | 1000SHIB/USDT:USDT | SHORT | 24560.9 | 0.004161 | 0.004156839 | 0.003933 | False | False | 0.0 |
-| ADA/USDT:USDT | SHORT | 709.0 | 0.1594 | 0.16504 | 0.14812 | False | False | 0.727 |
+| ADA/USDT:USDT | SHORT | 709.0 | 0.1594 | 0.16504 | 0.14812 | False | False | 0.851 |
 | AERO/USDT:USDT | SHORT | 143.78 | 0.4563 | 0.45584369999999996 | 0.41736 | True | True | 1.032 |
-| CKB/USDT:USDT | SHORT | 77777.7 | 0.000904 | 0.0009030959999999999 | 0.000832 | True | True | 1.833 |
+| CKB/USDT:USDT | SHORT | 77777.7 | 0.000904 | 0.0009030959999999999 | 0.000832 | True | True | 1.972 |
 
 ---
 

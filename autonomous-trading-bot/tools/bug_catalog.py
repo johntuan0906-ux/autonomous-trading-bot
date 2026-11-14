@@ -604,6 +604,31 @@ CLASSES = [
                   "test_selfops.py::TestCrewNoiDoi::test_roster_from_env_ap_tien_to_va_loc_skip_ignore_candidate",
                   "test_selfops.py::TestCrewNoiDoi::test_state_doc_roster_va_phieu_tu_instance"],
     },
+    {
+        "code": "B-054", "kind": "rui-ro", "seen": "15/11/2026",
+        "title": "`serve_glow.py` phuc vu CA thu muc repo qua HTTP: `GET /.env` tra ve nguyen file key that (do duoc: 200 / 29.804 byte)",
+        "symptom": "Server tinh cua ban do glow dung `SimpleHTTPRequestHandler` ma khong qua `translate_path`, nen moi file trong repo deu tai duoc — ke ca `.env` (API key Binance futures, `BINANCE_LIVE_*`, `TELEGRAM_BOT_TOKEN`). Do 15/11: `HEAD http://127.0.0.1:8897/.env` => **200**, `Content-Length: 29804` (dung bang size `.env`), `Content-Type: application/octet-stream`. Nguy hiem gap boi vi co tham so `--host` (mo ra LAN) va khong co xac thuc nao; cong mac dinh 8765 lai trung voi bridge Copilot. Cung dot nay: token Telegram bi ghi vao `logs/telegram_bridge.log` moi khi loi mang, vi `urllib3` nem loi chua nguyen URL `/bot<TOKEN>/sendMessage`",
+        "guard": "`serve_glow.denied()` + `Handler.translate_path()`: chan theo TEN (`.env*`, `id_rsa*`, `id_ed25519*`, `.git`, `.npmrc`, `.netrc`) va theo THU MUC (`logs/`, `__pycache__/`, `.venv/`, `node_modules/`) -> tra 404; `--host` khac loopback thi in canh bao rang POST khong co token. `notify.redact()` + `telegram_bridge.redact()` thay `/bot<so>:<chuoi>` bang `/bot<token>` truoc khi ghi log. Kiem lai bang may: `python tools\\security_audit.py --check` (F-01, F-04)",
+        "files": ["serve_glow.py", "notify.py", "tools/telegram_bridge.py", "SECURITY_AUDIT.md",
+                  "security/findings.json", "tools/security_audit.py"],
+        "tests": ["test_serve_glow_guard.py::TestChanFileBiMat::test_chan_theo_ten",
+                  "test_serve_glow_guard.py::TestChanFileBiMat::test_file_thuong_van_phuc_vu_duoc",
+                  "test_serve_glow_guard.py::TestServerThat::test_env_tra_404",
+                  "test_serve_glow_guard.py::TestServerThat::test_env_bak_tra_404",
+                  "test_serve_glow_guard.py::TestServerThat::test_file_thuong_tra_200",
+                  "test_notify_redact.py::TestBoTokenTrongLog::test_xoa_token_khoi_url_bot_api",
+                  "test_notify_redact.py::TestBoTokenTrongLog::test_xoa_du_token_khong_truyen_vao",
+                  "test_notify_redact.py::TestBoTokenTrongLog::test_telegram_bridge_cung_xoa",
+                  "test_notify_redact.py::TestBoTokenTrongLog::test_send_loi_mang_thi_log_khong_co_token"],
+    },
+    {
+        "code": "B-055", "kind": "rui-ro", "seen": "15/11/2026",
+        "title": "telegram_bridge: danh sach `chat_id` cho phep RONG thi lai CHO QUA (fail-open) — ai nhan tin cho bot cung dieu khien duoc",
+        "symptom": "Dieu kien cu chi chan khi danh sach CO phan tu, nen instance khong khai `TELEGRAM_CHAT_ID`/`TELEGRAM_ALLOW_CHAT_IDS` (ban clone, may moi) se xu ly lenh cua bat ky ai: `/status` chay `tools/ops.py` gui lai vi the + equity, `/ask` ghi vao hang doi; khi `TELEGRAM_ALLOW_WRITE=true` (ca 2 instance dang bat) thi `/restart <target>` va `/reset <target> confirm` chay duoc. Docstring cua `poll()` lai khang dinh 'chat_id la bi BO QUA' nen khong ai nghi — dung lop loi 'im lang + khang dinh sai' cua B-047/B-051",
+        "guard": "Dao thanh **fail-closed**: `if not allow or cid not in allow` -> bo qua + ghi log 'danh sach cho phep: RONG' + khong tra loi nguoi la. Test chot gia lap dung tinh huong nguy hiem nhat: `allow_ids=[]`, `allow_write=True`, mot update tu chat la",
+        "files": ["tools/telegram_bridge.py", "SECURITY_AUDIT.md", "security/findings.json"],
+        "tests": ["test_telegram_bridge.py::TestPoll::test_danh_sach_cho_phep_RONG_thi_chan_HET"],
+    },
 ]
 
 

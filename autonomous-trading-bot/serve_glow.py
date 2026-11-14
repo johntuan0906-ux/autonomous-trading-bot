@@ -41,6 +41,21 @@ SUBS_LOCK = threading.Lock()
 STATE = {"signature": "", "snapshot": None, "snapshot_at": 0.0,
          "log_size": 0, "building": False}
 
+# (15/11, B-054) SimpleHTTPRequestHandler phuc vu CA thu muc ROOT (repo) — tuc `GET /.env` tra ve
+# nguyen file key that (do duoc: 200, 29.804 byte). Chan theo ten: file bi mat + thu muc khong duoc lo.
+DENY_PREFIX = (".env", "id_rsa", "id_ed25519", ".git", ".npmrc", ".netrc")
+DENY_DIRS = {"logs", "__pycache__", ".venv", "venv", "node_modules", ".git"}
+
+
+def denied(rel) -> bool:
+    """True neu duong dan TUONG DOI so voi ROOT khong duoc phep phuc vu."""
+    parts = [p for p in str(rel).replace("\\", "/").split("/") if p not in ("", ".")]
+    for p in parts:
+        low = p.lower()
+        if low in DENY_DIRS or low.startswith(DENY_PREFIX):
+            return True
+    return False
+
 
 def broadcast(kind, data):
     msg = "event: %s\ndata: %s\n\n" % (kind, json.dumps(data, ensure_ascii=False))
@@ -89,6 +104,17 @@ def file_tokens(names):
 
 class Handler(SimpleHTTPRequestHandler):
     server_version = "GlowServe/1.0"
+
+    def translate_path(self, path):
+        """Chan file bi mat: `/.env` va `logs/**` -> 404 (thay vi tra nguyen key)."""
+        p = super().translate_path(path)
+        try:
+            rel = Path(p).resolve().relative_to(ROOT)
+        except (ValueError, OSError):
+            return str(ROOT / "__bi_chan__")
+        if denied(str(rel)):
+            return str(ROOT / "__bi_chan__")     # khong ton tai -> 404
+        return p
 
     def _json(self, obj, code=200):
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -258,6 +284,9 @@ def main(argv=None):
     print("[serve] http://%s:%d/  (Canvas2D)  +  /glow_map_webgl.html (WebGL)" % (
         args.host, args.port))
     print("[serve] api: /api/snapshot /api/stream /api/event /api/rebuild /api/files")
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        print("[serve] CANH BAO: dang mo ra mang ngoai (%s). POST /api/event + /api/rebuild"
+              " KHONG co token — chi mo khi that su can, va tat khi xong." % args.host)
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     try:
         srv.serve_forever()

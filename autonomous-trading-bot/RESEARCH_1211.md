@@ -161,6 +161,11 @@ reconcile-first,drift-report}/SKILL.md`; `SECURITY_AUDIT.md` theo checklist Clou
 `file:line`). *Nghiệm thu*: 4 thư mục skill hợp spec (`name`+`description`), audit có ≥1 phát hiện thật
 hoặc kết luận "không có" kèm bằng chứng.
 
+> **ĐÃ XONG 15/11**: 4 skill + `tests/test_skills_spec.py`; `SECURITY_AUDIT.md` 6 pha + `security/findings.json`
+> + `tools/security_audit.py --check` (máy đọc lại code). **6 phát hiện, 3 đã sửa**: `.env` lộ qua
+> `serve_glow.py` (đo: `HEAD /.env` = 200 / 29.804 byte → nay 404), allowlist Telegram fail-open,
+> token Telegram trong log. 3 mục chấp nhận có điều kiện đổi trạng thái (F-03/F-05/F-06).
+
 **Bước 3 — đo lường tử tế (1–2 ngày).** `tools/perf_report.py` (8 chỉ số, tách theo setup/regime),
 `PAIR_COOLDOWN_MIN` trong `entries_gate`, ánh xạ lỗi ccxt. *Nghiệm thu*: báo cáo chạy trên journal thật;
 cooldown có test "cặp vừa SL không vào lại trong 60′"; mọi mã lỗi sàn đi qua 1 hàm phân loại duy nhất.

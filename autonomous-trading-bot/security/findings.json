@@ -1,0 +1,134 @@
+{
+  "audited_at": "15/11/2026",
+  "scope": "autonomous-trading-bot (TESTNET) + atb-live (LIVE) — cung mot code base",
+  "skill": "cloudflare/security-audit-skill — 6 pha (recon · coverage-led hunting · candidate validation · structured output · independent verification · target-neutral report)",
+  "rubric": {
+    "severity": "kha nang xay ra x tac dong (khong phai 'lech checklist'); chi tinh loi THAT SU vuot qua mot ranh gioi",
+    "critical": "mat tien / lenh trai phep ngay khi khai thac duoc tu xa",
+    "high": "mat quyen dieu khien tai khoan hoac key that, khong can nguoi dung",
+    "medium": "lo thong tin / dieu khien duoc khi co them 1 dieu kien (token, cung may, cau hinh thieu)",
+    "low": "can quyen ghi file cuc bo hoac chi lam nhieu log",
+    "info": "khong phai lo hong: ghi lai de lan sau khong bao lai"
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "title": "serve_glow.py phuc vu CA thu muc repo qua HTTP nen `GET /.env` tra ve nguyen file key that",
+      "severity": "high",
+      "status": "fixed",
+      "bug": "B-054",
+      "boundary": "HTTP cuc bo -> file system (repo root)",
+      "exploit": "Chay `python serve_glow.py` (mac dinh :8765) roi `GET /.env` => 200, Content-Length 29.804 = dung bang size `.env`, kieu `application/octet-stream`. Lay duoc BINANCE_API_KEY/SECRET (quyen futures), BINANCE_LIVE_*, TELEGRAM_BOT_TOKEN => tu mo/dong lenh va dieu khien bot qua Telegram. Neu chay `--host 0.0.0.0` (co tham so nay) thi ca LAN doc duoc. Da do lai sau khi sua: 404.",
+      "impact": "key giao dich that + token bot; khong rut duoc tien (key futures khong co quyen withdrawal) nhung lenh trai phep thi co",
+      "evidence": [
+        {"file": "serve_glow.py", "line": 50, "pattern": "def denied(rel) -> bool:"},
+        {"file": "serve_glow.py", "line": 108, "pattern": "def translate_path(self, path):"}
+      ],
+      "guard": "Handler.translate_path() chan theo ten: `.env*`, `id_rsa*`, `id_ed25519*`, `.git`, `.npmrc`, `.netrc` va cac thu muc `logs/`, `__pycache__/`, `.venv/`, `node_modules/` -> tra 404. `--host` khac loopback thi in canh bao rang POST khong co token.",
+      "tests": ["test_serve_glow_guard.py::TestServerThat::test_env_tra_404",
+                "test_serve_glow_guard.py::TestChanFileBiMat::test_chan_theo_ten"]
+    },
+    {
+      "id": "F-02",
+      "title": "telegram_bridge: danh sach chat_id cho phep RONG thi lai cho QUA (fail-open)",
+      "severity": "medium",
+      "status": "fixed",
+      "bug": "B-055",
+      "boundary": "Internet (Telegram chat) -> dieu khien bot",
+      "exploit": "Dieu kien cu chi chan khi danh sach CO phan tu. Instance/clone khong khai `TELEGRAM_CHAT_ID` lan `TELEGRAM_ALLOW_CHAT_IDS` => ai nhan tin cho bot cung duoc xu ly: `/status` chay `tools/ops.py` va gui lai vi the/equity, `/ask` ghi vao hang doi; neu `TELEGRAM_ALLOW_WRITE=true` (ca 2 instance dang bat) thi `/restart live`, `/reset live confirm` chay duoc. Docstring cua `poll()` noi nguoc lai (\"chat_id la bi BO QUA\") nen khong ai phat hien.",
+      "impact": "lo trang thai bot cho nguoi la + dieu khien duoc lenh GHI neu cau hinh thieu; tren may hien tai 2 instance deu co chat_id nen chua khai thac duoc, nhung ban clone/instance moi thi co",
+      "evidence": [
+        {"file": "tools/telegram_bridge.py", "line": 394, "pattern": "if not allow or cid not in allow:"},
+        {"file": "tools/telegram_bridge.py", "absent": "if allow and cid not in allow"}
+      ],
+      "guard": "Dao dieu kien thanh fail-closed (`not allow or ...`), ghi log ro \"danh sach cho phep: RONG\", khong tra loi nguoi la.",
+      "tests": ["test_telegram_bridge.py::TestPoll::test_danh_sach_cho_phep_RONG_thi_chan_HET"]
+    },
+    {
+      "id": "F-03",
+      "title": "vscode_lm_bridge: token tuy chon (mac dinh KHONG co) va dung chung cong 8765 voi serve_glow",
+      "severity": "medium",
+      "status": "accepted",
+      "boundary": "process cuc bo -> phieu hoi dong (nguon 'Copilot')",
+      "exploit": "`extension.js:53` chi kiem tra Authorization khi `token` khac rong, ma cau hinh mac dinh la `token: \"\"` => moi process tren may goi duoc `/complete`. Cong mac dinh 8765 trung voi `serve_glow.py`, nen mot process cuc bo bind 8765 truoc se dong vai 'LLM' va tra JSON phieu bat ky => bom phieu vao hoi dong (co the lam tat veto hoac veto moi lenh).",
+      "impact": "hoi dong la shadow/veto; do 11/11 veto 'bang chung nguoc dau' nen quyen veto thuc te = 0 => tac dong tien = 0 hom nay, nhung se co tac dong khi bat quyen veto",
+      "evidence": [
+        {"file": "vscode_lm_bridge/extension.js", "line": 53, "pattern": "if (token && (req.headers.authorization"},
+        {"file": "vscode_lm_bridge/extension.js", "line": 66, "pattern": "server.listen(port, \"127.0.0.1\""},
+        {"file": "agents.py", "line": 994, "pattern": "http://127.0.0.1:8765/complete"}
+      ],
+      "guard": "Da chap nhan (khong sua): bridge chi listen 127.0.0.1, phieu khong mang quyen dat size/SL. Dieu kien doi trang thai: **neu bat quyen veto cho hoi dong thi PHAI dat token** (`AGENT_VSCODE_LM_TOKEN`) va doi cong khac 8765.",
+      "tests": []
+    },
+    {
+      "id": "F-04",
+      "title": "Token Telegram bi ghi vao log khi loi mang (loi chua nguyen URL Bot API)",
+      "severity": "low",
+      "status": "fixed",
+      "bug": "B-054",
+      "boundary": "chuoi loi HTTP -> file log",
+      "exploit": "`urllib3`/`requests` nem loi dang `Max retries exceeded with url: /bot<TOKEN>/sendMessage`; code cu ghi thang `str(e)` (`notify.py`, `tools/telegram_bridge.py:api_call`) va `api_call` tra `error` -> `logs/telegram_bridge.log`. Chi can 1 lan timeout la token nam trong log, roi log bi copy/dan len issue la mat bot.",
+      "impact": "lo token bot (bot gui duoc tin nhan, khong doc duoc lich su cu); `logs/` da bi git-ignore nen khong lo ra GitHub",
+      "evidence": [
+        {"file": "notify.py", "line": 37, "pattern": "log.warning(\"telegram error: %s\", redact(e, token))"},
+        {"file": "tools/telegram_bridge.py", "line": 145, "pattern": "return {\"ok\": False, \"error\": redact(str(e))[:200]}"},
+        {"file": "notify.py", "line": 14, "pattern": "def redact(text, token: str = \"\") -> str:"}
+      ],
+      "guard": "`notify.redact()` va `telegram_bridge.redact()` thay `/bot<so>:<chuoi>` bang `/bot<token>` truoc khi log.",
+      "tests": ["test_notify_redact.py::TestBoTokenTrongLog::test_xoa_token_khoi_url_bot_api",
+                "test_notify_redact.py::TestBoTokenTrongLog::test_telegram_bridge_cung_xoa"]
+    },
+    {
+      "id": "F-05",
+      "title": "state_sync ghi cap key LIVE vao `.env` bang code (khong backup, khong hoi)",
+      "severity": "low",
+      "status": "accepted",
+      "boundary": "tool -> file cau hinh chua bi mat",
+      "exploit": "`state_sync.py:410-411` dat `BINANCE_API_KEY`/`BINANCE_API_SECRET` = cap key LIVE. Chay nham instance la bot TESTNET cam key that; truoc khi sua F-01 thi cap key do con bi phuc vu qua HTTP.",
+      "impact": "khong phai lo hong tu than, nhung la duong khuech dai: 1 loi chon instance -> key that nam trong file duoc serve/copy",
+      "evidence": [
+        {"file": "state_sync.py", "line": 410, "pattern": "upd[\"BINANCE_API_KEY\"] = key"}
+      ],
+      "guard": "Da chap nhan: `.env` bi git-ignore (C-02), F-01 da chan HTTP; truoc khi chay `state_sync --to-live` phai xem lai `.env` 2 lan.",
+      "tests": []
+    },
+    {
+      "id": "F-06",
+      "title": "restart_bot kill PID doc tu file state (`taskkill /F /T /PID <pid>`)",
+      "severity": "low",
+      "status": "accepted",
+      "boundary": "file state cuc bo -> tien trinh he thong",
+      "exploit": "`tools/restart_bot.py:69` lay `pid` tu `logs/supervisor.pid` (hoac tham so) roi `taskkill /F /T` — file bi sua tay thi kill duoc process khac. Khong co shell nen khong tiem lenh.",
+      "impact": "DoS cuc bo; can quyen ghi file trong repo",
+      "evidence": [
+        {"file": "tools/restart_bot.py", "line": 69, "pattern": "r = subprocess.run([\"taskkill\", \"/F\", \"/T\", \"/PID\", str(pid)]"}
+      ],
+      "guard": "Da chap nhan: argv co dinh (khong shell), chi nguoi van hanh chay. Muon chat hon: doi chieu `pid` voi `tasklist` + ten `pythonw.exe` truoc khi kill.",
+      "tests": []
+    }
+  ],
+  "controls": [
+    {"id": "C-01",
+     "what": "Khong co sink thuc thi code trong code san xuat: eval/exec/os.system/pickle.load/yaml.load/shell=True",
+     "how": "ast",
+     "scan": {"globs": ["*.py", "tools/*.py"],
+              "ast_absent": ["eval", "exec", "os.system", "pickle.load", "yaml.load", "shell=True"]}},
+    {"id": "C-02",
+     "what": "Khong commit bi mat: `.env` va `logs/` bi git-ignore",
+     "how": "scan",
+     "scan": {"globs": [".gitignore"], "present": ["\n.env\n", "\nlogs/\n"]}},
+    {"id": "C-03",
+     "what": "Moi server HTTP cua bot chi listen loopback (127.0.0.1)",
+     "how": "scan",
+     "scan": {"globs": ["graph_memory.py", "memory_map.py", "vscode_lm_bridge/extension.js"],
+              "present": ["127.0.0.1"]}},
+    {"id": "C-04",
+     "what": "Interlock LIVE truoc moi vong trade: LIVE_CONFIRM=true + n>=50 + PF>=1.2 + risk<=2% + lev<=10 + kill-switch sach",
+     "how": "scan",
+     "scan": {"globs": ["live_guard.py"], "present": ["LIVE_CONFIRM != true", "MIN_TRADES", "MIN_PF"]}},
+    {"id": "C-05",
+     "what": "telegram_bridge goi tool bang argv CO DINH (khong shell) nen khong tiem duoc lenh",
+     "how": "scan",
+     "scan": {"globs": ["tools/telegram_bridge.py"], "present": ["def run_tool(argv: list"]}}
+  ]
+}

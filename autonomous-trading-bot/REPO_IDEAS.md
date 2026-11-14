@@ -1497,6 +1497,7 @@ Blockworks) — **đã thi hành ở §29.6**, kèm con số mới.
 | **Runbook → skill** | `skills/{council-silent,close-dust,reconcile-first,drift-report}/SKILL.md` + `skills/README.md` | ✅ `tests/test_skills_spec.py` pin 4 thứ: frontmatter có `name`/`description`, tên = kebab-case = tên thư mục, **thân skill phải nhắc một tool thật trong repo**, README liệt kê đủ |
 | **Đóng dust AXS** (còn lại của §29.6) | nâng qty lên `minNotional` rồi `_close_exact` | ✅ đóng được; sau đó `restart_bot.py --target live --reset` mở lại LIVE |
 | **RESEARCH_1211.md** | 80 link, **47** đọc sâu ⇒ **12** mục adopt/adapt có thứ tự + bảng "**đừng làm**" kèm số đo | ✅ 4 mục đầu vào roadmap; mục 3 (đo/cooldown theo cặp) **hoãn theo yêu cầu** |
+| **SECURITY_AUDIT.md** (Bước 2 của roadmap) | 6 pha của `cloudflare/security-audit-skill`; bằng chứng máy kiểm được: `security/findings.json` + `tools/security_audit.py --check` | ✅ **6 phát hiện** (high 1 · medium 2 · low 3), **3 đã sửa** (F-01 `.env` lộ qua `serve_glow` — đo 200/29.804 byte, nay 404; F-02 allowlist Telegram fail-open; F-04 token trong log), **5 kiểm soát** xác nhận bằng AST |
 
 > **Luật mới, sinh ra từ số đo chứ không từ cảm tính**: **không thêm model vào hội đồng để "trông có vẻ
 > đông"** — phải qua `tools/council_eval.py --hours 720` với `prec > 0,5` **và** `n_ghep ≥ 8`. Đã loại:

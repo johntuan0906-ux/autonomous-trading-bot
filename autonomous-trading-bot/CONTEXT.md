@@ -636,5 +636,20 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    `*_SKIP_MODELS`/`AGENT_COUNCIL_IGNORE`, bỏ `..._CANDIDATES`), `vote_stats` (tách `votes` và
    `attempts` — để phân biệt "hết credit" với "không được gọi"), `_last_applied_ts`; `state(root=...)`
    nạp cả 3. 10 test chốt trong `tests/test_selfops.py::TestCrewNoiDoi`.
+7. **Audit bảo mật theo 6 pha + sửa 3 lỗ thật (B-054, B-055).** `SECURITY_AUDIT.md` (6 pha của
+   `cloudflare/security-audit-skill`) + `security/findings.json` + `tools/security_audit.py --check`
+   (máy đọc lại code để xác nhận bằng chứng, không tin văn xuôi). **Đo được, không suy đoán**:
+   - **F-01 (high, đã sửa)** — `serve_glow.py` phục vụ cả thư mục repo: `HEAD /.env` → **200,
+     `Content-Length: 29804`** = đúng size `.env` (key Binance futures + `BINANCE_LIVE_*` + token
+     Telegram). Sau khi sửa: **404**. Chặn theo tên + theo thư mục trong `translate_path`.
+   - **F-02 (medium, đã sửa)** — `telegram_bridge`: allowlist `chat_id` **rỗng thì cho qua** ⇒ ai nhắn
+     cho bot cũng điều khiển được (`/status` lộ vị thế, `/ask` ghi hàng đợi, và vì cả 2 instance đang
+     `TELEGRAM_ALLOW_WRITE=true` nên `/restart`, `/reset ... confirm` cũng chạy). Đảo thành fail-closed.
+   - **F-04 (low, đã sửa)** — token Telegram nằm trong chuỗi lỗi `urllib3` (`url: /bot<TOKEN>/...`) rồi
+     được ghi ra `logs/telegram_bridge.log` ⇒ `redact()` ở cả 2 nơi.
+   - Chấp nhận có lý do: F-03 (bridge Copilot không token — đo được quyền veto = 0 nên chưa có tác
+     động tiền), F-05 (`state_sync` ghi key vào `.env`), F-06 (`restart_bot` kill PID từ file).
+   - Loại (không đủ bằng chứng): "prompt injection từ tin tức" ⇒ ghi thành hardening note kèm điều kiện
+     đổi trạng thái (trước khi bật `AGENT_VETO_AUTHORITY`).
 
 

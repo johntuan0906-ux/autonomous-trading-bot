@@ -244,6 +244,25 @@ class TestPoll(unittest.TestCase):
                     get=lambda tok, off: self._upd("666", "/status"))
         self.assertEqual([h["cmd"] for h in r["handled"]], ["blocked"])
         self.assertEqual(sent, [], "khong tra loi nguoi la")
+    def test_danh_sach_cho_phep_RONG_thi_chan_HET(self):
+        """(B-055) Thieu `TELEGRAM_CHAT_ID`/`TELEGRAM_ALLOW_CHAT_IDS` => CHAN, khong duoc cho qua.
+
+        Loi cu: `if allow and cid not in allow` ⇒ `allow == []` thi dieu kien sai ⇒ moi chat_id deu
+        dieu khien duoc bot (`/status` lo vi the, `/ask` ghi vao hang doi).
+        """
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "tb.log"
+            sent: list = []
+            r = TB.poll(token="t", cfg={"token": "t", "chat": "", "allow_ids": [],
+                                        "allow_write": True},
+                        post=lambda tok, m, p: (sent.append(p), {"ok": True})[1],
+                        get=lambda tok, off: self._upd("999", "/status"),
+                        log_path=log)
+            self.assertEqual([h["cmd"] for h in r["handled"]], ["blocked"])
+            self.assertEqual(sent, [], "khong duoc tra loi khi chua khai chat_id")
+            self.assertIn("RONG", log.read_text(encoding="utf-8"))
+
+
 
     def test_offset_tang_de_khong_xu_ly_lai(self):
         r = TB.poll(token="t", cfg={"token": "t", "chat": "1", "allow_ids": ["1"]},

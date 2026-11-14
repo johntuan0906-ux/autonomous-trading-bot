@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -43,6 +44,12 @@ TASK_NAME = "ATB-Telegram"
 API = "https://api.telegram.org/bot{token}/{method}"
 MAX_LEN = 3800
 REPEAT_H = 6.0          # gui lai cau hoi con treo sau N gio (khong spam moi phut)
+_TOKEN_RE = re.compile(r"/bot[0-9]+:[A-Za-z0-9_-]+")
+
+
+def redact(text) -> str:
+    """(15/11) Bo token khoi chuoi loi truoc khi ghi log — loi mang chua NGUYEN URL Bot API."""
+    return _TOKEN_RE.sub("/bot<token>", str(text))
 
 HELP = (
     "LENH (chi doc):\n"
@@ -133,9 +140,9 @@ def api_call(token: str, method: str, payload: dict, *, post=None, timeout: floa
         import requests
         r = requests.post(API.format(token=token, method=method), json=payload,
                           timeout=timeout)
-        return r.json() if r.ok else {"ok": False, "error": r.text[:200]}
+        return r.json() if r.ok else {"ok": False, "error": redact(r.text[:200])}
     except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": str(e)[:200]}
+        return {"ok": False, "error": redact(str(e))[:200]}
 
 
 def send(text: str, *, token: str, chat: str, post=None, dry: bool = False,
@@ -381,8 +388,12 @@ def poll(*, token: str, chat: str = "", cfg: dict | None = None, state=None, now
         if not cid or not text.startswith("/"):
             continue
         allow = [str(x) for x in (cfg.get("allow_ids") or [])]
-        if allow and cid not in allow:
-            append_log("%s BO QUA lenh tu chat_id la %s: %s" % (t, cid, text[:80]),
+        # (15/11, B-055) FAIL-CLOSED: danh sach cho phep RONG thi CHAN HET, khong phai cho qua.
+        # Loi cu: chi chan khi danh sach CO phan tu ⇒ thieu `TELEGRAM_CHAT_ID` la ai cung dieu khien
+        # duoc bot (`/status` lo trang thai vi the, `/ask` ghi vao hang doi) du docstring noi nguoc lai.
+        if not allow or cid not in allow:
+            append_log("%s BO QUA lenh tu chat_id la %s (danh sach cho phep: %s): %s"
+                       % (t, cid, ",".join(allow) or "RONG", text[:80]),
                        path=log_path)
             handled.append({"cmd": "blocked", "from": cid})
             continue

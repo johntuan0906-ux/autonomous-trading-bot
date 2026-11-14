@@ -45,6 +45,10 @@ LEARNER_STATE = ROOT / "logs" / "learner.json"
 HB_STALE_SEC = 600.0        # nhip tim cu hon 10 phut = bot khong chay
 REFIT_MIN_UPDATES = 200     # du mau moi refit
 REFIT_EVERY_SEC = 12 * 3600.0
+#: (13/11, B-053) 3 nguong cho "hoi dong noi doi" — hoc tu `foreman` (12 indicator).
+VOTE_LOOKBACK_H = 24.0      # cua so de xem "model co phieu that" hay khong
+DORMANT_LOOKBACK_H = 168.0  # 7 ngay: model TUNG co phieu (nen khong phai loi cau hinh moi)
+ROUTINE_SILENT_H = 48.0     # tu van hanh khong co ban ghi moi trong 48h = khong ai chay no
 
 
 def _read_json(path, default=None):
@@ -99,6 +103,114 @@ def _last_action_ts(action: str, path=None) -> float:
     return last
 
 
+_PREFIX = {"AGENT_COUNCIL_CLINE": "cline-pass/", "AGENT_COUNCIL_QWEN": "qwen/",
+           "AGENT_COUNCIL_LOCAL": "local/", "AGENT_COUNCIL_MUSE": "muse/",
+           "AGENT_COUNCIL_MUSE_CLI": "muse-cli/"}
+_SKIP_KEY = {"AGENT_COUNCIL_CLINE": "CLINE_SKIP_MODELS", "AGENT_COUNCIL_QWEN": "QWEN_SKIP_MODELS",
+             "AGENT_COUNCIL_LOCAL": "LOCAL_SKIP_MODELS", "AGENT_COUNCIL_MUSE": "MUSE_SKIP_MODELS",
+             "AGENT_COUNCIL_MUSE_CLI": "MUSE_CLI_SKIP_MODELS"}
+
+
+def read_env(env_path) -> dict:
+    """Doc `.env` (KEY=VALUE, bo comment) -> dict. Khong phu thuoc `dotenv`, khong doi os.environ."""
+    out: dict = {}
+    try:
+        txt = Path(env_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    for ln in txt.splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith("#") or "=" not in ln:
+            continue
+        k, v = ln.split("=", 1)
+        out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def roster_from_env(env_path) -> list:
+    """Model hoi dong KHAI BAO trong `.env` cua instance (ham THUAN TUY, chi doc file).
+
+    Vi sao khong import `config.Settings`: `selfops --instance live` phai doc `.env` cua
+    `atb-live`, trong khi `load_dotenv()` chi nap MOT lan cho tien trinh ⇒ se doc nham instance.
+    O day chi can danh sach TEN model de doi chieu voi phieu that trong journal.
+
+    LUU Y: day la "khai bao", KHONG phai "dang chay" — candidate (`..._CANDIDATES`) va model bi
+    IGNORE/SKIP deu bi loai, dung nhu `agents._council_models`.
+    """
+    env = read_env(env_path)
+    models: list = []
+    for k in ("AGENT_COUNCIL_MODELS",):
+        models += [m.strip() for m in str(env.get(k) or "").split(",") if m.strip()]
+    for key, pref in _PREFIX.items():
+        skip = {s.strip() for s in str(env.get(_SKIP_KEY[key]) or "").split(",") if s.strip()}
+        for m in str(env.get(key) or "").split(","):
+            m = m.strip()
+            if not m or m.lower() == "all":
+                continue                      # "all" = doc catalog: khong liet ke truoc duoc
+            full = m if m.startswith(pref) else pref + m
+            if full not in skip and m not in skip:
+                models.append(full)
+    ignore = {s.strip() for s in str(env.get("AGENT_COUNCIL_IGNORE") or "").split(",") if s.strip()}
+    return [m for m in models if m not in ignore]
+
+
+def vote_stats(journal_path, *, hours: float = VOTE_LOOKBACK_H,
+               now: float | None = None) -> dict:
+    """model -> {'votes': n, 'attempts': n, 'last_vote_ts': ts} trong `hours` gio (THUAN TUY).
+
+    `votes` = so phieu THAT (`ALLOW`/`VETO`); `attempts` = so lan model duoc GOI (ke ca
+    `NO_OPINION`). Tach 2 so vi cach sua khac nhau: `attempts > 0` ma `votes == 0` ⇒ provider
+    loi/het credit (B-052); `attempts == 0` ⇒ model khong duoc goi (dinh tuyen/skip).
+    """
+    t = float(now if now is not None else time.time())
+    since = t - max(0.0, float(hours)) * 3600.0
+    out: dict = {}
+    try:
+        fh = open(journal_path, encoding="utf-8", errors="replace")
+    except OSError:
+        return out
+    with fh:
+        for line in fh:
+            line = line.strip()
+            if not line or '"event": "AGENT"' not in line:
+                continue
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            ts = float(r.get("ts") or 0.0)
+            if ts < since:
+                continue
+            model = str(r.get("model") or r.get("agent") or "")
+            if not model or "/" not in model and model not in ("auto",):
+                continue
+            act = str(r.get("action") or "").upper()
+            if act not in ("ALLOW", "VETO", "NO_OPINION"):
+                continue
+            rec = out.setdefault(model, {"votes": 0, "attempts": 0, "last_vote_ts": 0.0})
+            rec["attempts"] += 1
+            if act in ("ALLOW", "VETO"):
+                rec["votes"] += 1
+                rec["last_vote_ts"] = max(rec["last_vote_ts"], ts)
+    return out
+
+
+def _last_applied_ts(path) -> float:
+    """Moc thoi gian lan CUOI tu van hanh THUC SU chay 1 viec (`autonomy.jsonl`, applied=true)."""
+    last = 0.0
+    try:
+        for line in Path(path).read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if d.get("applied"):
+                last = max(last, float(d.get("ts") or 0.0))
+    except OSError:
+        pass
+    return last
+
+
 def state(now: float | None = None, root: Path | None = None) -> dict:
     """Doc trang thai THAT tu file (khong mang) — dau vao cua `plan()`.
 
@@ -130,13 +242,20 @@ def state(now: float | None = None, root: Path | None = None) -> dict:
         # (09/11) uu tien moc trong `learner.json`; neu chua co thi lay tu nhat ky tu van hanh
         "learner_refit_ts": max(refit_ts, _last_action_ts("refit", base / "logs"
                                                           / "autonomy.jsonl")),
+        # (13/11, B-053) "hoi dong noi doi": khai bao vs phieu THAT, va bo may tu van hanh
+        "roster": roster_from_env(base / ".env"),
+        "votes": vote_stats(base / "logs" / "journal.jsonl", hours=VOTE_LOOKBACK_H, now=t),
+        "votes_wide": vote_stats(base / "logs" / "journal.jsonl", hours=DORMANT_LOOKBACK_H,
+                                 now=t),
+        "autonomy_last_ts": _last_applied_ts(base / "logs" / "autonomy.jsonl"),
     }
 
 
 def plan(st: dict, gaps: list | None = None, instance: str = "testnet",
          now: float | None = None, hb_stale_sec: float = HB_STALE_SEC,
          refit_min: int = REFIT_MIN_UPDATES, refit_every: float = REFIT_EVERY_SEC,
-         root: Path | None = None) -> list:
+         root: Path | None = None, dormant_hours: float = DORMANT_LOOKBACK_H,
+         routine_silent_h: float = ROUTINE_SILENT_H) -> list:
     """Danh sach viec CAN LAM tu trang thai + danh sach thieu hut (ham THUAN TUY).
 
     Moi muc: id, action (mo ta), cmd (list | None neu lam trong tien trinh), why, evidence,
@@ -215,6 +334,65 @@ def plan(st: dict, gaps: list | None = None, instance: str = "testnet",
             why="dang tam dung: %s" % (s.get("entries_reason") or ""),
             evidence={"reason": s.get("entries_reason")},
             reason_code="ENTRIES_PAUSED", auto=False)
+
+    # --- (13/11, B-053) HOI DONG "NOI DOI": 3 kieu, do `foreman` he thong hoa ---------
+    # 1) roster drift: khai bao N model nhung chi M model co PHIEU THAT trong 24h.
+    #    B-051/B-052 la dung kieu nay: .env ghi 5 model, thuc te 1 phieu, khong log nao noi.
+    roster = s.get("roster")
+    votes = s.get("votes") or {}
+    if roster:
+        active = [m for m in roster if (votes.get(m) or {}).get("votes")]
+        silent = [m for m in roster if m not in active]
+        tried = [m for m in silent if (votes.get(m) or {}).get("attempts")]
+        if silent and len(active) < len(roster):
+            add(id="roster_drift",
+                action="bao cao model KHAI BAO nhung khong co phieu that",
+                why=("hoi dong khai %d model, %.0f gio qua chi %d model co phieu; "
+                     "im: %s%s") % (len(roster), VOTE_LOOKBACK_H, len(active),
+                                    ", ".join(silent[:3]) or "-",
+                                    (" (%d model CO GOI nhung tra NO_OPINION)" % len(tried))
+                                    if tried else ""),
+                evidence={"roster": roster, "active": active, "silent": silent,
+                          "attempted_but_abstained": tried,
+                          "hint": "chay `python tools/probe_cline.py --copilot` "
+                                  "(xem skills/council-silent/SKILL.md)"},
+                reason_code="COUNCIL_SILENT", auto=False)
+
+        # 2) dormant model: TUNG co phieu trong 7 ngay nhung 24h nay khong co phieu nao.
+        #    Khac roster_drift (co the la cau hinh moi chua bao gio chay) va khac "treo"
+        #    (treo = goi nhieu lan deu het gio).
+        wide = s.get("votes_wide") or {}
+        dormant = [m for m in roster
+                   if (wide.get(m) or {}).get("votes") and not (votes.get(m) or {}).get("votes")]
+        if dormant:
+            add(id="model_dormant", action="bao cao model TUNG co phieu nay im lang",
+                why="%d model co phieu trong %.0f gio nhung KHONG co phieu nao trong %.0f gio: %s"
+                    % (len(dormant), float(dormant_hours), VOTE_LOOKBACK_H,
+                       ", ".join(dormant[:3])),
+                evidence={"dormant": dormant,
+                          "last_vote_ts": {m: (wide.get(m) or {}).get("last_vote_ts")
+                                           for m in dormant}},
+                reason_code="MODEL_DORMANT", auto=False)
+
+    # 3) routine silent: khong co ban ghi `applied=true` moi trong `autonomy.jsonl`.
+    #    Chi bao khi THAT SU co viec tu lam duoc (neu khong co gi phai lam thi im lang la dung).
+    auto_items = [it for it in out if it.get("auto") and (it.get("cmd") or it.get("inproc"))]
+    last_auto = s.get("autonomy_last_ts")
+    if auto_items and last_auto is not None:
+        age_h = (t - float(last_auto or 0.0)) / 3600.0 if last_auto else None
+        if age_h is None or age_h > float(routine_silent_h):
+            add(id="routine_silent",
+                action="bao cao: tu van hanh KHONG duoc chay (khong co ban ghi moi)",
+                why=("co %d viec tu lam duoc nhung lan cuoi tu van hanh chay 1 viec la %s "
+                     "(nguong %.0f gio)") % (len(auto_items),
+                                             ("chua bao gio" if age_h is None
+                                              else "%.0f gio truoc" % age_h),
+                                             float(routine_silent_h)),
+                evidence={"auto_items": [it.get("id") for it in auto_items],
+                          "last_applied_age_h": (round(age_h, 1) if age_h is not None else None),
+                          "hint": "chay `python tools/selfops.py --apply` theo lich (Task "
+                                  "Scheduler / cron), roi kiem logs/autonomy.jsonl"},
+                reason_code="ROUTINE_SILENT", auto=False)
     return out
 
 

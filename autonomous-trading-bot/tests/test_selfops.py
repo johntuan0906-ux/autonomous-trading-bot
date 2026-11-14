@@ -259,4 +259,142 @@ class TestDriftDocs(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+class TestCrewNoiDoi(unittest.TestCase):
+    """(13/11, B-053) 3 kieu "hoi dong noi doi" — hoc tu `foreman` (12 indicator).
+
+    Vi sao phai chot: day la nhung loi **khong co log nao noi ra**. B-051 (ten model khong co
+    trong goi) va B-052 (gateway Cline 402) deu co dang: `.env` khai 5 model, thuc te 1 model
+    bo phieu, va he thong van bao "hoi dong 5 model". Test chot CA HAI CHIEU: khi thieu thi phai
+    bao, khi du thi KHONG duoc bao (bao dong = nguoi van hanh bo qua canh bao that).
+    """
+
+    NOW = 1_700_000_000.0
+
+    def _st(self, **kw) -> dict:
+        base = {"now": self.NOW, "day": "2023-11-14", "heartbeat_age": 30.0,
+                "kill_tripped": False, "kill_day": "", "open_positions": 0,
+                "entries_paused": False, "learner_n": 0, "learner_refit_ts": 0.0,
+                "roster": [], "votes": {}, "votes_wide": {},
+                "autonomy_last_ts": self.NOW - 3600.0}
+        base.update(kw)
+        return base
+
+    def _ids(self, st) -> set:
+        return {i["id"] for i in SO.plan(st, gaps=[])}
+
+    def _item(self, st, id_) -> dict:
+        return next(i for i in SO.plan(st, gaps=[]) if i["id"] == id_)
+
+    # --- 1. roster drift -----------------------------------------------------
+    def test_roster_khai_5_ma_chi_1_phieu_thi_BAO(self):
+        st = self._st(roster=["auto", "cline-pass/a", "cline-pass/b"],
+                      votes={"auto": {"votes": 3, "attempts": 3, "last_vote_ts": self.NOW}})
+        self.assertIn("roster_drift", self._ids(st))
+        it = self._item(st, "roster_drift")
+        self.assertEqual(it["reason_code"], "COUNCIL_SILENT")
+        self.assertEqual(it["evidence"]["active"], ["auto"])
+        self.assertEqual(sorted(it["evidence"]["silent"]), ["cline-pass/a", "cline-pass/b"])
+        self.assertFalse(it["auto"], "khong tu sua cau hinh hoi dong: phai de nguoi quyet")
+
+    def test_roster_du_phieu_thi_KHONG_bao(self):
+        st = self._st(roster=["auto", "cline-pass/a"],
+                      votes={"auto": {"votes": 1, "attempts": 1, "last_vote_ts": self.NOW},
+                             "cline-pass/a": {"votes": 2, "attempts": 2,
+                                              "last_vote_ts": self.NOW}})
+        self.assertNotIn("roster_drift", self._ids(st))
+
+    def test_phan_biet_CHUA_GOI_va_GOI_ma_khong_ra_phieu(self):
+        """`attempts` > 0 ma `votes` == 0 => provider loi/het credit (B-052), khac 'khong duoc goi'."""
+        st = self._st(roster=["auto", "cline-pass/a", "cline-pass/b"],
+                      votes={"auto": {"votes": 1, "attempts": 1, "last_vote_ts": self.NOW},
+                             "cline-pass/a": {"votes": 0, "attempts": 9, "last_vote_ts": 0}})
+        it = self._item(st, "roster_drift")
+        self.assertEqual(it["evidence"]["attempted_but_abstained"], ["cline-pass/a"])
+        self.assertIn("NO_OPINION", it["why"])
+
+
+
+    # --- 2. dormant model ----------------------------------------------------
+    def test_model_TUNG_co_phieu_nay_im_thi_bao_dormant(self):
+        st = self._st(roster=["auto", "cline-pass/a"],
+                      votes={"auto": {"votes": 1, "attempts": 1, "last_vote_ts": self.NOW}},
+                      votes_wide={"auto": {"votes": 9, "attempts": 9, "last_vote_ts": self.NOW},
+                                  "cline-pass/a": {"votes": 40, "attempts": 44,
+                                                   "last_vote_ts": self.NOW - 5 * 86400}})
+        self.assertIn("model_dormant", self._ids(st))
+        it = self._item(st, "model_dormant")
+        self.assertEqual(it["evidence"]["dormant"], ["cline-pass/a"])
+        self.assertEqual(it["reason_code"], "MODEL_DORMANT")
+
+    def test_model_chua_bao_gio_co_phieu_thi_KHONG_goi_la_dormant(self):
+        """Chua tung co phieu = cau hinh moi (da bao o roster_drift), KHONG duoc dem 2 lan."""
+        st = self._st(roster=["auto", "cline-pass/a"],
+                      votes={"auto": {"votes": 1, "attempts": 1, "last_vote_ts": self.NOW}},
+                      votes_wide={"auto": {"votes": 1, "attempts": 1, "last_vote_ts": self.NOW}})
+        self.assertNotIn("model_dormant", self._ids(st))
+
+    # --- 3. routine silent ---------------------------------------------------
+    def test_tu_van_hanh_khong_chay_thi_bao(self):
+        st = self._st(autonomy_last_ts=0.0)          # chua bao gio chay
+        self.assertIn("routine_silent", self._ids(st))
+        it = self._item(st, "routine_silent")
+        self.assertEqual(it["reason_code"], "ROUTINE_SILENT")
+        self.assertIn("chua bao gio", it["why"])
+
+    def test_tu_van_hanh_moi_chay_thi_KHONG_bao(self):
+        st = self._st(autonomy_last_ts=self.NOW - 3600.0)
+        self.assertNotIn("routine_silent", self._ids(st))
+
+    # --- ham doc du lieu -----------------------------------------------------
+    def test_vote_stats_tach_phieu_that_va_lan_goi(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "j.jsonl"
+            rows = [
+                {"ts": self.NOW - 60, "event": "AGENT", "model": "cline-pass/a",
+                 "action": "VETO"},
+                {"ts": self.NOW - 120, "event": "AGENT", "model": "cline-pass/a",
+                 "action": "NO_OPINION"},
+                {"ts": self.NOW - 60, "event": "AGENT", "model": "auto", "action": "ALLOW"},
+                {"ts": self.NOW - 60, "event": "OPEN", "model": "cline-pass/a"},
+                {"ts": self.NOW - 3 * 86400, "event": "AGENT", "model": "cline-pass/old",
+                 "action": "VETO"},
+                {"ts": self.NOW - 60, "event": "AGENT", "agent": "critic_agent",
+                 "action": "VETO"},
+            ]
+            p.write_text("\n".join(json.dumps(r) for r in rows) + "\n{hong\n", encoding="utf-8")
+            st = SO.vote_stats(p, hours=24, now=self.NOW)
+        self.assertEqual(st["cline-pass/a"], {"votes": 1, "attempts": 2,
+                                              "last_vote_ts": self.NOW - 60})
+        self.assertEqual(st["auto"]["votes"], 1)
+        self.assertNotIn("cline-pass/old", st)
+        self.assertNotIn("critic_agent", st)
+
+    def test_roster_from_env_ap_tien_to_va_loc_skip_ignore_candidate(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / ".env"
+            p.write_text(
+                "AGENT_COUNCIL_MODELS=auto\n"
+                "AGENT_COUNCIL_MODELS_CANDIDATES=grok-4.7,claude-haiku-4.5\n"
+                "AGENT_COUNCIL_CLINE=qwen3.8-max,glm-5.3\n"
+                "CLINE_SKIP_MODELS=cline-pass/glm-5.3\n"
+                "AGENT_COUNCIL_LOCAL=llama3.2-3b-local\n"
+                "AGENT_COUNCIL_IGNORE=local/llama3.2-3b-local\n"
+                "AGENT_COUNCIL_QWEN=\n", encoding="utf-8")
+            got = SO.roster_from_env(p)
+        self.assertEqual(sorted(got), ["auto", "cline-pass/qwen3.8-max"])
+
+    def test_state_doc_roster_va_phieu_tu_instance(self):
+        """`state(root=...)` phai doc `.env` + journal cua INSTANCE do (LIVE nam thu muc khac)."""
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            (base / "logs").mkdir()
+            (base / ".env").write_text("AGENT_COUNCIL_MODELS=auto\n"
+                                       "AGENT_COUNCIL_CLINE=a\n", encoding="utf-8")
+            (base / "logs" / "journal.jsonl").write_text(json.dumps(
+                {"ts": self.NOW - 60, "event": "AGENT", "model": "auto",
+                 "action": "ALLOW"}) + "\n", encoding="utf-8")
+            st = SO.state(now=self.NOW, root=base)
+        self.assertEqual(st["roster"], ["auto", "cline-pass/a"])
+        self.assertEqual(st["votes"]["auto"]["votes"], 1)
+
 

@@ -623,5 +623,18 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    4 runbook đã thành `skills/<name>/SKILL.md` (`council-silent`, `close-dust`, `reconcile-first`,
    `drift-report`) + test chốt `tests/test_skills_spec.py` (frontmatter hợp spec, tên khớp thư mục,
    thân skill phải nhắc tool thật).
+6. **B-053 — "hội đồng nói dối" có chỉ số (làm ngay Bước 1 của roadmap).** `tools/selfops.py` thêm 3 chỉ
+   số + 3 mã lý do (`COUNCIL_SILENT`, `MODEL_DORMANT`, `ROUTINE_SILENT`), tất cả `auto=False`:
+   - **`roster_drift`** — khai báo vs phiếu THẬT trong 24h. Đo trên máy 13/11:
+     TESTNET `khai 5 model, 24 giờ qua chỉ 1 model có phiếu; 4 model CÓ GỌI nhưng trả NO_OPINION`;
+     LIVE `khai 5, 24h qua 0 model có phiếu`.
+   - **`model_dormant`** — từng có phiếu trong 7 ngày, nay im: TESTNET/LIVE đều báo 4–5 model
+     (đúng dấu vết B-052: credit Cline hết từ 12/11).
+   - **`routine_silent`** — `logs/autonomy.jsonl` không có bản ghi `applied` mới: TESTNET **101 giờ**,
+     LIVE **chưa bao giờ** ⇒ "tự vận hành" trước nay chỉ chạy khi có người gõ lệnh.
+   Hàm mới đều THUẦN TUY và đọc theo INSTANCE: `read_env`, `roster_from_env` (áp tiền tố provider, lọc
+   `*_SKIP_MODELS`/`AGENT_COUNCIL_IGNORE`, bỏ `..._CANDIDATES`), `vote_stats` (tách `votes` và
+   `attempts` — để phân biệt "hết credit" với "không được gọi"), `_last_applied_ts`; `state(root=...)`
+   nạp cả 3. 10 test chốt trong `tests/test_selfops.py::TestCrewNoiDoi`.
 
 

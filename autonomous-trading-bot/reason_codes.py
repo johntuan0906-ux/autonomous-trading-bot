@@ -61,6 +61,15 @@ CODES: dict[str, tuple[str, str]] = {
     "QUOTA_EXCEEDED": ("tool", "provider het quota thang"),
     "API_ERROR": ("tool", "loi API khac (timeout, 5xx, -2015...)"),
     "PROVIDER_DOWN": ("tool", "CLI/provider chet hoac bi cau dao tat"),
+    # (13/11, B-053) Ba kieu "hoi dong noi doi" — do `foreman` (Archive228) he thong hoa, va da
+    # xay ra that o B-051/B-052: khai bao 5 model nhung chi 1 model co phieu, ma khong co dong
+    # log nao noi ra. Tach 3 ma vi cach sua KHAC nhau:
+    #   COUNCIL_SILENT  -> cau hinh/goi (nap credit, doi ten model): chay probe_cline
+    #   MODEL_DORMANT   -> model tung chay, gio im: kiem lai nguong/skip, KHONG phai sua cau hinh
+    #   ROUTINE_SILENT  -> chinh bo may tu van hanh khong duoc chay: sua lich/nguoi chay, khong sua bot
+    "COUNCIL_SILENT": ("tool", "hoi dong khai bao N model nhung chi M model co phieu that"),
+    "MODEL_DORMANT": ("tool", "model tung co phieu roi im (khac voi 'treo' tung lan goi)"),
+    "ROUTINE_SILENT": ("tool", "viec dinh ky cua tu van hanh khong chay (khong co ban ghi moi)"),
     # --- execution: lenh that ------------------------------------------------
     "ORDER_REJECT": ("execution", "san tu choi lenh"),
     "PARTIAL_FILL": ("execution", "khop mot phan"),

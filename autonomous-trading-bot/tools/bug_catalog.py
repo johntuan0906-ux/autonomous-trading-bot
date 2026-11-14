@@ -587,6 +587,23 @@ CLASSES = [
                   "test_provider_probe.py::TestProbeCacheVaCandidate::test_hoi_dong_tu_mo_rong_khi_cache_bao_OK",
                   "test_provider_probe.py::TestProbeCacheVaCandidate::test_qwen_cmd_ghep_dung"],
     },
+    {
+        "code": "B-053", "kind": "ai", "seen": "13/11/2026",
+        "title": "He thong bao 'hoi dong 5 model' trong khi chi 1 model co phieu that: 3 kieu 'noi doi' (roster drift / model dormant / routine silent) khong co chi so nao phat hien",
+        "symptom": "B-051 (ten model khong co trong goi) va B-052 (gateway Cline 402) cung mot dang: `.env` khai 5 model, thuc te **1** model bo phieu (TESTNET) va **0** model (LIVE), nhung khong co canh bao nao — chi doc log dong `hoi dong 5 model` la thay 'binh thuong'. Do 13/11 bang `tools/selfops.py`: TESTNET `hoi dong khai 5 model, 24 gio qua chi 1 model co phieu; 4 model CO GOI nhung tra NO_OPINION`; LIVE `khai 5, 24h qua 0 model co phieu`, va `5 model co phieu trong 168h nhung 0 trong 24h`. Dong thoi chinh bo may tu van hanh khong duoc chay: TESTNET lan cuoi `logs/autonomy.jsonl` co ban ghi applied la **101 gio** truoc, LIVE **chua bao gio** — tuc 'tu van hanh' chi chay khi co nguoi go lenh",
+        "guard": "`tools/selfops.py` them 3 chi so + 3 ma ly do rieng (vi cach sua KHAC nhau): **`roster_drift`** (`COUNCIL_SILENT`: khai bao N model vs so model co phieu THAT trong 24h; tach `attempts` — CO GOI ma `NO_OPINION` ⇒ loi provider/het credit, khac 'khong duoc goi'), **`model_dormant`** (`MODEL_DORMANT`: tung co phieu trong 7 ngay, 24h nay khong — khac ca roster drift lan 'treo tung lan'), **`routine_silent`** (`ROUTINE_SILENT`: khong co ban ghi `applied=true` moi trong 48h trong khi van co viec tu lam duoc). Ca 3 deu `auto=False` (khong tu doi cau hinh hoi dong / khong tu doi lich). Ham moi THUAN TUY va doc theo INSTANCE: `read_env`, `roster_from_env` (ap tien to provider, loc SKIP/IGNORE, bo `..._CANDIDATES`), `vote_stats` (chi dem `event=AGENT` + `action in ALLOW/VETO/NO_OPINION`), `_last_applied_ts`; `state(root=...)` nap ca 3",
+        "files": ["tools/selfops.py", "reason_codes.py", "tests/test_selfops.py", "RESEARCH_1211.md"],
+        "tests": ["test_selfops.py::TestCrewNoiDoi::test_roster_khai_5_ma_chi_1_phieu_thi_BAO",
+                  "test_selfops.py::TestCrewNoiDoi::test_roster_du_phieu_thi_KHONG_bao",
+                  "test_selfops.py::TestCrewNoiDoi::test_phan_biet_CHUA_GOI_va_GOI_ma_khong_ra_phieu",
+                  "test_selfops.py::TestCrewNoiDoi::test_model_TUNG_co_phieu_nay_im_thi_bao_dormant",
+                  "test_selfops.py::TestCrewNoiDoi::test_model_chua_bao_gio_co_phieu_thi_KHONG_goi_la_dormant",
+                  "test_selfops.py::TestCrewNoiDoi::test_tu_van_hanh_khong_chay_thi_bao",
+                  "test_selfops.py::TestCrewNoiDoi::test_tu_van_hanh_moi_chay_thi_KHONG_bao",
+                  "test_selfops.py::TestCrewNoiDoi::test_vote_stats_tach_phieu_that_va_lan_goi",
+                  "test_selfops.py::TestCrewNoiDoi::test_roster_from_env_ap_tien_to_va_loc_skip_ignore_candidate",
+                  "test_selfops.py::TestCrewNoiDoi::test_state_doc_roster_va_phieu_tu_instance"],
+    },
 ]
 
 

@@ -1485,3 +1485,25 @@ Blockworks) — **đã thi hành ở §29.6**, kèm con số mới.
 
 
 
+### 29.7 Đợt 5–7 (13–15/11) — 5 lỗi tiền/đo lường, "crew nói dối" có chỉ số, runbook thành skill
+
+| Việc | Kết quả ĐO ĐƯỢC | Trạng thái |
+|---|---|---|
+| **B-049** trần risk sai mẫu số | `portfolio.risk_cap_base(balance, equity) = min(...)`; `turbo_demo` truyền `_cap_base` cho **cả hai** lần `can_add_risk`, ghi `cap_base` vào `SKIP_RISK` | ✅ đo lại trên bot đang chạy: mở đúng **4** vị thế rồi chặn — "đang 1,59 % + mới 0,40 % > 1,60 %". `tests/test_risk_cap_base.py` pin **4** (hành vi cũ = **12**) |
+| **B-050** journal trộn lệnh tay với lệnh bot | `reconcile.plan_backfill` tách `closes` (khớp `OPEN` của bot) và `unmatched_episodes` (lệnh tay) | ✅ LIVE: journal **+124,50** vs equity thật **27,90**; 7 ngày có **102** vòng lệnh, **99** vòng **không có `OPEN`** ⇒ lệnh tay **−4,61 USDT**, bot **0** vòng. Test `tests/test_reconcile.py::TestTachLenTayVaBot` |
+| **B-051** "hội đồng 15 model" mà gateway chặn | `agents.classify_provider_error()` → mã (`AUTH`, `QUOTA`, `MODEL_GATED`, …); `tools/probe_cline.py --copilot` | ✅ đo: **15/15** model đặt tên đều `MODEL_GATED` **kể cả sau khi OAuth** ⇒ `.env` → `AGENT_COUNCIL_MODELS=auto` thay vì giả vờ có 15 model |
+| **B-052** hết credit vẫn khai là "đang chạy" | thêm mã `PAYMENT` (Cline **402** trên **5/5** model Cline) + `MODEL_FORMAT` (Qwen **400**); `agents.read_probe_cache()` + `promote_copilot_candidates()` + `AGENT_COUNCIL_MODELS_CANDIDATES` + `AGENT_COUNCIL_PROBE_TTL_DAYS` | ✅ nâng cấp Copilot chỉ cần `probe_cline.py --copilot --candidates` — **không sửa `.env`, không restart**. `probe_cline.py --qwen`; 10 test mới |
+| **B-053** "crew nói dối" — 3 chỉ số còn thiếu | `tools/selfops.py`: `roster_drift` (`COUNCIL_SILENT`), `model_dormant` (`MODEL_DORMANT`), `routine_silent` (`ROUTINE_SILENT`), cả 3 `auto=False`; `votes` **tách** khỏi `attempts` | ✅ bắt **đúng** sự thật trên máy: TESTNET "khai **5** model, 24 h qua chỉ **1** model có phiếu; **4** model CÓ GỌI nhưng trả `NO_OPINION`" · LIVE "khai 5, 24 h qua **0** model có phiếu" · tự vận hành: TESTNET **101 giờ** trước, LIVE **chưa bao giờ** |
+| **Runbook → skill** | `skills/{council-silent,close-dust,reconcile-first,drift-report}/SKILL.md` + `skills/README.md` | ✅ `tests/test_skills_spec.py` pin 4 thứ: frontmatter có `name`/`description`, tên = kebab-case = tên thư mục, **thân skill phải nhắc một tool thật trong repo**, README liệt kê đủ |
+| **Đóng dust AXS** (còn lại của §29.6) | nâng qty lên `minNotional` rồi `_close_exact` | ✅ đóng được; sau đó `restart_bot.py --target live --reset` mở lại LIVE |
+| **RESEARCH_1211.md** | 80 link, **47** đọc sâu ⇒ **12** mục adopt/adapt có thứ tự + bảng "**đừng làm**" kèm số đo | ✅ 4 mục đầu vào roadmap; mục 3 (đo/cooldown theo cặp) **hoãn theo yêu cầu** |
+
+> **Luật mới, sinh ra từ số đo chứ không từ cảm tính**: **không thêm model vào hội đồng để "trông có vẻ
+> đông"** — phải qua `tools/council_eval.py --hours 720` với `prec > 0,5` **và** `n_ghep ≥ 8`. Đã loại:
+> `minimax-m3` (prec 0,500), `muse-spark-1.3-contributor` (3/3 lần không bỏ phiếu),
+> `local/llama3.2-3b-local` (value_r **−1,303**).
+>
+> **Số đo đợt 7 (chạy lại toàn bộ, cả TESTNET và LIVE)**: bug catalog **52 lớp / 186 test chốt** ·
+> golden **45/45 PASS / 14 cổng**, `--check` = 0 · `drift_docs --check` **0 lệch** (1 cảnh báo lịch sử
+> B-034) · `reason_codes` **41 mã / 7 nhóm** · `unittest discover` **1542 test OK** (3 skip).
+

@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/11/2026 17:18:23 · commit `de4f8c8`
+- **Cập nhật**: 15/11/2026 17:48:23 · commit `dd70bed`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `2572` · round `59` · nhịp tim cách đây 47.8s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `2572` · round `66` · nhịp tim cách đây 101.5s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3219.12 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3051 lệnh đóng, WR 41.0%, E(R) 0.2325, PnL -1048.07$)
+## Hiệu suất (journal: 3054 lệnh đóng, WR 40.96%, E(R) 0.2318, PnL -1048.07$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 75 | 37.33 | 2.27 | 1.296 | 0.4928 | 35.54 |
-| 14 ngày | 129 | 43.41 | 1.824 | 1.008 | 0.2973 | 2.07 |
-| 30 ngày | 2114 | 33.21 | 2.131 | 0.59 | 0.3253 | -1266.18 |
+| 7 ngày | 78 | 35.9 | 2.15 | 1.296 | 0.453 | 35.54 |
+| 14 ngày | 132 | 42.42 | 1.762 | 1.008 | 0.2783 | 2.07 |
+| 30 ngày | 2117 | 33.16 | 2.126 | 0.59 | 0.3241 | -1266.18 |
 
 ## Cổng sang LIVE
 
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 

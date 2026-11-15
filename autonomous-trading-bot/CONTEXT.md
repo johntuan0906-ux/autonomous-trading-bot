@@ -690,5 +690,20 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - **#11** `freshness.candle_gaps()` + `turbo_demo` ghi `data_gaps`/cảnh báo khi coverage < 90%
      (trước đây `age_sec` chỉ biết "dữ liệu cũ", không biết "dữ liệu thủng lỗ").
    - **#10/#12** `AGENTS.md`: thêm mục **Harness (5 subsystem)** và bảng **Approval boundary**.
+11. **Nhiệm vụ "vào LIVE tăng lãi đến cuối năm": hội đồng đọc 28 nguồn + quyết định bằng số (15/11).**
+   Báo cáo: `RESEARCH_1115.md`. **Kết luận: KHÔNG bật LIVE hôm nay** — và lý do là một phát hiện mới:
+   - Tách sổ: TESTNET có **1.086 lệnh bot (+44,72 USDT)** và **2.425 lệnh tay (−1.135,29 USDT)**; LIVE có
+     622 lệnh bot (+138,16) / 80 lệnh tay (−9,38). Số **gộp** (PF(R) 1,83) là số của lệnh tay ⇒ vô nghĩa.
+   - Sửa cổng: `live_ready.py` thêm `bot_pairs()/bot_stats()` + `MIN_BOT_TRADES_GATE=20`, cổng PF($) nay
+     tính **riêng lệnh bot** và in cả 2 con số. Đo lại: **PF($) bot = 1,052** (14 ngày **0,750**, 30 ngày
+     **0,481**) ⇒ chưa đạt 1,1. 4 test mới chốt (bỏ lệnh tay, đủ/thiếu mẫu, bot lỗ thật vẫn bị chặn).
+   - **No-lookahead** (mục 2 của báo cáo): `exchange.fetch_ohlcv` bỏ **nến đang hình thành** theo
+     `DROP_FORMING_CANDLE=true` (đã thêm vào `.env` 2 instance + `tools/instance_env.py`), 4 test.
+     Đồng thời sửa lỗi nối dây `candle_gaps`: `df["ts"]` là datetime nên phải đổi sang epoch giây.
+   - Kế hoạch 4 mốc đến 31/12 (M1 số đo sạch → M2 forward 14 ngày → M3 LIVE nhỏ với vốn ≥150 USDT →
+     M4 tăng dần), mỗi mốc có điều kiện đo được; điều kiện bắt buộc trước M3: **PF($) bot ≥ 1,1** và
+     PF(R) bot ≥ 1,2 trên 14 ngày, MaxDD ≤ 5%.
+   - Hội đồng **không hứa lợi nhuận**; cam kết duy nhất: không vào LIVE bằng số sai + báo cáo PF($) bot mỗi tuần.
+
 
 

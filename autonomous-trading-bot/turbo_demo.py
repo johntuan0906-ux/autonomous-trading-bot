@@ -1017,7 +1017,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         # BI THIEU o giua (chuoi bi gay ⇒ chi so sai ma van "tuoi"). Chi ghi nhan + canh bao,
         # KHONG chan lenh (thieu vai nen chua chac da sai huong).
         try:
-            _stamps = list(fr["df"]["ts"])
+            _stamps = [float(x) / 1e9 for x in fr["df"]["ts"].astype("int64")]
         except Exception:  # noqa: BLE001
             _stamps = []
         _gaps = freshness.candle_gaps(_stamps, cfg.timeframe)

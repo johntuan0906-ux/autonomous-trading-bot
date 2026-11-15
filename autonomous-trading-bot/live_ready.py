@@ -43,6 +43,9 @@ from monitor_report import (  # noqa: E402
 )
 
 MIN_PF_PNL = 1.1          # PF($) — tính cả phí, sát với tiền thật hơn PF(R)
+#: (15/11) Số lệnh BOT tối thiểu trong 1 cửa sổ để KẾT LUẬN từ số riêng của bot.
+#: Dưới ngưỡng này: dùng số gộp nhưng ghi cảnh báo (không được im lặng).
+MIN_BOT_TRADES_GATE = 20
 MIN_TRADES_ALL = int(float(os.getenv("LIVE_MIN_TRADES", "300")) or 300)
 WINDOWS_DEFAULT = (7, 14, 30)
 
@@ -78,6 +81,22 @@ def window_pairs(pairs: list, days: float, now: float) -> list:
     return out
 
 
+def bot_pairs(pairs: list) -> list:
+    """Chi giu (OPEN, CLOSE) CO OPEN ⇒ lenh do BOT mo. Lenh tay (khong co OPEN) bi loai.
+
+    Vi sao (15/11, do that tren journal): TESTNET co **2425 lenh tay** (-1135,29 USDT) lan vao cung
+    so voi **1086 lenh bot** (+44,72 USDT). Tinh gop ⇒ PF($) 30 ngay = **0,660**; tinh rieng lenh bot
+    ⇒ **0,481** (that ra con xau hon), 14 ngay 0,750. Nguoc lai o cua so 7 ngay, lenh tay lam PF($)
+    gop *thap hon* bot. Ket luan: so GOP khong dung de quyet dinh LIVE.
+    """
+    return [(o, c) for o, c in pairs if o]
+
+
+def bot_stats(pairs: list) -> dict:
+    """Thong ke chi tren lenh BOT (xem `bot_pairs`)."""
+    return stats(bot_pairs(pairs))
+
+
 def check(cfg, journal_path: str = "logs/journal.jsonl",
           windows=WINDOWS_DEFAULT, now: float | None = None) -> dict:
     """Kiểm tra cổng HOÀN THÀNH. Trả dict(ok, verdict, blockers, warnings, windows, facts)."""
@@ -86,10 +105,14 @@ def check(cfg, journal_path: str = "logs/journal.jsonl",
     opens, closes = load_journal(journal_path)
     pairs, still = match_pairs(opens, closes)
     st_all = stats(pairs)
+    st_bot = bot_stats(pairs)
 
     wins_stats: dict = {}
     for d in windows:
-        wins_stats[int(d)] = stats(window_pairs(pairs, d, now))
+        w = window_pairs(pairs, d, now)
+        s = stats(w)
+        s["bot"] = bot_stats(w)
+        wins_stats[int(d)] = s
 
     blockers: list = []
     warnings: list = []
@@ -101,10 +124,18 @@ def check(cfg, journal_path: str = "logs/journal.jsonl",
         if not s["n"]:
             blockers.append(f"cua so {d} ngay: khong co lenh dong nao")
             continue
-        if float(s["pf_r"]) < MIN_PF:
-            blockers.append(f"PF(R) cua so {d} ngay = {s['pf_r']:.3f} < {MIN_PF}")
-        if float(s["pf_pnl"]) < MIN_PF_PNL:
-            blockers.append(f"PF($) cua so {d} ngay = {s['pf_pnl']:.3f} < {MIN_PF_PNL}")
+        b = s.get("bot") or {}
+        n_bot = int(b.get("n") or 0)
+        # (15/11) Cong tinh tren LENH BOT khi du mau; so GOP chi de tham khao (xem bot_pairs).
+        src, tag = (b, " [lenh BOT]") if n_bot >= MIN_BOT_TRADES_GATE else (s, "")
+        if not tag:
+            warnings.append(
+                f"cua so {d} ngay: chi {n_bot} lenh BOT (<{MIN_BOT_TRADES_GATE}) — dang dung so GOP "
+                f"({s['n']} lenh, gom ca lenh tay); chua ket luan duoc ve bot")
+        if float(src["pf_r"]) < MIN_PF:
+            blockers.append(f"PF(R) cua so {d} ngay{tag} = {src['pf_r']:.3f} < {MIN_PF}")
+        if float(src["pf_pnl"]) < MIN_PF_PNL:
+            blockers.append(f"PF($) cua so {d} ngay{tag} = {src['pf_pnl']:.3f} < {MIN_PF_PNL}")
     if int(st_all["n"]) < MIN_TRADES_ALL:
         blockers.append(f"n lenh dong toan bo = {st_all['n']} < {MIN_TRADES_ALL}")
 
@@ -158,6 +189,10 @@ def check(cfg, journal_path: str = "logs/journal.jsonl",
     facts = {"n_all": int(st_all["n"]), "pf_r_all": float(st_all["pf_r"]),
              "pf_pnl_all": float(st_all["pf_pnl"]), "risk_pct": risk_pct, "leverage": lev,
              "kill_tripped": tripped,
+             # (15/11) so RIENG cua lenh BOT — day la so dung de quyet dinh LIVE
+             "n_bot": int(st_bot["n"]), "pf_r_bot": float(st_bot["pf_r"]),
+             "pf_pnl_bot": float(st_bot["pf_pnl"]), "pnl_bot": float(st_bot.get("pnl") or 0.0),
+             "min_bot_trades": MIN_BOT_TRADES_GATE,
              "weak_unblocked": sorted(c for c in weak if c not in block) if gate else [],
              "min_trades": MIN_TRADES_ALL, "min_pf": MIN_PF, "min_pf_pnl": MIN_PF_PNL}
     return {"ok": not blockers,
@@ -182,6 +217,9 @@ def main(argv: list | None = None) -> int:
     print("=" * 92)
     print("CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=%d/%d | PF(R)=%.3f | PF($)=%.3f"
           % (f["n_all"], f["min_trades"], f["pf_r_all"], f["pf_pnl_all"]))
+    print("  RIENG LENH BOT            | n_bot=%d | PF(R)=%.3f | PF($)=%.3f | PnL=%+.2f"
+          % (f.get("n_bot", 0), f.get("pf_r_bot", 0.0), f.get("pf_pnl_bot", 0.0),
+             f.get("pnl_bot", 0.0)))
     print("=" * 92)
     print("  %-10s %5s %7s %8s %8s %9s %10s"
           % ("CUA SO", "n", "WR%", "PF(R)", "PF($)", "E(R)", "PnL$"))

@@ -6,6 +6,7 @@ import os
 import tempfile
 import time
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -168,6 +169,56 @@ class TestLiveReady(unittest.TestCase):
     def test_main_tra_exit_code_2_khi_chua_dat(self):
         rc = LR.main(["--journal", os.path.join(self.tmp, "rong.jsonl")])
         self.assertEqual(rc, 2)
+
+
+class TestChiTinhLenhBot(unittest.TestCase):
+    """(15/11) Cong LIVE phai tinh tren LENH BOT: lenh tay (−1135 USDT tren TESTNET) lam so gop vo nghia."""
+
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        self.jp = os.path.join(self.td.name, "journal.jsonl")
+        Path(self.jp).write_text("", encoding="utf-8")
+
+    def tearDown(self):
+        self.td.cleanup()
+
+    def _manual(self, n, *, pnl=-100.0, r=1.0):
+        """Lenh TAY: chi co CLOSE, khong co OPEN."""
+        with open(self.jp, "a", encoding="utf-8") as f:
+            for i in range(n):
+                f.write(json.dumps({"ts": time.time(), "event": "CLOSE", "pair": "M%d" % i,
+                                    "r": r, "pnl": pnl}) + "\n")
+
+    def test_bot_pairs_loai_lenh_tay(self):
+        _mk(self.jp, 30, 30)                       # bot: thang 10 / thua -5
+        self._manual(100)                          # tay: -100 moi lenh
+        opens, closes = LR.load_journal(self.jp)
+        pairs, _ = LR.match_pairs(opens, closes)
+        self.assertEqual(len(LR.bot_pairs(pairs)), 60)
+        self.assertIsInstance(LR.bot_stats(pairs)["pf_pnl"], float)
+
+    def test_cong_dung_so_BOT_khi_du_mau(self):
+        _mk(self.jp, 40, 40)
+        self._manual(200)                          # rac lenh tay rat xau
+        cfg = _cfg()
+        rep = LR.check(cfg, self.jp, windows=(7,))
+        self.assertGreater(rep["facts"]["n_bot"], LR.MIN_BOT_TRADES_GATE)
+        self.assertGreater(rep["facts"]["pf_pnl_bot"], 1.0,
+                           "lenh bot phai duoc danh gia rieng, khong bi lenh tay keo xuong")
+        joined = " | ".join(rep["blockers"])
+        self.assertNotIn("PF($) cua so", joined, "PF($) cua lenh bot dat thi khong duoc chan vi so gop")
+        self.assertNotIn("[lenh BOT]", joined)
+
+    def test_duoi_nguong_mau_bot_thi_canh_bao_chu_khong_im_lang(self):
+        _mk(self.jp, 3, 3)                         # chi 6 lenh bot
+        self._manual(200)
+        rep = LR.check(_cfg(), self.jp, windows=(7,))
+        self.assertTrue(any("lenh BOT" in w for w in rep["warnings"]), rep["warnings"])
+
+    def test_bot_lo_that_thi_VAN_chan(self):
+        _mk(self.jp, 10, 40)                       # bot: thang 100 / thua -200 => PF($)=0.5
+        rep = LR.check(_cfg(), self.jp, windows=(7,))
+        self.assertIn("[lenh BOT]", " | ".join(rep["blockers"]), rep["blockers"])
 
 
 if __name__ == "__main__":

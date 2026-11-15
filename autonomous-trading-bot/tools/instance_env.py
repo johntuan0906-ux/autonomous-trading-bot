@@ -29,6 +29,8 @@ KEYS = ("BINANCE_TESTNET", "BINANCE_API_KEY", "BINANCE_API_SECRET",
         # (15/11, B-057) cooldown theo cap: doi thi doi CA 2 instance, neu khong LIVE/TESTNET
         # se hanh xu khac nhau tren cung 1 journal.
         "PAIR_COOLDOWN_MIN",
+        # (15/11, RESEARCH_1115 muc 2) no-lookahead: bo nen dang hinh thanh — phai giong nhau 2 instance.
+        "DROP_FORMING_CANDLE",
         "LIVE_CONFIRM", "DRY_RUN")
 
 

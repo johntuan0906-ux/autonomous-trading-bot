@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import os
 import re
 import secrets
 import time
@@ -162,6 +163,9 @@ class BinanceFutures:
         # demo: qty=1 tren vi the 31 hop dong van bi tu choi). Ghi nho trong phien de lan
         # dong sau di thang duong "qty chinh xac" (xem `close_position`/`_close_exact`).
         self._ro_market_rejected: bool = False
+        # (15/11) Bo nen DANG HINH THANH (no-lookahead). Mac dinh BAT; tat bang env khi can so sanh.
+        self.drop_forming: bool = str(os.getenv("DROP_FORMING_CANDLE", "true")).strip().lower() \
+            in ("1", "true", "yes", "y", "on")
         try:
             import ccxt  # type: ignore
             self._public = ccxt.binance({"options": {"defaultType": "future"},
@@ -242,6 +246,20 @@ class BinanceFutures:
                 raise
             df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
             df["ts"] = pd.to_datetime(df["ts"], unit="ms")
+        # (15/11, RESEARCH_1115 muc 2) NO-LOOKAHEAD: bo NEN DANG HINH THANH.
+        # Nen cuoi tu ccxt co the la nen dang chay (close chua chot) ⇒ chi so/score tinh tren du lieu
+        # nua voi, va "gia vao lenh" khong tai lap duoc. Bo nen do ⇒ moi quyet dinh chi dung nen DA DONG.
+        # Tat bang `DROP_FORMING_CANDLE=false` neu can so sanh hanh vi cu.
+        if bool(getattr(self, "drop_forming", True)):
+            try:
+                from freshness import tf_seconds as _tf_sec
+                _cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(
+                    seconds=float(_tf_sec(timeframe)))
+                _closed = df[df["ts"] <= _cut]
+                if len(_closed) >= 2:
+                    df = _closed.reset_index(drop=True)
+            except Exception:  # noqa: BLE001
+                pass                                  # loi tinh toan thi GIU nguyen (khong lam mat du lieu)
         cache[key] = {"df": df.copy(), "ts": time.monotonic()}
         return df.copy()
 

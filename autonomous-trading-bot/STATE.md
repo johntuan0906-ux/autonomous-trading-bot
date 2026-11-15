@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/11/2026 10:37:13 · commit `79d2c41`
+- **Cập nhật**: 15/11/2026 11:07:13 · commit `074a81d`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `884` · nhịp tim cách đây 139.9s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `65600` · round `892` · nhịp tim cách đây 36.1s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: 3226.66 USDT
 - **Kill-switch**: bình thường
 
@@ -46,7 +46,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | 1000PEPE/USDT:USDT | SHORT | 16253.0 | 0.0038949 | 0.004141 | 0.003403 | False | False | 0.0 |
 | 1000SHIB/USDT:USDT | SHORT | 19607.0 | 0.003755 | 0.003959 | 0.003347 | False | False | 0.0 |
 | AERO/USDT:USDT | SHORT | 143.78 | 0.4563 | 0.45584369999999996 | 0.41736 | True | True | 1.911 |
-| CKB/USDT:USDT | LONG | 77776.0 | 0.000833 | 0.000789 | 0.000915 | False | False | 0.227 |
+| CKB/USDT:USDT | LONG | 77776.0 | 0.000833 | 0.000789 | 0.000915 | False | False | 0.273 |
 
 ---
 

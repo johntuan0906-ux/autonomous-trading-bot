@@ -164,11 +164,15 @@ def sharpe(rets: list, periods: float = PERIODS) -> float:
 
 
 def sortino(rets: list, periods: float = PERIODS) -> float:
-    """Sortino: chi phat bien dong AM (downside deviation), khong phat bien dong len."""
+    """Sortino: chi phat bien dong AM (downside deviation), khong phat bien dong len.
+
+    (15/11) Can **>= 2 ngay lo** moi in so: voi 1 ngay lo, mau so ~0 nen Sortino nhay len hang
+    nghin (do that tren journal LIVE: 1483) — con so do khong dung de so sanh, nen tra 0 va ghi note.
+    """
     if not rets:
         return 0.0
     down = [x for x in rets if x < 0]
-    if not down:
+    if len(down) < 2:
         return 0.0
     dd = math.sqrt(sum(x * x for x in down) / len(rets))
     return 0.0 if dd <= 0 else statistics.fmean(rets) / dd * math.sqrt(periods)
@@ -182,7 +186,8 @@ def cagr(start: float, end: float, days: float, periods: float = PERIODS) -> flo
 
 
 def calmar(cagr_pct: float, maxdd_pct: float) -> float:
-    return 0.0 if maxdd_pct <= 0 else float(cagr_pct) / float(maxdd_pct)
+    """CAGR / MaxDD. MaxDD < 0,05% (lam tron 0,00%) thi tra 0 — khong in so hang nghin."""
+    return 0.0 if float(maxdd_pct) < 0.05 else float(cagr_pct) / float(maxdd_pct)
 
 
 def profit_factor(pnls: list) -> tuple:
@@ -206,6 +211,18 @@ def stats(rs: list, pnls: list) -> dict:
     return {"n": n, "winrate": (len(wins) / n * 100.0) if n else 0.0,
             "pnl": sum(pnls), "pf": pf, "gross_win": gw, "gross_loss": gl,
             "exp_r": expectancy(rs), "exp_pnl": (sum(pnls) / n) if n else 0.0}
+
+
+def _notes(rets: list, maxdd: float) -> list:
+    """Ghi ro vi sao mot chi so la 0/khong in — de lan sau khong ai doc nham la 'an toan'."""
+    out = []
+    if sum(1 for x in rets if x < 0) < 2:
+        out.append("Sortino=0 vi < 2 ngay lo (mau so qua nho => so se vo nghia)")
+    if float(maxdd) < 0.05:
+        out.append("Calmar=0 vi MaxDD < 0,05% (lam tron 0,00%)")
+    if len(rets) < 2:
+        out.append("Sharpe=0 vi < 2 ngay co lenh")
+    return out
 
 
 def split_by(close_rows: list, key: str) -> dict:
@@ -247,6 +264,7 @@ def build(close_rows: list, start_balance: float = DEFAULT_BALANCE,
         # Hai co "so lieu khong dang tin" — bao ra thay vi im lang (dung lop loi B-047/B-050)
         "insolvent": insolvent,
         "r_pnl_mismatch": (base["exp_r"] > 0) != (base["exp_pnl"] > 0) and base["n"] > 0,
+        "notes": _notes(rets, mdd),
         "by_setup": split_by(close_rows, "setup_type"),
         "by_regime": split_by(close_rows, "market_regime"),
         "equity": eq, "daily": daily,
@@ -285,10 +303,16 @@ def render(rep: dict) -> str:
     if rep.get("insolvent"):
         L.append("  CANH BAO: von da ve <= 0 trong cua so nay ⇒ %/CAGR/Calmar vo nghia;"
                  " doi `--balance` cho dung von ban dau")
+    for n in rep.get("notes") or []:
+        L.append("  GHI CHU: %s" % n)
     return "\n".join(L)
 
 
 def main(argv=None) -> int:
+    try:                      # console Windows (cp1252) khong in duoc '⇒'/'·' -> khong duoc no
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
     ap = argparse.ArgumentParser(description="8 chi so hieu nang tu journal that.")
     ap.add_argument("--instance", default="testnet", choices=("testnet", "live"))
     ap.add_argument("--journal", default="", help="duong dan journal (bo qua --instance)")

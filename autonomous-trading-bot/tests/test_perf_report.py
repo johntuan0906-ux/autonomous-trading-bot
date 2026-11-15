@@ -70,6 +70,16 @@ class TestChiSo(unittest.TestCase):
         mixed = [0.01, -0.02, 0.03, -0.01]
         self.assertGreater(PR.sortino(mixed), PR.sharpe(mixed))
 
+    def test_sortino_can_du_2_ngay_lo(self):
+        """1 ngay lo ⇒ mau so ~0 ⇒ so nhay len hang nghin (do that LIVE: 1483). Phai tra 0 + note."""
+        self.assertEqual(PR.sortino([0.01, -0.001]), 0.0)
+        notes = PR._notes([0.01, -0.001], 0.5)
+        self.assertTrue(any("Sortino" in n for n in notes), notes)
+
+    def test_calmar_maxdd_qua_nho_thi_khong_in_so_lon(self):
+        self.assertEqual(PR.calmar(30.0, 0.01), 0.0)
+        self.assertTrue(any("Calmar" in n for n in PR._notes([0.1, -0.1], 0.01)))
+
 
 class TestJournalThat(unittest.TestCase):
     def setUp(self):

@@ -1501,6 +1501,8 @@ Blockworks) — **đã thi hành ở §29.6**, kèm con số mới.
 | **`tools/perf_report.py`** (Bước 3 roadmap) | 8 chỉ số: CAGR · Sharpe · Sortino · Calmar · MaxDD · Ulcer · PF · kỳ vọng; ghép OPEN→CLOSE FIFO để tách theo `setup_type`/`market_regime` | ✅ chạy trên journal thật (TESTNET 7 ngày: **PF 1,38 · WR 66,4% · MaxDD 4,69%** · 125 lệnh); tự cảnh báo khi kỳ vọng **R và USDT ngược dấu** (B-050) hoặc vốn ≤ 0 |
 | **Cooldown theo cặp** (B-057) | `entries_gate.in_cooldown()` + `PAIR_COOLDOWN_MIN=60`: cặp vừa **THUA** không vào lại 60′; đọc journal nên sống qua restart; lệnh **thắng không bị chặn** | ✅ 9 test, trong đó có đúng ca nghiệm thu "cặp vừa SL không vào lại trong 60′" |
 | **Một bảng phân loại lỗi sàn** (B-056) | `exchange.classify_error()`: 13 nhóm + `retryable` + `ban_until`; `is_reduce_only_rejected()`/`parse_ban_until()` thành vỏ | ✅ 9 test; sửa lớp lỗi "cùng 1 lỗi hiểu 3 cách" (đã từng làm golden `syn-api-ban-none` FAIL) |
+| **`tools/close_dust.py`** | Nâng cùng chiều lên ≥ 6 USDT → đóng **toàn bộ** → đọc lại; `--prune-skip` làm sạch `dust_skip.json`; DRY-RUN mặc định, LIVE cần `--yes-live` | ✅ đóng **ACE 1/1** (0,19 USDT), `dust_skip` **14 → 0**; 12 test. Nhờ prune mới lộ ra **BAT TRẦN thật** (trước đó bị nhãn "BỤI" che) |
+| **Thi hành trên máy thật** | `restart_bot.py --target testnet` rồi `--target live`, đo lại bằng `ops.py` | ✅ TESTNET 102884 (equity **3226,95**, 4 vị thế) · LIVE 80788 (equity **38,04**, 3 vị thế) · **0 lỗi/7 phút**; key đo bằng API: `enableWithdrawals=false`, `ipRestrict=true`; token trong log = **0 lần** |
 
 > **Luật mới, sinh ra từ số đo chứ không từ cảm tính**: **không thêm model vào hội đồng để "trông có vẻ
 > đông"** — phải qua `tools/council_eval.py --hours 720` với `prec > 0,5` **và** `n_ghep ≥ 8`. Đã loại:

@@ -97,5 +97,22 @@ class TestCooldownTheoCap(unittest.TestCase):
         self.assertTrue(EG.in_cooldown(PAIR, cfg=_Cfg(60), journal=self.jp, now=NOW)[0])
 
 
+class TestNoiDayVaoVongQuet(unittest.TestCase):
+    """Chot NOI DAY: ham dung ma khong duoc goi thi cooldown vo dung (lop loi 'im lang')."""
+
+    def test_turbo_demo_goi_cooldown_truoc_khi_vao_lenh(self):
+        src = (ROOT / "turbo_demo.py").read_text(encoding="utf-8")
+        call = "entries_gate.in_cooldown(sym, cfg)"
+        self.assertIn(call, src, "turbo_demo phai goi cooldown theo cap")
+        fetch_next = "fr = fetched.get(sym, {})"
+        self.assertLess(src.index(call), src.index(fetch_next),
+                        "phai kiem cooldown TRUOC khi doc nen/vao lenh")
+        self.assertIn('"status": "COOLDOWN", "reason": _cd_why', src)
+
+    def test_config_co_doc_PAIR_COOLDOWN_MIN(self):
+        src = (ROOT / "config.py").read_text(encoding="utf-8")
+        self.assertIn('_get_float("PAIR_COOLDOWN_MIN"', src)
+
+
 if __name__ == "__main__":
     unittest.main()

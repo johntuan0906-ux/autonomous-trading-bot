@@ -57,7 +57,7 @@
         {"file": "vscode_lm_bridge/extension.js", "line": 66, "pattern": "server.listen(port, \"127.0.0.1\""},
         {"file": "agents.py", "line": 994, "pattern": "http://127.0.0.1:8765/complete"}
       ],
-      "guard": "Da chap nhan (khong sua): bridge chi listen 127.0.0.1, phieu khong mang quyen dat size/SL. Dieu kien doi trang thai: **neu bat quyen veto cho hoi dong thi PHAI dat token** (`AGENT_VSCODE_LM_TOKEN`) va doi cong khac 8765.",
+      "guard": "Da chap nhan (khong sua): bridge chi listen 127.0.0.1, phieu khong mang quyen dat size/SL. **Da tach cong 15/11**: `serve_glow.py` mac dinh **8770** (truoc 8765) de khong gianh cong voi bridge. Dieu kien con lai: **neu bat quyen veto cho hoi dong thi PHAI dat token** (`AGENT_VSCODE_LM_TOKEN`).",
       "tests": []
     },
     {
@@ -130,5 +130,27 @@
      "what": "telegram_bridge goi tool bang argv CO DINH (khong shell) nen khong tiem duoc lenh",
      "how": "scan",
      "scan": {"globs": ["tools/telegram_bridge.py"], "present": ["def run_tool(argv: list"]}}
+  ],
+  "validations": [
+    {"id": "V-01",
+     "what": "Quyen cua API key dang dung (LIVE)",
+     "how": "ccxt `sapiGetAccountApiRestrictions` (lenh doc, khong giao dich)",
+     "result": "enableWithdrawals=false · enableInternalTransfer=false · permitsUniversalTransfer=false · enableFutures=true · enableSpotAndMarginTrading=true · ipRestrict=true",
+     "verdict": "KHONG rut duoc tien ⇒ F-01 giu muc high (khong len critical). Nen TAT quyen spot vi bot chi dung futures."},
+    {"id": "V-02",
+     "what": "Token Telegram co tung bi ghi ra file log khong",
+     "how": "quet regex `bot<so>:<chuoi>` tren toan bo `logs/` cua CA 2 instance (15/11)",
+     "result": "**0 lan** xuat hien",
+     "verdict": "F-04 la rui ro TIEM AN, chua tung ro ri ra file ⇒ khong can rotate token vi ly do nay"},
+    {"id": "V-03",
+     "what": "Cooldown theo cap co chan dung tren journal THAT khong",
+     "how": "`entries_gate.in_cooldown('<cap vua lo>', now=t+10phut)` va `now=t+61phut` (t = moc CLOSE that)",
+     "result": "AERO -1,0147R: t+10' ⇒ **chan** (con 50 phut); t+61' ⇒ **cho qua**",
+     "verdict": "khop nghiem thu roadmap 'cap vua SL khong vao lai trong 60 phut'"},
+    {"id": "V-04",
+     "what": "Code moi da chay tren bot that chua",
+     "how": "`tools/restart_bot.py --target testnet|live` roi `tools/ops.py`",
+     "result": "TESTNET supervisor 102884 (round 1, equity 3226,95, managed 4) · LIVE supervisor 80788 (round 1, equity 38,04, managed 3) · loi trong 7 phut: KHONG",
+     "verdict": "B-056/B-057 da co hieu luc tren ca 2 instance; khong mat vi the nao khi restart"}
   ]
 }

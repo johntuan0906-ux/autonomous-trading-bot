@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """serve_glow.py - server LIVE cho cac ban do: file tinh + API tin hieu + SSE.
 
-  python serve_glow.py [--port 8765] [--watch] [--rebuild]
+  python serve_glow.py [--port 8770] [--watch] [--rebuild]
 
 - GET  /                        -> glow_map.html (ban Canvas2D)
 - GET  /glow_map_webgl.html     -> ban WebGL (cung snapshot + signature)
@@ -264,7 +264,10 @@ def watch_loop(interval=3.0):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Server LIVE cho cac ban do glow_map.")
-    ap.add_argument("--port", type=int, default=8765)
+    # (15/11, F-03) Mac dinh 8770, KHONG phai 8765: 8765 la cong cua `vscode_lm_bridge`
+    # (Copilot cho hoi dong). Truoc day 2 server gianh cung 1 cong ⇒ process cuc bo bind truoc
+    # co the dong vai "LLM" va bom phieu.
+    ap.add_argument("--port", type=int, default=8770)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--watch", action="store_true",
                     help="theo doi du lieu/log -> rebuild + snapshot + reload lien tuc")

@@ -1,0 +1,167 @@
+"""`tools/close_dust.py` — dong vi the BUI (B-054? khong: day la cong cu cho skill close-dust).
+
+Chot: (a) chi chon vi the < minNotional; (b) DRY-RUN KHONG dat lenh nao; (c) khi apply thi
+nang CUNG CHIEU roi dong TOAN BO va doc lai; (d) LIVE phai co --yes-live.
+"""
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+
+import close_dust as CD      # noqa: E402
+
+
+class FakeEx:
+    def __init__(self, price=2.0, step=1.0, left=0.0, boom=False, qty=1.0):
+        self.price, self.step, self.left, self.boom = price, step, left, boom
+        self.qty = float(qty)
+        self.calls: list = []
+
+    def last_price(self, sym):
+        return self.price
+
+    def quantize_qty(self, sym, qty):
+        if self.step <= 0:
+            return 0.0
+        return int(max(0.0, qty) // self.step) * self.step
+
+    def market_entry(self, sym, direction, qty):
+        if self.boom:
+            raise RuntimeError("-2019 Margin is insufficient")
+        self.calls.append(("entry", sym, direction, qty))
+        self.qty += float(qty)                      # vi the TANG (cung chieu)
+        return {"ok": True}
+
+    def position_qty(self, sym, direction=None):
+        return self.qty
+
+    def close_position(self, sym, direction, qty):
+        self.calls.append(("close", sym, direction, qty))
+        self.qty = float(self.left)                 # dong xong con lai bao nhieu (0 = sach)
+        return {"ok": True}
+
+
+
+def _pos(notional, symbol="ACE/USDT:USDT", direction="LONG", qty=1.0):
+    return {"symbol": symbol, "direction": direction, "qty": qty,
+            "notional": notional, "in_skip": True}
+
+
+class TestChonBui(unittest.TestCase):
+    def test_plan_nang(self):
+        self.assertAlmostEqual(CD.plan_raise(1.0), 5.0)      # 6 - 1
+        self.assertAlmostEqual(CD.plan_raise(4.9, 5.0, 6.0), 1.1)
+        self.assertEqual(CD.plan_raise(5.0), 0.0)            # dung bang nguong => khong phai bui
+        self.assertEqual(CD.plan_raise(0.0), 0.0)
+        self.assertEqual(CD.plan_raise(0.0, 5.0, 100.0), 0.0)
+
+    def test_loc_vi_the_bui(self):
+        poss = [
+            {"symbol": "A/USDT:USDT", "contracts": 1, "notional": 0.8, "side": "long"},
+            {"symbol": "B/USDT:USDT", "contracts": 1, "notional": 12.0, "side": "short"},
+            {"symbol": "C/USDT:USDT", "contracts": 0, "notional": 0.0, "side": "long"},
+            {"symbol": "D/USDT:USDT", "contracts": 2, "markPrice": 1.0, "side": "short"},
+        ]
+        got = CD.dust_positions(poss, dust={"A/USDT:USDT"})
+        self.assertEqual([d["symbol"] for d in got], ["A/USDT:USDT", "D/USDT:USDT"])
+        self.assertEqual(got[0]["direction"], "LONG")
+        self.assertEqual(got[1]["direction"], "SHORT")
+        self.assertAlmostEqual(got[1]["notional"], 2.0)
+        self.assertTrue(got[0]["in_skip"])
+        self.assertFalse(got[1]["in_skip"])
+
+
+class TestDongMotViThe(unittest.TestCase):
+    def test_dry_run_khong_dat_lenh(self):
+        ex = FakeEx()
+        r = CD.close_one(ex, _pos(1.0), apply=False, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("DRY-RUN", r["why"])
+        self.assertEqual(ex.calls, [])
+
+    def test_apply_nang_roi_dong_toan_bo(self):
+        ex = FakeEx(price=2.0, step=1.0, left=0.0, qty=1.0)
+        r = CD.close_one(ex, _pos(1.0, qty=1.0), apply=True, log=lambda *_: None)
+        self.assertTrue(r["ok"], r)
+        kinds = [c[0] for c in ex.calls]
+        self.assertEqual(kinds, ["entry", "close"])
+        entry = ex.calls[0]
+        self.assertEqual(entry[2], "LONG", "phai nang CUNG CHIEU")
+        self.assertAlmostEqual(entry[3], 2.0)      # need 5 USDT / gia 2 => 2.5 => quantize 2
+        self.assertAlmostEqual(ex.calls[1][3], 3.0,
+                               msg="dong TOAN BO (1 cu + 2 nang) chu khong chi phan nang")
+
+    def test_con_lai_thi_bao_loi_chu_khong_bao_ok(self):
+        ex = FakeEx(price=2.0, step=1.0, left=0.5)
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("con", r["why"])
+
+    def test_loi_san_thi_tra_why(self):
+        ex = FakeEx(boom=True)
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("-2019", r["why"])
+
+    def test_qty_nang_0_thi_dung_lai(self):
+        ex = FakeEx(price=1000.0, step=1.0)      # 5 USDT / 1000 = 0.005 => quantize 0
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("qty nang = 0", r["why"])
+        self.assertEqual(ex.calls, [])
+
+
+class TestClearSkip(unittest.TestCase):
+    def test_xoa_symbol_da_dong(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            (base / "logs").mkdir()
+            p = base / "logs" / "dust_skip.json"
+            p.write_text(json.dumps({"symbols": ["A/USDT:USDT", "B/USDT:USDT"]}),
+                         encoding="utf-8")
+            self.assertEqual(CD.clear_skip(base, ["A/USDT:USDT"]), 1)
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["symbols"],
+                             ["B/USDT:USDT"])
+            self.assertEqual(CD.clear_skip(base, ["KHONG-CO"]), 0)
+
+    def test_file_hong_khong_no(self):
+        with tempfile.TemporaryDirectory() as td:
+            self.assertEqual(CD.clear_skip(Path(td), ["A"]), 0)
+
+
+class TestPruneSkip(unittest.TestCase):
+    def test_chi_giu_bui_hien_tai(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            (base / "logs").mkdir()
+            p = base / "logs" / "dust_skip.json"
+            p.write_text(json.dumps({"symbols": ["A", "B", "C"], "note": "x"}), encoding="utf-8")
+            old, new = CD.prune_skip(base, ["C"])
+            self.assertEqual(old, ["A", "B", "C"])
+            self.assertEqual(new, ["C"])
+            d = json.loads(p.read_text(encoding="utf-8"))
+            self.assertEqual(d["symbols"], ["C"])
+            self.assertEqual(d.get("note"), "x", "giu cac truong khac")
+
+    def test_danh_sach_rong_van_ghi(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            (base / "logs").mkdir()
+            old, new = CD.prune_skip(base, [])
+            self.assertEqual((old, new), ([], []))
+
+
+class TestAnToanLive(unittest.TestCase):
+    def test_live_apply_phai_co_yes_live(self):
+        self.assertEqual(CD.main(["--target", "live", "--apply"]), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

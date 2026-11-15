@@ -211,6 +211,7 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | **Về lại hình học SL/TP cũ (14/69)** | sửa `.env` (cả 2): `SL_ATR_MULT=14`, `TP_ATR_MULT=69`, `PARTIAL_AT_R=2.86` → `python tools/restart_bot.py --target both --stagger 60` (backup sẵn: `.env.bak-hinhhoc1346`) |
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
+| **Đóng vị thế BỤI** (notional < 5 USDT, sàn từ chối) | `python tools\close_dust.py` (DRY-RUN, in kế hoạch) · `--apply` (nâng cùng chiều lên 6 USDT rồi đóng **toàn bộ**, đọc lại) · `--clear-skip` (xoá symbol khỏi `dust_skip.json`) · `--prune-skip` (ghi lại danh sách = **đúng** symbol đang là bụi; nếu không, `orders_audit` sẽ in nhãn "BỤI" cho vị thế TRẦN thật) · `--target live` phải thêm `--yes-live` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |
 | Chấm điểm + kiểm tra lệnh bảo vệ thật | `python tools/harness_audit.py --target live --with-exchange` |
 | **Rút kinh nghiệm từ journal** | `python tools/learn_review.py [--target live] [--impact]` |

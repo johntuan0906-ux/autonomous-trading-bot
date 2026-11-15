@@ -661,5 +661,22 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      xứng + chỉ trong RAM). Cache theo `(path, mtime, size)` vì hàm chạy cho ~460 cặp mỗi vòng.
    - `exchange.classify_error()` — **một** bảng phân loại lỗi sàn (13 nhóm + `retryable` + `ban_until`);
      `is_reduce_only_rejected()` và `turbo_demo.parse_ban_until()` chỉ còn là vỏ của nó.
+9. **Thi hành trên máy thật (15/11, sau khi được duyệt).**
+   - **Restart cả 2 instance** để code mới có hiệu lực: TESTNET supervisor **102884** (round 1,
+     equity **3226,95**, 4 vị thế), LIVE supervisor **80788** (round 1, equity **38,04**, 3 vị thế);
+     `ops.py` báo **0 lỗi/7 phút**, không mất vị thế nào (9 + 3 vị thế trước/sau như nhau).
+   - **Quyền key (đo bằng API, không đoán):** `enableWithdrawals=false`, `enableInternalTransfer=false`,
+     `permitsUniversalTransfer=false`, `enableFutures=true`, `ipRestrict=true` ⇒ **không rút được tiền**;
+     riêng `enableSpotAndMarginTrading=true` là **quyền thừa** → đưa vào `ops_queue` #17.
+   - **Token Telegram trong log:** quét cả 2 instance = **0 lần** ⇒ F-04 chưa từng xảy ra, không cần rotate.
+   - **Cooldown theo cặp:** kiểm bằng đồng hồ giả trên journal thật — AERO −1,0147R: t+10′ **chặn**,
+     t+60′+ **cho qua** (đúng nghiệm thu). Vị thế lỗ gần nhất lúc kiểm đã 213 phút trước nên bot chưa có
+     gì để chặn — đúng như thiết kế.
+   - **Dọn bụi + danh sách cũ:** thêm `tools/close_dust.py` (nâng cùng chiều → đóng **toàn bộ** → đọc lại,
+     DRY-RUN mặc định, LIVE cần `--yes-live`); đóng **ACE** (0,19 USDT) thành công **1/1**; `--prune-skip`
+     làm `dust_skip.json` từ **14 → 0** symbol. Nhờ vậy `orders_audit` hết in nhãn "BỤI" sai và lộ ra
+     **1 vị thế TRẦN thật**: `BAT` (27,7 USDT, không SL/TP) — cùng `BANK` (103) và `1000SHIB` (76) là
+     **lệnh mở tay**, bot không quản lý ⇒ `ops_queue` #18 chờ người quyết (đóng / skip / adopt),
+     KHÔNG tự đóng tiền của người khác.
 
 

@@ -84,7 +84,7 @@ Nguyên tắc của skill: **người kiểm không phải người tìm** — n
 |---|---|---|---|---|
 | F-01 | high | fixed (B-054) | HTTP cục bộ → file | `serve_glow.py` phục vụ cả repo ⇒ `GET /.env` trả nguyên key thật |
 | F-02 | medium | fixed (B-055) | Internet → bot | allowlist chat_id **rỗng thì cho qua** (fail-open) |
-| F-03 | medium | accepted | tiến trình cục bộ → phiếu | bridge Copilot không token + trùng cổng 8765 ⇒ giả phiếu |
+| F-03 | medium | accepted | tiến trình cục bộ → phiếu | bridge Copilot không token + **trùng cổng 8765** (đã tách: `serve_glow` → **8770**) ⇒ giả phiếu |
 | F-04 | low | fixed (B-054) | lỗi HTTP → log | token Telegram nằm trong chuỗi lỗi được ghi log |
 | F-05 | low | accepted | tool → `.env` | `state_sync` ghi key LIVE vào `.env` bằng code, không backup |
 | F-06 | low | accepted | file state → tiến trình | `restart_bot` kill PID đọc từ file state |
@@ -108,20 +108,27 @@ Nguyên tắc của skill: **người kiểm không phải người tìm** — n
 | AST (`controls`) | quét cú pháp, không grep | grep khớp cả chú thích ⇒ bỏ sót/ báo nhầm |
 | bảng trong `.md` | số dòng `F-` phải bằng số phát hiện trong JSON | báo cáo và số liệu lệch nhau |
 
-Số đo hiện tại: **6 phát hiện** (high 1 · medium 2 · low 3) · **5 kiểm soát** · **5 test chốt** · `--check` = **0 lệch**.
+Số đo hiện tại: **6 phát hiện** (high 1 · medium 2 · low 3) · **5 kiểm soát** · **5 test chốt** · **4 kiểm chứng V-01…V-04** · `--check` = **0 lệch**.
 
 ## Pha 6 — Reporting (trung lập với mục tiêu, có việc làm tiếp)
 
 **Việc làm ngay (đã làm trong đợt này):** F-01 chặn `translate_path`; F-02 đảo thành fail-closed;
-F-04 `redact()` ở cả 2 nơi ghi log; thêm cảnh báo khi `serve_glow --host` mở ra mạng ngoài.
+F-04 `redact()` ở cả 2 nơi ghi log; thêm cảnh báo khi `serve_glow --host` mở ra mạng ngoài;
+**tách cổng**: `serve_glow.py` mặc định **8770** (trước 8765, trùng cổng bridge Copilot).
 
-**Việc còn lại (chờ người quyết — ghi vào `ops_queue.py`):**
-1. **Vòng token Telegram + Binance**: token nằm trong `.env` và có thể đã vào `logs/telegram_bridge.log`
-   trước bản sửa hôm nay ⇒ rotate rồi xoá log cũ. (Đây là quyết định của người vận hành, không phải code.)
-2. **Xác nhận quyền key**: vào Binance kiểm key futures **không** có `Enable Withdrawals` / `Enable Futures
-   Transfer` — nếu có thì mức F-01 phải nâng lên `critical`.
-3. **Cổng 8765**: đổi `AGENT_VSCODE_LM_URL` sang cổng khác 8765 để `serve_glow` và bridge không giành cổng;
-   nếu bật quyền veto cho hội đồng thì đặt luôn token bridge (F-03).
+**Kiểm chứng bằng phép đo (15/11) — 4 mục, ghi trong `security/findings.json` → `validations`:**
+
+| ID | Câu hỏi | Cách đo | Kết quả |
+|---|---|---|---|
+| V-01 | Key có quyền rút tiền không? | `sapiGetAccountApiRestrictions` (chỉ đọc) | `enableWithdrawals=false` · `enableInternalTransfer=false` · `permitsUniversalTransfer=false` · `enableFutures=true` · `ipRestrict=true` ⇒ **không rút được tiền**; riêng **`enableSpotAndMarginTrading=true` là quyền thừa, nên tắt** |
+| V-02 | Token Telegram có vào log chưa? | quét regex `bot<so>:<chuoi>` trên `logs/` **cả 2 instance** | **0 lần** ⇒ F-04 là rủi ro tiềm ẩn, chưa xảy ra |
+| V-03 | Cooldown theo cặp chặn đúng? | `in_cooldown('<cặp vừa lỗ>', now=t+10′ / t+61′)` với `t` = mốc CLOSE thật | AERO −1,0147R: t+10′ **chặn** (còn 50′), t+61′ **cho qua** |
+| V-04 | Code mới đã chạy thật? | `restart_bot.py --target testnet` rồi `--target live`, sau đó `ops.py` | TESTNET 102884 (round 1, equity 3226,95, 4 vị thế) · LIVE 80788 (round 1, equity 38,04, 3 vị thế) · **0 lỗi/7 phút**, không mất vị thế |
+
+**Việc còn lại (chờ người quyết — đã ghi vào `ops_queue.py`):**
+1. **Tắt quyền Spot/Margin** của key futures (V-01) — thao tác trên web Binance, không làm bằng code được.
+2. **Cổng 8765**: nếu bật quyền veto cho hội đồng thì đặt token bridge (F-03); `serve_glow` đã rời sang 8770.
+3. **Rotate token Telegram**: KHÔNG cần vì V-02 = 0 lần; chỉ rotate nếu nghi máy bị đọc trộm.
 
 **Hardening note (không phải lỗ hổng, nhưng nên làm khi rảnh):**
 - Prompt hội đồng chứa tiêu đề tin từ nguồn ngoài (B4): hiện vô hại vì phiếu không mang quyền size/SL và

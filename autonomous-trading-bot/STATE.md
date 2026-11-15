@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 15/11/2026 09:37:12 · commit `c80cd41`
+- **Cập nhật**: 15/11/2026 10:07:13 · commit `ca4421a`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `65600` · round `869` · nhịp tim cách đây 31.5s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3226.69 USDT
+- **Bot**: pid `65600` · round `877` · nhịp tim cách đây 30.4s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3048 lệnh đóng, WR 41.01%, E(R) 0.2333, PnL -1041.48$)
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000PEPE/USDT:USDT | SHORT | 16253.0 | 0.0038949 | 0.004141 | 0.003403 | False | False | 0.409 |
-| 1000SHIB/USDT:USDT | SHORT | 19607.0 | 0.003755 | 0.003959 | 0.003347 | False | False | 0.034 |
+| 1000PEPE/USDT:USDT | SHORT | 16253.0 | 0.0038949 | 0.004141 | 0.003403 | False | False | 0.0 |
+| 1000SHIB/USDT:USDT | SHORT | 19607.0 | 0.003755 | 0.003959 | 0.003347 | False | False | 0.0 |
 | AERO/USDT:USDT | SHORT | 143.78 | 0.4563 | 0.45584369999999996 | 0.41736 | True | True | 1.911 |
-| CKB/USDT:USDT | LONG | 77776.0 | 0.000833 | 0.000789 | 0.000915 | False | False | 0.0 |
+| CKB/USDT:USDT | LONG | 77776.0 | 0.000833 | 0.000789 | 0.000915 | False | False | 0.205 |
 
 ---
 

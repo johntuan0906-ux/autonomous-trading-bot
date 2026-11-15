@@ -1013,6 +1013,18 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             _ages["news"] = freshness.age_sec(_news_ts, _now)
         _fresh = freshness.evaluate(_ages, freshness.ttl_from_cfg(cfg, cfg.timeframe),
                                     freshness.hard_mult_from_cfg(cfg))
+        # (15/11, RESEARCH muc 11) THUNG LO du lieu: `age_sec` chi biet nen CU, khong biet nen
+        # BI THIEU o giua (chuoi bi gay ⇒ chi so sai ma van "tuoi"). Chi ghi nhan + canh bao,
+        # KHONG chan lenh (thieu vai nen chua chac da sai huong).
+        try:
+            _stamps = list(fr["df"]["ts"])
+        except Exception:  # noqa: BLE001
+            _stamps = []
+        _gaps = freshness.candle_gaps(_stamps, cfg.timeframe)
+        if _gaps["missing"]:
+            log.warning("NEN THUNG LO %s: thieu %d/%d nen (phu %.0f%%, lo lon nhat %.0fs)",
+                        sym, _gaps["missing"], _gaps["expected"],
+                        100.0 * _gaps["coverage"], _gaps["max_gap_sec"])
         if not _fresh["ok"]:
             _why = ("du lieu CHET: %s (tuoi/ttl vuot %.0fx) — khong quyet dinh tren du lieu nay"
                     % (", ".join(_fresh["blocking"]), freshness.hard_mult_from_cfg(cfg)))
@@ -1278,6 +1290,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             log_trade(event="OPEN", pair=sym, direction=direction, timeframe=cfg.timeframe,
                       decision_id=_did, reason_code=RC.STATUS_CODES["OPENED"],
                       data_age=_fresh["by_source"],
+                      data_gaps=_gaps,
                       entry=lv["entry"], sl=lv["sl"], tp=lv["tp"], qty=qty,
                       leverage=cfg.leverage, risk_pct=cfg.risk_per_trade_pct,
                       rr=lv.get("rr"), alpha=alpha, score100=sig100["total"],

@@ -678,5 +678,17 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      **1 vị thế TRẦN thật**: `BAT` (27,7 USDT, không SL/TP) — cùng `BANK` (103) và `1000SHIB` (76) là
      **lệnh mở tay**, bot không quản lý ⇒ `ops_queue` #18 chờ người quyết (đóng / skip / adopt),
      KHÔNG tự đóng tiền của người khác.
+10. **Hội đồng tự kiểm + đóng nốt 5 mục roadmap (15/11, đợt chót).**
+   - `ops_queue`: trả lời **16 câu** bằng số đo (provider 402 ⇒ theo dõi bằng B-053; 7/7 vị thế đủ
+     SL/TP; supervisor/child đã chạy; PSI **0 cảnh báo/0 vừa** khi đo lại; B-023 = lớp provider chứ
+     không phải lỗi shell; H-20261026-007 **chốt là tốt hơn nền** n=128 avgR +0,272 vs +0,045), #17/#18
+     bỏ qua theo quyết định người vận hành; **chỉ còn #8 (thu hồi key Blockworks) là việc của người**.
+   - **#6** `tools/lessons_wiki.py`: `LESSONS.md` sinh từ journal + trích dẫn + `--check` từ chối
+     "số không khớp nguồn" (đo: **31 khóa** đủ mẫu n≥8, ví dụ `B_BREAKOUT_RETEST` −0,736R/8 lệnh).
+   - **#8** `bug_catalog --manifest` → `golden/bug_manifest.json` (hash **214** test chốt) ⇒ xoá/đổi
+     tên test là `--check` đỏ (chống "xoá test cho xanh").
+   - **#11** `freshness.candle_gaps()` + `turbo_demo` ghi `data_gaps`/cảnh báo khi coverage < 90%
+     (trước đây `age_sec` chỉ biết "dữ liệu cũ", không biết "dữ liệu thủng lỗ").
+   - **#10/#12** `AGENTS.md`: thêm mục **Harness (5 subsystem)** và bảng **Approval boundary**.
 
 

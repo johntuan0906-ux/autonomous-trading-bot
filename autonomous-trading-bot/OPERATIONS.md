@@ -212,6 +212,8 @@ lệnh sau kill lệnh trước, `Get-Content -Tail` trên log lớn làm treo p
 | Kiểm kê lệnh chờ (thường + **algo**) | `python tools/orders_audit.py [--target live]` |
 | Gom lệnh còn 1 SL + 1 TP / vị thế | `python tools/orders_audit.py --target live --dedupe` |
 | **Đóng vị thế BỤI** (notional < 5 USDT, sàn từ chối) | `python tools\close_dust.py` (DRY-RUN, in kế hoạch) · `--apply` (nâng cùng chiều lên 6 USDT rồi đóng **toàn bộ**, đọc lại) · `--clear-skip` (xoá symbol khỏi `dust_skip.json`) · `--prune-skip` (ghi lại danh sách = **đúng** symbol đang là bụi; nếu không, `orders_audit` sẽ in nhãn "BỤI" cho vị thế TRẦN thật) · `--target live` phải thêm `--yes-live` |
+| **Sinh lại LESSONS.md từ journal + kiểm số** | `python tools\lessons_wiki.py` (xem trước) · `--write` (ghi phần AUTO, giữ khối `<!-- HUMAN -->`) · `--check` (**từ chối** khi số trong tài liệu ≠ journal; `--instance live` để kiểm sổ LIVE) |
+| **Chống xoá test cho xanh** | `python tools\bug_catalog.py --manifest` (ghi `golden/bug_manifest.json` = hash danh sách test chốt) · `--check` báo lỗi khi danh sách đổi ⇒ nếu là thay đổi **có chủ ý** mới được chạy `--manifest` |
 | **Chấm điểm setup** (1 lệnh, offline) | `python tools/harness_audit.py --both` |
 | Chấm điểm + kiểm tra lệnh bảo vệ thật | `python tools/harness_audit.py --target live --with-exchange` |
 | **Rút kinh nghiệm từ journal** | `python tools/learn_review.py [--target live] [--impact]` |

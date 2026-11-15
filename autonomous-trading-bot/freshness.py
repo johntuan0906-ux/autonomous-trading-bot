@@ -174,6 +174,64 @@ def summary_line(rep: dict) -> str:
     return " | ".join(parts)
 
 
+def tf_seconds(tf: str) -> float:
+    """So giay cua 1 nen theo khung (`15m` -> 900). Khong doc duoc -> 60."""
+    s = str(tf or "").strip().lower()
+    try:
+        if s.endswith("m"):
+            return max(1.0, float(s[:-1] or 1) * 60.0)
+        if s.endswith("h"):
+            return max(1.0, float(s[:-1] or 1) * 3600.0)
+        if s.endswith("d"):
+            return max(1.0, float(s[:-1] or 1) * 86400.0)
+        if s.endswith("w"):
+            return max(1.0, float(s[:-1] or 1) * 604800.0)
+    except ValueError:
+        return 60.0
+    return 60.0
+
+
+def candle_gaps(stamps, timeframe: str = "15m", max_gap_mult: float = 3.0) -> dict:
+    """(15/11, RESEARCH muc 11) Dem NEN THIEU trong cua so — bo sung cho `age_sec`.
+
+    `age_sec` bat "du lieu CU"; ham nay bat "du lieu THUNG LO" (nen 15m ma thieu 5 cay o giua
+    van co the rat moi ⇒ chi so tinh tren chuoi bi gay, sai ma khong ai biet).
+
+    `stamps`: moc thoi gian nen (epoch ms hoac giay, nhu cot `ts` cua `fetch_ohlcv`).
+    Tra {"missing","expected","coverage","max_gap_sec","ok"} — `ok` = coverage >= 0.9 va
+    khong co lo > `max_gap_mult` nen.
+    """
+    step = tf_seconds(timeframe)
+    vals = []
+    for x in stamps or []:
+        try:
+            v = float(x)
+        except (TypeError, ValueError):
+            continue
+        if v > 0:
+            vals.append(v)
+    if not vals:
+        return {"missing": 0, "expected": 0, "coverage": 1.0, "max_gap_sec": 0.0, "ok": True}
+    if max(vals) > 1e11:                 # mili giay -> giay
+        vals = [v / 1000.0 for v in vals]
+    vals = sorted(set(vals))
+    if len(vals) < 2:
+        return {"missing": 0, "expected": 1, "coverage": 1.0, "max_gap_sec": 0.0, "ok": True}
+    missing = 0
+    max_gap = 0.0
+    for a, b in zip(vals, vals[1:]):
+        d = b - a
+        max_gap = max(max_gap, d)
+        n = int(round(d / step))
+        if n > 1:
+            missing += n - 1
+    expected = int(round((vals[-1] - vals[0]) / step)) + 1
+    coverage = 1.0 - (missing / expected) if expected > 0 else 1.0
+    return {"missing": missing, "expected": expected,
+            "coverage": round(max(0.0, coverage), 4), "max_gap_sec": round(max_gap, 1),
+            "ok": coverage >= 0.9 and max_gap <= step * float(max_gap_mult)}
+
+
 def ttl_from_cfg(cfg, timeframe: str | None = None) -> dict:
     """Bang TTL lay tu `cfg` (env) — de nguoi van hanh chinh duoc ma khong sua code.
 

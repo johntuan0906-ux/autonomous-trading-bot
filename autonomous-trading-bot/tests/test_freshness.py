@@ -116,5 +116,54 @@ class TestCfg(unittest.TestCase):
         self.assertEqual(F.hard_mult_from_cfg(object()), F.HARD_MULT)
 
 
+class TestThungLoDuLieu(unittest.TestCase):
+    """(RESEARCH muc 11) `candle_gaps`: dem NEN THIEU — thu ma `age_sec` khong bat duoc."""
+
+    def test_tf_seconds(self):
+        self.assertEqual(F.tf_seconds("15m"), 900.0)
+        self.assertEqual(F.tf_seconds("1h"), 3600.0)
+        self.assertEqual(F.tf_seconds("4h"), 14400.0)
+        self.assertEqual(F.tf_seconds("1d"), 86400.0)
+        self.assertEqual(F.tf_seconds("hong"), 60.0)
+
+    def test_chuoi_lien_tuc_thi_sach(self):
+        st = [1000 + 900 * i for i in range(20)]        # 20 nen 15m lien tiep
+        g = F.candle_gaps(st, "15m")
+        self.assertEqual(g["missing"], 0)
+        self.assertEqual(g["expected"], 20)
+        self.assertAlmostEqual(g["coverage"], 1.0)
+        self.assertTrue(g["ok"])
+
+    def test_thieu_nen_o_giua_thi_bao(self):
+        st = [1000 + 900 * i for i in range(10)]
+        st += [1000 + 900 * i for i in range(15, 20)]   # thieu 5 nen (10..14)
+        g = F.candle_gaps(st, "15m")
+        self.assertEqual(g["missing"], 5)
+        self.assertEqual(g["expected"], 20)
+        self.assertAlmostEqual(g["coverage"], 0.75)
+        self.assertFalse(g["ok"])
+        self.assertGreater(g["max_gap_sec"], 900 * 3)
+
+    def test_moc_mili_giay_cho_cung_ket_qua(self):
+        base = 1_760_000_000.0                          # epoch that (giay)
+        st = [base + 900 * i for i in range(10)]
+        ms = [x * 1000 for x in st]
+        self.assertEqual(F.candle_gaps(st, "15m")["missing"],
+                         F.candle_gaps(ms, "15m")["missing"])
+
+    def test_trung_lap_va_rong_khong_no(self):
+        self.assertTrue(F.candle_gaps([1000, 1000, 1900], "15m")["ok"])
+        for bad in ([], None, ["hong"], [0]):
+            g = F.candle_gaps(bad, "15m")
+            self.assertEqual(g["missing"], 0)
+            self.assertTrue(g["ok"])
+
+    def test_noi_day_turbo_demo(self):
+        """Ham dung ma khong duoc goi thi vo dung."""
+        src = (ROOT / "turbo_demo.py").read_text(encoding="utf-8")
+        self.assertIn("freshness.candle_gaps(", src)
+        self.assertIn("data_gaps=_gaps", src)
+
+
 if __name__ == "__main__":
     unittest.main()

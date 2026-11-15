@@ -19,6 +19,7 @@ Quy uoc `tests`: `file.py` (ca file) hoac `file.py::Class::test` (chinh xac) hoa
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -26,6 +27,13 @@ import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+#: (15/11, RESEARCH §1 muc 8 — "witness/manifest") Hash danh sach TEST CHOT de phat hien
+#: test bi XOA/DOI TEN lang le (lop loi B-001/B-002: "sua mot lop loi roi ve sau vo tinh xoa
+#: test ⇒ mat chot chan ma khong ai biet"). `--check` so manifest voi code; lech ⇒ bao loi.
+#: Doi test CO CHU Y thi chay `--manifest` (ghi lai hash), khong duoc de `--check` do.
+MANIFEST_PATH = ROOT / "golden" / "bug_manifest.json"
+
 
 KINDS = {
     "im-lang": "That bai IM LANG (khong ai biet he thong da bo qua / quyet khac)",
@@ -755,6 +763,54 @@ def test_index(tests_dir=None) -> dict:
     return {"refs": refs, "files": files}
 
 
+def manifest(catalog=None) -> dict:
+    """Ban "witness" cua danh muc: hash danh sach (ma lop loi -> test chot).
+
+    Chi hash DANH SACH ID (khong hash noi dung file test): muc dich la bat test bi XOA/DOI TEN.
+    Sua noi dung test la viec binh thuong, khong nen lam do `--check` moi lan.
+    """
+    items = list(CLASSES if catalog is None else catalog)
+    pairs = [(str(c.get("code")), str(t)) for c in items for t in (c.get("tests") or [])]
+    ids = sorted("%s::%s" % (code, t) for code, t in pairs)
+    files = sorted({t.split("::")[0] for _code, t in pairs})
+    return {"n_classes": len(items), "n_tests": len(ids),
+            "digest": hashlib.sha256("\n".join(ids).encode("utf-8")).hexdigest(),
+            "files": files}
+
+
+def write_manifest(path=None, catalog=None) -> dict:
+    """Ghi lai manifest (chay khi THAY DOI test chot co chu y)."""
+    p = Path(path) if path else MANIFEST_PATH
+    m = manifest(catalog)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(m, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    except OSError as e:
+        return {**m, "ok": False, "err": str(e)[:160]}
+    return {**m, "ok": True, "path": str(p)}
+
+
+def check_manifest(path=None, catalog=None) -> dict:
+    """So manifest da ghi voi danh muc hien tai. Tra {ok, reason, was, now}."""
+    p = Path(path) if path else MANIFEST_PATH
+    now = manifest(catalog)
+    try:
+        was = json.loads(p.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"ok": False, "reason": "chua co manifest — chay `--manifest` de ghi",
+                "was": None, "now": now}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reason": "manifest hong: %s" % str(e)[:120],
+                "was": None, "now": now}
+    if was.get("digest") == now["digest"]:
+        return {"ok": True, "reason": "", "was": was, "now": now}
+    return {"ok": False,
+            "reason": ("danh sach test chot DA DOI (was %s test / now %s test) — neu la thay doi"
+                       " co chu y thi chay `--manifest`; neu khong, co test bi xoa/doi ten"
+                       % (was.get("n_tests"), now["n_tests"])),
+            "was": was, "now": now}
+
+
 def check(catalog=None, tests_dir=None) -> dict:
     """Xac minh moi `tests` trong danh muc CO THAT. Tra {ok, n, pinned, missing, no_test}."""
     idx = test_index(tests_dir)
@@ -772,8 +828,11 @@ def check(catalog=None, tests_dir=None) -> dict:
                 pinned += 1
             else:
                 missing.append("%s -> %s" % (c.get("code"), r))
-    return {"ok": not missing and not no_test, "n": len(items), "pinned": pinned,
-            "missing": missing, "no_test": no_test, "tests_scanned": len(idx["files"])}
+    man = check_manifest(catalog=items)
+    return {"ok": not missing and not no_test and man["ok"], "n": len(items),
+            "pinned": pinned, "missing": missing, "no_test": no_test,
+            "tests_scanned": len(idx["files"]), "manifest": man}
+
 
 
 def find(catalog=None, text: str = "") -> list:
@@ -830,7 +889,16 @@ def main(argv: list | None = None) -> int:
                     help="so do 'hanh vi -> file -> test' (mermaid + bang)")
     ap.add_argument("--check", action="store_true",
                     help="xac minh moi test duoc dan CO THAT (exit 1 neu thieu)")
+    ap.add_argument("--manifest", action="store_true",
+                    help="GHI LAI hash danh sach test chot vao golden/bug_manifest.json")
     args = ap.parse_args(argv)
+
+    if args.manifest:
+        m = write_manifest()
+        print("=== MANIFEST | %d lop | %d test chot ===\n  %s\n  digest=%s"
+              % (m["n_classes"], m["n_tests"], m.get("path") or m.get("err"),
+                 m["digest"][:16]))
+        return 0 if m.get("ok") else 1
 
     if args.graph:
         if args.json:
@@ -852,6 +920,9 @@ def main(argv: list | None = None) -> int:
                 print("  TEST BI THIEU (lop loi mat chot chan):")
                 for m in rep["missing"]:
                     print("    - %s" % m)
+            man = rep.get("manifest") or {}
+            if not man.get("ok"):
+                print("  MANIFEST: %s" % (man.get("reason") or "lech"))
             print("  KET LUAN: %s" % ("OK" if rep["ok"] else "CAN SUA"))
         return 0 if rep["ok"] else 1
 

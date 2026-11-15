@@ -34,6 +34,19 @@ vào file/hàm đang có**, không phải danh sách khen.
 | 11 | `bmoscon/cryptofeed` | **Gap detection** trên nến: đếm số nến thiếu trong cửa sổ tín hiệu (song song `freshness.data_age`) | ADAPT | `freshness.py` | `data_age` bắt "dữ liệu cũ", không bắt "dữ liệu thủng lỗ" |
 | 12 | `HAEGONG/grok-bot-profiles` | Mỗi agent một dòng **"approval boundary"** (việc gì agent KHÔNG được tự quyết) trong `AGENTS.md` | ADOPT | `AGENTS.md` | Repo đã ghi "agent không sửa risk.py"; chuẩn hoá thành bảng để agent mới không đoán |
 
+> **Còn lại sau đợt 15/11** (các mục 1–5, 7, 9 đã xong từ trước):
+> **#6** `tools\lessons_wiki.py` — sinh `LESSONS.md` từ journal, mỗi dòng có trích dẫn
+> (`decision_id`/mốc thời gian), nhúng khối JSON để `--check` **từ chối số không khớp nguồn**
+> (đo: 31 khóa đủ mẫu n≥8; `--check` = KHỚP; sửa 1 con số trong tài liệu ⇒ báo LỆCH).
+> **#8** `python tools\bug_catalog.py --manifest` → `golden/bug_manifest.json` (hash danh sách
+> 214 test chốt); `--check` báo lỗi nếu ai đó **xoá/đổi tên test** (chống "xoá test cho xanh").
+> **#10** `AGENTS.md` → mục **Harness (5 subsystem)** + kết luận: lỗ hổng thật là *vòng phản hồi
+> cho prompt*, không phải thiếu tính năng.
+> **#11** `freshness.candle_gaps()` — đếm **nến thiếu** (song song `age_sec` chỉ bắt "dữ liệu cũ");
+> `turbo_demo` ghi `data_gaps` vào `OPEN` + cảnh báo khi coverage < 90%.
+> **#12** `AGENTS.md` → bảng **Approval boundary** (hội đồng / selfops / close_dust /
+> telegram_bridge / state_sync / agent lập trình: được gì, KHÔNG được gì, cổng chặn nào).
+
 
 ---
 

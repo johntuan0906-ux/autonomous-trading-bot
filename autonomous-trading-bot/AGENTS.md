@@ -53,3 +53,27 @@ Muse Code reads this file as project rules when it runs in this directory.
 - `.github/`: GitHub workflow and issue files.
 - `tools/`: Script tiện ích cho người dùng (`muse.cmd`, `muse-nosandbox.cmd`, `git-sync.cmd`).
 
+## Harness — 5 subsystem (soi chỗ TRỐNG, không phải thêm tính năng)
+
+| Subsystem | Đã có (kiểm được) | Lỗ hổng thật | Việc làm tiếp |
+|---|---|---|---|
+| **Instructions** | `CONTEXT.md` + `AGENTS.md` + `skills/*/SKILL.md` (test `test_skills_spec.py`) | không có version/“luật nào đang bật” | khi thêm luật mới: ghi vào `OPERATIONS.md` + test chặn |
+| **Tools** | `tools/*` (mỗi tool có `--check`/`--dry-run`), `tools/capabilities.py` | tool viết xong không ai gọi | `python tools\selfops.py` liệt kê việc tự làm được |
+| **Environment** | `.env` 2 instance + `tools/instance_env.py` (so khoá) + interlock LIVE | clone mới thiếu `.env` ⇒ hành vi khác | chạy `python tools\instance_env.py` sau khi clone |
+| **State** | `managed_state.json`, `risk_state.json`, journal, `golden/baseline.json`, `golden/bug_manifest.json` | state sống ngoài git, dễ lệch | `python tools\drift_docs.py --check` + `python tools\bug_catalog.py --check` |
+| **Feedback** | test + golden + `bug_catalog` + drift | **feedback cho CHẤT LƯỢNG PROMPT gần như không có** (chỉ có `council_eval` đo phiếu, không đo prompt) | đo `council_eval --hours 720` trước/sau mỗi lần sửa prompt; đừng sửa prompt rồi tin cảm tính |
+
+> Kết luận của khung này (đọc 12/11): lỗ hổng thật nằm ở **vòng phản hồi cho prompt/ngữ cảnh**, không
+> nằm ở thiếu tính năng. Vì vậy mọi thay đổi prompt phải kèm số đo `tools\council_eval.py`.
+
+## Approval boundary — agent KHÔNG được tự quyết gì
+
+| Actor | Được tự quyết | **KHÔNG** được tự quyết | Cổng chặn (code/test) |
+|---|---|---|---|
+| Hội đồng AI (`agents.py`) | bỏ phiếu ALLOW/VETO/NO_OPINION | size, SL/TP, bật/tắt LIVE, sửa risk | `agents.py` không import `risk/portfolio/bot`; test `test_module_khong_the_doi_hanh_vi_trading` |
+| `selfops` (tự vận hành) | gaps/drift/golden/refit trên TESTNET | đụng state LIVE, restart, xoá kill-switch | `selfops.plan()` để `auto=False`; cần `--allow-live-state` |
+| `close_dust` / `orders_audit` | đóng bụi, gom lệnh trùng trên TESTNET | đóng lệnh trên LIVE khi chưa có `--yes-live`/`--dedupe` | 2 lớp cờ + `positions.py` đọc lại |
+| `telegram_bridge` | trả lời lệnh ĐỌC (`/status`, `/health`, `/ask`) | lệnh GHI khi `TELEGRAM_ALLOW_WRITE` tắt; nhận lệnh từ chat lạ | fail-closed allowlist (B-055) + `confirm` cho `/reset` |
+| `state_sync` | ghi `.env`/state theo instance | đổi `BINANCE_TESTNET` mà không có người | interlock `live_guard` (LIVE_CONFIRM + n≥50 + PF≥1.2) |
+| Agent lập trình (bạn) | sửa code + test + docs | bật LIVE, nới kill-switch, sửa `risk.py` tăng rủi ro, commit `.env`/key | `AGENTS.md` (mục trên) + `tests/test_p0_safety.py` |
+

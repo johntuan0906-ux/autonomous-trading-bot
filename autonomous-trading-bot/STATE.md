@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 16/11/2026 22:34:50 · commit `c89594d`
+- **Cập nhật**: 16/11/2026 23:04:51 · commit `29f571f`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `64792` · round `339` · nhịp tim cách đây 26.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3235.77 USDT
+- **Bot**: pid `64792` · round `346` · nhịp tim cách đây 159.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3233.65 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3055 lệnh đóng, WR 40.95%, E(R) 0.2313, PnL -1052.19$)
@@ -48,7 +48,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | ADA/USDT:USDT | SHORT | 550.0 | 0.1504 | 0.157708 | 0.135784 | False | False | 0.246 |
 | BANK/USDT:USDT | SHORT | 3794.0 | 0.02148 | 0.02145852 | 0.017742 | True | True | 4.055 |
 | BAT/USDT:USDT | SHORT | 295.3 | 0.1192600326624 | 0.09882 | 0.08451 | False | False | 1.352 |
-| CKB/USDT:USDT | LONG | 77776.0 | 0.000833 | 0.000789 | 0.000915 | False | False | 0.705 |
+| CKB/USDT:USDT | LONG | 77776.0 | 0.000833 | 0.000789 | 0.000915 | False | False | 0.795 |
 
 ---
 

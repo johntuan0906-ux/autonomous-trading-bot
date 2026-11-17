@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 17/11/2026 19:32:52 · commit `a46c1a8`
+- **Cập nhật**: 17/11/2026 20:02:52 · commit `d6a7b1d`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `102628` · round `117` · nhịp tim cách đây 178.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3226.73 USDT
+- **Bot**: pid `102628` · round `125` · nhịp tim cách đây 24.3s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3227.34 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3062 lệnh đóng, WR 40.99%, E(R) 0.232, PnL -1029.6$)
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 33 | 39.39 | 1.643 | 1.342 | 0.2288 | 15.76 |
-| 14 ngày | 138 | 42.75 | 1.801 | 1.048 | 0.2808 | 11.97 |
+| 14 ngày | 137 | 43.07 | 1.839 | 1.1 | 0.2901 | 23.91 |
 | 30 ngày | 2125 | 33.22 | 2.128 | 0.596 | 0.3241 | -1247.71 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay [lenh BOT] = 0.734 < 1.1; PF(R) cua so 30 ngay [lenh BOT] = 0.654 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 0.426 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 14 ngay [lenh BOT] = 0.810 < 1.1; PF(R) cua so 30 ngay [lenh BOT] = 0.654 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 0.426 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -46,7 +46,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | 1000BONK/USDT:USDT | SHORT | 33337.0 | 0.002349 | 0.002469 | 0.002109 | False | False | 0.675 |
 | ADA/USDT:USDT | SHORT | 550.0 | 0.1504 | 0.157708 | 0.135784 | False | False | 0.246 |
 | BANK/USDT:USDT | SHORT | 3794.0 | 0.02148 | 0.02145852 | 0.017742 | True | True | 4.055 |
-| CKB/USDT:USDT | LONG | 54444.0 | 0.000833 | 0.000833833 | 0.000915 | True | True | 1.636 |
+| CKB/USDT:USDT | LONG | 54444.0 | 0.000833 | 0.000833833 | 0.000915 | True | True | 1.659 |
 
 ---
 

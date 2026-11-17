@@ -453,7 +453,7 @@ class Settings:
         default_factory=lambda: _get("AGENT_COUNCIL_QWEN_UNTIL", ""))
     # (08/10) Retry loi tam thoi (429/5xx/timeout) truoc khi NO_OPINION (tong so lan goi).
     agent_retry_attempts: int = field(
-        default_factory=lambda: _get_int("AGENT_RETRY_ATTEMPTS", 2))
+        default_factory=lambda: _get_int("AGENT_RETRY_ATTEMPTS", 3))
     # Tran chi phi THEO VONG council (USD, 0 = tat - chi tinh chi phi/ngay nhu cu).
     agent_round_budget_usd: float = field(
         default_factory=lambda: _get_float("AGENT_ROUND_BUDGET_USD", 0.0))

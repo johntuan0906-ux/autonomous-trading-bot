@@ -1,10 +1,11 @@
 {
- "n_classes": 56,
- "n_tests": 214,
- "digest": "b917be7e771ca439ed30631bada049eff6946d267d8e71637bf4fd1cc9a84d2a",
+ "n_classes": 57,
+ "n_tests": 221,
+ "digest": "446571354262537b21b82c07b490c4411d2c6fd81865b0004e567d6aa7e9f14e",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
+  "test_agents_network.py",
   "test_api_ban.py",
   "test_atomic_write.py",
   "test_bot.py",

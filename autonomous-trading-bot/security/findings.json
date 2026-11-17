@@ -55,7 +55,7 @@
       "evidence": [
         {"file": "vscode_lm_bridge/extension.js", "line": 53, "pattern": "if (token && (req.headers.authorization"},
         {"file": "vscode_lm_bridge/extension.js", "line": 66, "pattern": "server.listen(port, \"127.0.0.1\""},
-        {"file": "agents.py", "line": 994, "pattern": "http://127.0.0.1:8765/complete"}
+        {"file": "agents.py", "line": 1025, "pattern": "http://127.0.0.1:8765/complete"}
       ],
       "guard": "Da chap nhan (khong sua): bridge chi listen 127.0.0.1, phieu khong mang quyen dat size/SL. **Da tach cong 15/11**: `serve_glow.py` mac dinh **8770** (truoc 8765) de khong gianh cong voi bridge. Dieu kien con lai: **neu bat quyen veto cho hoi dong thi PHAI dat token** (`AGENT_VSCODE_LM_TOKEN`).",
       "tests": []

@@ -253,7 +253,7 @@ class BinanceFutures:
         if bool(getattr(self, "drop_forming", True)):
             try:
                 from freshness import tf_seconds as _tf_sec
-                _cut = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(
+                _cut = pd.Timestamp.now(tz="UTC").tz_localize(None) - pd.Timedelta(
                     seconds=float(_tf_sec(timeframe)))
                 _closed = df[df["ts"] <= _cut]
                 if len(_closed) >= 2:

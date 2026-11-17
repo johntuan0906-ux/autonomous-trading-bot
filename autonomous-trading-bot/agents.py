@@ -126,8 +126,31 @@ def _cache_key(role: str, model: str, payload: dict) -> str:
 # thu lai 1-2 lan se co phieu thay vi mat phieu vo co. Loi vinh vien (401 invalid key,
 # 400 bad request) -> fail NGAY de khong dot them nguyen sach (dung vu Muse 401).
 _TRANSIENT_MARKS = ("429", "500", "502", "503", "504", "timeout", "timed out",
-                    "connection", "too many requests", "rate limit", "temporar")
+                    "connection", "too many requests", "rate limit", "temporar",
+                    # (17/11) ECONNRESET/EPIPE/socket hang up: gateway/ISP cat ket noi giua
+                    # phien. Do that: Cline gateway tra `Cannot connect to API: read
+                    # ECONNRESET ... (Request ID: ...)` — TRUOC day chi retry 0,3s x2 nen
+                    # cau dao provider bat va hoi dong "im lang" (dung lop B-051/B-052).
+                    "econnreset", "connection reset", "connection aborted", "econnrefused",
+                    "epipe", "socket hang up", "network is unreachable",
+                    "getaddrinfo", "name resolution")
 _RETRY_SLEEP_SEC = 0.3
+_RETRY_SLEEP_CAP = 8.0          # (17/11) backoff luy thua, tran 8s
+
+
+def _backoff_sleep(attempt: int, base: float = _RETRY_SLEEP_SEC,
+                   cap: float = _RETRY_SLEEP_CAP) -> float:
+    """Thoi gian cho truoc lan thu `attempt` (1-based): base*2^(attempt-1), tran `cap`.
+
+    Vi sao (17/11): nghi 0,3s co dinh khong du cho gateway/ISP mo lai ket noi (ECONNRESET
+    thuong keo dai vai giay) ⇒ 2 lan thu lien tiep deu that bai ⇒ `AgentBudget` TAT provider
+    va hoi dong mat 1 giong ma khong ai biet vi sao.
+    """
+    try:
+        return min(float(cap), max(0.0, float(base) * (2 ** max(0, int(attempt) - 1))))
+    except (TypeError, ValueError):
+        return _RETRY_SLEEP_SEC
+
 # (08/10) Chi dan CUC CHAT cho lan "sua JSON" (xem AgentLayer.vote): model tra van ban
 # thay vi JSON -> hoi lai 1 lan voi rang buoc nay (re hon fine-tune, hoat dong moi provider).
 _STRICT_SUFFIX = (
@@ -165,7 +188,7 @@ def _complete_with_retry(provider, system: str, user: str, *, timeout: float = 8
             last = e
             if i + 1 >= attempts or not _is_transient_error(e):
                 raise
-            time.sleep(max(0.0, float(sleep_sec)))
+            time.sleep(_backoff_sleep(i + 1, sleep_sec))
     raise last  # pragma: no cover
 
 
@@ -180,7 +203,7 @@ def classify_provider_error(rc: int, text: str = "") -> str:
     `MODEL_GATED`**, chi `--model auto` chay duoc (rc=0, tra "OK"). Khong co ma phan loai thi
     nguoi van hanh chi thay "im lang" va se di sua lung tung.
 
-    Ma tra ve: OK · MODEL_GATED · AUTH · PAYMENT · QUOTA · RATE · ERR
+    Ma tra ve: OK · MODEL_GATED · AUTH · PAYMENT · QUOTA · RATE · NETWORK · ERR
 
     (12/11, B-052) Them `PAYMENT`: do that 12/11 bang `tools/probe_cline.py` — gateway
     Cline tra **`402 Payment Required`** cho CA 5 model (`xiaomi/mimo-v2.6-pro`,
@@ -210,6 +233,14 @@ def classify_provider_error(rc: int, text: str = "") -> str:
         return "QUOTA"
     if "rate limit" in t or "429" in t or "too many requests" in t:
         return "RATE"
+    # (17/11) Loi MANG (khong phai loi cau hinh/thanh toan): ECONNRESET, EPIPE, DNS...
+    # Tach khoi ERR de retry co backoff va de nguoi van hanh biet "chi can thu lai",
+    # khong di doi key/goi.
+    if any(m in t for m in ("econnreset", "connection reset", "connection aborted",
+                            "econnrefused", "epipe", "socket hang up",
+                            "network is unreachable", "getaddrinfo", "name resolution",
+                            "cannot connect to api", "connection error")):
+        return "NETWORK"
     return "ERR"
 
 

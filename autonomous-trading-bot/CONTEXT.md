@@ -713,6 +713,33 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - Đo thực tế: SL 5,1% (TESTNET) + exp_r 0,086 ⇒ phí **23%** kỳ vọng (đạt); SL 1,5% ⇒ **77%** (chặn).
      Nghĩa là: với 38 USDT **vẫn trade được**, miễn SL đủ rộng — đòn bẩy chỉ đổi margin, không đổi phí.
    - `tools/perf_report.py --bot-only` (mục 10) đã có: LIVE 30 ngày **66 lệnh · PF 1,57 · kỳ vọng 0,217R**.
+13. **Copilot OK + ECONNRESET có mã riêng (17/11).**
+   - `python tools\probe_cline.py --copilot`: **1/1 model dùng được** (`auto` → `OK` sau **66s**), cache
+     `logs/model_probe.json` được ghi ⇒ hội đồng tự thêm model ở lần đo sau.
+   - Lỗi người vận hành gặp: `Cannot connect to API: read ECONNRESET (Request ID: Xpmdd…)` khi chạy
+     `cline-pass:deepseek-v4.1-flash-1017`. **Nguyên nhân**: kết nối bị cắt giữa phiên (gateway/ISP/
+     proxy/TLS inspection), KHÔNG phải sai key hay hết tiền. **Vì sao lặp liên tục**: code cũ xếp lỗi
+     này vào `ERR` (không có mã mạng) và retry **0,3s cố định × 2** ⇒ hỏng cả 2 lần ⇒ cầu dao TẮT
+     provider ⇒ hội đồng im lặng (B-058).
+   - **Đã sửa**: mã `NETWORK` cho 8 biến thể (econnreset/connection reset/aborted/refused/epipe/
+     socket hang up/network unreachable/getaddrinfo), **backoff luỹ thừa** 0,3→0,6→1,2… trần 8s,
+     `AGENT_RETRY_ATTEMPTS` mặc định **3**; lỗi vĩnh viễn (401/400) vẫn fail ngay. 7 test chốt.
+   - Antigravity CLI: cài bằng `irm https://antigravity.google/cli/install.ps1 | iex` ⇒ **v1.5.9** ở
+     `%LOCALAPPDATA%\agy\bin\agy.exe`, thư mục đã có trong PATH người dùng (mở terminal mới rồi `agy`).
+
+13. **Copilot OK + ECONNRESET có mã riêng (17/11).**
+   - `python tools\probe_cline.py --copilot`: **1/1 model dùng được** (`auto` → `OK` sau **66s**), cache
+     `logs/model_probe.json` được ghi ⇒ hội đồng tự thêm model ở lần đo sau.
+   - Lỗi người vận hành gặp: `Cannot connect to API: read ECONNRESET (Request ID: Xpmdd…)` khi chạy
+     `cline-pass:deepseek-v4.1-flash-1017`. **Nguyên nhân**: kết nối bị cắt giữa phiên (gateway/ISP/
+     proxy/TLS inspection), KHÔNG phải sai key hay hết tiền. **Vì sao lặp liên tục**: code cũ xếp lỗi
+     này vào `ERR` (không có mã mạng) và retry **0,3s cố định × 2** ⇒ hỏng cả 2 lần ⇒ cầu dao TẮT
+     provider ⇒ hội đồng im lặng (B-058).
+   - **Đã sửa**: mã `NETWORK` cho 8 biến thể (econnreset/connection reset/aborted/refused/epipe/
+     socket hang up/network unreachable/getaddrinfo), **backoff luỹ thừa** 0,3→0,6→1,2… trần 8s,
+     `AGENT_RETRY_ATTEMPTS` mặc định **3**; lỗi vĩnh viễn (401/400) vẫn fail ngay. 7 test chốt.
+   - Antigravity CLI: cài bằng `irm https://antigravity.google/cli/install.ps1 | iex` ⇒ **v1.5.9** ở
+     `%LOCALAPPDATA%\agy\bin\agy.exe`, thư mục đã có trong PATH người dùng (mở terminal mới rồi `agy`).
 
 
 

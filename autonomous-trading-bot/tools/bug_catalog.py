@@ -669,6 +669,20 @@ CLASSES = [
                   "test_pair_cooldown.py::TestCooldownTheoCap::test_doc_thoi_han_tu_cfg_hoac_env",
                   "test_pair_cooldown.py::TestCooldownTheoCap::test_cache_lam_moi_khi_journal_doi"],
     },
+    {
+        "code": "B-058", "kind": "im-lang", "seen": "17/11/2026",
+        "title": "ECONNRESET tu gateway bi coi la loi CAU HINH (`ERR`) va chi retry 0,3s x2 ⇒ cau dao TAT provider, hoi dong 'im lang'",
+        "symptom": "Nguoi van hanh chup man hinh: `Cannot connect to API: read ECONNRESET (ECONNRESET) (Request ID: XpmddNJJXuDZGnEHqXzYtmcgAAjlHfbc)` khi dang chay `cline-pass:deepseek-v4.1-flash-1017`, lap lai lien tuc. Doi chieu code: `classify_provider_error` khong co ma nao khop ⇒ tra `ERR` (nguoi doc tuong hong key/goi); `_complete_with_retry` nghi **0,3s co dinh**, `AGENT_RETRY_ATTEMPTS` mac dinh **2** ⇒ ECONNRESET keo dai vai giay thi ca 2 lan deu that bai ⇒ `AgentBudget.disabled_by[provider]` ⇒ hoi dong mat giong ma khong co dong log nao noi 'loi mang'",
+        "guard": "`_TRANSIENT_MARKS` them `econnreset/connection reset/connection aborted/econnrefused/epipe/socket hang up/network is unreachable/getaddrinfo`; `classify_provider_error` tra ma **NETWORK** (tach khoi ERR) va ghi vao docstring; `_backoff_sleep()` = **base*2^(n-1), tran 8s** (thay cho 0,3s co dinh); `AGENT_RETRY_ATTEMPTS` mac dinh **3**. Test chot ca 3 chieu: phan loai dung 8 bien the mang, backoff tang dan va co tran, loi vinh vien (401) KHONG duoc retry",
+        "files": ["agents.py", "config.py", "tests/test_agents_network.py"],
+        "tests": ["test_agents_network.py::TestPhanLoaiMang::test_econnreset_la_NETWORK",
+                  "test_agents_network.py::TestPhanLoaiMang::test_cac_bien_the_mang",
+                  "test_agents_network.py::TestPhanLoaiMang::test_khong_lam_loan_cac_ma_cu",
+                  "test_agents_network.py::TestPhanLoaiMang::test_transient_bao_gom_econnreset",
+                  "test_agents_network.py::TestBackoff::test_backoff_luy_thua_co_tran",
+                  "test_agents_network.py::TestBackoff::test_retry_cho_lau_dan_va_thanh_cong",
+                  "test_agents_network.py::TestBackoff::test_loi_vinh_vien_khong_retry"],
+    },
 ]
 
 

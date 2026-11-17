@@ -186,6 +186,12 @@ class Settings:
     # (15/11, B-057) Cooldown THEO CAP sau 1 lenh THUA, doc tu JOURNAL (song qua restart).
     # Khac `COOLDOWN_SEC`: cai do la RAM + doi xung (thang cung nghi). 0 = tat.
     pair_cooldown_min: float = field(default_factory=lambda: _get_float("PAIR_COOLDOWN_MIN", 60.0))
+    # (15/11, RESEARCH_1115) Phi vs ky vong — quyet dinh duoc ca voi von nho (ti le KHONG phu
+    # thuoc von, chi phu thuoc SL% va exp_r). `max_fee_ratio=0` => TAT kiem tra.
+    fee_taker_pct: float = field(default_factory=lambda: _get_float("FEE_TAKER_PCT", 0.05))
+    max_fee_ratio: float = field(default_factory=lambda: _get_float("MAX_FEE_RATIO", 0.35))
+    #: Ky vong R moi lenh — CAP NHAT tu `python tools\perf_report.py --bot-only` (do that 15/11: 0,086).
+    exp_r_assumed: float = field(default_factory=lambda: _get_float("EXP_R_ASSUMED", 0.086))
     tg_token: str = field(default_factory=lambda: _get("TELEGRAM_BOT_TOKEN"))
     tg_chat: str = field(default_factory=lambda: _get("TELEGRAM_CHAT_ID"))
 

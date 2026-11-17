@@ -86,6 +86,7 @@ def attach_context(all_rows: list, close_rows: list) -> list:
         if o:
             rec.setdefault("setup_type", o.get("setup_type"))
             rec.setdefault("market_regime", o.get("market_regime"))
+        rec["_bot"] = bool(o)          # (15/11) co OPEN tuong ung => lenh cua BOT (khong phai lenh tay)
         rec["_pair"] = key
         out.append(rec)
     return out
@@ -235,10 +236,15 @@ def split_by(close_rows: list, key: str) -> dict:
 
 
 def build(close_rows: list, start_balance: float = DEFAULT_BALANCE,
-          days: float = 30.0, now: float = None) -> dict:
-    """Tinh toan bo 8 chi so + tach nhom. `close_rows` da gan context (`attach_context`)."""
+          days: float = 30.0, now: float = None, bot_only: bool = False) -> dict:
+    """Tinh toan bo 8 chi so + tach nhom. `close_rows` da gan context (`attach_context`).
+
+    `bot_only=True` (15/11, RESEARCH_1115): chi tinh lenh co OPEN tuong ung — loai lenh tay.
+    """
     import time as _t
     t_now = float(now if now is not None else _t.time())
+    if bot_only:
+        close_rows = [r for r in close_rows if r.get("_bot")]
     if days and days > 0:
         close_rows = [r for r in close_rows
                       if float(r.get("ts") or 0.0) >= t_now - float(days) * 86400.0]
@@ -319,13 +325,16 @@ def main(argv=None) -> int:
     ap.add_argument("--days", type=float, default=30.0, help="cua so ngay (0 = tat ca)")
     ap.add_argument("--balance", type=float, default=DEFAULT_BALANCE, help="von ban dau")
     ap.add_argument("--split", default="", choices=("", "setup", "regime"))
+    ap.add_argument("--bot-only", action="store_true",
+                    help="chi tinh lenh co OPEN tuong ung (loai lenh tay khoi journal)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
     path = Path(args.journal) if args.journal else journal_for(args.instance)
     all_rows = rows(path)
     close_rows = attach_context(all_rows, closes(all_rows))
-    rep = build(close_rows, start_balance=args.balance, days=args.days)
+    rep = build(close_rows, start_balance=args.balance, days=args.days,
+                bot_only=bool(args.bot_only))
     if args.split == "setup":
         rep = {**rep, "by_regime": {}}
     elif args.split == "regime":
@@ -336,7 +345,7 @@ def main(argv=None) -> int:
                          default=str))
         return 0
     print(render(rep))
-    print("  (journal: %s)" % path)
+    print("  (journal: %s%s)" % (path, " · CHI LENH BOT" if args.bot_only else " · gop ca lenh tay"))
     return 0
 
 

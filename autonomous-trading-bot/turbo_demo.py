@@ -42,6 +42,7 @@ from trade_mgmt import record_protection
 from portfolio import Position, can_add_risk, planned_risk_usd, risk_cap_base
 from position_sync import adopt as adopt_positions
 import entries_gate
+import fee_edge
 import freshness
 import reason_codes as RC
 from ranking import Candidate, composite_alpha, sentiment_veto
@@ -1260,6 +1261,20 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             qty = _floor_q
             risk_usdt = _risk2
             _notional = _floor_q * float(lv["entry"])
+        # (15/11, RESEARCH_1115) PHI vs KY VONG: phi 2 chieu co an qua ky vong khong?
+        # Ti le nay KHONG phu thuoc von (xem `fee_edge.py`) — no chi phu thuoc SL% va exp_r,
+        # nen voi tai khoan 38 USDT van quyet dinh duoc ma khong can "> 150 USDT".
+        _sl_pct = float(lv["sl_dist"]) / max(float(lv["entry"]), 1e-9)
+        _fe = fee_edge.plan(equity=size_base, risk_usdt=risk_usdt, stop_pct=_sl_pct,
+                            exp_r=float(getattr(cfg, "exp_r_assumed", 0.0) or 0.0),
+                            notional=_notional, min_notional=float(cfg.min_notional_usdt),
+                            cfg=cfg)
+        if float(getattr(cfg, "max_fee_ratio", 0.0) or 0.0) > 0 and not _fe["ok"]:
+            results.append({"symbol": sym, "status": "SKIP_FEE_EDGE", "reason": _fe["why"],
+                            "fee_ratio": round(float(_fe["fee_ratio"]), 3),
+                            "need_stop_pct": _fe["need_stop_pct"],
+                            "sl_pct": round(100.0 * _sl_pct, 2)})
+            continue
         try:
             # (16/10) MARGIN_TYPE=ISOLATED: tach margin tung vi the (xem
             # `exchange.set_margin_mode`). Phai dat khi cap CON PHANG (ngay truoc lenh).

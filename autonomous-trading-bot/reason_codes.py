@@ -56,6 +56,10 @@ CODES: dict[str, tuple[str, str]] = {
     "QTY_ZERO": ("policy", "qty sau quantize = 0 (von qua nho)"),
     "SPREAD_WIDE": ("policy", "spread/phi vuot nguong cho phep"),
     "MIN_NOTIONAL": ("policy", "notional < muc toi thieu cua san"),
+    # (15/11, RESEARCH_1115) Phi 2 chieu an qua ky vong cua lenh (ti le KHONG phu thuoc von,
+    # chi phu thuoc SL% va exp_r) — xem `fee_edge.py`. Tach khoi MIN_NOTIONAL vi cach sua khac nhau:
+    # MIN_NOTIONAL -> tang qty/risk; FEE_EDGE -> noi SL hoac doi setup co exp_r cao hon.
+    "FEE_EDGE": ("policy", "phi 2 chieu > 35% ky vong cua lenh (an het edge)"),
     # --- tool: san / provider ------------------------------------------------
     "API_BAN": ("tool", "san chan IP/rate-limit (418/-1003)"),
     "QUOTA_EXCEEDED": ("tool", "provider het quota thang"),
@@ -179,6 +183,8 @@ STATUS_CODES: dict[str, str] = {
     "SKIP_MAX_POS": "MAX_POSITIONS",
     "SKIP_RISK": "RISK_CAP",
     "SKIP_NOTIONAL": "MIN_NOTIONAL",
+    # (15/11, RESEARCH_1115) phi vs ky vong: ma rieng de biet "bi chan vi PHI" chu khong phai vi san.
+    "SKIP_FEE_EDGE": "FEE_EDGE",
     "SKIP_SPREAD": "SPREAD_WIDE",
     # execution
     "ORDER_FAILED": "ORDER_REJECT",

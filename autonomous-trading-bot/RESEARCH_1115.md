@@ -11,7 +11,7 @@ năm."* Báo cáo này trả lời bằng **số đo từ chính sổ của bot*
 | Có nên bật LIVE **hôm nay**? | **KHÔNG.** Cổng đo được: PF($) **tính riêng lệnh bot** = 1,052 (< 1,1) trên 1.070 lệnh; 14 ngày 0,750; 30 ngày 0,481. |
 | Vì sao trước đây tưởng đã đạt? | Số **gộp** có PF(R)=1,829 trông đẹp, nhưng 2.425/3.511 lệnh CLOSE là **lệnh tay** (−1.135,29 USDT) ⇒ số gộp **không đo bot**. |
 | Có cơ hội nào thật? | Có: **lệnh bot đang dương** (+127,80 USDT/1.070 lệnh, PF($)=1,052) và **LIVE bot-only PF($)=1,172** trên 622 lệnh. Tức bot *gần* hoà-và-lãi, chưa đủ biên. |
-| Đường đến 31/12 | 3 mốc tuần (§5): sửa số đo (xong 1 phần) → 14 ngày forward nhỏ → mở LIVE khi PF($) bot ≥1,1 **và** vốn ≥ 150–200 USDT. |
+| Đường đến 31/12 | 3 mốc tuần (§5): sửa số đo (xong 1 phần) → 14 ngày forward nhỏ → mở LIVE khi PF($) bot ≥1,1. **Không cần vốn >150 USDT** — tỉ lệ phí/edge không phụ thuộc vốn (§1.4). |
 
 ## 1. Thị trường & hiện trạng (số đo 15/11)
 
@@ -43,11 +43,22 @@ VERDICT: CHUA HOAN THANH
 | LIVE 14 ngày | 114 | **1,86** | 52,6% | 0,18% | dương nhưng n=114 |
 | LIVE 30 ngày (bot) | 67 | **1,57** | — | — | dương, mẫu nhỏ |
 
-**1.4 Ràng buộc tiền học được từ số** (không phải ý kiến)
-- Kỳ vọng hiện tại ≈ **0,037 USDT/lệnh** (LIVE 14 ngày) trong khi phí 2 chiều trên notional tối thiểu
-  (≈15 USDT) là **≈0,015 USDT** ⇒ **~40% edge bị phí ăn**. Muốn có lãi *có ý nghĩa* phải tăng vốn/lệnh
-  hoặc giảm số lệnh; **vốn 38 USDT là quá nhỏ** cho 4 vị thế × 1% risk.
-- Với equity 150–200 USDT: risk 0,6% = 0,9–1,2 USDT ⇒ notional 60–80 USDT ⇒ phí ≈0,06–0,08 (≈8% edge).
+**1.4 Ràng buộc "phí ăn edge" — và vì sao KHÔNG cần >150 USDT** (sửa lại sau khi làm toán)
+
+Toán: `notional = risk/SL%` → `phí 2 chiều = 2·fee·notional` → `kỳ vọng = exp_r·risk`
+⇒ **tỉ lệ phí/kỳ vọng = 2·fee / (exp_r · SL%)** — **không có `equity` trong công thức**.
+
+| SL% | exp_r | tỉ lệ phí/edge | Kết luận |
+|---|---|---|---|
+| 1,5% | 0,086 | **77%** | phí ăn gần hết — không nên vào |
+| 3,3% | 0,086 | 35% | ngưỡng chấp nhận (`MAX_FEE_RATIO`) |
+| **5,1%** (SL thực tế TESTNET) | 0,086 | **23%** | **đạt** ⇒ 38 USDT vẫn trade được |
+| 5,1% | 0,217 (LIVE bot) | 9% | rất tốt |
+
+⇒ Vốn chỉ ảnh hưởng 2 chỗ: **notional ≥ 5 USDT** (sàn) và **margin khả dụng** (đòn bẩy). Vì vậy yêu
+cầu ">150 USDT" **đã bỏ**; thay bằng cổng `fee_edge` tự quyết theo số dư thật + SL% + `exp_r` đo được,
+và tự nói ra "cần SL rộng ≥ X%" thay vì bắt người dùng đoán.
+
 
 **1.5 Thị trường — những gì bot thực sự nhìn thấy** (không có nguồn ngoài, nên chỉ nêu cái đo được)
 - `market_regime` trong journal 14 ngày: phần lớn `?`/`NONE` (thiếu context từ OPEN) ⇒ **chỉ số theo
@@ -91,7 +102,7 @@ tách số bot/tay) — đúng những chỗ repo này còn yếu.
 | 4 | **Alpha so với BTC buy&hold** cho mỗi lệnh (không chỉ R) | `tools/perf_report.py --benchmark` | ⏳ |
 | 5 | **Deflated Sharpe** với `n_trials` = số setup đã thử (8) | `tools/perf_report.py` | ⏳ |
 | 6 | **Bảng "điều kiện vào/ra" tách khỏi code** (`playbook/`) cho agent đọc | `skills/` + `AGENTS.md` | ⏳ |
-| 7 | Tăng vốn LIVE lên **150–200 USDT** trước khi bật (phí ăn 40% edge ở 38 USDT) | quyết định của người | ⏳ |
+| 7 | ~~Tăng vốn LIVE lên 150–200 USDT~~ → **BỎ**: thay bằng cổng `fee_edge` tự chỉnh theo số dư thật (phí/edge không phụ thuộc vốn) | `fee_edge.py` + `turbo_demo` | ✅ **xong 15/11** + 11 test |
 | 8 | **Forward-test 14 ngày** ở 0,4% risk, 3 cặp, ghi riêng sổ bot | vận hành | ⏳ |
 | 9 | Ghi **mã lý do** cho mọi lệnh bị từ chối (đã có `ORDER_REJECT` + 13 nhóm) | `exchange.classify_error` | ✅ xong (B-056) |
 | 10 | **Số riêng bot** trong `perf_report` (không chỉ cổng) | `tools/perf_report.py --bot-only` | ⏳ |
@@ -118,7 +129,7 @@ Bật LIVE lúc này = đánh cược vào một con số **đã biết là sai 
 |---|---|---|---|
 | **M1 — Số đo sạch** | 15–22/11 | (a) cổng chỉ tính lệnh bot ✅; (b) bỏ nến đang hình thành; (c) `perf_report --bot-only`; (d) dọn 1 lần lệnh tay khỏi sổ TESTNET bằng `reconcile.py` (chỉ ghi bù, không xoá) | `live_ready` in được `n_bot` + PF($) bot; 14 ngày **PF($) bot ≥ 1,10**, PF(R) bot ≥ 1,20 |
 | **M2 — Forward 14 ngày** | 22/11–06/12 | chạy TESTNET 0,4% risk, 3 cặp thanh khoản nhất (BTC/ETH/SOL), **không** lệnh tay; ghi sổ riêng để so | PF($) bot ≥ 1,10 · MaxDD ≤ 5% · WR 45–60% · không có ngày mất > 2% |
-| **M3 — Mở LIVE nhỏ** | 06–20/12 | bật `BINANCE_TESTNET=false`, `LIVE_CONFIRM=true`, vốn **≥ 150 USDT**, 2 vị thế, risk **0,4%**, leverage 5 | 7 ngày đầu: không ngày nào lỗ > 1,5%; PF($) ≥ 1,0; SL/TP đủ 2/2 mỗi vị thế |
+| **M3 — Mở LIVE nhỏ** | 06–20/12 | bật `BINANCE_TESTNET=false`, `LIVE_CONFIRM=true`, **giữ nguyên số dư hiện có**, 2 vị thế, risk **0,4%**, leverage 5 (mọi lệnh phải qua cổng `fee_edge`: phí ≤ 35% kỳ vọng) | 7 ngày đầu: không ngày nào lỗ > 1,5%; PF($) ≥ 1,0; SL/TP đủ 2/2 mỗi vị thế; **tỉ lệ `SKIP_FEE_EDGE` < 30%** |
 | **M4 — Tăng dần** | 20–31/12 | chỉ tăng khi M3 đạt: +1 vị thế, risk 0,6% | PF($) duy trì ≥ 1,1 và MaxDD ≤ 5% |
 
 **Các cổng code đã có để M3 không thể "quên"**: `live_guard.py` (n≥50, PF≥1,2, risk≤2%, lev≤10,

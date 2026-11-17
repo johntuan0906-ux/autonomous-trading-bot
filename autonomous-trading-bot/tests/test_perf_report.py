@@ -146,6 +146,31 @@ class TestJournalThat(unittest.TestCase):
                    default=str)
 
 
+    def test_bot_only_loai_lenh_tay(self):
+        """(15/11) `--bot-only`: lenh tay (khong OPEN) khong duoc tinh vao chi so."""
+        rows_ = [
+            {"ts": T0, "event": "OPEN", "pair": "BTC/USDT:USDT", "entry": 1.0},
+            _close(T0 + 60, 10.0, 1.0),
+            {"ts": T0 + 120, "event": "CLOSE", "pair": "TAY/USDT:USDT", "pnl": -999.0, "r": -9.0},
+        ]
+        cs = PR.attach_context(rows_, PR.closes(rows_))
+        self.assertTrue(cs[0]["_bot"])
+        self.assertFalse(cs[1]["_bot"])
+        bot = PR.build(cs, start_balance=1000.0, days=0, bot_only=True)
+        all_ = PR.build(cs, start_balance=1000.0, days=0)
+        self.assertEqual(bot["trades"], 1)
+        self.assertEqual(all_["trades"], 2)
+        self.assertAlmostEqual(bot["pnl"], 10.0)
+        self.assertAlmostEqual(all_["pnl"], -989.0)
+
+    def test_bot_only_rong_thi_khong_no(self):
+        rows_ = [{"ts": T0, "event": "CLOSE", "pair": "X", "pnl": -5.0, "r": -1.0}]
+        cs = PR.attach_context(rows_, PR.closes(rows_))
+        rep = PR.build(cs, start_balance=1000.0, days=0, bot_only=True)
+        self.assertEqual(rep["trades"], 0)
+        PR.render(rep)                      # khong nem loi
+
+
 class TestBaoCaoTrenJournalThat(unittest.TestCase):
     def test_chay_duoc_tren_journal_cua_repo(self):
         """Nghiem thu roadmap: bao cao phai chay tren journal THAT, khong chi du lieu gia."""

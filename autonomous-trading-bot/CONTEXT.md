@@ -704,6 +704,15 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      M4 tăng dần), mỗi mốc có điều kiện đo được; điều kiện bắt buộc trước M3: **PF($) bot ≥ 1,1** và
      PF(R) bot ≥ 1,2 trên 14 ngày, MaxDD ≤ 5%.
    - Hội đồng **không hứa lợi nhuận**; cam kết duy nhất: không vào LIVE bằng số sai + báo cáo PF($) bot mỗi tuần.
+12. **Bỏ ngưỡng ">150 USDT" — tự điều phối phí theo số dư thật (15/11).** Làm toán lại thì thấy yêu cầu
+   cũ **sai**: `phí/kỳ vọng = 2·fee/(exp_r·SL%)` — **không có `equity`** trong công thức; vốn chỉ ảnh
+   hưởng `notional ≥ 5 USDT` và margin. Vì vậy thay bằng cổng `fee_edge.plan()` chạy trước mỗi lệnh:
+   - `FEE_TAKER_PCT=0.05` · `MAX_FEE_RATIO=0.35` · `EXP_R_ASSUMED=0.086` (đo từ `perf_report --bot-only`).
+   - Không đạt ⇒ `SKIP_FEE_EDGE` + nói rõ **"cần SL rộng ≥ X%"** (X = `2·fee/(exp_r·max_ratio)`), thay
+     vì bắt người dùng đoán. Mã lý do mới `FEE_EDGE` (policy) ⇒ **42 mã**.
+   - Đo thực tế: SL 5,1% (TESTNET) + exp_r 0,086 ⇒ phí **23%** kỳ vọng (đạt); SL 1,5% ⇒ **77%** (chặn).
+     Nghĩa là: với 38 USDT **vẫn trade được**, miễn SL đủ rộng — đòn bẩy chỉ đổi margin, không đổi phí.
+   - `tools/perf_report.py --bot-only` (mục 10) đã có: LIVE 30 ngày **66 lệnh · PF 1,57 · kỳ vọng 0,217R**.
 
 
 

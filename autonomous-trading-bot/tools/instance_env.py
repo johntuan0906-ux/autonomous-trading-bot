@@ -31,6 +31,8 @@ KEYS = ("BINANCE_TESTNET", "BINANCE_API_KEY", "BINANCE_API_SECRET",
         "PAIR_COOLDOWN_MIN",
         # (15/11, RESEARCH_1115 muc 2) no-lookahead: bo nen dang hinh thanh — phai giong nhau 2 instance.
         "DROP_FORMING_CANDLE",
+        # (15/11, RESEARCH_1115) phi vs ky vong: doi thi doi CA 2 instance (cung 1 journal, cung nguong).
+        "FEE_TAKER_PCT", "MAX_FEE_RATIO", "EXP_R_ASSUMED",
         "LIVE_CONFIRM", "DRY_RUN")
 
 

@@ -8,8 +8,10 @@ Boi canh that (12/10): Binance chuyen lenh dieu kien sang Algo Order API nen
 from __future__ import annotations
 
 import sys
+import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -247,6 +249,53 @@ class TestViTheBuiVaTran(unittest.TestCase):
         orders = [_o("SOL/USDT:USDT", "STOP_MARKET"), _o("SOL/USDT:USDT", "TAKE_PROFIT_MARKET")]
         s = OA.summarize(orders, pos, dust=set())
         self.assertEqual(OA.verdict(s), "gon (moi vi the dung 2 lenh bao ve)")
+
+
+class TestChanApiBan(unittest.TestCase):
+    """(17/11) Do that: dang bi san chan IP ma van chay `orders_audit` de kiem ke
+    ⇒ request cham `-1003` ⇒ Binance keo dai ban **16:33 -> 17:50** (77 phut).
+    Cong cu CHI DOC phai doc `logs/api_ban.json` truoc va KHONG goi API.
+    """
+
+    def test_doc_moc_ban(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            (base / "logs").mkdir()
+            (base / "logs" / "api_ban.json").write_text(
+                json.dumps({"until": 1794912656.584, "reason": "API_BAN"}),
+                encoding="utf-8")
+            self.assertAlmostEqual(OA.ban_until(base), 1794912656.584)
+
+    def test_file_hong_hoac_khong_co_thi_fail_open(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            (base / "logs").mkdir()
+            self.assertEqual(OA.ban_until(base), 0.0)          # khong co file
+            (base / "logs" / "api_ban.json").write_text("{hong", encoding="utf-8")
+            self.assertEqual(OA.ban_until(base), 0.0)          # file hong
+
+    def test_dang_bi_chan_thi_khong_goi_san(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            (base / "logs").mkdir()
+            (base / "logs" / "api_ban.json").write_text(
+                json.dumps({"until": time.time() + 3600}), encoding="utf-8")
+            (base / ".env").write_text(
+                "BINANCE_API_KEY=k\nBINANCE_API_SECRET=s\nBINANCE_TESTNET=true\n",
+                encoding="utf-8")
+
+            def _no_call(*a, **k):  # neu guard hong thi test no o day
+                raise AssertionError("build_client KHONG duoc goi khi dang bi ban")
+
+            with mock.patch.object(OA, "ROOT", base), \
+                    mock.patch.object(OA, "LIVE_DIR", base), \
+                    mock.patch.object(OA, "build_client", _no_call):
+                self.assertEqual(OA.main(["--target", "testnet"]), 3)
 
 
 if __name__ == "__main__":

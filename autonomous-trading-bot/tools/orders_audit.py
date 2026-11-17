@@ -26,7 +26,9 @@ vị thế** (không bao giờ đụng vào lệnh bảo vệ của vị thế �
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -168,6 +170,22 @@ def dupes(orders: list, positions: list) -> dict:
         if n > 2:
             out[s] = n
     return out
+
+
+def ban_until(base: Path) -> float:
+    """Moc het bi san chan IP tu `logs/api_ban.json` (B-044). 0 = khong bi chan.
+
+    Do that 17/11: dang bi chan, chay `orders_audit.py` de kiem ke ⇒ request cham
+    vao `-1003` ⇒ Binance **keo dai ban tu 16:33 len 17:50** (77 phut). Cong cu
+    chi doc thi khong duoc phep lam ban dai them: phai doc file trang thai truoc
+    khi goi API. File hong/khong co ⇒ 0 (fail-open, de bot van chay).
+    """
+    try:
+        data = json.loads((Path(base) / "logs" / "api_ban.json").read_text(
+            encoding="utf-8"))
+        return float(data.get("until") or 0.0)
+    except Exception:  # noqa: BLE001
+        return 0.0
 
 
 def load_dust(base: Path) -> set:
@@ -328,6 +346,14 @@ def main(argv=None) -> int:
     if not (env.get("BINANCE_API_KEY") and env.get("BINANCE_API_SECRET")):
         print("[LOI] thieu API key trong %s" % envp)
         return 2
+
+    _ban = ban_until(base)
+    if _ban > time.time():
+        print("[CHO] san chan IP (B-044): con %.0f phut (toi %s) -> KHONG goi API "
+              "(moi request lam ban dai them; cho het roi chay lai)"
+              % ((_ban - time.time()) / 60.0,
+                 time.strftime("%H:%M:%S", time.localtime(_ban))))
+        return 3
 
     cli = build_client(env, live)
     try:

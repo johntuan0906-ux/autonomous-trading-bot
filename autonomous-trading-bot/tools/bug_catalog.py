@@ -683,6 +683,16 @@ CLASSES = [
                   "test_agents_network.py::TestBackoff::test_retry_cho_lau_dan_va_thanh_cong",
                   "test_agents_network.py::TestBackoff::test_loi_vinh_vien_khong_retry"],
     },
+    {
+        "code": "B-059", "kind": "van-hanh", "seen": "17/11/2026",
+        "title": "Cong cu CHI DOC (`orders_audit`) van goi API khi dang bi san chan IP ⇒ tu keo dai ban 16:33 -> 17:50 (77 phut)",
+        "symptom": "Do that LIVE 17/11: 16:33 het ban, bot quet lai va cham `-1003` ⇒ ghi `logs/api_ban.json` = 17:50. Dung luc do chay `python tools/orders_audit.py --target live` de 'kiem ke cho yen tam' ⇒ request di ra du dang bi chan ⇒ Binance **cong them gio**. Day la cung mot lop loi B-044 nhung o phia CONG CU: bot da biet nghi, con nguoi/tool van goi ⇒ ban cang dai, va nguoi van hanh tuong 'mang hong'",
+        "guard": "`orders_audit.ban_until(base)` doc `logs/api_ban.json` **truoc** khi tao client; `_ban > now` ⇒ in 'con N phut (toi HH:MM:SS) -> KHONG goi API' va `exit 3`, khong gui request nao. File hong/khong co ⇒ 0 (fail-open, khong chan bot). Test chot: doc dung moc ms->giay, file hong khong no, va khi dang bi chan thi `build_client` **khong duoc goi**",
+        "files": ["tools/orders_audit.py", "tests/test_orders_audit.py"],
+        "tests": ["test_orders_audit.py::TestChanApiBan::test_doc_moc_ban",
+                  "test_orders_audit.py::TestChanApiBan::test_file_hong_hoac_khong_co_thi_fail_open",
+                  "test_orders_audit.py::TestChanApiBan::test_dang_bi_chan_thi_khong_goi_san"],
+    },
 ]
 
 

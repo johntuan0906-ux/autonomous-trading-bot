@@ -718,6 +718,14 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      `logs/model_probe.json` được ghi ⇒ hội đồng tự thêm model ở lần đo sau.
    - Lỗi người vận hành gặp: `Cannot connect to API: read ECONNRESET (Request ID: Xpmdd…)` khi chạy
      `cline-pass:deepseek-v4.1-flash-1017`. **Nguyên nhân**: kết nối bị cắt giữa phiên (gateway/ISP/
+14. **B-059 — công cụ chỉ-đọc cũng làm ban dài thêm (17/11).**
+   - Đo thật: 16:33 hết ban → bot quét lại, chạm `-1003`, ghi `api_ban.json` = **17:50**; ngay sau đó
+     chạy `orders_audit.py --target live` "kiểm kê" ⇒ request vẫn đi ra ⇒ Binance **cộng thêm giờ**.
+   - Vá: `orders_audit.ban_until(base)` đọc `logs/api_ban.json` **trước** khi tạo client; đang bị chặn ⇒
+     in `[CHO] ... con N phút (tới HH:MM:SS) -> KHONG goi API`, `exit 3`, **0 request**. File hỏng/không có
+     ⇒ 0 (fail-open). 3 test chốt ⇒ catalog **58 lớp / 224 test**; `bug_manifest` digest `e7d6afb6`.
+   - Vận hành: **không chạy tool đọc sàn khi đang bị chặn**; bot tự nghỉ `phase=api_ban` rồi tự chạy lại.
+
      proxy/TLS inspection), KHÔNG phải sai key hay hết tiền. **Vì sao lặp liên tục**: code cũ xếp lỗi
      này vào `ERR` (không có mã mạng) và retry **0,3s cố định × 2** ⇒ hỏng cả 2 lần ⇒ cầu dao TẮT
      provider ⇒ hội đồng im lặng (B-058).

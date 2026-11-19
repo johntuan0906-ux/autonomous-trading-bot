@@ -1,7 +1,7 @@
 {
- "n_classes": 58,
- "n_tests": 224,
- "digest": "e7d6afb6896851e50186ef81953661f80e26e84597b7084fecf77d0b478f66d9",
+ "n_classes": 59,
+ "n_tests": 229,
+ "digest": "3dbce49d2824f7be4863bb904fcd31d215c6342e79d655b244c6eea79381a8b4",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
@@ -23,6 +23,7 @@
   "test_orders_audit.py",
   "test_p0_safety.py",
   "test_pair_cooldown.py",
+  "test_perf_report.py",
   "test_provider_probe.py",
   "test_reason_codes_wiring.py",
   "test_reconcile.py",

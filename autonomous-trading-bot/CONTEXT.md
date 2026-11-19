@@ -718,36 +718,52 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      `logs/model_probe.json` được ghi ⇒ hội đồng tự thêm model ở lần đo sau.
    - Lỗi người vận hành gặp: `Cannot connect to API: read ECONNRESET (Request ID: Xpmdd…)` khi chạy
      `cline-pass:deepseek-v4.1-flash-1017`. **Nguyên nhân**: kết nối bị cắt giữa phiên (gateway/ISP/
+     proxy/TLS inspection), KHÔNG phải sai key hay hết tiền. **Vì sao lặp liên tục**: code cũ xếp lỗi
+     này vào `ERR` (không có mã mạng) và retry **0,3s cố định × 2** ⇒ hỏng cả 2 lần ⇒ cầu dao TẮT
+     provider ⇒ hội đồng im lặng (B-058).
+   - **Đã sửa**: mã `NETWORK` cho 8 biến thể (econnreset/connection reset/aborted/refused/epipe/
+     socket hang up/network unreachable/getaddrinfo), **backoff luỹ thừa** 0,3→0,6→1,2… trần 8s,
+     `AGENT_RETRY_ATTEMPTS` mặc định **3**; lỗi vĩnh viễn (401/400) vẫn fail ngay. 7 test chốt.
+   - Antigravity CLI: cài bằng `irm https://antigravity.google/cli/install.ps1 | iex` ⇒ **v1.5.9** ở
+     `%LOCALAPPDATA%\agy\bin\agy.exe`, thư mục đã có trong PATH người dùng (mở terminal mới rồi `agy`).
 14. **B-059 — công cụ chỉ-đọc cũng làm ban dài thêm (17/11).**
    - Đo thật: 16:33 hết ban → bot quét lại, chạm `-1003`, ghi `api_ban.json` = **17:50**; ngay sau đó
      chạy `orders_audit.py --target live` "kiểm kê" ⇒ request vẫn đi ra ⇒ Binance **cộng thêm giờ**.
    - Vá: `orders_audit.ban_until(base)` đọc `logs/api_ban.json` **trước** khi tạo client; đang bị chặn ⇒
      in `[CHO] ... con N phút (tới HH:MM:SS) -> KHONG goi API`, `exit 3`, **0 request**. File hỏng/không có
-     ⇒ 0 (fail-open). 3 test chốt ⇒ catalog **58 lớp / 224 test**; `bug_manifest` digest `e7d6afb6`.
+     ⇒ 0 (fail-open). 3 test chốt.
    - Vận hành: **không chạy tool đọc sàn khi đang bị chặn**; bot tự nghỉ `phase=api_ban` rồi tự chạy lại.
+15. **B-060 — `strategy` chỉ sống trong RAM ⇒ cổng chặn chiến lược bị MÙ (19/11).**
+   - Đo thật: `logs/strategy_stats.json` của LIVE có `NONE` n=455 (mới) nhưng `D_RANGE_REVERSAL` /
+     `B_BREAKOUT_RETEST` / `A_TREND_PULLBACK` **đứng im từ 11/11** — trong khi
+     `perf_report --split strategy` (đọc `strategy` ở bản ghi OPEN) vẫn thấy
+     **D_RANGE_REVERSAL −81 USDT** và **B_BREAKOUT_RETEST +186 USDT**.
+   - Nguyên nhân: `_pending_feats[sym]["strategy"]` là dict RAM; restart (hoặc vị thế được adopt lại) ⇒
+     `pend=None`, `exr` không có strategy ⇒ `strat="NONE"` ⇒ `bump()` cộng sai vào nhóm `NONE` ⇒
+     `strategy.gate_check` (tự động) **không bao giờ** thấy chiến lược đang lỗ.
+   - Vá: `ManagedTrade.strategy` + `managed_state.FIELDS` (sống qua restart) · `turbo_demo` gán
+     `_mng.strategy` ngay khi mở (cả 2 đường) · lúc đóng: `pend → managed → last_exits → NONE` ·
+     `bot._record_exit` ghi `strategy` vào `last_exits` + dòng CLOSE journal (3 đường: thường/DUST/FLATTEN).
+     3 test chốt + 1 test `perf_report --split strategy`.
+   - **Quyết định chiến lược (bằng chứng 2 instance, `--bot-only --days 0`):**
 
-     proxy/TLS inspection), KHÔNG phải sai key hay hết tiền. **Vì sao lặp liên tục**: code cũ xếp lỗi
-     này vào `ERR` (không có mã mạng) và retry **0,3s cố định × 2** ⇒ hỏng cả 2 lần ⇒ cầu dao TẮT
-     provider ⇒ hội đồng im lặng (B-058).
-   - **Đã sửa**: mã `NETWORK` cho 8 biến thể (econnreset/connection reset/aborted/refused/epipe/
-     socket hang up/network unreachable/getaddrinfo), **backoff luỹ thừa** 0,3→0,6→1,2… trần 8s,
-     `AGENT_RETRY_ATTEMPTS` mặc định **3**; lỗi vĩnh viễn (401/400) vẫn fail ngay. 7 test chốt.
-   - Antigravity CLI: cài bằng `irm https://antigravity.google/cli/install.ps1 | iex` ⇒ **v1.5.9** ở
-     `%LOCALAPPDATA%\agy\bin\agy.exe`, thư mục đã có trong PATH người dùng (mở terminal mới rồi `agy`).
+     | Chiến lược | TESTNET (n) | LIVE (n) | Kết luận |
+     |---|---|---|---|
+     | `B_BREAKOUT_RETEST` | PF **1,30**, +0,770R, **+170 USDT** (n=257) | PF **2,63**, +0,198R, **+186 USDT** (n=118) | **GIỮ — nguồn lãi duy nhất** |
+     | `NONE` | PF 1,02, +0,029R, +27 (n=736) | PF 1,07, +0,080R, +35 (n=440) | hoà vốn; chưa đủ bằng chứng để chặn |
+     | `D_RANGE_REVERSAL` | PF 0,44, −0,191R, **−84** (n=49) | PF 0,41, −0,137R, **−81** (n=49) | **CHẶN** |
+     | `A_TREND_PULLBACK` | PF 0,43, −0,264R, **−78** (n=41) | PF 0,82, +0,075R, −2,6 (n=11) | **CHẶN** |
 
-13. **Copilot OK + ECONNRESET có mã riêng (17/11).**
-   - `python tools\probe_cline.py --copilot`: **1/1 model dùng được** (`auto` → `OK` sau **66s**), cache
-     `logs/model_probe.json` được ghi ⇒ hội đồng tự thêm model ở lần đo sau.
-   - Lỗi người vận hành gặp: `Cannot connect to API: read ECONNRESET (Request ID: Xpmdd…)` khi chạy
-     `cline-pass:deepseek-v4.1-flash-1017`. **Nguyên nhân**: kết nối bị cắt giữa phiên (gateway/ISP/
-     proxy/TLS inspection), KHÔNG phải sai key hay hết tiền. **Vì sao lặp liên tục**: code cũ xếp lỗi
-     này vào `ERR` (không có mã mạng) và retry **0,3s cố định × 2** ⇒ hỏng cả 2 lần ⇒ cầu dao TẮT
-     provider ⇒ hội đồng im lặng (B-058).
-   - **Đã sửa**: mã `NETWORK` cho 8 biến thể (econnreset/connection reset/aborted/refused/epipe/
-     socket hang up/network unreachable/getaddrinfo), **backoff luỹ thừa** 0,3→0,6→1,2… trần 8s,
-     `AGENT_RETRY_ATTEMPTS` mặc định **3**; lỗi vĩnh viễn (401/400) vẫn fail ngay. 7 test chốt.
-   - Antigravity CLI: cài bằng `irm https://antigravity.google/cli/install.ps1 | iex` ⇒ **v1.5.9** ở
-     `%LOCALAPPDATA%\agy\bin\agy.exe`, thư mục đã có trong PATH người dùng (mở terminal mới rồi `agy`).
-
-
-
+     Đã đặt `.env` **cả hai instance**: `STRATEGY_BLOCK=A_TREND_PULLBACK,D_RANGE_REVERSAL` (chặn CỨNG,
+     không phụ thuộc số liệu tích luỹ) — kiểm chứng `gate_check` trả `blocked=True` cho 2 mã trên và
+     `blocked=False` cho `B_BREAKOUT_RETEST`.
+   - **Kích thước lệnh: KHÔNG tăng.** Risk 1%/lệnh (≈0,38 USDT trên vốn 37,82), trần tổng rủi ro LIVE
+     2,0% (TESTNET 1,6%), `MAX_POSITIONS` 2 (LIVE) / 4 (TESTNET). Kỳ vọng +0,20R/lệnh nhưng cổng
+     `live_ready.py` còn CHẶN (`PF($)` 30 ngày bot-only 0,426 < 1,1) ⇒ tăng size lúc này là tăng rủi ro
+     trên edge chưa được chứng minh.
+   - **Hàng đợi người vận hành: ĐÃ ĐÓNG HẾT 4 câu** (#8 Blockworks, #9 `1000SHIB`, #10 `1000PEPE`,
+     #11 hình học SL/TP). `#9/#10` là **vị thế mở TAY** (notional ~0,004–0,008 USDT < minNotional 5 ⇒
+     sàn không cho đặt SL/TP — `dust_skip`, B-024), không phải lỗi bot. `#11`: **6×ATR/12×ATR đã được
+     áp dụng** (`SL_ATR_MULT=6`, `TP_ATR_MULT=12`, giá trị cũ 14/69 comment lại) và đang chạy.
+     `#8` còn lại **một việc của người**: thu hồi key trên `app.blockworks.com` (code **0** tham chiếu).
+   - Catalog **59 lớp / 229 test chốt**; `bug_manifest` digest `3dbce49d`.

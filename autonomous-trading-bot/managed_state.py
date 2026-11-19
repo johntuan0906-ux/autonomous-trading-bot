@@ -13,11 +13,14 @@ import time
 from trade_mgmt import ManagedTrade
 
 FIELDS = ("entry", "qty", "sl", "tp", "initial_sl", "init_qty",
-          "partial_done", "be_done", "booked_pnl", "mfe_r", "direction", "prot_ids")
+          "partial_done", "be_done", "booked_pnl", "mfe_r", "direction", "prot_ids",
+          # (19/11, B-060) phai luu: mat no sau restart => CLOSE ghi "NONE" vao
+          # strategy_stats.json => cong tu dong chan chien luoc lo bi MU.
+          "strategy")
 
 
 def dump_trade(mt: ManagedTrade) -> dict:
-    return {k: getattr(mt, k) for k in FIELDS}
+    return {k: getattr(mt, k, "" if k == "strategy" else None) for k in FIELDS}
 
 
 def load_trade(sym: str, d: dict) -> ManagedTrade:
@@ -34,6 +37,7 @@ def load_trade(sym: str, d: dict) -> ManagedTrade:
     mt.be_done = bool(d.get("be_done"))
     mt.booked_pnl = float(d.get("booked_pnl") or 0.0)
     mt.mfe_r = float(d.get("mfe_r") or 0.0)
+    mt.strategy = str(d.get("strategy") or "")          # (19/11, B-060)
     _ids = d.get("prot_ids")
     mt.prot_ids = {str(k): str(v) for k, v in _ids.items()} if isinstance(_ids, dict) else {}
     return mt

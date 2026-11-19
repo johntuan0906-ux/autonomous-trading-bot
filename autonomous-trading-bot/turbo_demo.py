@@ -1294,6 +1294,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
             # (02/10) managed tao ngay tu luc mo -> co initial_sl/init_qty dung va ghi
             # duoc clientOrderId cua lenh bao ve vao state (doi soat moi vong).
             _mng = bot._managed_for(sym, bot.portfolio.positions[sym])
+            _mng.strategy = str(strat or "")      # (19/11, B-060) song qua restart
             _pending_feats[sym] = {"feats": feats, "direction": direction,
                                    "strategy": strat, "entry": lv["entry"],
                                    "sl": lv["sl"], "tp": lv["tp"],
@@ -1360,6 +1361,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                 pos = Position(sym, direction, lv["entry"], landed, lv["sl"], lv["tp"])
                 bot.portfolio.positions[sym] = pos
                 _mng = bot._managed_for(sym, pos)
+                _mng.strategy = str(strat or "")   # (19/11, B-060) song qua restart
                 _pending_feats[sym] = {"feats": feats, "direction": direction,
                                        "strategy": strat, "entry": lv["entry"],
                                        "sl": lv["sl"], "tp": lv["tp"],
@@ -1490,7 +1492,12 @@ def manage_open_positions(bot, cfg, log) -> dict:
         exr = bot.last_exits.get(sym) or {}
         r_real = float(exr.get("r") or 0.0)
         # Thong ke rieng tung strategy (muc 15): A/B/C/D — phat hien nhom keo PF xuong
-        strat = str((pend or {}).get("strategy") or exr.get("strategy") or "NONE")
+        # (19/11, B-060) `pend` chi song trong RAM ⇒ sau restart luon roi ve "NONE" va
+        # `strategy_stats.json` dung im. Nay: RAM -> managed (da luu state) -> last_exits.
+        _mt = (getattr(bot, "managed", {}) or {}).get(sym)
+        strat = str((pend or {}).get("strategy")
+                    or getattr(_mt, "strategy", "")
+                    or exr.get("strategy") or "NONE")
         try:
             srep = strat_bump(strat, bool(exr.get("won", won)), r_real)
             log.info("STRAT %s n=%s WR=%.0f%% avgR=%s", strat, srep.get("n"),

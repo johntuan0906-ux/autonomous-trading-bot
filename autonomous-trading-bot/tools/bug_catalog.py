@@ -693,6 +693,18 @@ CLASSES = [
                   "test_orders_audit.py::TestChanApiBan::test_file_hong_hoac_khong_co_thi_fail_open",
                   "test_orders_audit.py::TestChanApiBan::test_dang_bi_chan_thi_khong_goi_san"],
     },
+    {
+        "code": "B-060", "kind": "im-lang", "seen": "19/11/2026",
+        "title": "`strategy` cua lenh chi song trong RAM ⇒ sau RESTART moi CLOSE ghi 'NONE', `strategy_stats.json` dung im ⇒ cong chan chien luoc lo bi MU",
+        "symptom": "Do that 19/11: `logs/strategy_stats.json` cua LIVE co `NONE` (n=455, ts moi) nhung `D_RANGE_REVERSAL` (ts 11/11), `B_BREAKOUT_RETEST` (ts 11/11), `A_TREND_PULLBACK` dung im gan 8 ngay — trong khi `perf_report --split strategy` (doc thang `strategy` o ban ghi OPEN) van thay D_RANGE_REVERSAL **-81 USDT** va B_BREAKOUT_RETEST **+186 USDT**. Nguyen nhan: `_pending_feats[sym]['strategy']` chi la dict trong RAM; restart (hoac vi the duoc adopt lai) ⇒ `pend=None`, `exr` khong co strategy ⇒ `strat='NONE'` ⇒ `bump()` cong sai o nhom NONE ⇒ `strategy.gate_check` (auto) khong bao gio thay chien luoc dang lo. Cung luc do 2 chien luoc lo nhat van duoc phep vao lenh tren TIEN THAT",
+        "guard": "`ManagedTrade.strategy` + `managed_state.FIELDS` (`strategy`) ⇒ strategy song qua restart; `turbo_demo` gan `_mng.strategy = strat` ngay khi mo (ca 2 duong: vao lenh thuong va 'landed sau loi mang'); luc close: `pend -> managed -> last_exits -> NONE`; `bot._record_exit` ghi `strategy` vao `last_exits` + dong CLOSE journal (3 duong: thuong/DUST/FLATTEN) ⇒ `perf_report` khong phai doan FIFO. Kem theo: `.env` ca 2 instance dat `STRATEGY_BLOCK=A_TREND_PULLBACK,D_RANGE_REVERSAL` (bang chung am o CA HAI instance) — chan CUNG, khong phu thuoc so lieu tich luy",
+        "files": ["trade_mgmt.py", "managed_state.py", "turbo_demo.py", "bot.py", "tools/perf_report.py", "tests/test_p0_safety.py", "tests/test_perf_report.py"],
+        "tests": ["test_p0_safety.py::TestChienLuocSongQuaRestart::test_managed_state_luu_va_doc_lai_strategy",
+                  "test_p0_safety.py::TestChienLuocSongQuaRestart::test_state_cu_khong_co_truong_strategy_van_doc_duoc",
+                  "test_p0_safety.py::TestChienLuocSongQuaRestart::test_close_ghi_strategy_vao_journal_va_last_exits",
+                  "test_perf_report.py::TestJournalThat::test_tach_theo_chien_luoc",
+                  "test_perf_report.py::TestJournalThat::test_doc_va_ghep_context_tu_OPEN"],
+    },
 ]
 
 

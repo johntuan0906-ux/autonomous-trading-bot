@@ -2,13 +2,13 @@
 
 | # | Thieu hut | Do (hien tai -> can) | Tu lam |
 |---|---|---|---|
-| 1 | calibration | brier: 0.358 -> <= 0.25 | co |
-| 2 | match_exact | ty le ghep CHINH XAC (decision_id): 0.3889 -> 0.8 | co |
+| 1 | calibration | brier: 0.3424 -> <= 0.25 | co |
+| 2 | match_exact | ty le ghep CHINH XAC (decision_id): 0.473 -> 0.8 | co |
 | 3 | thin_models | so model co n_ghep < min_n: 9 -> 0 | co |
 | 4 | value_negative | model co value_r <= 0: 1 -> 0 | KHONG (can nguoi) |
 
 ## calibration (high)
-- Do: **brier = 0.358** (can: <= 0.25)
+- Do: **brier = 0.3424** (can: <= 0.25)
 - Can thu thap / lam:
   - [ ] >= 30 phieu co `confidence` VA co ket qua that
   - [ ] phan bo confidence theo khoang (calibration bins) de biet lech o dau
@@ -17,9 +17,9 @@
 - Tu lam duoc: CO
 
 ## match_exact (high)
-- Do: **ty le ghep CHINH XAC (decision_id) = 0.3889** (can: 0.8)
+- Do: **ty le ghep CHINH XAC (decision_id) = 0.473** (can: 0.8)
 - Can thu thap / lam:
-  - [ ] 83/683 phieu NOI duoc theo id nhung chi 90/683 da co lenh DONG de cham diem ⇒ can them ket qua (cho lenh dong)
+  - [ ] 83/559 phieu NOI duoc theo id nhung chi 74/559 da co lenh DONG de cham diem ⇒ can them ket qua (cho lenh dong)
   - [ ] >= 30 phieu/model co `decision_id` de so sanh
   - [ ] 10 cap ghep mau (phieu -> lenh) de kiem tay bang `tools/trace_trade.py`
 - Viec phai lam: chay lai `python tools/council_eval.py` sau khi co them lenh dong
@@ -28,7 +28,7 @@
 ## thin_models (med)
 - Do: **so model co n_ghep < min_n = 9** (can: 0)
 - Can thu thap / lam:
-  - [ ] n_ghep >= 8 cho tung model (dang thieu: claude-haiku-4.5, cline-pass/claude-sonnet-5, cline-pass/claude-sonnet-5.5, cline-pass/kimi-k3, cline-pass/mimo-v2.6-pro, cline-pass/minimax-m3, gemini-3.8-flash, gpt-5.6-terra, grok-4.6)
+  - [ ] n_ghep >= 8 cho tung model (dang thieu: claude-haiku-4.5, cline-pass/claude-sonnet-5, cline-pass/claude-sonnet-5.5, cline-pass/kimi-k3, cline-pass/mimo-v2.6-pro, cline-pass/qwen3.7-plus, gemini-3.8-flash, gpt-5.6-terra, grok-4.6)
   - [ ] 1 lan chay `tools/council_probe.py --live` de do A/B co kiem soat
 - Viec phai lam: chay them phien (hoac bo model treo) roi do lai
 - Tu lam duoc: CO

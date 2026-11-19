@@ -176,6 +176,7 @@ class TradingBot:
                                 "partial": res.get("partial_done"),
                                 "mfe_r": res.get("mfe_r"),
                                 "direction": mt.direction,
+                                "strategy": getattr(mt, "strategy", ""),
                                 "ts": time.time()}
         if self.kill.register_close(bool(res["won"]), self.balance,
                                     pnl=res.get("pnl")):
@@ -187,6 +188,7 @@ class TradingBot:
                   qty=mt.init_qty, exit_price=price, r=res["r"],
                   won=bool(res["won"]), pnl=res["pnl"], reason=reason,
                   partial=res.get("partial_done"), mfe_r=res.get("mfe_r"),
+                  strategy=getattr(mt, "strategy", ""),   # (19/11, B-060)
                   r_valid=res.get("r_valid", True))
         return None
 
@@ -238,6 +240,7 @@ class TradingBot:
                   exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
                   reason="DUST", partial=res.get("partial_done"),
                   mfe_r=res.get("mfe_r"),
+                  strategy=getattr(mt, "strategy", ""),     # (19/11, B-060)
                   r_valid=res.get("r_valid", True))
         self._close(sym, f"DUST qty={mt.qty:g} < minNotional @ {price}")
         # Xac nhan lai voi SAN: dong duoc chua? (None = khong doc duoc -> tin bot)
@@ -463,6 +466,7 @@ class TradingBot:
                       exit_price=price, r=res["r"], won=bool(res["won"]), pnl=res["pnl"],
                       reason="FLATTEN", partial=res.get("partial_done"),
                       mfe_r=res.get("mfe_r"),
+                      strategy=(getattr(mt, "strategy", "") if mt is not None else ""),
                       r_valid=res.get("r_valid", True))
             log.info("FLATTEN ghi CLOSE %s r=%s pnl=%s (%s)", sym, res["r"], res["pnl"], reason)
 

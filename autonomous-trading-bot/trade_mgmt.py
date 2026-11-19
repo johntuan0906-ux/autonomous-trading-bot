@@ -40,6 +40,11 @@ class ManagedTrade:
     be_done: bool = False
     booked_pnl: float = 0.0   # PnL da chot tu partial (USDT)
     mfe_r: float = 0.0        # MFE lon nhat tinh bang R
+    # (19/11, B-060) Chien luoc da mo lenh (A_/B_/C_/D_...). Truoc day chi nam trong
+    # RAM (`_pending_feats`) nen RESTART la mat => moi CLOSE sau do ghi "NONE" vao
+    # `logs/strategy_stats.json` -> cong tu dong `strategy.gate_check` khong bao gio
+    # thay chien luoc dang lo (do that: 3/4 dong stats dung im tu 11/11).
+    strategy: str = ""
     opened_ts: float = field(default_factory=time.time)
     # (01/10) clientOrderId cua lenh bao ve dang TREO tren san: {"sl": "glow...", "tp": ...}
     # Luu vao state de doi soat moi vong (phat hien SL/TP bi mat/huy) va de truy vet.

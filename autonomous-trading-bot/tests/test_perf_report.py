@@ -127,6 +127,29 @@ class TestJournalThat(unittest.TestCase):
         self.assertEqual(sorted(rep["by_regime"]), ["DOWNTREND", "UPTREND"])
         self.assertAlmostEqual(rep["by_regime"]["UPTREND"]["pnl"], 25.0)
 
+    def test_tach_theo_chien_luoc(self):
+        """(19/11) Can biet CHIEN LUOC nao dang am de quyet dinh chan/giu (B-060).
+
+        `strategy` nam o ban ghi OPEN, CLOSE khong co ⇒ phai gan FIFO nhu setup.
+        """
+        self._write([
+            {"ts": T0, "event": "OPEN", "pair": "BTC/USDT:USDT", "entry": 1.0,
+             "strategy": "A_TREND_PULLBACK"},
+            _close(T0 + 60, -10.0, -1.0),
+            {"ts": T0 + 70, "event": "OPEN", "pair": "ETH/USDT:USDT", "entry": 1.0,
+             "strategy": "D_RANGE_REVERSAL"},
+            _close(T0 + 120, 20.0, 2.0, pair="ETH/USDT:USDT"),
+        ])
+        all_rows = PR.rows(self.jp)
+        cs = PR.attach_context(all_rows, PR.closes(all_rows))
+        self.assertEqual(cs[0]["strategy"], "A_TREND_PULLBACK")
+        rep = PR.build(cs, start_balance=1000.0, days=0)
+        self.assertEqual(sorted(rep["by_strategy"]),
+                         ["A_TREND_PULLBACK", "D_RANGE_REVERSAL"])
+        self.assertAlmostEqual(rep["by_strategy"]["A_TREND_PULLBACK"]["pnl"], -10.0)
+        self.assertAlmostEqual(rep["by_strategy"]["D_RANGE_REVERSAL"]["exp_r"], 2.0)
+        self.assertIn("STRATEGY", PR.render(rep))
+
     def test_cua_so_ngay_loc_dung(self):
         self._write([_close(T0, 10.0, 1.0), _close(T0 + 40 * DAY, 5.0, 1.0)])
         all_rows = PR.rows(self.jp)

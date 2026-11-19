@@ -1742,3 +1742,57 @@ class TestViTheBuiChet(unittest.TestCase):
 
 
 
+
+
+class _NoKill:
+    reason = ""
+
+    def register_close(self, *a, **k):
+        return False
+
+
+class TestChienLuocSongQuaRestart(unittest.TestCase):
+    """(19/11, B-060) `strategy` cua lenh phai SONG QUA RESTART.
+
+    Do that: `_pending_feats` (RAM) mat sau moi lan restart ⇒ moi CLOSE ghi "NONE"
+    vao `logs/strategy_stats.json`: 3/4 dong dung im tu 11/11 trong khi
+    `perf_report --split strategy` van thay B_BREAKOUT_RETEST +170 USDT va
+    D_RANGE_REVERSAL -84 USDT ⇒ cong tu dong `strategy.gate_check` khong bao gio
+    chan chien luoc dang lo (mu hoan toan).
+    """
+
+    def test_managed_state_luu_va_doc_lai_strategy(self):
+        mt = new_trade("BTC/USDT:USDT", "LONG", 100.0, 1.0, 99.0, 103.0)
+        mt.strategy = "B_BREAKOUT_RETEST"
+        d = managed_state.dump_trade(mt)
+        self.assertEqual(d["strategy"], "B_BREAKOUT_RETEST")
+        back = managed_state.load_trade("BTC/USDT:USDT", d)
+        self.assertEqual(back.strategy, "B_BREAKOUT_RETEST")
+
+    def test_state_cu_khong_co_truong_strategy_van_doc_duoc(self):
+        mt = new_trade("ETH/USDT:USDT", "SHORT", 10.0, 2.0, 10.5, 9.0)
+        d = managed_state.dump_trade(mt)
+        d.pop("strategy", None)          # file state ghi truoc ban va nay
+        back = managed_state.load_trade("ETH/USDT:USDT", d)
+        self.assertEqual(back.strategy, "")
+        self.assertEqual(back.initial_sl, 10.5, "cac truong cu phai giu nguyen")
+
+    def test_close_ghi_strategy_vao_journal_va_last_exits(self):
+        """CLOSE mang `strategy` ⇒ khong phu thuoc FIFO/RAM khi tinh lai."""
+        import unittest.mock as mock
+        bot = TradingBot.__new__(TradingBot)      # khong khoi tao exchange/mang
+        bot.cfg = Settings()
+        bot.last_exits = {}
+        bot.kill = _NoKill()
+        bot.balance = 1000.0
+        bot._close = lambda *a, **k: None
+        mt = new_trade("SOL/USDT:USDT", "LONG", 20.0, 1.0, 19.0, 22.0)
+        mt.strategy = "A_TREND_PULLBACK"
+        recs = []
+        with mock.patch.object(botmod, "log_trade",
+                               lambda **kw: recs.append(kw) or {"ok": True}):
+            bot._record_exit("SOL/USDT:USDT", mt, 22.0, "TP")
+        self.assertEqual(recs[0]["strategy"], "A_TREND_PULLBACK")
+        self.assertEqual(bot.last_exits["SOL/USDT:USDT"]["strategy"],
+                         "A_TREND_PULLBACK")
+

@@ -86,6 +86,7 @@ def attach_context(all_rows: list, close_rows: list) -> list:
         if o:
             rec.setdefault("setup_type", o.get("setup_type"))
             rec.setdefault("market_regime", o.get("market_regime"))
+            rec.setdefault("strategy", o.get("strategy"))
         rec["_bot"] = bool(o)          # (15/11) co OPEN tuong ung => lenh cua BOT (khong phai lenh tay)
         rec["_pair"] = key
         out.append(rec)
@@ -227,7 +228,7 @@ def _notes(rets: list, maxdd: float) -> list:
 
 
 def split_by(close_rows: list, key: str) -> dict:
-    """Tach theo `setup_type` hoac `market_regime` (FIFO tu OPEN, thieu thi ghi '?' )."""
+    """Tach theo `setup_type` / `market_regime` / `strategy` (FIFO tu OPEN, thieu thi ghi '?' )."""
     groups: dict = {}
     for r in close_rows:
         k = str(r.get(key) or "?")
@@ -273,6 +274,7 @@ def build(close_rows: list, start_balance: float = DEFAULT_BALANCE,
         "notes": _notes(rets, mdd),
         "by_setup": split_by(close_rows, "setup_type"),
         "by_regime": split_by(close_rows, "market_regime"),
+        "by_strategy": split_by(close_rows, "strategy"),
         "equity": eq, "daily": daily,
     }
 
@@ -294,7 +296,8 @@ def render(rep: dict) -> str:
          "  MaxDD %s%% · Ulcer %s%% · PF %s · WR %s%% · ky vong %sR/lenh (%s USDT)"
          % (_num(rep["max_dd_pct"]), _num(rep["ulcer_pct"]), _num(rep["pf"]),
             _num(rep["winrate"], 1), _num(rep["exp_r"], 3), _num(rep["exp_pnl"], 3))]
-    for label, key in (("SETUP", "by_setup"), ("REGIME", "by_regime")):
+    for label, key in (("SETUP", "by_setup"), ("REGIME", "by_regime"),
+                       ("STRATEGY", "by_strategy")):
         rows_ = rep.get(key) or {}
         if not rows_:
             continue
@@ -324,7 +327,8 @@ def main(argv=None) -> int:
     ap.add_argument("--journal", default="", help="duong dan journal (bo qua --instance)")
     ap.add_argument("--days", type=float, default=30.0, help="cua so ngay (0 = tat ca)")
     ap.add_argument("--balance", type=float, default=DEFAULT_BALANCE, help="von ban dau")
-    ap.add_argument("--split", default="", choices=("", "setup", "regime"))
+    ap.add_argument("--split", default="",
+                    choices=("", "setup", "regime", "strategy"))
     ap.add_argument("--bot-only", action="store_true",
                     help="chi tinh lenh co OPEN tuong ung (loai lenh tay khoi journal)")
     ap.add_argument("--json", action="store_true")
@@ -336,9 +340,13 @@ def main(argv=None) -> int:
     rep = build(close_rows, start_balance=args.balance, days=args.days,
                 bot_only=bool(args.bot_only))
     if args.split == "setup":
-        rep = {**rep, "by_regime": {}}
+        rep = {**rep, "by_regime": {}, "by_strategy": {}}
     elif args.split == "regime":
-        rep = {**rep, "by_setup": {}}
+        rep = {**rep, "by_setup": {}, "by_strategy": {}}
+    elif args.split == "strategy":
+        rep = {**rep, "by_setup": {}, "by_regime": {}}
+    else:                      # mac dinh: khong doi hinh dang bao cao cu
+        rep = {**rep, "by_strategy": {}}
     if args.json:
         print(json.dumps({k: v for k, v in rep.items()
                           if k not in ("equity", "daily")}, ensure_ascii=False, indent=2,

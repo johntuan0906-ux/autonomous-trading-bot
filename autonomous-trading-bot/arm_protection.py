@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from pathlib import Path
 
 try:  # doc cung .env voi runtime
     from dotenv import load_dotenv  # type: ignore
@@ -25,6 +26,26 @@ except Exception:  # noqa: BLE001
     pass
 
 from config import Settings  # noqa: E402
+
+# (19/11, B-061) Truoc day cong cu nay chi chay DEMO. Do that 19/11: LIVE co **3 vi the
+# KHONG co lenh bao ve nao tren san** (BTC/SOL/XRP) va khong co cach nao dat lai tu dong
+# ngoai viec cho bot tu re-arm (bi chan IP thi bot cung khong goi duoc). Them `--target`.
+LIVE_DIR = Path(__file__).resolve().parent.parent / "atb-live"
+
+
+def read_env(path: Path) -> dict:
+    """Doc `.env` thanh dict (KHONG ghi de os.environ cua instance khac)."""
+    out: dict = {}
+    try:
+        for line in Path(path).read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            out[k.strip()] = v.strip().strip('"').strip("'")
+    except Exception:  # noqa: BLE001
+        return {}
+    return out
 
 
 def _client(cfg):
@@ -36,17 +57,69 @@ def _client(cfg):
     return cli
 
 
+def _client_keys(key: str, sec: str, live: bool):
+    import ccxt  # type: ignore
+    cli = ccxt.binance({"apiKey": key, "secret": sec,
+                        "options": {"defaultType": "future"}, "enableRateLimit": True})
+    if not live:
+        cli.enable_demo_trading(True)
+    cli.options["fetchOpenOrders"] = {"warnWithoutSymbol": False}
+    return cli
+
+
+def _ban_left(base: Path) -> float:
+    """So giay con bi san chan IP (doc `logs/api_ban.json`, B-044/B-059). 0 = khong."""
+    try:
+        d = json.loads((Path(base) / "logs" / "api_ban.json").read_text(encoding="utf-8"))
+        return max(0.0, float(d.get("until") or 0.0) - time.time())
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Bao ve SL/TP tren DEMO")
+    ap = argparse.ArgumentParser(description="Bao ve SL/TP (DEMO hoac LIVE)")
     ap.add_argument("--arm", action="store_true", help="thu arm lai SL/TP")
+    ap.add_argument("--target", choices=("testnet", "live"), default="testnet")
+    ap.add_argument("--yes-live", action="store_true",
+                    help="bat buoc khi --target live --arm (dat lenh THAT)")
     args = ap.parse_args(argv)
 
-    cfg = Settings()
-    if not cfg.testnet or not cfg.api_key:
-        print("[TU CHOI] chi chay tren DEMO (BINANCE_TESTNET=true + co API key).")
-        return 2
-    cli = _client(cfg)
-    poss = [p for p in cli.fetch_positions() if float(p.get("contracts") or 0) != 0]
+    if args.target == "live":
+        if args.arm and not args.yes_live:
+            print("[TU CHOI] --target live --arm dat lenh THAT: them --yes-live.")
+            return 2
+        base = LIVE_DIR
+        env = read_env(base / ".env")
+        if not (env.get("BINANCE_API_KEY") and env.get("BINANCE_API_SECRET")):
+            print("[LOI] thieu API key trong %s" % (base / ".env"))
+            return 2
+        _ban = _ban_left(base)
+        if _ban > 0:
+            print("[CHO] san chan IP (B-044): con %.0f phut (toi %s) -> KHONG goi API"
+                  % (_ban / 60.0,
+                     time.strftime("%H:%M:%S", time.localtime(time.time() + _ban))))
+            return 3
+        cli = _client_keys(env["BINANCE_API_KEY"], env["BINANCE_API_SECRET"], True)
+        ms_path = base / "logs" / "managed_state.json"
+    else:
+        base = Path(__file__).resolve().parent
+        cfg = Settings()
+        if not cfg.testnet or not cfg.api_key:
+            print("[TU CHOI] chi chay tren DEMO (BINANCE_TESTNET=true + co API key).")
+            return 2
+        cli = _client(cfg)
+        ms_path = Path(getattr(cfg, "managed_state_path", "logs/managed_state.json"))
+    try:
+        poss = [p for p in cli.fetch_positions() if float(p.get("contracts") or 0) != 0]
+    except Exception as e:  # noqa: BLE001
+        # (19/11, B-063) request vua cham ban ⇒ GHI moc de lan sau khong goi tiep
+        try:
+            import exchange as _ex
+            _ex.note_error_ban(base, e)
+        except Exception:  # noqa: BLE001
+            pass
+        print("[LOI] fetch_positions:", str(e)[:150])
+        return 1
     try:
         orders = cli.fetch_open_orders()
     except Exception as e:  # noqa: BLE001
@@ -73,7 +146,7 @@ def main(argv=None) -> int:
                   "python arm_protection.py --arm")
         return 0
 
-    ms = json.load(open("logs/managed_state.json", encoding="utf-8"))
+    ms = json.load(open(ms_path, encoding="utf-8"))
     trades = ms.get("trades") or {}
     ok = fail = 0
     for p in poss:
@@ -95,6 +168,14 @@ def main(argv=None) -> int:
                 print(f"  {sym} {tag} {price} -> OK id={o.get('id')}")
                 ok += 1
             except Exception as e:  # noqa: BLE001
+                # (19/11, B-063) dat lenh ma cham ban ⇒ ghi moc, dung ngay (dung goi tiep)
+                try:
+                    import exchange as _ex
+                    if _ex.note_error_ban(base, e):
+                        print(f"  {sym} {tag} -> BAN IP: dung dat tiep")
+                        return 1
+                except Exception:  # noqa: BLE001
+                    pass
                 print(f"  {sym} {tag} {price} -> LOI: {str(e)[:110]}")
                 fail += 1
             time.sleep(1)

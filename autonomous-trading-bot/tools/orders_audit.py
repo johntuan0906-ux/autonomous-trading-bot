@@ -359,6 +359,12 @@ def main(argv=None) -> int:
     try:
         poss = [p for p in cli.fetch_positions() if float(p.get("contracts") or 0) != 0]
     except Exception as e:  # noqa: BLE001
+        # (19/11, B-063) chinh request vua cham ban thi phai GHI lai, khong chi in ra
+        try:
+            import exchange as _ex
+            _ex.note_error_ban(base, e)
+        except Exception:  # noqa: BLE001
+            pass
         print("[LOI] fetch_positions: %s" % str(e)[:150])
         return 1
     syms = [str(p.get("symbol")) for p in poss]

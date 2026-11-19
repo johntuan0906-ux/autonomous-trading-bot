@@ -150,6 +150,84 @@ def _tune_session(cli) -> None:
         pass
 
 
+WEIGHT_LIMIT_1M = 2400        # Binance USDⓈ-M: tran weight 1 phut / IP
+WEIGHT_SOFT_PCT = 0.75        # >= 75% tran => tu nghi cho het phut (B-062)
+
+
+def weight_used(headers) -> int:
+    """`X-MBX-USED-WEIGHT-1M` tu header tra ve (0 = khong doc duoc).
+
+    (19/11, B-062) Do that: moi lan ban IP het han, vong quet 40 cap tiep theo
+    cham `-1003` NGAY va Binance **cong them 40 phut** — vi tai trong IP dang
+    sat tran khi vong moi bat dau (2 instance + hoi dong + cong cu cung 1 IP).
+    Doc header nay de tu nghi TRUOC khi bi chan, thay vi bi chan roi moi nghi.
+    """
+    try:
+        h = {str(k).lower(): v for k, v in dict(headers or {}).items()}
+        return int(float(h.get("x-mbx-used-weight-1m") or 0))
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def throttle_seconds(used: int, limit: int = WEIGHT_LIMIT_1M,
+                     pct: float = WEIGHT_SOFT_PCT, now: float = None) -> float:
+    """So giay can nghi de tran weight reset (0 = duoc chay tiep)."""
+    try:
+        if not limit or float(used) < float(limit) * float(pct):
+            return 0.0
+        t = float(now if now is not None else time.time())
+        frac = t % 60.0
+        if frac <= 1.0:              # cua so weight VUA reset ⇒ khong can nghi
+            return 0.0
+        return max(1.0, 60.0 - frac)
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+def save_api_ban(base_dir, until: float, reason: str = "API_BAN") -> float:
+    """Ghi moc bi san chan IP vao `<base>/logs/api_ban.json` — CHI TANG (B-044/B-059/B-063).
+
+    (19/11) Truoc day CHI bot ghi file nay. Cong cu (`orders_audit`,
+    `arm_protection`) cham `-1003` thi khong ai ghi ⇒ lan sau van goi tiep ⇒ ban dai
+    them (do that: 11:18 -> 11:59 chi vi 1 request doc). Nay moi duong deu ghi.
+    """
+    import json
+    from pathlib import Path as _P
+    p = _P(base_dir) / "logs" / "api_ban.json"
+    old = 0.0
+    try:
+        old = float((json.loads(p.read_text(encoding="utf-8")) or {}).get("until") or 0.0)
+    except Exception:  # noqa: BLE001
+        old = 0.0
+    until = float(until or 0.0)
+    if until <= old:
+        return old
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = str(p) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"until": until, "reason": reason, "ts": time.time(),
+                       "readable": time.strftime("%Y-%m-%d %H:%M:%S",
+                                                 time.localtime(until))},
+                      f, ensure_ascii=False, indent=1)
+        import os as _os
+        _os.replace(tmp, p)
+    except Exception:  # noqa: BLE001
+        return old
+    return until
+
+
+def note_error_ban(base_dir, err) -> float:
+    """`err` la ban IP (`-1003`/`418`) ⇒ ghi moc vao `logs/api_ban.json`. Tra moc (0 = khong)."""
+    try:
+        cls = classify_error(err)
+        if str(cls.get("code")) == "API_BAN" and float(cls.get("ban_until") or 0.0) > 0:
+            return save_api_ban(base_dir, float(cls["ban_until"]), "API_BAN")
+    except Exception:  # noqa: BLE001
+        pass
+    return 0.0
+
+
 class BinanceFutures:
     def __init__(self, api_key: str = "", api_secret: str = "", testnet: bool = True,
                  dry_run: bool = True):
@@ -261,6 +339,16 @@ class BinanceFutures:
             except Exception:  # noqa: BLE001
                 pass                                  # loi tinh toan thi GIU nguyen (khong lam mat du lieu)
         cache[key] = {"df": df.copy(), "ts": time.monotonic()}
+        # (19/11, B-062) TU NGHI khi tai trong IP gan tran: ban IP het han ma quet tiep
+        # 40 cap ⇒ cham `-1003` ngay va bi cong them 40 phut (do that 19/11: 11:18 -> 11:59).
+        # Doc header THAT tu lan goi vua roi; khong doc duoc (0) thi khong lam gi.
+        try:
+            _w = weight_used(getattr(src, "last_response_headers", None))
+            _nghi = throttle_seconds(_w)
+            if _nghi > 0:
+                time.sleep(_nghi)
+        except Exception:  # noqa: BLE001
+            pass
         return df.copy()
 
     def last_price(self, symbol: str) -> float:
@@ -270,23 +358,36 @@ class BinanceFutures:
 
     # ---- HEDGE / ONE-WAY: tai khoan LIVE co the o che do 2 chieu ----------------
 
-    def hedge_mode(self) -> bool:
+    def hedge_mode(self, ttl: float = 300.0) -> bool:
         """Tai khoan dang o HEDGE (dual position side) hay ONE-WAY?
 
         Vi sao can (loi that 09/10 16:45): lenh KHONG co `positionSide` bi tu choi
         `-4061 Order's position side does not match user's setting` khi tai khoan o HEDGE.
         Tai khoan DEMO la one-way nen bot chay duoc, sang LIVE (hedge) thi moi lenh hong.
         Tu do 1 lan roi nho; loi mang -> coi nhu one-way (giu hanh vi cu).
+
+        (19/11, B-064) Do that: che do tai khoan BI DOI (hedge -> one-way) trong khi bot
+        dang chay ⇒ cache `_hedge=True` VINH VIEN ⇒ **moi lenh vao + moi lenh SL/TP deu
+        `-4061`** (22 lan/vong, 2 vi the LIVE khong co bao ve nao). Nay: cache co TTL
+        (mac dinh 300s) va `-4061` lam cache bi xoa ngay (retry 1 lan).
         """
-        if self._hedge is None:
-            self._hedge = False
-            try:
-                if self._client is not None:
-                    r = self._client.fapiPrivateGetPositionSideDual()
-                    self._hedge = bool((r or {}).get("dualSidePosition"))
-            except Exception:  # noqa: BLE001
-                pass
+        fresh = (time.time() - float(getattr(self, "_hedge_ts", 0.0))) < float(ttl)
+        if self._hedge is not None and fresh:
+            return bool(self._hedge)
+        self._hedge = False
+        try:
+            if self._client is not None:
+                r = self._client.fapiPrivateGetPositionSideDual()
+                self._hedge = bool((r or {}).get("dualSidePosition"))
+        except Exception:  # noqa: BLE001
+            pass
+        self._hedge_ts = time.time()
         return bool(self._hedge)
+
+    def _invalidate_hedge(self) -> None:
+        """Xoa cache che do tai khoan (dung khi san tra `-4061`, B-064)."""
+        self._hedge = None
+        self._hedge_ts = 0.0
 
     def _pos_side(self, direction: str) -> dict:
         """`{"positionSide": ...}` khi tai khoan HEDGE; rong khi ONE-WAY.
@@ -416,7 +517,16 @@ class BinanceFutures:
             return {"symbol": symbol, "side": side, "qty": qty, "dry_run": True}
         params = {"newClientOrderId": cid or _cid("entry")}
         params.update(self._pos_side(direction))
-        return self._client.create_market_order(symbol, side, qty, params=params)
+        try:
+            return self._client.create_market_order(symbol, side, qty, params=params)
+        except Exception as e:  # noqa: BLE001
+            # (19/11, B-064) `-4061` = che do tai khoan da DOI ⇒ xoa cache va thu lai 1 lan
+            if "-4061" not in str(e):
+                raise
+            self._invalidate_hedge()
+            params = {"newClientOrderId": cid or _cid("entry")}
+            params.update(self._pos_side(direction))
+            return self._client.create_market_order(symbol, side, qty, params=params)
 
     def stop_tp_orders(self, symbol: str, direction: str, qty: float, sl: float,
                        tp: float, cid_prefix: str = "sg",
@@ -431,6 +541,20 @@ class BinanceFutures:
         if self._client is None or self.dry_run:
             return {"sl": sl, "tp": tp, "dry_run": True}
         close_side = "sell" if direction == "LONG" else "buy"
+        try:
+            return self._arm_protection(symbol, direction, close_side, qty, sl, tp,
+                                        cid_prefix, cancel_first)
+        except Exception as e:  # noqa: BLE001
+            # (19/11, B-064) che do tai khoan DOI ⇒ SL/TP hong het (`-4061`) ⇒ thu lai 1 lan
+            if "-4061" not in str(e):
+                raise
+            self._invalidate_hedge()
+            return self._arm_protection(symbol, direction, close_side, qty, sl, tp,
+                                        cid_prefix, cancel_first)
+
+    def _arm_protection(self, symbol: str, direction: str, close_side: str,
+                        qty: float, sl: float, tp: float, cid_prefix: str,
+                        cancel_first: bool) -> dict:
         ps = self._pos_side(direction)   # HEDGE: bat buoc co positionSide (khong dung reduceOnly)
         out: dict = {"cancelled": self.cancel_symbol_orders(symbol) if cancel_first else None}
         for tag, otype, price in (("sl", "STOP_MARKET", sl), ("tp", "TAKE_PROFIT_MARKET", tp)):
@@ -445,7 +569,9 @@ class BinanceFutures:
                 try:
                     out[tag + "_order"] = self._client.create_order(
                         symbol, otype, close_side, None, params=p_close)
-                except Exception:
+                except Exception as e1:  # noqa: BLE001
+                    if "-4061" in str(e1):      # (B-064) che do SAI: de tang ngoai xu ly
+                        raise
                     out[tag + "_order"] = self._client.create_order(
                         symbol, otype, close_side, qty, params=p_qty)
             else:
@@ -453,7 +579,9 @@ class BinanceFutures:
                 try:
                     out[tag + "_order"] = self._client.create_order(
                         symbol, otype, close_side, qty, params=p_qty)
-                except Exception:
+                except Exception as e2:  # noqa: BLE001
+                    if "-4061" in str(e2):      # (B-064) che do SAI: de tang ngoai xu ly
+                        raise
                     # fallback: closePosition=True (khong truyen quantity -> tranh -1106)
                     p_close["closePosition"] = True
                     out[tag + "_order"] = self._client.create_order(

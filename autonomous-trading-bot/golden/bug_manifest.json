@@ -1,12 +1,13 @@
 {
- "n_classes": 59,
- "n_tests": 229,
- "digest": "3dbce49d2824f7be4863bb904fcd31d215c6342e79d655b244c6eea79381a8b4",
+ "n_classes": 63,
+ "n_tests": 241,
+ "digest": "4a8b38573e9a9b22b4a45e77cac289337a373cc741a9426cb7c69d763c17aac7",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
   "test_agents_network.py",
   "test_api_ban.py",
+  "test_arm_protection.py",
   "test_atomic_write.py",
   "test_bot.py",
   "test_council_daemon.py",

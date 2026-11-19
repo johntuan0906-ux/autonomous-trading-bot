@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import exchange as EX      # noqa: E402
+import strategy as S       # noqa: E402
 
 MSG_BAN_MS = ('{"code":-1003,"msg":"Way too many requests; IP(222.253.53.82) '
               'banned until 1793987694544"}')
@@ -189,8 +190,37 @@ class TestDoiCheDoTaiKhoan(unittest.TestCase):
         self.assertEqual(fake.mode_calls, 2, "het TTL: phai hoi lai che do")
 
 
-class TestTaiTrongIp(unittest.TestCase):
+class TestChaseGate(unittest.TestCase):
+    """(19/11, B-067) Chan lenh DUA GIA: pha vung ma thieu retest/vol-confirm.
 
+    Do that (journal BOT): LIVE `NONE`+`BOS_UP` n=46 PF 0.67 (-26.61), `BOS_DOWN` n=37
+    PF 0.53 (-27.43); TESTNET n=78/74 PF 0.91/0.67. Chan nhom nay: LIVE PF($) 1.172 ->
+    1.289, TESTNET 1.014 -> 1.049.
+    """
+
+    def test_bos_ma_khong_retest_la_duoi_gia(self):
+        self.assertTrue(S.is_chase_entry("NONE", "BOS_UP"))
+        self.assertTrue(S.is_chase_entry("NONE", "BOS_DOWN"))
+        self.assertTrue(S.is_chase_entry("none", "bos_up"), "khong phan biet hoa/thuong")
+
+    def test_co_setup_ro_thi_khong_chan(self):
+        self.assertFalse(S.is_chase_entry("B_BREAKOUT_RETEST", "BOS_UP"))
+        self.assertFalse(S.is_chase_entry("A_TREND_PULLBACK", "NONE"))
+
+    def test_co_xac_nhan_thi_khong_chan(self):
+        self.assertFalse(S.is_chase_entry("NONE", "BOS_UP", retest=True))
+        self.assertFalse(S.is_chase_entry("NONE", "BOS_DOWN", vol_confirm=True))
+
+    def test_bos_none_thi_khong_chan(self):
+        self.assertFalse(S.is_chase_entry("NONE", "NONE"))
+        self.assertFalse(S.is_chase_entry("NONE", ""))
+
+    def test_cong_tac_trong_config(self):
+        from config import Settings
+        self.assertTrue(Settings().chase_gate, "mac dinh BAT")
+
+
+class TestTaiTrongIp(unittest.TestCase):
     """(19/11, B-062) Ban IP het han ma quet tiep 40 cap ⇒ cham `-1003` NGAY va bi
     **cong them 40 phut** (do that: 11:18 -> 11:59). Phai doc header weight de tu nghi
     TRUOC khi bi chan.

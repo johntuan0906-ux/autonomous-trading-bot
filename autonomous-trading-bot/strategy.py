@@ -88,6 +88,26 @@ def bump(code: str, won: bool, r: float = 0.0,
     return cur
 
 
+def is_chase_entry(strat: str, bos: str, *, retest: bool = False,
+                   vol_confirm: bool = False) -> bool:
+    """True = lenh DUA THEO gia pha vung ma KHONG co retest/vol-confirm (19/11, B-067).
+
+    Do that (journal, chi lenh BOT):
+      LIVE   `strategy=NONE` + `setup_type=BOS_UP`   n=46 PF 0.67 **-26.61 USDT**
+             `strategy=NONE` + `setup_type=BOS_DOWN` n=37 PF 0.53 **-27.43 USDT**
+      TESTNET`strategy=NONE` + `setup_type=BOS_UP`   n=78 PF 0.91 -15.74
+             `strategy=NONE` + `setup_type=BOS_DOWN` n=74 PF 0.67 -58.44
+    Tuc la: da pha vung nhung `classify_strategy` KHONG tra B_BREAKOUT_RETEST (vi thieu
+    retest/vol-confirm) ⇒ lenh vao chi bang score ⇒ duoi gia. Nhom nay lo o CA HAI
+    instance ⇒ chan lai (co cong tac `CHASE_GATE`, mac dinh BAT).
+    """
+    if str(strat or "").upper() != "NONE":
+        return False                      # da co setup ro (A/B/C/D) => khong phai duoi gia
+    if retest or vol_confirm:
+        return False                      # co xac nhan => khong phai duoi gia
+    return str(bos or "").upper() in ("BOS_UP", "BOS_DOWN")
+
+
 def report(path: str = "logs/strategy_stats.json") -> dict:
     """Bang thong ke: WR, avg R, tong R tung strategy."""
     try:

@@ -757,6 +757,29 @@ CLASSES = [
         "tests": ["test_arm_protection.py::TestArmProtectionLive::test_live_arm_can_yes_live",
                   "test_arm_protection.py::TestArmProtectionLive::test_dang_bi_chan_thi_khong_goi_api"],
     },
+    {
+        "code": "B-066", "kind": "van-hanh", "seen": "19/11/2026",
+        "title": "`live_ready.py` cham diem LIVE bang journal TESTNET ⇒ ket luan NGUOC nhau (TESTNET 'CHUA HOAN THANH' vs LIVE 'HOAN THANH')",
+        "symptom": "Do that 19/11: chay `python live_ready.py` (khong co tham so instance) bao `PF($) 30 ngay [lenh BOT] = 0,426 < 1,1` va 'CHUA HOAN THANH' — trong khi doc dung journal LIVE (`perf_report --instance live --bot-only`) cung ky la **PF($) 1,172, PF(R) 1,166, n_bot=616**. Nguyen nhan: `live_ready.py` hard-code `--journal logs/journal.jsonl` (TESTNET) ⇒ tu van 'LIVE da san sang?' bang so cua tai khoan demo, va **lap lai o moi lan kiem tra**",
+        "guard": "`live_ready.journal_for(instance)` (cung quy uoc `tools/perf_report.journal_for`) + `--instance {testnet,live}` (mac dinh testnet, giu hanh vi cu) + `--journal` de ghi de. Test chot: testnet -> `logs/journal.jsonl`, live -> duong dan co `atb-live`, va `main(--instance live)` goi `check(journal_path=...)` dung file",
+        "files": ["live_ready.py", "tests/test_live_ready.py"],
+        "tests": ["test_live_ready.py::TestDocDungSoCuaInstance::test_testnet_la_journal_goc",
+                  "test_live_ready.py::TestDocDungSoCuaInstance::test_live_doc_journal_cua_atb_live",
+                  "test_live_ready.py::TestDocDungSoCuaInstance::test_tham_so_instance_chon_dung_file"],
+    },
+    {
+        "code": "B-067", "kind": "rui-ro", "seen": "19/11/2026",
+        "title": "Nhom `strategy=NONE` + `setup_type=BOS_UP/BOS_DOWN` (pha vung KHONG retest) lo tien o CA HAI instance ma van duoc vao lenh",
+        "symptom": "Do that (journal, chi lenh BOT): LIVE `NONE`+`BOS_UP` n=46 PF 0.67 **-26,61 USDT**, `BOS_DOWN` n=37 PF 0.53 **-27,43**; TESTNET n=78/74 PF 0.91/0.67 (-74 USDT). Tuc la: da pha vung nhung `classify_strategy` khong tra `B_BREAKOUT_RETEST` (thieu retest/vol-confirm) ⇒ score la ly do DUY NHAT de vao ⇒ duoi gia. `NONE` chiem 440/618 lenh LIVE (71%) nen chi rieng nhom nay keo PF($) xuong ~0,12",
+        "guard": "`strategy.is_chase_entry(strat, bos, retest, vol_confirm)` (thuan, test duoc) + cong tac `CHASE_GATE` (mac dinh BAT); `turbo_demo` tra `SKIP_CHASE` voi `reason_code=BREAKOUT_CHASE` TRUOC khi vao lenh. Do lai tren journal: LIVE PF($) **1,172 -> 1,289** (+192,15 USDT thay vi +138,11), TESTNET **1,014 -> 1,049** (+109,47 thay vi +35,29)",
+        "files": ["strategy.py", "config.py", "turbo_demo.py", "reason_codes.py",
+                  "tests/test_exchange_errors.py"],
+        "tests": ["test_exchange_errors.py::TestChaseGate::test_bos_ma_khong_retest_la_duoi_gia",
+                  "test_exchange_errors.py::TestChaseGate::test_co_setup_ro_thi_khong_chan",
+                  "test_exchange_errors.py::TestChaseGate::test_co_xac_nhan_thi_khong_chan",
+                  "test_exchange_errors.py::TestChaseGate::test_bos_none_thi_khong_chan",
+                  "test_exchange_errors.py::TestChaseGate::test_cong_tac_trong_config"],
+    },
 ]
 
 

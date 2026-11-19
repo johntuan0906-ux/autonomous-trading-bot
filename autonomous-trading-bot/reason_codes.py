@@ -34,6 +34,8 @@ CODES: dict[str, tuple[str, str]] = {
     "CTX_CONTRADICT": ("context", "ngu canh mau thuan (khung thoi gian nguoc nhau)"),
     "ALPHA_LOW": ("context", "alpha duoi nguong vao lenh (tin hieu yeu)"),
     "SCORE_LOW": ("context", "score100 grade NO / khong co setup ro"),
+    # (19/11, B-067) pha vung nhung KHONG retest/vol-confirm => vao lenh duoi gia
+    "BREAKOUT_CHASE": ("context", "pha vung ma khong retest/vol-confirm (duoi gia)"),
     "NEWS_URGENT": ("context", "qua nhieu tin khan cap cung chieu"),
     "SENTIMENT_BLOCKED": ("context", "sentiment veto (block_long_below/block_short_above)"),
     # --- reasoning: model/agent ---------------------------------------------
@@ -166,6 +168,8 @@ STATUS_CODES: dict[str, str] = {
     "SKIP_STALE": "DATA_STALE",
     # ngu canh thi truong
     "SKIP_VOL": "VOL_EXTREME",
+    # (19/11, B-067) duoi gia: pha vung ma khong retest/vol-confirm
+    "SKIP_CHASE": "BREAKOUT_CHASE",
     "WAIT": "ALPHA_LOW",
     "NO_TRADE": "SCORE_LOW",
     "BLOCKED_URGENT": "NEWS_URGENT",

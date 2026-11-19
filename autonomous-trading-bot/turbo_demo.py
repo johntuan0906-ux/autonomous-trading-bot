@@ -35,6 +35,7 @@ from live_guard import enforce as live_guard_enforce
 from learner import (OnlineLearner, extract_features, money_label, news_features,
                      signal_score_100, structure_score)
 from strategy import bump as strat_bump, classify_strategy, report as strat_report, gate_check as strat_gate
+from strategy import is_chase_entry
 from notify import fmt_close, fmt_kill, fmt_open, send as tg_send
 from managed_state import load as ms_load, load_into as ms_load_into
 from managed_state import save as ms_save
@@ -1105,6 +1106,18 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                                   htf=mtf_b, rsi=float(t.get("rsi") or 50.0))
         # Strategy gate: chan setup thuoc strategy dang am du mau (khong ha nguong,
         # khong loai strategy khac). Ghi BLOCKED_STRAT de monitor dem.
+        # (19/11, B-067) Truoc do: chan lenh DUA GIA — pha vung ma khong retest/vol-confirm
+        # (strategy=NONE + BOS_*) ⇒ nhom lo o CA HAI instance (LIVE -54, TESTNET -74 USDT).
+        if getattr(cfg, "chase_gate", True) and is_chase_entry(
+                strat, str(st.get("bos", "NONE")),
+                retest=bool(_rt.get("ok", False)),
+                vol_confirm=bool(t.get("vol_confirm"))):
+            results.append({"symbol": sym, "status": "SKIP_CHASE",
+                            "reason": f"pha vung {st.get('bos')} nhung KHONG retest/vol-confirm "
+                                      "⇒ duoi gia (B-067)", "alpha": alpha,
+                            "score100": sig100["total"],
+                            "reason_code": "BREAKOUT_CHASE"})
+            continue
         if cfg.strategy_gate:
             try:
                 _g = strat_gate(strat, min_n=cfg.strat_min_n, avg_r=cfg.strat_avg_r,

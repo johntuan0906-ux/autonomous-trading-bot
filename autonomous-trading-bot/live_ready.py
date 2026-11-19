@@ -201,9 +201,34 @@ def check(cfg, journal_path: str = "logs/journal.jsonl",
             "windows": wins_stats, "all": st_all, "facts": facts}
 
 
+def journal_for(instance: str = "testnet") -> str:
+    """Duong dan journal cua instance (19/11, B-066).
+
+    Truoc day `live_ready.py` luon doc `logs/journal.jsonl` (TESTNET) ⇒ **cham diem
+    LIVE bang so cua TESTNET** (do that: bao "PF($) 30 ngay bot-only 0,426" trong khi
+    journal LIVE cung ky la 1,17). Cung quy uoc voi `tools/perf_report.py`.
+    """
+    inst = str(instance or "testnet").strip().lower()
+    if inst in ("testnet", "demo", ""):
+        return "logs/journal.jsonl"
+    try:
+        from pathlib import Path as _P
+        import sys as _sys
+        _tools = str(_P(__file__).resolve().parent / "tools")
+        if _tools not in _sys.path:
+            _sys.path.insert(0, _tools)
+        import perf_report as _PR
+        return str(_PR.journal_for("live"))
+    except Exception:  # noqa: BLE001
+        return "logs/journal.jsonl"
+
+
 def main(argv: list | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Cong HOAN THANH TESTNET truoc khi LIVE")
-    ap.add_argument("--journal", default="logs/journal.jsonl")
+    ap = argparse.ArgumentParser(description="Cong HOAN THANH truoc khi LIVE")
+    ap.add_argument("--instance", choices=("testnet", "live"), default="testnet",
+                    help="doc journal cua instance nao (mac dinh testnet)")
+    ap.add_argument("--journal", default="",
+                    help="duong dan journal (bo qua --instance)")
     ap.add_argument("--windows", default=",".join(str(w) for w in WINDOWS_DEFAULT))
     ap.add_argument("--json", default="")
     args = ap.parse_args(argv)
@@ -212,7 +237,8 @@ def main(argv: list | None = None) -> int:
     except Exception:  # noqa: BLE001
         windows = WINDOWS_DEFAULT
     from config import Settings  # import muon -> CLI nhe, test khong can env
-    rep = check(Settings(), journal_path=args.journal, windows=windows)
+    journal = args.journal or journal_for(args.instance)
+    rep = check(Settings(), journal_path=journal, windows=windows)
     f = rep["facts"]
     print("=" * 92)
     print("CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=%d/%d | PF(R)=%.3f | PF($)=%.3f"

@@ -171,6 +171,38 @@ class TestLiveReady(unittest.TestCase):
         self.assertEqual(rc, 2)
 
 
+class TestDocDungSoCuaInstance(unittest.TestCase):
+    """(19/11, B-066) `live_ready.py` phải chấm điểm ĐÚNG instance.
+
+    Trước đây luôn đọc `logs/journal.jsonl` (TESTNET) ⇒ báo "PF($) 30 ngày bot-only
+    0,426" cho LIVE trong khi journal LIVE cùng kỳ là **1,17** (chênh 3 lần, và kết luận
+    ngược nhau: TESTNET "CHƯA HOÀN THÀNH" vs LIVE "HOÀN THÀNH").
+    """
+
+    def test_testnet_la_journal_goc(self):
+        self.assertEqual(LR.journal_for("testnet"), "logs/journal.jsonl")
+        self.assertEqual(LR.journal_for(""), "logs/journal.jsonl")
+
+    def test_live_doc_journal_cua_atb_live(self):
+        p = LR.journal_for("live").replace("/", "\\").lower()
+        self.assertIn("atb-live", p)
+        self.assertTrue(p.endswith("logs\\journal.jsonl"))
+
+    def test_tham_so_instance_chon_dung_file(self):
+        s = {"n": 1, "wr": 50.0, "pf_r": 1.5, "pf_pnl": 1.5, "e_r": 0.1, "pnl": 1.0}
+        rep = {"ok": True, "verdict": "HOAN THANH", "blockers": [], "warnings": [],
+               "windows": {7: dict(s)}, "all": dict(s),
+               "facts": {"n_all": 1, "min_trades": 300, "pf_r_all": 1.5, "pf_pnl_all": 1.5,
+                         "n_bot": 1, "pf_r_bot": 1.5, "pf_pnl_bot": 1.5, "pnl_bot": 1.0,
+                         "min_pf": 1.2, "min_pf_pnl": 1.1, "kill_tripped": False}}
+        with mock.patch.object(LR, "journal_for", return_value="X/live.jsonl") as jf, \
+                mock.patch.object(LR, "check", return_value=rep) as m:
+            LR.main(["--instance", "live"])
+        jf.assert_called_once_with("live")
+        self.assertEqual(str(m.call_args.kwargs.get("journal_path")
+                             or m.call_args.args[1]), "X/live.jsonl")
+
+
 class TestChiTinhLenhBot(unittest.TestCase):
     """(15/11) Cong LIVE phai tinh tren LENH BOT: lenh tay (−1135 USDT tren TESTNET) lam so gop vo nghia."""
 

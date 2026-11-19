@@ -250,6 +250,10 @@ class Settings:
     # ma khong noim loang tieu chuan vao lenh cho cac strategy khac. Gate chi bat khi
     # du mau (STRAT_MIN_N) va avgR am ro (duoi -STRAT_AVG_R). Tat = STRATEGY_GATE=false.
     strategy_gate: bool = field(default_factory=lambda: _get_bool("STRATEGY_GATE", True))
+    # (19/11, B-067) Chan lenh DUA GIA: pha vung (BOS_UP/BOS_DOWN) nhung `classify_strategy`
+    # khong tra B_BREAKOUT_RETEST (thieu retest/vol-confirm) ⇒ score la ly do duy nhat de vao.
+    # Do that: LIVE n=83 PF 0.53-0.67 (-54 USDT); TESTNET n=152 PF 0.67-0.91 (-74).
+    chase_gate: bool = field(default_factory=lambda: _get_bool("CHASE_GATE", True))
     strat_min_n: int = field(default_factory=lambda: _get_int("STRAT_MIN_N", 10))
     strat_avg_r: float = field(default_factory=lambda: _get_float("STRAT_AVG_R", 0.10))
     # Blocklist chu dong: cac strategy da co bang chung am tu BACKTEST (khong can

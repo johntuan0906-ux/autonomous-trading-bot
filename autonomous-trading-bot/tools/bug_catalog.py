@@ -745,6 +745,15 @@ CLASSES = [
                   "test_exchange_errors.py::TestDoiCheDoTaiKhoan::test_arm_sltp_gap_4061_thi_doi_che_do_va_thu_lai",
                   "test_exchange_errors.py::TestDoiCheDoTaiKhoan::test_cache_co_ttl"],
     },
+    {
+        "code": "B-065", "kind": "van-hanh", "seen": "19/11/2026",
+        "title": "`arm_protection` dat SL/TP sai che do (thieu `positionSide` khi HEDGE) va dem lenh bang `fetch_open_orders()` ⇒ 0 lenh dat duoc ROI dat TRUNG",
+        "symptom": "Do that 19/11 12:56 LIVE: 4/4 lenh arm that bai `-4061` (tai khoan `dualSidePosition=True` nhung tool gui `reduceOnly`); sua xong thi 13:02 `VI THE: 3 | LENH TREO: 0` du XRP/SOL **da co 2 lenh** (Binance de lenh dieu kien o Algo Order API, `fetch_open_orders()` khong thay) ⇒ dat them 1 SL + 1 TP nua ⇒ **2 cap trung** (phai `--dedupe` huy 4 lenh)",
+        "guard": "Tool hoi `fapiPrivateGetPositionSideDual()`: HEDGE ⇒ `positionSide` (KHONG `reduceOnly`), ONE-WAY ⇒ `reduceOnly`; dem lenh bang `orders_audit.algo_orders()` (gop Algo API) nen khong dat trung. Them `--default-sl-pct` / `--default-tp-pct` de bao ve vi the MO TAY khong co trong `managed_state` (do that: BTC 0.001 ~90 USDT nam tran, da dat SL 6%)",
+        "files": ["arm_protection.py", "tests/test_arm_protection.py"],
+        "tests": ["test_arm_protection.py::TestArmProtectionLive::test_live_arm_can_yes_live",
+                  "test_arm_protection.py::TestArmProtectionLive::test_dang_bi_chan_thi_khong_goi_api"],
+    },
 ]
 
 

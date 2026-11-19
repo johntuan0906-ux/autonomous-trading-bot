@@ -82,6 +82,10 @@ def main(argv=None) -> int:
     ap.add_argument("--target", choices=("testnet", "live"), default="testnet")
     ap.add_argument("--yes-live", action="store_true",
                     help="bat buoc khi --target live --arm (dat lenh THAT)")
+    ap.add_argument("--default-sl-pct", type=float, default=0.0,
+                    help="vi the MO TAY (khong co trong state): dat SL cach entry N%% (0 = bo qua)")
+    ap.add_argument("--default-tp-pct", type=float, default=0.0,
+                    help="vi the MO TAY: dat TP cach entry N%% (0 = khong dat)")
     args = ap.parse_args(argv)
 
     if args.target == "live":
@@ -125,6 +129,17 @@ def main(argv=None) -> int:
     except Exception as e:  # noqa: BLE001
         orders = []
         print("[WARN] khong doc duoc lenh treo:", str(e)[:120])
+    # (19/11, B-065) Binance de lenh DIEU KIEN o Algo Order API ⇒ `fetch_open_orders()`
+    # tra 0 du dang co SL/TP ⇒ lan arm sau dat TRUNG (do that 13:02: XRP/SOL bi 2 SL + 2 TP).
+    try:
+        import sys as _sys
+        _tools = str(Path(__file__).resolve().parent / "tools")
+        if _tools not in _sys.path:
+            _sys.path.insert(0, _tools)
+        import orders_audit as _oa
+        orders = list(orders or []) + list(_oa.algo_orders(cli) or [])
+    except Exception as e:  # noqa: BLE001
+        print("[WARN] khong doc duoc lenh dieu kien (algo):", str(e)[:120])
     per_sym: dict = {}
     for o in orders:
         per_sym.setdefault(o.get("symbol"), []).append(o)
@@ -148,6 +163,15 @@ def main(argv=None) -> int:
 
     ms = json.load(open(ms_path, encoding="utf-8"))
     trades = ms.get("trades") or {}
+    # (19/11, B-065) Tai khoan LIVE dang o HEDGE (`dualSidePosition=True`) ⇒ moi lenh
+    # PHAI co `positionSide`, va KHONG duoc gui `reduceOnly` (neu khong: `-4061`).
+    # Do that 12:56: 4/4 lenh arm that bai ⇒ 3 vi the LIVE khong co SL/TP.
+    try:
+        hedge = bool((cli.fapiPrivateGetPositionSideDual() or {}).get("dualSidePosition"))
+    except Exception:  # noqa: BLE001
+        hedge = False
+    print("  che do tai khoan: %s" % ("HEDGE (dung positionSide)" if hedge
+                                      else "ONE-WAY (dung reduceOnly)"))
     ok = fail = 0
     for p in poss:
         sym = p.get("symbol")
@@ -157,14 +181,33 @@ def main(argv=None) -> int:
         st = trades.get(sym) or {}
         sl, tp = float(st.get("sl") or 0), float(st.get("tp") or 0)
         if sl <= 0 or tp <= 0:
-            print(f"  {sym}: khong co sl/tp trong managed_state -> bo qua")
-            continue
+            # (19/11, B-065) Vi the MO TAY (khong co trong managed_state) van phai duoc
+            # bao ve: dung `--default-sl-pct` (% tu entry) neu nguoi van hanh bat.
+            _entry = float(p.get("entryPrice") or p.get("entryPrice") or 0)
+            if sl <= 0 and args.default_sl_pct and _entry > 0:
+                sl = (_entry * (1 - args.default_sl_pct / 100.0) if d == "LONG"
+                      else _entry * (1 + args.default_sl_pct / 100.0))
+                print(f"  {sym}: khong co SL trong state -> dung mac dinh "
+                      f"{args.default_sl_pct:g}% tu entry {_entry:g} => {sl:g}")
+            if tp <= 0 and args.default_tp_pct and _entry > 0:
+                tp = (_entry * (1 + args.default_tp_pct / 100.0) if d == "LONG"
+                      else _entry * (1 - args.default_tp_pct / 100.0))
+                print(f"  {sym}: khong co TP trong state -> dung mac dinh "
+                      f"{args.default_tp_pct:g}% tu entry {_entry:g} => {tp:g}")
+            if sl <= 0 and tp <= 0:
+                print(f"  {sym}: khong co sl/tp trong managed_state -> bo qua")
+                continue
         for tag, otype, price in (("SL", "STOP_MARKET", sl),
                                   ("TP", "TAKE_PROFIT_MARKET", tp)):
+            if price <= 0:
+                continue
+            params = {"stopPrice": price, "workingType": "CONTRACT_PRICE"}
+            if hedge:
+                params["positionSide"] = d          # B-065: HEDGE bat buoc
+            else:
+                params["reduceOnly"] = True
             try:
-                o = cli.create_order(sym, otype, close_side, qty,
-                                     params={"stopPrice": price, "reduceOnly": True,
-                                             "workingType": "CONTRACT_PRICE"})
+                o = cli.create_order(sym, otype, close_side, qty, params=params)
                 print(f"  {sym} {tag} {price} -> OK id={o.get('id')}")
                 ok += 1
             except Exception as e:  # noqa: BLE001

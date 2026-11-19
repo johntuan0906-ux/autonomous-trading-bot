@@ -1427,7 +1427,9 @@ def adopt_now(bot, cfg, ex, log, syms) -> dict:
                               skip_symbols=[x.strip() for x in
                                             str(getattr(cfg, "adopt_skip_symbols", "")
                                                 or "").split(",") if x.strip()],
-                              alert=lambda t: tg(cfg, t))
+                              alert=lambda t: tg(cfg, t),
+                              # (19/11, B-050) ghi OPEN cho vi the adopt ⇒ journal khop
+                              journal_fn=log_trade)
         heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
         if rep.get("ignored"):
             # (15/10) Vi the do nguoi dung/bot khac mo (ADOPT_SKIP_SYMBOLS): bot KHONG

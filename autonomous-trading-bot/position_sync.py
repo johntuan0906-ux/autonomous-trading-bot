@@ -124,7 +124,8 @@ def add_dust_skip(sym: str, why: str = "", path=None, now=None) -> dict:
         return {"ok": False, "error": str(e)[:160]}
 
 
-def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=()) -> dict:
+def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
+          journal_fn=None) -> dict:
     """Gan vi the san vao `bot.portfolio` + `bot.managed`; arm lai SL/TP khi can.
 
     Tra bao cao: {adopted, armed, unmanaged, skipped, ignored, errors}.
@@ -193,6 +194,17 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=()) 
             if mt is None:
                 mt = new_trade(sym, d, pos.entry, qty, sl or pos.entry, tp or pos.entry)
             bot.managed[sym] = mt      # luon nap vao de partial/BE/trail tiep tuc dung
+            # (19/11, B-050) Vi the ADOPT sau restart: journal KHONG co OPEN cho no ⇒ khi
+            # dong se sinh CLOSE "mo coi" (do that LIVE: OPEN=627 / CLOSE=705, 78 dong lech).
+            # Ghi OPEN gia (`adopted=True`) de so sach khop va `perf_report` khong phai doan.
+            if journal_fn is not None:
+                try:
+                    journal_fn(event="OPEN", pair=sym, direction=d, entry=pos.entry,
+                               qty=float(qty), sl=float(sl), tp=float(tp),
+                               strategy=str(getattr(mt, "strategy", "") or ""),
+                               adopted=True, reason="ADOPT")
+                except Exception:  # noqa: BLE001
+                    pass
             rep["adopted"].append(sym)  # da vao portfolio -> MONITOR phan mem da quan ly
             # src 'state' -> arm lai cho khop chien luoc; 'atr' -> chua co bao ve nao.
             # src 'exchange' -> dang duoc bao ve, KHONG dung vao (tranh huy nham).

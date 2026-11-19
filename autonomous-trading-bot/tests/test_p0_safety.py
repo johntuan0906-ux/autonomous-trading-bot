@@ -1744,6 +1744,59 @@ class TestViTheBuiChet(unittest.TestCase):
 
 
 
+class TestAdoptGhiOpen(unittest.TestCase):
+    """(19/11, B-050) Vị thế được ADOPT sau restart phải có dòng OPEN trong journal.
+
+    Đo thật LIVE: `OPEN=627 / CLOSE=705` ⇒ 78 CLOSE "mồ côi" (OPEN không bao giờ được ghi
+    vì vị thế vào từ phiên trước, chỉ được adopt lại) ⇒ `perf_report` phải đoán FIFO và
+    số liệu R/$ lệch nhau.
+    """
+
+    def test_adopt_ghi_open_co_adopted(self):
+        recs = []
+
+        class _Ex:
+            def stop_tp_orders(self, *a, **k):
+                return {"sl": 1, "tp": 1}
+
+        class _Port:
+            positions = {}
+
+        bot = TradingBot.__new__(TradingBot)
+        bot.portfolio = _Port()
+        bot.managed = {}
+        bot.exchange = _Ex()
+        bot.cfg = Settings()
+        rows = [{"symbol": "SOL/USDT:USDT", "side": "long", "contracts": 2.0,
+                 "entryPrice": 100.0}]
+        rep = position_sync.adopt(bot, rows,
+                                  atr_fn=lambda s: {"price": 100.0, "atr": 2.0},
+                                  journal_fn=lambda **kw: recs.append(kw))
+        self.assertIn("SOL/USDT:USDT", rep["adopted"])
+        self.assertTrue(recs, "phai ghi 1 dong OPEN")
+        self.assertEqual(recs[0]["event"], "OPEN")
+        self.assertEqual(recs[0]["pair"], "SOL/USDT:USDT")
+        self.assertTrue(recs[0]["adopted"])
+        self.assertEqual(recs[0]["qty"], 2.0)
+
+    def test_khong_truyen_journal_fn_thi_khong_ghi_gi(self):
+        class _Ex:
+            def stop_tp_orders(self, *a, **k):
+                return {"sl": 1, "tp": 1}
+
+        class _Port:
+            positions = {}
+
+        bot = TradingBot.__new__(TradingBot)
+        bot.portfolio = _Port()
+        bot.managed = {}
+        bot.exchange = _Ex()
+        bot.cfg = Settings()
+        rep = position_sync.adopt(bot, [{"symbol": "ADA/USDT:USDT", "side": "short",
+                                         "contracts": 5.0, "entryPrice": 1.0}],
+                                  atr_fn=lambda s: {"price": 1.0, "atr": 0.05})
+        self.assertIn("ADA/USDT:USDT", rep["adopted"])
+
 class _NoKill:
     reason = ""
 

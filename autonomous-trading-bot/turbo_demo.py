@@ -36,6 +36,7 @@ from learner import (OnlineLearner, extract_features, money_label, news_features
                      signal_score_100, structure_score)
 from strategy import bump as strat_bump, classify_strategy, report as strat_report, gate_check as strat_gate
 from strategy import is_chase_entry
+import scan_plan as SP
 from notify import fmt_close, fmt_kill, fmt_open, send as tg_send
 from managed_state import load as ms_load, load_into as ms_load_into
 from managed_state import save as ms_save
@@ -77,6 +78,10 @@ log = logging.getLogger("turbo")
 _learner = OnlineLearner()
 _last_close: dict[str, float] = {}
 _pending_feats: dict[str, dict] = {}  # symbol -> {feats, direction} cho lan close hoc
+# (19/11, B-068) trang thai cho "do tre khoi dong / sau khi ban het han" + so dot quet
+_scan_seq = 0
+_scan_first = True
+_resume_after_ban = False
 _btc_cache: dict = {"ts": 0.0, "df": None}  # cache BTC 1h 60s de 4 cap dung chung
 
 # P0-watchdog: bot co the TREO (HTTP khong tra ve) ma TIEN TRINH VAN SONG, khi do
@@ -911,7 +916,33 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         heartbeat({"phase": "entries_paused", "reason": _why[:120]})
         return [{"symbol": "-", "status": "PAUSED", "reason": _why,
                  "reason_code": RC.code_for_status("PAUSED")}]
+    # (19/11, B-068) Do tre truoc khi quet: ngay sau restart hoac ngay sau khi ban IP het
+    # han, tai trong weight cua cua so 1 phut dang sat tran ⇒ quet ngay = cham `-1003`
+    # (do that: 11:18 -> 11:59 -> 20:30). `SCAN_WARMUP_SEC` (0 = khong cho).
+    global _scan_seq, _scan_first, _resume_after_ban
+    _wait = SP.warmup_seconds(getattr(cfg, "scan_warmup_sec", 0),
+                              first_round=_scan_first,
+                              just_unbanned=_resume_after_ban)
+    if _wait > 0:
+        log.warning("SCAN warmup: cho %.0fs truoc vong quet (tai trong IP vua reset)", _wait)
+        heartbeat({"phase": "warmup", "sec": int(_wait)})
+        time.sleep(_wait)
+    _scan_first = False
+    _resume_after_ban = False
     syms = active_symbols(cfg)  # SYMBOLS + EXTRA_SYMBOLS (env) — giu nguong mo lenh nguyen
+    # (19/11, B-068) Chia danh sach thanh TUNG DOT: 2 instance chung 1 IP, 40 cap/vong lam
+    # tai trong weight sat tran ⇒ `-1003` (moi request trong luc bi chan lai cong gio).
+    # `SCAN_BATCH` (0 = quet het nhu cu); vi the dang mo luon duoc quet.
+    _batch = int(getattr(cfg, "scan_batch", 0) or 0)
+    todo_all = [s for s in syms if s not in bot.portfolio.positions]
+    if _batch > 0 and len(todo_all) > _batch:
+        todo = SP.pick_scan_batch(todo_all, _batch, _scan_seq)
+        _scan_list = [s for s in syms if s in bot.portfolio.positions] + todo
+        log.info("SCAN batch: %d/%d cap (dot so %d)", len(todo), len(todo_all), _scan_seq)
+    else:
+        todo = todo_all
+        _scan_list = syms
+    _scan_seq += 1
     bot._max_atr_pct = 0.0  # P0-2: ATR% lon nhat trong vong -> cho kill-switch bien dong
     senti = bot.sentiment.get(cfg.cryptopanic_token)
     results: list[dict] = []
@@ -936,7 +967,6 @@ def turbo_round(bot: TradingBot) -> list[dict]:
     except Exception:
         regime_b = 0.0
     # Song song hoa: fetch toan bo cap chua co vi the cung luc
-    todo = [s for s in syms if s not in bot.portfolio.positions]
     fetched: dict[str, dict] = {}
     if todo:
         # (11/10) TRAN so luong fetch song song: voi ~450 cap, `max_workers=len(todo)` se
@@ -965,7 +995,7 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                             futs[fut], cfg.round_timeout_sec)
         finally:
             pool.shutdown(wait=False)
-    for sym in syms:
+    for sym in _scan_list:
         if sym in bot.portfolio.positions:
             results.append({"symbol": sym, "status": "SKIP_OPEN"})
             continue
@@ -1688,6 +1718,7 @@ def main() -> None:
     tg(cfg, f"🤖 Bot DEMO started (dry_run={cfg.dry_run}). Quét {len(syms0)} cặp / {cfg.poll_interval_sec}s. Chat OK.")
     import datetime as _dt
     _last_heartbeat = time.time()
+    global _resume_after_ban          # (19/11, B-068)
     while True:
         i += 1
         heartbeat({"round": i, "phase": "start"})
@@ -1701,6 +1732,8 @@ def main() -> None:
                         "(khong gui them request)",
                         time.strftime("%H:%M:%S", time.localtime(_ban)))
             heartbeat({"round": i, "phase": "api_ban"})
+            # (19/11, B-068) danh dau de vong quet DAU TIEN sau khi ban het duoc do tre
+            _resume_after_ban = True
             time.sleep(max(5.0, min(60.0, _ban - time.time())))
             continue
         # P0-2: kiem tra kill-switch NGAY trong vong lap that (ban cu khong he goi).

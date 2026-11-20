@@ -254,6 +254,12 @@ class Settings:
     # khong tra B_BREAKOUT_RETEST (thieu retest/vol-confirm) ⇒ score la ly do duy nhat de vao.
     # Do that: LIVE n=83 PF 0.53-0.67 (-54 USDT); TESTNET n=152 PF 0.67-0.91 (-74).
     chase_gate: bool = field(default_factory=lambda: _get_bool("CHASE_GATE", True))
+    # (19/11, B-068) Chia danh sach cap thanh TUNG DOT (0 = quet het nhu cu). Ly do: 2 instance
+    # chung 1 IP, 40 cap/vong ⇒ tai trong weight 1 phut sat tran ⇒ `-1003`, va moi request
+    # trong luc bi chan lam ban DAI them (19/11: 11:18 -> 11:59 -> 20:30).
+    scan_batch: int = field(default_factory=lambda: _get_int("SCAN_BATCH", 0))
+    # Do tre (giay) truoc vong quet DAU TIEN sau restart / sau khi ban het han (0 = khong cho)
+    scan_warmup_sec: int = field(default_factory=lambda: _get_int("SCAN_WARMUP_SEC", 0))
     strat_min_n: int = field(default_factory=lambda: _get_int("STRAT_MIN_N", 10))
     strat_avg_r: float = field(default_factory=lambda: _get_float("STRAT_AVG_R", 0.10))
     # Blocklist chu dong: cac strategy da co bang chung am tu BACKTEST (khong can

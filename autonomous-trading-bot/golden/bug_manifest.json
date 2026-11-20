@@ -1,7 +1,7 @@
 {
- "n_classes": 66,
- "n_tests": 253,
- "digest": "c859c9706dfa945c11eb370e07af8b8d258da53a585e62bdece55b76fadf757a",
+ "n_classes": 67,
+ "n_tests": 260,
+ "digest": "2f1d3c19fb0f6d2c4e4d145d0db9f9886d26cf85a380bb8b37728452ada2f265",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
@@ -32,6 +32,7 @@
   "test_review_due.py",
   "test_risk_cap_base.py",
   "test_risk_mode.py",
+  "test_scan_plan.py",
   "test_selfops.py",
   "test_serve_glow_guard.py",
   "test_telegram_bridge.py",

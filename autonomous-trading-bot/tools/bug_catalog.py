@@ -780,6 +780,20 @@ CLASSES = [
                   "test_exchange_errors.py::TestChaseGate::test_bos_none_thi_khong_chan",
                   "test_exchange_errors.py::TestChaseGate::test_cong_tac_trong_config"],
     },
+    {
+        "code": "B-068", "kind": "rui-ro", "seen": "19/11/2026",
+        "title": "Chu ky ban IP lap lai: 2 instance cung 1 IP quet 40 cap moi vong, va quet NGAY sau restart / ngay sau khi ban het han",
+        "symptom": "Do that 19/11 (LIVE): `api_ban.json` 11:18:36 -> bi cong len 11:59 (mot request doc), roi 20:30 (vong quet 40 cap ngay sau restart luc 18:31); trong ngay LIVE gan nhu khong quet duoc vong nao ⇒ **khong tu dat lai duoc SL/TP** (2-3 vi the nam tran). Tai trong 1 phut/IP cua Binance la 2400 weight; 40 cap x (OHLCV + ctx) x 2 instance + hoi dong + cong cu cung IP ⇒ cham tran, va moi request trong luc bi chan lai **cong gio**",
+        "guard": "`scan_plan.pick_scan_batch(symbols, batch, round_idx, must_include)` chia cap thanh TUNG DOT quay vong (vi the dang mo luon duoc quet) + `scan_plan.warmup_seconds()` do tre vong quet dau tien sau restart / sau khi ban het han. `.env`: LIVE `SCAN_BATCH=12`, `SCAN_WORKERS=4`; TESTNET `SCAN_BATCH=20`, `SCAN_WORKERS=6`; ca hai `SCAN_WARMUP_SEC=120` (0 = tat). Uoc tai: ~150-200 weight/phut thay vi ~600-900 ⇒ con du dia cho hoi dong + cong cu. Test chot: batch 0/lon ⇒ lay het, quay vong phu het danh sach sau n vong, must_include khong bi cat, khong trung lap, batch rac -> lay het; warmup: vong dau = N, sau ban = N/2, con lai = 0",
+        "files": ["scan_plan.py", "turbo_demo.py", "config.py", "tests/test_scan_plan.py"],
+        "tests": ["test_scan_plan.py::TestChiaDotQuet::test_batch_0_hoac_lon_hon_thi_lay_het",
+                  "test_scan_plan.py::TestChiaDotQuet::test_moi_vong_dung_so_luong_va_quay_vong",
+                  "test_scan_plan.py::TestChiaDotQuet::test_vi_the_dang_mo_luon_duoc_quet",
+                  "test_scan_plan.py::TestChiaDotQuet::test_khong_trung_lap_trong_1_ket_qua",
+                  "test_scan_plan.py::TestChiaDotQuet::test_batch_rac_thi_lay_het",
+                  "test_scan_plan.py::TestDoTreKhoiDong::test_vong_dau_va_ngay_sau_ban",
+                  "test_scan_plan.py::TestDoTreKhoiDong::test_cau_hinh_0_hoac_rac_thi_khong_cho"],
+    },
 ]
 
 

@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "copilot-cline-relay": {
+      "type": "stdio",
+      "command": "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "args": [
+        "C:\\Users\\User\\AppData\\Local\\CopilotClineRelay\\relay_server.py"
+      ],
+      "env": {
+        "MCP_RELAY_AGENT": "copilot"
+      }
+    }
+  }
+}

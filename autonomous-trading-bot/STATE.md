@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/11/2026 12:39:01 · commit `00a4938`
+- **Cập nhật**: 20/11/2026 13:09:03 · commit `0bb2587`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `None` · nhịp tim cách đây 2.2s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `33732` · round `7` · nhịp tim cách đây 116.1s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3236.6 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3063 lệnh đóng, WR 41.01%, E(R) 0.2321, PnL -1028.61$)
+## Hiệu suất (journal: 3064 lệnh đóng, WR 41.02%, E(R) 0.2335, PnL -1010.21$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 22 | 40.91 | 2.576 | 2.092 | 0.4168 | 23.81 |
-| 14 ngày | 133 | 45.11 | 2.07 | 1.393 | 0.3398 | 74.57 |
-| 30 ngày | 163 | 38.65 | 1.541 | 0.748 | 0.2143 | -104.41 |
+| 7 ngày | 23 | 43.48 | 3.375 | 2.937 | 0.6009 | 42.21 |
+| 14 ngày | 134 | 45.52 | 2.181 | 1.49 | 0.372 | 92.97 |
+| 30 ngày | 164 | 39.02 | 1.614 | 0.793 | 0.2413 | -86.0 |
 
 ## Cổng sang LIVE
 
@@ -35,18 +35,17 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 23335.9 | 0.002349 | 0.002346651 | 0.002109 | True | True | 1.158 |
+| 1000BONK/USDT:USDT | SHORT | 23336.0 | 0.002349 | 0.002346651 | 0.002109 | True | True | 1.158 |
 | ADA/USDT:USDT | SHORT | 550.0 | 0.1504 | 0.157708 | 0.135784 | False | False | 0.424 |
 | AERO/USDT:USDT | SHORT | 245.9 | 0.4153 | 0.431566 | 0.382768 | False | False | 0.535 |
-| BANK/USDT:USDT | SHORT | 3794.0 | 0.02148 | 0.02145852 | 0.017742 | True | True | 4.219 |
 
 ---
 

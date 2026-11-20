@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 21/11/2026 05:09:18 · commit `d7c8b7e`
+- **Cập nhật**: 21/11/2026 05:39:18 · commit `965dce6`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `266` · nhịp tim cách đây 141.8s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3253.99 USDT
+- **Bot**: pid `33732` · round `274` · nhịp tim cách đây 114.9s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3253.33 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3066 lệnh đóng, WR 41.06%, E(R) 0.2345, PnL -995.85$)
@@ -44,7 +44,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | ADA/USDT:USDT | SHORT | 385.0 | 0.1504 | 0.1502496 | 0.135784 | True | True | 1.615 |
-| AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.315 |
+| AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.367 |
 | GTC/USDT:USDT | SHORT | 559.7 | 0.1365 | 0.143646 | 0.122208 | False | False | 0.504 |
 | NEAR/USDT:USDT | SHORT | 18.2 | 3.041 | 3.037959 | 2.742032 | True | True | 1.833 |
 | XRP/USDT:USDT | SHORT | 98.3 | 0.8972 | 0.937856 | 0.815888 | False | False | 0.29 |

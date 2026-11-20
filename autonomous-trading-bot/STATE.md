@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/11/2026 22:09:10 · commit `7721120`
+- **Cập nhật**: 20/11/2026 22:39:10 · commit `c264523`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `158` · nhịp tim cách đây 13.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3244.93 USDT
+- **Bot**: pid `33732` · round `166` · nhịp tim cách đây 116.4s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3252.01 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3064 lệnh đóng, WR 41.02%, E(R) 0.2335, PnL -1010.21$)
+## Hiệu suất (journal: 3065 lệnh đóng, WR 41.04%, E(R) 0.234, PnL -1003.06$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 20 | 45.0 | 4.72 | 8.001 | 0.7069 | 50.05 |
-| 14 ngày | 132 | 46.21 | 2.292 | 1.712 | 0.3931 | 117.53 |
-| 30 ngày | 164 | 39.02 | 1.614 | 0.793 | 0.2413 | -86.0 |
+| 7 ngày | 21 | 47.62 | 5.19 | 9.0 | 0.7582 | 57.19 |
+| 14 ngày | 133 | 46.62 | 2.336 | 1.756 | 0.4036 | 124.68 |
+| 30 ngày | 165 | 39.39 | 1.641 | 0.81 | 0.2507 | -78.86 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 30 ngay [lenh BOT] = 0.888 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 0.492 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 30 ngay [lenh BOT] = 0.944 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 0.520 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,14 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 23336.0 | 0.002349 | 0.002346651 | 0.002109 | True | True | 1.892 |
-| ADA/USDT:USDT | SHORT | 550.0 | 0.1504 | 0.157708 | 0.135784 | False | False | 0.753 |
-| AERO/USDT:USDT | SHORT | 245.9 | 0.4153 | 0.431566 | 0.382768 | False | False | 0.695 |
-| NEAR/USDT:USDT | SHORT | 26.0 | 3.041 | 3.190484 | 2.742032 | False | False | 0.756 |
+| ADA/USDT:USDT | SHORT | 385.0 | 0.1504 | 0.1502496 | 0.135784 | True | True | 1.396 |
+| AERO/USDT:USDT | SHORT | 172.13 | 0.4153 | 0.4148847 | 0.382768 | True | True | 1.309 |
+| NEAR/USDT:USDT | SHORT | 18.2 | 3.041 | 3.037959 | 2.742032 | True | True | 1.244 |
 
 ---
 

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 20/11/2026 15:39:06 · commit `9bb56b2`
+- **Cập nhật**: 20/11/2026 16:09:07 · commit `c406c63`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `47` · nhịp tim cách đây 49.4s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3235.49 USDT
+- **Bot**: pid `33732` · round `55` · nhịp tim cách đây 161.0s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3236.46 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3064 lệnh đóng, WR 41.02%, E(R) 0.2335, PnL -1010.21$)
@@ -14,7 +14,7 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 22 | 40.91 | 3.082 | 2.624 | 0.5508 | 35.4 |
-| 14 ngày | 133 | 45.86 | 2.234 | 1.591 | 0.3823 | 104.98 |
+| 14 ngày | 132 | 46.21 | 2.292 | 1.712 | 0.3931 | 117.53 |
 | 30 ngày | 164 | 39.02 | 1.614 | 0.793 | 0.2413 | -86.0 |
 
 ## Cổng sang LIVE
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| 1000BONK/USDT:USDT | SHORT | 23336.0 | 0.002349 | 0.002346651 | 0.002109 | True | True | 1.158 |
+| 1000BONK/USDT:USDT | SHORT | 23336.0 | 0.002349 | 0.002346651 | 0.002109 | True | True | 1.2 |
 | ADA/USDT:USDT | SHORT | 550.0 | 0.1504 | 0.157708 | 0.135784 | False | False | 0.424 |
 | AERO/USDT:USDT | SHORT | 245.9 | 0.4153 | 0.431566 | 0.382768 | False | False | 0.535 |
-| NEAR/USDT:USDT | SHORT | 26.0 | 3.041 | 3.190484 | 2.742032 | False | False | 0.087 |
+| NEAR/USDT:USDT | SHORT | 26.0 | 3.041 | 3.190484 | 2.742032 | False | False | 0.234 |
 
 ---
 

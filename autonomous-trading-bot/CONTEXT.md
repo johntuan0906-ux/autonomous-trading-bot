@@ -767,3 +767,16 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      áp dụng** (`SL_ATR_MULT=6`, `TP_ATR_MULT=12`, giá trị cũ 14/69 comment lại) và đang chạy.
      `#8` còn lại **một việc của người**: thu hồi key trên `app.blockworks.com` (code **0** tham chiếu).
    - Catalog **59 lớp / 229 test chốt**; `bug_manifest` digest `3dbce49d`.
+16. **B-068 — CHU KỲ BAN IP lặp lại: 40 cặp/vòng + quét NGAY khi vừa hết ban (19/11).**
+   - Đo thật: `logs/api_ban.json` của LIVE **11:18:36 → 11:59** (chỉ 1 request đọc cũng bị cộng giờ),
+     rồi **→ 20:30** sau vòng quét 40 cặp ngay lúc restart 18:31. Cả ngày LIVE gần như không quét
+     được vòng nào ⇒ **không tự đặt lại được SL/TP** (2–3 vị thế nằm trần).
+   - Nguyên nhân: 2 instance + hội đồng + công cụ **dùng chung 1 IP**; 40 cặp × `SCAN_WORKERS=8`
+     đẩy weight 1 phút sát trần 2400 ⇒ `-1003`; và mỗi request **trong lúc bị chặn** lại cộng giờ.
+   - Vá: `scan_plan.pick_scan_batch()` — quét **từng đợt** quay vòng, **vị thế đang mở luôn được quét**
+     (`must_include`), `batch=0` ⇒ giữ hành vi cũ · `scan_plan.warmup_seconds()` — chờ `SCAN_WARMUP_SEC`
+     trước vòng quét **đầu tiên** sau restart và **ngay sau khi ban hết hạn** (`_resume_after_ban`).
+     `.env`: LIVE `SCAN_BATCH=12`/`SCAN_WORKERS=4`, TESTNET `SCAN_BATCH=20`/`SCAN_WORKERS=6`, cả hai
+     `SCAN_WARMUP_SEC=120` ⇒ ~150–200 weight/phút thay vì ~600–900, còn địa cho hội đồng + công cụ.
+     7 test chốt (cả 2 hướng: phải cắt đợt / phải lấy hết, phải chờ / phải không chờ).
+   - Catalog **67 lớp / 260 test chốt**.

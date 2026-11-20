@@ -1,0 +1,23 @@
+﻿== autonomous-trading-bot entries_pause
+{
+ "paused": false,
+ "reason": "het han tam dung",
+ "since": 1795190509.5897577,
+ "by": "entries_gate"
+}
+== autonomous-trading-bot -1003 tu 22:50
+count=0
+== autonomous-trading-bot SCAN batch cuoi
+2026-11-21 00:38:58,250 INFO SCAN batch: 20/146 cap (dot so 56)
+== atb-live entries_pause
+{
+ "paused": false,
+ "reason": "het han tam dung",
+ "since": 1795190460.8871903,
+ "by": "entries_gate"
+}
+== atb-live -1003 tu 22:50
+count=0
+== atb-live SCAN batch cuoi
+2026-11-21 00:37:22,952 INFO SCAN batch: 12/36 cap (dot so 34)
+2026-11-21 00:39:59

@@ -1,0 +1,39 @@
+﻿3: from entries_gate import paused, pause, resume
+4: paused(cfg)            -> (bool, ly do)
+5: pause("ly do", cfg)    # bot KHONG mo lenh moi, van quan ly vi the dang mo
+6: pause("ly do", hours=24)   # tam dung CO HAN -> het han TU MO LAI (19/10)
+11: reset tay; con sua `.env` thi phai restart bot => khong the mo lai ngay luc vi the dong.
+16: gap that (BTW 16-18/10 phai co watcher rieng; TESTNET ket pause 3.6 ngay vi `tripped`
+17: khong tu xoa). `pause(..., hours=N)` ghi `until`; qua han thi `paused()` TU MO LAI va ghi
+22: import json
+29: DEFAULT_PATH = "logs/entries_pause.json"
+31: #: File trang thai hong (JSON khong doc duoc) ⇒ coi nhu DANG tam dung bao nhieu gio.
+38: DEFAULT_JOURNAL = "logs/journal.jsonl"
+43: def path_for(cfg=None, path=None) -> Path:
+44: """Duong dan file trang thai (cfg.entries_pause_path, mac dinh logs/entries_pause.json)."""
+47: return Path(str(getattr(cfg, "entries_pause_path", DEFAULT_PATH) or DEFAULT_PATH))
+50: def read(cfg=None, path=None) -> dict:
+55: - Co file nhung JSON hong -> **FAIL-SAFE**: tra ban ghi "dang tam dung" voi
+61: `CORRUPT_GRACE_H` gio (lan `paused()` sau do goi `resume()` ghi file moi) nen khong
+72: d = json.loads(text)
+81: return {"paused": True, "corrupt": True,
+82: "reason": "file trang thai hong (JSON khong doc duoc) — tam dung an toan",
+86: def paused(cfg=None, path=None, now=None) -> tuple:
+89: (19/10) Ho tro HET HAN: `pause(..., hours=N)` ghi `until`; khi da qua han thi
+94: if not bool(d.get("paused")):
+108: def _write(p: Path, rec: dict) -> dict:
+110: atomic.write_json_atomic(p, rec, indent=1)
+116: def pause(reason: str, cfg=None, path=None, now=None, by: str = "ops",
+123: rec = {"paused": True, "reason": str(reason)[:300], "since": t, "by": str(by)[:40]}
+134: def resume(cfg=None, path=None, now=None, why: str = "", by: str = "ops") -> dict:
+136: rec = {"paused": False, "reason": str(why)[:300],
+148: def cooldown_minutes(cfg=None) -> float:
+153: v = float(os.getenv("PAIR_COOLDOWN_MIN", DEFAULT_COOLDOWN_MIN))
+162: def journal_path(cfg=None, journal=None) -> Path:
+163: """File journal cua INSTANCE dang chay (khong hard-code `logs/journal.jsonl` cua root)."""
+175: def _loss_of(rec: dict) -> bool:
+185: def _parse_loss(ln: str):
+190: rec = json.loads(ln)
+213: def _loss_index(p: Path) -> dict:
+240: def last_loss(pair: str, cfg=None, journal=None, now=None,
+253: def in_cooldown(pair: str, cfg=None, journal=None, now=None,

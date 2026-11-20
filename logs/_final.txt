@@ -1,0 +1,17 @@
+﻿--- heartbeat ---
+TESTNET: 11/20/2026 13:15:16
+LIVE   : 11/20/2026 13:14:54
+--- TESTNET log tail ---
+2026-11-20 13:07:07,566 INFO round 7 monitor={} -> [{'symbol': '1000BONK/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '
+2026-11-20 13:10:41,155 INFO SCAN batch: 20/147 cap (dot so 7)
+2026-11-20 13:11:08,467 INFO round 8 monitor={} -> [{'symbol': '1000BONK/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '
+2026-11-20 13:14:44,233 INFO SCAN batch: 20/147 cap (dot so 8)
+2026-11-20 13:15:16,705 INFO round 9 monitor={} -> [{'symbol': '1000BONK/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '
+--- LIVE log tail ---
+1-20 13:08:54,307 INFO round 11 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '100
+2026-11-20 13:11:25,817 INFO SCAN batch: 12/34 cap (dot so 11)
+2026-11-20 13:11:44,509 INFO round 12 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol'
+2026-11-20 13:14:14,869 INFO SCAN batch: 12/34 cap (dot so 12)
+2026-11-20 13:14:54,076 INFO round 13 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol'
+--- now ---
+13:15:30

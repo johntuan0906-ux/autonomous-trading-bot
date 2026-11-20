@@ -1,0 +1,79 @@
+﻿=== dashboard_server.py head ===
+# -*- coding: utf-8 -*-
+"""dashboard_server.py — Read-only local web dashboard cho autonomous-trading-bot.
+
+Chi doc 100% tu file cuc bo (TESTNET tai thu muc repo + LIVE tai ../atb-live/ chi doc).
+KHONG goi API Binance, KHONG ghi file nao, bind cung 127.0.0.1.
+
+Chay:
+    python dashboard_server.py              # http://127.0.0.1:8780
+    python dashboard_server.py --port 8780
+"""
+from __future__ import annotations
+
+import argparse
+import collections
+import datetime as dt
+import hashlib
+import json
+import math
+import os
+import re
+import sys
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
+
+# =============================================================================
+# Configuration block
+# =============================================================================
+ROOT = Path(__file__).resolve().parent
+LIVE_ROOT = ROOT.parent / "atb-live"
+STATIC_DIR = ROOT / "dashboard"
+
+DEFAULT_HOST = "127.0.0.1"
+ALLOWED_BIND_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+DEFAULT_PORT = 8780
+SOCKET_TIMEOUT_SEC = 10.0
+MAX_CONCURRENT_REQUESTS = 32
+MAX_RESPONSE_BYTES = 2_000_000
+
+HEARTBEAT_WATCHDOG_DEFAULT_SEC = 360.0
+SNAPSHOT_STALE_SEC = 900.0
+JSON_RETRY_DELAY_SEC = 0.02
+
+MAX_TRADES_LIMIT = 200
+DEFAULT_TRADES_LIMIT = 50
+MAX_OUTBOX_ITEMS = 40
+MAX_AGENT_VOTES = 150
+MAX_LEDGER_ITEMS = 80
+MAX_AUTONOMY_ITEMS = 60
+MAX_DOC_CHARS = 120_000
+MAX_EQUITY_POINTS = 360
+ALLOWED_WINDOWS = frozenset({0, 7, 14, 30, 90})
+
+STATIC_WHITELIST: dict[str, tuple[str, str]] = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+=== functions ===
+120: def _mask_ip(match: re.Match[str]) -> str:
+125: def redact_text(value: str) -> str:
+140: def redact_obj(obj: Any) -> Any:
+159: def _safe_float(v: Any, default: float | None = None) -> float | None:
+169: def _safe_int(v: Any, default: int | None = None) -> int | None:
+178: def _fmt_ts(ts: float | None) -> str | None:
+198: def is_suspicious_path(raw_path: str) -> bool:
+221: def resolve_static_file(static_dir: Path, url_path: str) -> tuple[Path, str] | None:
+245: class _JsonCacheEntry:
+254: class _JournalState:
+385: class DataStore:
+1598: def _is_allowed_host(host_header: str, bound_port: int) -> bool:
+1613: def _is_allowed_origin(origin_header: str, bound_port: int) -> bool:
+1625: def make_handler(store: DataStore, static_dir: Path = STATIC_DIR):
+1901: def create_server(
+1916: def main(argv: list[str] | None = None) -> int:
+1918: parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Loopback port (default {DEFAULT_PORT})")

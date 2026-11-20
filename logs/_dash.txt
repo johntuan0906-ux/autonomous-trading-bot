@@ -1,0 +1,20 @@
+﻿=== OPERATIONS diff ===
+diff --git a/autonomous-trading-bot/OPERATIONS.md b/autonomous-trading-bot/OPERATIONS.md
+index a646e1b..59f997b 100644
+--- a/autonomous-trading-bot/OPERATIONS.md
++++ b/autonomous-trading-bot/OPERATIONS.md
+@@ -250,6 +250,7 @@ lß╗çnh sau kill lß╗çnh tr╞░ß╗¢c, `Get-Content -Tail` tr├¬n log lß╗¢n l├ám treo p
+ | **Tß╗▒ vß║¡n h├ánh (autonomy, c├│ giß╗¢i hß║ín)** (B-048) | `python tools\council_gaps.py` (thiß║┐u hß╗Ñt + kß║┐ hoß║ích tß╗▒ hß╗ìc ΓåÆ `COUNCIL_GAPS.md`) ┬╖ `python tools\selfops.py` (in kß║┐ hoß║ích) ┬╖ `python tools\selfops.py --apply` (chß║íy viß╗çc AN TO├ÇN: gaps/drift/golden/refit) ┬╖ `--instance live` **kh├┤ng** ─æß╗Ñng state LIVE trß╗½ khi th├¬m `--allow-live-state` ┬╖ nhß║¡t k├╜: `logs/autonomy.jsonl` ┬╖ **(B-053)** 3 chß╗ë sß╗æ "hß╗Öi ─æß╗ông n├│i dß╗æi": `roster_drift` (khai b├ío N model vs sß╗æ model c├│ phiß║┐u thß║¡t 24h), `model_dormant` (tß╗½ng c├│ phiß║┐u 7 ng├áy, nay im), `routine_silent` (kh├┤ng c├│ bß║ún ghi `applied` mß╗¢i 48h) ΓÇö cß║ú 3 `auto=False` |
+ | **Drift t├ái liß╗çu Γåö code** (B-047) | `python tools\drift_docs.py [--check]` ΓÇö so sß╗æ liß╗çu trong t├ái liß╗çu (m├ú l├╜ do, sß╗æ ca/cß╗òng golden, lß╗¢p bug catalog) vß╗¢i code thß║¡t, kiß╗âm mß╗ìi tool c├│ ─æ╞░ß╗úc nhß║»c t├¬n, bß║»t m├ú l├╜ do g├╡ sai (khoß║úng c├ích sß╗¡a Γëñ 2) |
+ | **Audit bß║úo mß║¡t (6 pha)** (B-054/B-055) | `SECURITY_AUDIT.md` = b├ío c├ío; `security/findings.json` = bß║ún m├íy ─æß╗ìc (mß╗ùi ph├ít hiß╗çn c├│ `file`+`line`+`pattern`, `tests`); `python tools\security_audit.py --check` ─æß╗ìc **lß║íi code** ─æß╗â x├íc nhß║¡n: mß║½u c├▓n/─æ├ú mß║Ñt, test chß╗æt tß╗ôn tß║íi thß║¡t, sß╗æ d├▓ng bß║úng trong `.md` khß╗¢p JSON. ─É├ú sß╗¡a: `serve_glow.py` kh├┤ng phß╗Ñc vß╗Ñ `.env` nß╗»a, `telegram_bridge` fail-closed khi thiß║┐u `chat_id`, `redact()` token Telegram khß╗Åi log |
++| **Web Dashboard trß╗▒c quan (chß╗ë ─æß╗ìc)** | `python dashboard_server.py [--port 8780]` ΓåÆ mß╗ƒ `http://127.0.0.1:8780` (xem cß║ú TESTNET & LIVE song song, 0 gß╗ìi API Binance, chß╗ë ─æß╗ìc file cß╗Ñc bß╗Ö, bind cß╗⌐ng `127.0.0.1`, redact URL ping/token/IP ph├¡a server; giß╗» t├ích cß╗òng vß╗¢i `serve_glow.py` :8770 v├á `vscode_lm_bridge` :8765) |
+ | **Chuß╗ùi kiß╗âm tra tr╞░ß╗¢c khi commit** | `python tools\bug_catalog.py --check` (**68 lß╗¢p / 267 test chß╗æt**) ΓåÆ `python tools\golden_set.py --check` (45 ca / 14 cß╗òng, c├│ DRIFT) ΓåÆ `python tools\drift_docs.py --check` (t├ái liß╗çu Γåö code) ΓåÆ `python tools\security_audit.py --check` (bß║▒ng chß╗⌐ng audit bß║úo mß║¡t) ΓåÆ `python -m unittest discover -s tests -t .` |
+ | **─Éß╗æi so├ít sß╗ò Γåö s├án (LIVE)** (B-050) | `python reconcile.py` (xem tr╞░ß╗¢c) ┬╖ `python reconcile.py --apply` (ghi b├╣ `CLOSE` bß╗ï thiß║┐u, c├│ backup `journal.jsonl.bak-*`) ┬╖ `python positions.py` (3 nguß╗ôn: s├án / journal / `managed_state`) ┬╖ v├▓ng lß╗çnh **kh├┤ng c├│ `OPEN` trong journal** = lß╗çnh do NG╞»ß╗£I ─æß║╖t tay, kh├┤ng phß║úi bot |
+ | **─É├│ng vß╗ï thß║┐ DEMO h├áng loß║ít** | `python close_position.py --pair BTC/USDT:USDT` (tß╗½ng cß║╖p) ΓÇö d├╣ng `BinanceFutures.close_position()` ─æß╗â c├│ fallback `-2022 ΓåÆ _close_exact`; vß╗ï thß║┐ **dust** (notional < 5 USDT) c├│ thß╗â KH├öNG ─æ├│ng ─æ╞░ß╗úc (`-2022` + `-4164`) ΓçÆ ghi lß║íi, ─æß╗½ng cß╗æ bß║▒ng tay |
+=== new files ===
+dashboard\app.js 68169
+dashboard\favicon.svg 420
+dashboard\index.html 4047
+dashboard\styles.css 13882
+dashboard_server.py 86122
+test_dashboard_server.py 21784

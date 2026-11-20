@@ -1,0 +1,8 @@
+﻿ M autonomous-trading-bot/OPERATIONS.md
+?? autonomous-trading-bot/dashboard/
+?? autonomous-trading-bot/dashboard_server.py
+?? autonomous-trading-bot/tests/test_dashboard_server.py
+---
+--- heads
+38e0d96 chore(state): cap nhat STATE.md 21/11/2026 00:39:15 (n=3065, PF(R)=1.839, TESTNET)
+2b32bcc chore(state): cap nhat STATE.md 21/11/2026 00:37:11 (n=715, PF(R)=1.231, LIVE)

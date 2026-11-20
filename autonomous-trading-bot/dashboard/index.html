@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATB Console — Autonomous Trading Bot (Read-Only)</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <!-- Top 5-Second Operator Vital Strip -->
+    <header class="topbar" id="topbar">
+      <div class="topbar-row topbar-main">
+        <div class="brand-group">
+          <img src="/favicon.svg" alt="ATB" class="brand-icon" width="26" height="26">
+          <div class="brand-text">
+            <span class="brand-title">ATB Console</span>
+            <span class="badge badge-readonly">READ-ONLY · 0 BINANCE API</span>
+          </div>
+        </div>
+
+        <div class="env-switcher" role="tablist" aria-label="Chon moi truong">
+          <button type="button" class="env-btn active" data-env="testnet">TESTNET (DEMO)</button>
+          <button type="button" class="env-btn env-btn-live" data-env="live">LIVE (TIỀN THẬT)</button>
+          <button type="button" class="env-btn" data-env="both">SO SÁNH 2 INSTANCE</button>
+        </div>
+
+        <div class="refresh-controls">
+          <span class="as-of-label" id="header-as-of">as_of: --</span>
+          <button type="button" class="ctrl-btn" id="btn-toggle-poll" title="Tam dung / tiep tuc tu lam moi">Auto 10s: BẬT</button>
+          <button type="button" class="ctrl-btn ctrl-btn-accent" id="btn-refresh">Làm mới</button>
+        </div>
+      </div>
+
+      <!-- 5-second vital pills -->
+      <div class="topbar-row vital-strip" id="vital-strip">
+        <div class="vital-pill" id="vp-env"><span class="vp-k">Môi trường</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-bot"><span class="vp-k">Nhịp tim</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-ks"><span class="vp-k">Kill-Switch</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-daily"><span class="vp-k">PnL Ngày / Trần</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-pos"><span class="vp-k">Vị thế / Max</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-prot"><span class="vp-k">Bảo vệ SL/TP</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-ban"><span class="vp-k">IP Ban</span><span class="vp-v">--</span></div>
+        <div class="vital-pill" id="vp-deadman"><span class="vp-k">Deadman</span><span class="vp-v">--</span></div>
+      </div>
+
+      <!-- Primary navigation tabs -->
+      <nav class="tab-bar" role="tablist" aria-label="Cac man hinh dashboard">
+        <button type="button" class="tab-btn active" data-tab="overview">1. Tổng quan</button>
+        <button type="button" class="tab-btn" data-tab="positions">2. Vị thế &amp; Bảo vệ</button>
+        <button type="button" class="tab-btn" data-tab="performance">3. Hiệu suất &amp; Nhật ký</button>
+        <button type="button" class="tab-btn" data-tab="council">4. Hội đồng AI &amp; Learner</button>
+        <button type="button" class="tab-btn" data-tab="harness">5. Vận hành &amp; Bảo mật</button>
+        <button type="button" class="tab-btn" data-tab="architecture">6. Kiến trúc &amp; Tài liệu</button>
+      </nav>
+    </header>
+
+    <!-- Live Alert Banner (injected via DOM) -->
+    <section id="alert-banner" class="alert-banner hidden" aria-live="polite"></section>
+
+    <!-- Main Tab Container -->
+    <main id="main-content" class="main-content">
+      <div class="loading-box">Đang tải dữ liệu cục bộ...</div>
+    </main>
+
+    <footer class="footer">
+      <span>Autonomous Trading Bot · Local Read-Only Console (`127.0.0.1`) · Số liệu đọc từ `logs/` cục bộ, không gọi Binance API.</span>
+      <span id="footer-status">Sẵn sàng</span>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

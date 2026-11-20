@@ -1,0 +1,5 @@
+﻿== autonomous-trading-bot
+2026-11-20 14:48:56,531 WARNING ENTRIES PAUSED: IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026 -> bo qua vong danh gia (khong mo lenh moi)
+== atb-live
+2026-11-20 14:49:23,811 WARNING ENTRIES PAUSED: IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026 -> bo qua vong danh gia (khong mo lenh moi)
+14:50:00

@@ -1,0 +1,33 @@
+﻿=== OPS ===
+=== OPS REPORT 2026-11-21 00:37:15 | cua so 60 phut ===
+TESTNET  round=196  phase=end              equity=3253.81    hb=106s
+         supervisor=92188 child_pid=33732 managed=4
+         san: 7 vi the / 8 lenh cho / 0 mo coi (snapshot orders_audit)
+         loi trong 60 phut: KHONG (sach)
+         vong trong log: 189 | vong cuoi #196: {'SKIP_RISK': 8, 'BLOCKED_STRAT': 8, 'SKIP_OPEN': 4, 'SKIP_LESSON': 4}
+         log cuoi: 2026-11-21 00:35:28
+LIVE     round=245  phase=start            equity=None       hb=20s
+         supervisor=56328 child_pid=116944 managed=4
+         san: 4 vi the / 8 lenh cho / 0 mo coi (snapshot orders_audit)
+         loi trong 60 phut: KHONG (sach)
+         vong trong log: 304 | vong cuoi #244: {'SKIP_MAX_POS': 10, 'SKIP_OPEN': 4, 'BLOCKED_STRAT': 2}
+         log cuoi: 2026-11-21 00:34:55
+KET LUAN: OK ΓÇö khong van de
+=== LIVE_READY ===
+============================================================================================
+CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=715/300 | PF(R)=1.231 | PF($)=1.155
+  RIENG LENH BOT            | n_bot=645 | PF(R)=1.171 | PF($)=1.172 | PnL=+138.65
+============================================================================================
+  CUA SO         n     WR%    PF(R)    PF($)      E(R)       PnL$
+  7 ngay        24    16.7    2.108    2.877   +0.1814      +2.07
+  14 ngay       45    31.1    2.290    3.129   +0.2756      +3.14
+  30 ngay       72    23.6    2.227    1.764   +0.1820      +2.36
+  toan bo      715    53.3    1.231    1.155   +0.0564    +128.20
+  nguong    : PF(R)>=1.05  PF($)>=1.1  n>=300  risk<=2.0%  lev<=8 khi PF<1.5
+  kill-switch: binh thuong
+--------------------------------------------------------------------------------------------
+VERDICT: HOAN THANH
+   [WARN] cua so 7 ngay: chi 6 lenh BOT (<20) ù dang dung so GOP (24 lenh, gom ca lenh tay); chua ket luan duoc ve bot
+   [WARN] cua so 14 ngay: chi 11 lenh BOT (<20) ù dang dung so GOP (45 lenh, gom ca lenh tay); chua ket luan duoc ve bot
+   [WARN] chien luoc D_RANGE_REVERSAL am (n=49) ù da bi STRATEGY_BLOCK chan
+   [WARN] 8 OPEN chua co CLOSE trong journal (lich su ghi chep)

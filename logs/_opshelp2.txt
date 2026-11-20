@@ -1,0 +1,9 @@
+﻿usage: ops.py [-h] [--minutes MINUTES] [--json] [--prom]
+
+Bao cao suc khoe 2 instance bot
+
+options:
+  -h, --help         show this help message and exit
+  --minutes MINUTES  cua so dem loi (phut)
+  --json             in JSON
+  --prom             ghi logs/metrics.prom (Prometheus textfile)

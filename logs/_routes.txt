@@ -1,0 +1,9 @@
+﻿if path == "/api/health":
+if path == "/api/overview":
+if path == "/api/positions":
+if path == "/api/performance":
+if path == "/api/trades":
+if path == "/api/council":
+if path == "/api/harness":
+if path == "/api/docs":
+if path.startswith("/api/docs/"):

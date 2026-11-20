@@ -1,0 +1,18 @@
+﻿hours=8.198
+{'ok': True, 'path': 'logs\\entries_pause.json', 'paused': True, 'reason': 'IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026', 'since': 1795160888.4977343, 'by': 'operator', 'until': 1795190400.0000002}
+== autonomous-trading-bot
+{
+ "paused": true,
+ "reason": "IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026",
+ "since": 1795160839.6817088,
+ "by": "operator",
+ "until": 1795190400.0000007
+}
+== atb-live
+{
+ "paused": true,
+ "reason": "IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026",
+ "since": 1795160888.4977343,
+ "by": "operator",
+ "until": 1795190400.0000002
+}

@@ -2,12 +2,12 @@
 
 | # | Thieu hut | Do (hien tai -> can) | Tu lam |
 |---|---|---|---|
-| 1 | calibration | brier: 0.3271 -> <= 0.25 | co |
+| 1 | calibration | brier: 0.32 -> <= 0.25 | co |
 | 2 | thin_models | so model co n_ghep < min_n: 10 -> 0 | co |
 | 3 | value_negative | model co value_r <= 0: 1 -> 0 | KHONG (can nguoi) |
 
 ## calibration (high)
-- Do: **brier = 0.3271** (can: <= 0.25)
+- Do: **brier = 0.32** (can: <= 0.25)
 - Can thu thap / lam:
   - [ ] >= 30 phieu co `confidence` VA co ket qua that
   - [ ] phan bo confidence theo khoang (calibration bins) de biet lech o dau

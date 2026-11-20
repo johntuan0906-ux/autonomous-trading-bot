@@ -1,0 +1,10 @@
+﻿VI THE: 7 | LENH TREO: 8
+  GTC/USDT:USDT      SHORT qty=559.7 lenh treo=2
+  NEAR/USDT:USDT     SHORT qty=19.0 lenh treo=2
+  AERO/USDT:USDT     SHORT qty=172.2 lenh treo=2
+  ADA/USDT:USDT      SHORT qty=385.0 lenh treo=2
+  BAT/USDT:USDT      SHORT qty=0.1 lenh treo=0   <-- KHONG co SL/TP tren san
+  1000PEPE/USDT:USDT SHORT qty=1.0 lenh treo=0   <-- KHONG co SL/TP tren san
+  1000SHIB/USDT:USDT SHORT qty=2.0 lenh treo=0   <-- KHONG co SL/TP tren san
+3 vi the khong co bao ve tren san: ['BAT/USDT:USDT', '1000PEPE/USDT:USDT', '1000SHIB/USDT:USDT']
+Bot van bao ve bang MONITOR phan mem. Thu lai: python arm_protection.py --arm

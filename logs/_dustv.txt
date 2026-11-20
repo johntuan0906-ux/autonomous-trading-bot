@@ -1,0 +1,5 @@
+﻿=== DONG BUI | TESTNET | DRY-RUN | 3 vi the bui (trong dust_skip: 3) ===
+  [DRY] 1000PEPE/USDT:USDT SHORT: bui 0.00 USDT -> nang +1781.00000000 (~6.00 USDT) roi dong toan bo
+  [DRY] 1000SHIB/USDT:USDT SHORT: bui 0.01 USDT -> nang +1707.00000000 (~5.99 USDT) roi dong toan bo
+  [DRY] BAT/USDT:USDT SHORT: bui 0.01 USDT -> nang +74.30000000 (~5.99 USDT) roi dong toan bo
+  KET LUAN: se dong duoc (co ke hoach) 3/3

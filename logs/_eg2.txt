@@ -1,0 +1,48 @@
+﻿def _write(p: Path, rec: dict) -> dict:
+    try:
+        atomic.write_json_atomic(p, rec, indent=1)
+        return {"ok": True, "path": str(p), **rec}
+    except OSError as e:
+        return {"ok": False, "err": str(e)[:160], **rec}
+
+
+def pause(reason: str, cfg=None, path=None, now=None, by: str = "ops",
+          hours=None) -> dict:
+    """Bat dau tam dung vao lenh moi (bot VAN quan ly vi the dang mo).
+
+    `hours` > 0 => tam dung CO HAN (`until` = now + hours*3600); qua han tu mo lai.
+    """
+    t = float(now() if callable(now) else time.time())
+    rec = {"paused": True, "reason": str(reason)[:300], "since": t, "by": str(by)[:40]}
+    if hours:
+        try:
+            h = float(hours)
+            if h > 0:
+                rec["until"] = t + h * 3600.0
+        except (TypeError, ValueError):
+            pass
+    return _write(path_for(cfg, path), rec)
+
+
+def resume(cfg=None, path=None, now=None, why: str = "", by: str = "ops") -> dict:
+    """Mo lai vao lenh. `by` = AI mo lai (ghi vet: 'ops' hoac 'entries_gate' khi het han)."""
+    rec = {"paused": False, "reason": str(why)[:300],
+           "since": float(now() if callable(now) else time.time()), "by": str(by)[:40]}
+    return _write(path_for(cfg, path), rec)
+
+
+# --------------------------------------------------------------------------------------
+# (15/11, B-057) Cooldown THEO CAP sau lenh THUA — doc tu journal nen song qua restart.
+# Vi sao can (do tren journal that): `COOLDOWN_SEC` chi la RAM + doi xung (thang cung nghi),
+# con `strategy.gate_check` chan theo NHOM setup ⇒ mot cap "nong" van vao lai ngay sau khi SL.
+# Freqtrade goi cai nay la `CooldownPeriod`/`StoplossGuard`; o day lam dung 1 viec: cap vua
+# THUA thi khong vao lai trong N phut. Lenh THANG khong bi chan (khong tu trung phat).
+# --------------------------------------------------------------------------------------
+def cooldown_minutes(cfg=None) -> float:
+    """So phut cooldown theo cap (`cfg.pair_cooldown_min`, khong co thi doc `PAIR_COOLDOWN_MIN`)."""
+    v = getattr(cfg, "pair_cooldown_min", None)
+    if v is None:
+        try:
+atb-live: 2026-11-20 10:28:39,548 WARNING reconcile: fetch_my_trades A/USDT:USDT loi: binance 418 I'm a teapot {"code":-1003,"msg"
+atb-live: 2026-11-20 10:29:48,671 ERROR API BAN: san chan IP toi 11:52:59 (-1003) -> TAM DUNG quet den luc do
+atb-live: 2026-11-20 10:29:49,566 INFO round 1 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'DATA_FAIL', 'reason': 

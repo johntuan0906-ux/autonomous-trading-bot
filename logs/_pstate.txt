@@ -1,0 +1,22 @@
+﻿== autonomous-trading-bot heartbeat
+{"ts": 1795160936.5491447, "pid": 33732, "round": 33, "phase": "end", "equity": 3235.1}
+== autonomous-trading-bot tail
+2026-11-20 14:41:10,435 INFO SCAN batch: 20/146 cap (dot so 30)
+2026-11-20 14:41:26,525 INFO round 31 monitor={} -> [{'symbol': '1000BONK/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {
+2026-11-20 14:44:54,817 INFO SCAN batch: 20/146 cap (dot so 31)
+2026-11-20 14:45:21,698 INFO round 32 monitor={} -> [{'symbol': '1000BONK/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {
+2026-11-20 14:48:56,531 WARNING ENTRIES PAUSED: IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026 -> bo qua vong danh gia (kh
+2026-11-20 14:48:56,537 INFO round 33 monitor={} -> [{'symbol': '-', 'status': 'PAUSED', 'reason': 'IP ban (B-068) - hoi dong tam dung gui l
+== atb-live heartbeat
+{"ts": 1795160963.8182375, "pid": 65976, "round": 48, "phase": "end", "equity": 35.79}
+== atb-live tail
+ 14:43:34,418 INFO SCAN batch: 12/34 cap (dot so 45)
+2026-11-20 14:43:53,729 INFO round 46 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'},
+2026-11-20 14:46:28,362 INFO SCAN batch: 12/34 cap (dot so 46)
+2026-11-20 14:46:50,386 INFO round 47 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'},
+2026-11-20 14:49:23,811 WARNING ENTRIES PAUSED: IP ban (B-068) - hoi dong tam dung gui lenh den 23:00 20/11/2026 -> bo qua vong danh gia (kh
+2026-11-20 14:49:23,813 INFO round 48 monitor={} -> [{'symbol': '-', 'status': 'PAUSED', 'reason': 'IP ban (B-068) - hoi dong tam dung gui l
+== procs
+65976
+33732
+14:50:43

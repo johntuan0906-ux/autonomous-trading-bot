@@ -1,0 +1,1 @@
+﻿9d59a10 feat(scan): B-068 quet theo dot (SCAN_BATCH) + do tre khoi dong/sau ban (SCAN_WARMUP_SEC)

@@ -67,5 +67,40 @@ class TestArmProtectionLive(unittest.TestCase):
             self.assertGreater(AP._ban_left(base), 60.0)
 
 
+class TestMissingLegs(unittest.TestCase):
+    """(20/11, B-069) `--arm` dat VO DIEU KIEN ⇒ 14 lenh trung tren LIVE. Moi LOAI chi 1 lenh."""
+
+    def test_chua_co_lenh_nao_thi_dat_ca_hai(self):
+        legs = AP.missing_legs([], 100.0, 120.0)
+        self.assertEqual([x[0] for x in legs], ["SL", "TP"])
+        self.assertEqual([x[1] for x in legs], ["STOP_MARKET", "TAKE_PROFIT_MARKET"])
+
+    def test_da_co_sl_thi_chi_dat_tp(self):
+        legs = AP.missing_legs([{"type": "STOP_MARKET"}], 100.0, 120.0)
+        self.assertEqual([x[0] for x in legs], ["TP"])
+
+    def test_da_co_tp_thi_chi_dat_sl(self):
+        legs = AP.missing_legs([{"type": "TAKE_PROFIT_MARKET"}], 100.0, 120.0)
+        self.assertEqual([x[0] for x in legs], ["SL"])
+
+    def test_du_ca_hai_thi_khong_dat_them(self):
+        self.assertEqual(AP.missing_legs(
+            [{"type": "STOP_MARKET"}, {"type": "TAKE_PROFIT_MARKET"}], 100.0, 120.0), [])
+
+    def test_bien_the_ten_loai_va_chu_thuong(self):
+        # Algo API tra `orderType` khac nhau (STOP / TAKE_PROFIT / trailing) — van tinh la co
+        self.assertEqual(AP.missing_legs([{"type": "stop"}, {"type": "TAKE_PROFIT"}], 1.0, 2.0), [])
+        self.assertEqual(AP.missing_legs([{"type": "TRAILING_STOP_MARKET"}], 1.0, 2.0)[0][0], "TP")
+
+    def test_lenh_khac_loai_khong_duoc_tinh_la_bao_ve(self):
+        # LIMIT/khong co type ⇒ van thieu ca hai (LIMIT KHONG phai SL/TP)
+        self.assertEqual(len(AP.missing_legs([{"type": "LIMIT"}, {}, None], 1.0, 2.0)), 2)
+
+    def test_gia_0_thi_bo_qua_chan_do(self):
+        self.assertEqual(AP.missing_legs([], 0, 120.0), [("TP", "TAKE_PROFIT_MARKET", 120.0)])
+        self.assertEqual(AP.missing_legs([], 100.0, 0), [("SL", "STOP_MARKET", 100.0)])
+        self.assertEqual(AP.missing_legs([], 0, 0), [])
+
+
 if __name__ == "__main__":
     unittest.main()

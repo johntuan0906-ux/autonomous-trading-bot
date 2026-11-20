@@ -32,6 +32,27 @@ from config import Settings  # noqa: E402
 # ngoai viec cho bot tu re-arm (bi chan IP thi bot cung khong goi duoc). Them `--target`.
 LIVE_DIR = Path(__file__).resolve().parent.parent / "atb-live"
 
+# (20/11, B-069) Loai lenh = "da co bao ve" tren san. Dung de KHONG dat trung.
+_SL_TYPES = ("STOP_MARKET", "STOP", "STOP_LOSS", "TRAILING_STOP_MARKET")
+_TP_TYPES = ("TAKE_PROFIT_MARKET", "TAKE_PROFIT", "TAKE_PROFIT_LIMIT")
+
+
+def missing_legs(existing: list, sl: float, tp: float) -> list:
+    """Cac chan bao ve CON THIEU cho 1 vi the — ham THUAN, test duoc.
+
+    `existing` = lenh dang treo cua dung symbol do (ca `fetch_open_orders` lan Algo API).
+    Vi sao can: ban 19/11 chi in so lenh treo o che do DOC, con `--arm` dat **vo dieu kien**
+    ⇒ 20/11 dat trung 14 lenh (7 vi the x 2 chan) va phai `orders_audit --dedupe` lai.
+    Quy tac: moi LOAI (SL / TP) chi can 1 lenh; gia <= 0 ⇒ bo qua chan do.
+    """
+    types = {str((o or {}).get("type") or "").upper() for o in (existing or [])}
+    legs = []
+    if float(sl or 0) > 0 and not (types & set(_SL_TYPES)):
+        legs.append(("SL", "STOP_MARKET", float(sl)))
+    if float(tp or 0) > 0 and not (types & set(_TP_TYPES)):
+        legs.append(("TP", "TAKE_PROFIT_MARKET", float(tp)))
+    return legs
+
 
 def read_env(path: Path) -> dict:
     """Doc `.env` thanh dict (KHONG ghi de os.environ cua instance khac)."""
@@ -197,10 +218,11 @@ def main(argv=None) -> int:
             if sl <= 0 and tp <= 0:
                 print(f"  {sym}: khong co sl/tp trong managed_state -> bo qua")
                 continue
-        for tag, otype, price in (("SL", "STOP_MARKET", sl),
-                                  ("TP", "TAKE_PROFIT_MARKET", tp)):
-            if price <= 0:
-                continue
+        legs = missing_legs(per_sym.get(sym, []), sl, tp)
+        if not legs:
+            print(f"  {sym}: da du SL/TP tren san -> KHONG dat them")
+            continue
+        for tag, otype, price in legs:
             params = {"stopPrice": price, "workingType": "CONTRACT_PRICE"}
             if hedge:
                 params["positionSide"] = d          # B-065: HEDGE bat buoc

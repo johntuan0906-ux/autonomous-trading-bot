@@ -1,0 +1,9 @@
+﻿VI THE: 8 | LENH TREO: 15
+  BTC/USDT:USDT      SHORT qty=0.001 lenh treo=1
+  ETH/USDT:USDT      SHORT qty=0.012 lenh treo=2
+  XRP/USDT:USDT      LONG  qty=9.5 lenh treo=2
+  ADA/USDT:USDT      SHORT qty=34.0 lenh treo=2
+  SOL/USDT:USDT      SHORT qty=0.07 lenh treo=2
+  AVAX/USDT:USDT     SHORT qty=1.0 lenh treo=2
+  1000CAT/USDT:USDT  LONG  qty=4008.0 lenh treo=2
+  1000000MOG/USDT:USDT SHORT qty=64.2 lenh treo=2

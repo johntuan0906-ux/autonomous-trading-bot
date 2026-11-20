@@ -794,6 +794,20 @@ CLASSES = [
                   "test_scan_plan.py::TestDoTreKhoiDong::test_vong_dau_va_ngay_sau_ban",
                   "test_scan_plan.py::TestDoTreKhoiDong::test_cau_hinh_0_hoac_rac_thi_khong_cho"],
     },
+    {
+        "code": "B-069", "kind": "rui-ro", "seen": "20/11/2026",
+        "title": "`arm_protection.py --arm` dat SL/TP VO DIEU KIEN ⇒ dat TRUNG tren LIVE (7 vi the x 2 chan = 14 lenh)",
+        "symptom": "20/11 12:5x: che do doc in dung `LENH TREO: 15` (moi vi the 2 lenh) nhung `--arm --yes-live` van dat them 14 lenh ⇒ 6 vi the con lai bi **4 lenh bao ve/vi the** (STOP_MARKET=14, TAKE_PROFIT_MARKET=13), 3 lenh MO COI (BTC/ETH da dong), phai chay `orders_audit --dedupe` (huy 15) + `--cancel-orphans` (huy 2) de gom lai. Nguy co that: SL/TP trung ⇒ dong vi the som hon du kien, kho dem lai PnL, va moi lan arm lai them 1 lop lenh",
+        "guard": "`arm_protection.missing_legs(existing, sl, tp)` (ham THUAN) tinh chan CON THIEU theo LOAI lenh (`STOP_MARKET`/`STOP`/`STOP_LOSS`/`TRAILING_STOP_MARKET` = da co SL; `TAKE_PROFIT_MARKET`/`TAKE_PROFIT`/`TAKE_PROFIT_LIMIT` = da co TP; lenh `LIMIT`/khong type KHONG tinh la bao ve; gia <= 0 ⇒ bo qua chan do). `--arm` chi dat chan con thieu, vi the du bao ve in `-> KHONG dat them`. Da chay lai tren LIVE sau khi va: 0 lenh dat them",
+        "files": ["arm_protection.py", "tests/test_arm_protection.py"],
+        "tests": ["test_arm_protection.py::TestMissingLegs::test_chua_co_lenh_nao_thi_dat_ca_hai",
+                  "test_arm_protection.py::TestMissingLegs::test_da_co_sl_thi_chi_dat_tp",
+                  "test_arm_protection.py::TestMissingLegs::test_da_co_tp_thi_chi_dat_sl",
+                  "test_arm_protection.py::TestMissingLegs::test_du_ca_hai_thi_khong_dat_them",
+                  "test_arm_protection.py::TestMissingLegs::test_bien_the_ten_loai_va_chu_thuong",
+                  "test_arm_protection.py::TestMissingLegs::test_lenh_khac_loai_khong_duoc_tinh_la_bao_ve",
+                  "test_arm_protection.py::TestMissingLegs::test_gia_0_thi_bo_qua_chan_do"],
+    },
 ]
 
 

@@ -1,0 +1,17 @@
+﻿== TESTNET ==
+
+=== KIEM TRA BUG CATALOG | 68 lop | 267 test chot | 77 file test ===
+  KET LUAN: OK
+GOLDEN SET ù 45 ca | PASS 45 | FAIL 0 | 2.482s  [baseline]
+=== DRIFT TAI LIEU <-> CODE | 51 muc | LECH 0 | CANH BAO 1 ===
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)
+  KET LUAN: bang chung khop code + khop SECURITY_AUDIT.md
+== LIVE ==
+=== KIEM TRA BUG CATALOG | 68 lop | 267 test chot | 77 file test ===
+  KET LUAN: OK
+GOLDEN SET ù 45 ca | PASS 45 | FAIL 0 | 1.367s  [baseline]
+=== DRIFT TAI LIEU <-> CODE | 51 muc | LECH 0 | CANH BAO 1 ===
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)
+  KET LUAN: bang chung khop code + khop SECURITY_AUDIT.md
+
+

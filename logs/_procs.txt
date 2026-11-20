@@ -1,0 +1,2 @@
+﻿22264 :: C:\Users\User\AppData\Local\Programs\Python\Python312\pythonw.exe C:\Users\User\.vscode\Projects\autonomous-trading-bot\turbo_demo.py
+13604 :: C:\Users\User\AppData\Local\Programs\Python\Python312\pythonw.exe C:\Users\User\.vscode\Projects\atb-live\turbo_demo.py

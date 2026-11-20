@@ -1,0 +1,20 @@
+﻿b8cb4f4aae06a80524ca498b10012adc1fa59ec4 johntuan0906-ux Fri Nov 20 12:12:04 2026 +0700  ├ó╠üc
+
+ .vscode/mcp.json                                | 14 ++++++
+ AGENTS.md                                       | 44 ++++++++++++++++
+ autonomous-trading-bot/config.py                |  6 +++
+ autonomous-trading-bot/golden/bug_manifest.json |  7 +--
+ autonomous-trading-bot/scan_plan.py             | 67 +++++++++++++++++++++++++
+ autonomous-trading-bot/tests/test_scan_plan.py  | 67 +++++++++++++++++++++++++
+ autonomous-trading-bot/tools/bug_catalog.py     | 14 ++++++
+ autonomous-trading-bot/turbo_demo.py            | 37 +++++++++++++-
+ 8 files changed, 251 insertions(+), 5 deletions(-)
+--- status incl untracked logs ---
+?? ../logs/_ban.txt
+?? ../logs/_git1.txt
+?? ../logs/_git2.txt
+?? ../logs/_git3.txt
+--- atb-live log ---
+e90e4c2 chore(state): cap nhat STATE.md 20/11/2026 12:01:21 (n=709, PF(R)=1.231, LIVE)
+0541a3e chore(state): cap nhat STATE.md 20/11/2026 11:31:21 (n=708, PF(R)=1.231, LIVE)
+4cffd57 chore(state): cap nhat STATE.md 20/11/2026 11:01:17 (n=708, PF(R)=1.231, LIVE)

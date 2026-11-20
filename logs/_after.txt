@@ -1,0 +1,22 @@
+﻿--- LIVE newest files ---
+state_sync.log 11/20/2026 12:37:52
+heartbeat.json 11/20/2026 12:37:44
+risk_state.json 11/20/2026 12:37:07
+managed_state.json 11/20/2026 12:37:07
+journal.jsonl 11/20/2026 12:37:03
+--- TESTNET newest files ---
+orders_snapshot.json 11/20/2026 12:40:15
+telegram_bridge.json 11/20/2026 12:40:02
+heartbeat.json 11/20/2026 12:39:36
+turbo_err.log 11/20/2026 12:39:36
+state_sync.log 11/20/2026 12:39:33
+--- LIVE ban ---
+{
+ "until": 1795150379.487,
+ "reason": "API_BAN",
+ "ts": 1795145388.6712437,
+ "readable": "2026-11-20 11:52:59"
+}
+--- procs ---
+65976
+33732

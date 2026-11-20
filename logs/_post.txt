@@ -1,0 +1,32 @@
+﻿=== AUDIT ===
+=== KIEM KE LENH CHO: LIVE (LIVE THAT) ===
+  vi the dang mo   : 6
+  lenh cho         : 12  (bao ve: 12)
+  theo loai        : STOP_MARKET=6, TAKE_PROFIT_MARKET=6
+    1000000MOG/USDT:USDT bao ve=2
+    1000CAT/USDT:USDT    bao ve=2
+    ADA/USDT:USDT        bao ve=2
+    AVAX/USDT:USDT       bao ve=2
+    SOL/USDT:USDT        bao ve=2
+    XRP/USDT:USDT        bao ve=2
+  GIU / HUY (gom lai): giu 12, huy 0
+  KET LUAN: gon (moi vi the dung 2 lenh bao ve)
+=== LIVE log tail ===
+26-11-20 12:36:57,122 INFO   reconcile: vong lenh khong co OPEN trong journal: BTC/USDT:USDT LONG qty=0.002 entry=68530.1 luc 2026-11-13 06:22 -> bo qua
+2026-11-20 12:36:57,123 INFO   reconcile: vong lenh khong co OPEN trong journal: XRP/USDT:USDT LONG qty=6 entry=1.0247 luc 2026-11-13 06:24 -> bo qua
+2026-11-20 12:36:57,123 INFO   reconcile: vong lenh khong co OPEN trong journal: SOL/USDT:USDT LONG qty=0.1 entry=79.64 luc 2026-11-13 06:25 -> bo qua
+2026-11-20 12:36:57,123 INFO   reconcile: vong lenh khong co OPEN trong journal: XRP/USDT:USDT LONG qty=6 entry=1.0241 luc 2026-11-13 06:26 -> bo qua
+2026-11-20 12:36:57,515 WARNING LIVE INTERLOCK OK: du dieu kien sang tien that (n=709 PF=1.231 risk=2.0% lev=8)
+2026-11-20 12:36:57,515 WARNING live_guard: 7 OPEN chua co CLOSE trong journal (co the la vi the mo tay hoac lenh dong bi thieu) � xem `python positions.py`
+2026-11-20 12:37:04,122 WARNING ADOPT vi the san: adopted=['ETH/USDT:USDT', 'XRP/USDT:USDT', 'ADA/USDT:USDT', 'SOL/USDT:USDT', 'AVAX/USDT:USDT', '1000CAT/USDT:USDT', '1000000MOG/USDT:USDT'] armed=['ET
+2026-11-20 12:37:07,958 INFO TURBO DEMO start: ('1000000MOG/USDT:USDT', '1000BONK/USDT:USDT', '1000CAT/USDT:USDT', '1000PEPE/USDT:USDT', 'AAVE/USDT:USDT', 'ADA/USDT:USDT', 'APT/USDT:USDT', 'ARB/USDT:U
+2026-11-20 12:37:44,749 WARNING SCAN warmup: cho 120s truoc vong quet (tai trong IP vua reset)
+2026-11-20 12:39:44,755 INFO SCAN batch: 12/33 cap (dot so 0)
+2026-11-20 12:40:52,593 INFO AGENTS: provider=cline model=mimo-v2.6-pro shadow=True (Phase 1: chi ghi nhan)
+2026-11-20 12:40:53,599 INFO round 1 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '1000CAT/USDT:USDT', 'status': 'SKIP_OPEN', 'reas
+2026-11-20 12:43:26,239 INFO SCAN batch: 12/33 cap (dot so 1)
+2026-11-20 12:43:47,989 INFO round 2 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '1000CAT/USDT:USDT', 'status': 'SKIP_OPEN', 'reas
+2026-11-20 12:46:21,286 INFO SCAN batch: 12/33 cap (dot so 2)
+2026-11-20 12:46:46,331 INFO round 3 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '1000CAT/USDT:USDT', 'status': 'SKIP_OPEN', 'reas
+2026-11-20 12:49:21,721 INFO SCAN batch: 12/33 cap (dot so 3)
+2026-11-20 12:49:22,978 INFO round 4 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '1000CAT/USDT:USDT', 'status': 'SKIP_OPEN', 'reas

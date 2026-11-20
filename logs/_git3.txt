@@ -1,0 +1,9 @@
+﻿46a055b docs(bot): cap nhat CONTEXT.md va OPERATIONS.md cho B-068 (scan batch + warmup)
+b8cb4f4  ├ó╠üc
+470f33a chore(state): cap nhat STATE.md 20/11/2026 12:01:14 (n=3063, PF(R)=1.832, TESTNET)
+--- diff HEAD stat ---
+--- show last ---
+46a055b docs(bot): cap nhat CONTEXT.md va OPERATIONS.md cho B-068 (scan batch + warmup)
+ autonomous-trading-bot/CONTEXT.md    | 13 +++++++++++++
+ autonomous-trading-bot/OPERATIONS.md |  3 ++-
+ 2 files changed, 15 insertions(+), 1 deletion(-)

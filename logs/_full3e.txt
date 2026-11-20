@@ -1,0 +1,116 @@
+....2026-11-20 13:05:45,132 ERROR AGENT VETO: bang chung NGUOC DAU (veto avgR=+0.0717 >= baseline -0.0050) -> KHONG chan lenh nao; xem `python agents.py --authority --rule baseline`
+.........................................2026-11-20 13:05:46,033 WARNING COUNCIL: CA HAI provider deu bi chan -> hoi dong TAM DUNG.
+.2026-11-20 13:05:46,037 WARNING COUNCIL: Cline bi chan -> provider con lai lam 100% (1 model).
+.2026-11-20 13:05:46,066 WARNING COUNCIL: Copilot bi chan -> provider con lai lam 100% (4 model).
+...2026-11-20 13:05:46,092 WARNING COUNCIL: Cline bi chan -> provider con lai lam 100% (1 model).
+.2026-11-20 13:05:46,121 WARNING COUNCIL: Copilot bi chan -> provider con lai lam 100% (7 model).
+........................................2026-11-20 13:05:50,819 WARNING COUNCIL: Copilot bi chan -> provider con lai lam 100% (1 model).
+2026-11-20 13:05:50,876 WARNING COUNCIL: Copilot bi chan -> provider con lai lam 100% (1 model).
+....2026-11-20 13:05:53,471 WARNING COUNCIL: Copilot bi chan -> provider con lai lam 100% (2 model).
+.2026-11-20 13:05:53,610 WARNING COUNCIL: Copilot bi chan -> provider con lai lam 100% (2 model).
+.........................C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_agents.py:1306: ResourceWarning: unclosed file <_io.BufferedReader name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpbxlbefec\\.env'>
+  before = open(env, "rb").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_agents.py:1312: ResourceWarning: unclosed file <_io.BufferedReader name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpbxlbefec\\.env'>
+  self.assertEqual(open(env, "rb").read(), before)      # khong doi file
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_agents.py:1323: ResourceWarning: unclosed file <_io.BufferedReader name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpsas0n0t0\\.env'>
+  txt = open(env, "rb").read().decode("utf-8")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.........C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_agents.py:1344: ResourceWarning: unclosed file <_io.BufferedReader name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpj48tz0cd\\.env'>
+  env_before = open(env, "rb").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_agents.py:1364: ResourceWarning: unclosed file <_io.BufferedReader name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpj48tz0cd\\.env'>
+  self.assertEqual(open(env, "rb").read(), env_before)   # .env KHONG sua
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..........2026-11-20 13:05:56,934 WARNING AGENT VETO CHAN LENH LONG SOL/USDT:USDT (conf=0.70): tin vi mo xau
+C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_agents.py:1513: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmppu8l4fr7\\j.jsonl' mode='r' encoding='utf-8'>
+  rec = json.loads(open(jp, encoding="utf-8").read().strip())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+......................................................................2026-11-20 13:06:00,563 WARNING AGENTS: hang doi day (4) -> bo 1 luot vote (dropped=1)
+.2026-11-20 13:06:00,575 WARNING MULTI-COUNCIL VETO SHORT ETH/USDT:USDT (conf=0.80, 1/2 model) [shadow]
+.2026-11-20 13:06:01,046 WARNING AGENT macro VETO LONG BTC/USDT:USDT (conf=0.50): test [shadow=True]
+2026-11-20 13:06:01,471 WARNING AGENT critic VETO LONG BTC/USDT:USDT (conf=0.50): test [shadow=True]
+...........C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_api_ban.py:47: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmp2iadmsrq\\api_ban.json' mode='r' encoding='utf-8'>
+  d = json.load(open(p, encoding="utf-8"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+................................................s.s.s.2026-11-20 13:06:43,359 INFO OPEN LONG BTC/USDT:USDT qty=0.666 SL=218.5 TP=236.5 alpha=0.76
+..................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................2026-11-20 13:07:26,975 WARNING ENTRIES PAUSED: cho BTW dong -> bo qua vong danh gia (khong mo lenh moi)
+............................................................C:\Users\User\.vscode\Projects\autonomous-trading-bot\tools\journal_tail.py:27: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpeh5ffk8h\\journal.jsonl' mode='r' encoding='utf-8'>
+  for line in p.open(encoding="utf-8"):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+...C:\Users\User\AppData\Local\Programs\Python\Python312\Lib\unittest\case.py:589: ResourceWarning: unclosed <socket.socket fd=1652, family=2, type=1, proto=0, laddr=('127.0.0.1', 50951)>
+  if method() is not None:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..........[LOI] khong ghi duoc hang doi C:\Users\User\AppData\Local\Temp\tmp65fd4m20\khong-the-ghi\sub\x.json: [WinError 183] Cannot create a file when that file already exists: 'C:\\Users\\User\\AppData\\Local\\Temp\\tmp65fd4m20\\
+......................................................................................2026-11-20 13:07:38,963 INFO CLOSE BTC/USDT:USDT: san bao vi the DA DONG truoc (-2022, qty con lai=0.0) -> coi nhu da dong
+2026-11-20 13:07:38,963 INFO CLOSE BTC/USDT:USDT test
+.2026-11-20 13:07:38,964 INFO CLOSE A test
+.2026-11-20 13:07:38,965 INFO CLOSE BTC/USDT:USDT: san tu choi `reduceOnly` (-2022) -> da dong bang qty THAT cua san (31.0)
+2026-11-20 13:07:38,965 INFO CLOSE BTC/USDT:USDT test
+.2026-11-20 13:07:38,965 ERROR CLOSE BTC/USDT:USDT: VI THE LAT CHIEU sau khi dong (con 5.0 SHORT tren san) -> vong sau adopt se arm bao ve; kiem tra tay neu lap lai
+2026-11-20 13:07:38,966 INFO CLOSE BTC/USDT:USDT test
+..2026-11-20 13:07:38,980 WARNING order LONG BTC/USDT:USDT failed: simulated network timeout
+2026-11-20 13:07:38,980 WARNING entry BTC/USDT:USDT bao loi nhung vi the DA mo qty=3.0 -> ghi nhan
+.2026-11-20 13:07:38,995 WARNING order LONG BTC/USDT:USDT failed: simulated network timeout
+..2026-11-20 13:07:38,998 INFO PARTIAL BTC/USDT:USDT qty=3.0 SL->100.1 (chot 30% tai 5.00R, SL->hoa von)
+.2026-11-20 13:07:38,999 WARNING PARTIAL BTC/USDT:USDT: san tra -2022 (vi the da dong truoc, qty con lai=0.0) -> ghi CLOSE nhu SL
+2026-11-20 13:07:39,000 INFO CLOSE BTC/USDT:USDT: san bao vi the DA DONG truoc (-2022, qty con lai=0.0) -> coi nhu da dong
+2026-11-20 13:07:39,000 INFO CLOSE BTC/USDT:USDT SL @ 110.0 pnl=99.9 R=4.995
+.2026-11-20 13:07:39,001 WARNING DUST BTC/USDT:USDT qty=0.1 notional=10.00 < 20.00 -> chot so + ghi CLOSE
+2026-11-20 13:07:39,002 INFO CLOSE BTC/USDT:USDT DUST qty=0.1 < minNotional @ 100.0
+2026-11-20 13:07:39,002 ERROR DUST BTC/USDT:USDT qty=0.1: san TU CHOI dong (notional qua nho) lan 1/3 -> GIU LAI vi the + da arm lai bao ve; se BO QUAN LY neu con that bai.
+..2026-11-20 13:07:39,005 WARNING DUST BTC/USDT:USDT qty=0.1 notional=10.00 < 20.00 -> chot so + ghi CLOSE
+2026-11-20 13:07:39,006 INFO CLOSE BTC/USDT:USDT DUST qty=0.1 < minNotional @ 100.0
+.................2026-11-20 13:07:39,179 INFO CLOSE XRP/USDT:USDT kill-switch
+2026-11-20 13:07:39,179 INFO FLATTEN ghi CLOSE XRP/USDT:USDT r=-4921.074 pnl=-9842.148 (kill-switch)
+2026-11-20 13:07:39,179 INFO CLOSE ADA/USDT:USDT kill-switch
+2026-11-20 13:07:39,180 INFO FLATTEN ghi CLOSE ADA/USDT:USDT r=-4921.074 pnl=-9842.148 (kill-switch)
+.....2026-11-20 13:07:39,224 ERROR KILL_MONITOR_ONLY=false bi BO QUA o DEMO: san demo chan moi lenh stop (-4045) nen monitor mem la lop bao ve DUY NHAT -> ep bat lai (chi LIVE moi cho phep tat).
+..............2026-11-20 13:07:39,738 ERROR KILL-SWITCH dang NGUNG: 5 consecutive losses (test) | KHONG mo lenh moi — CHI quan ly vi the dang mo. Go bang `python risk.py --reset` (hoac xoa C:\Users\User\AppData\Local\Temp\tmp5uhzi_fu\risk_state.json).
+2026-11-20 13:07:39,750 WARNING RE-ARM: da dat lai SL/TP tren san cho ADA/USDT:USDT (sl=95.0 tp=105.0)
+2026-11-20 13:07:39,751 ERROR RE-ARM ADA/USDT:USDT: san NHAN lenh nhung KHONG giu lenh treo (gioi han lenh dieu kien cua san) — vi the dang KHONG co SL/TP tren san; monitor mem dang bao ve, se thu lai sau ~300s
+2026-11-20 13:07:39,751 WARNING MONITOR-ONLY: dang giu 1 vi the (ADA/USDT:USDT) — kill-switch van ngung
+.2026-11-20 13:07:39,768 ERROR KILL-SWITCH dang NGUNG: 5 consecutive losses (test) | KHONG mo lenh moi — CHI quan ly vi the dang mo. Go bang `python risk.py --reset` (hoac xoa C:\Users\User\AppData\Local\Temp\tmp2fpmf8h1\risk_state.json).
+2026-11-20 13:07:39,780 WARNING MONITOR-ONLY: dang giu 1 vi the (ADA/USDT:USDT) — kill-switch van ngung
+2026-11-20 13:07:39,787 WARNING KILL-SWITCH da duoc go -> quay lai trade binh thuong
+.2026-11-20 13:07:39,792 ERROR KILL-SWITCH dang NGUNG: 5 consecutive losses (test) | KHONG mo lenh moi — CHI quan ly vi the dang mo. Go bang `python risk.py --reset` (hoac xoa C:\Users\User\AppData\Local\Temp\tmpz8ff2avl\risk_state.json).
+2026-11-20 13:07:39,808 WARNING MONITOR-ONLY: dang giu 1 vi the (ADA/USDT:USDT) — kill-switch van ngung
+2026-11-20 13:07:39,815 WARNING KILL-SWITCH da duoc go -> quay lai trade binh thuong
+..2026-11-20 13:07:39,817 WARNING RE-ARM: da dat lai SL/TP tren san cho ETH/USDT:USDT (sl=98.0 tp=200.0)
+2026-11-20 13:07:39,817 ERROR RE-ARM ETH/USDT:USDT: san NHAN lenh nhung KHONG giu lenh treo (gioi han lenh dieu kien cua san) — vi the dang KHONG co SL/TP tren san; monitor mem dang bao ve, se thu lai sau ~300s
+2026-11-20 13:07:39,817 WARNING RE-ARM: da dat lai SL/TP tren san cho ETH/USDT:USDT (sl=98.0 tp=200.0; id cu={'sl': 'sl', 'tp': 'tp'})
+...2026-11-20 13:07:39,820 WARNING RE-ARM: da dat lai SL/TP tren san cho DOGE/USDT:USDT (sl=0.092 tp=0.1)
+2026-11-20 13:07:39,820 ERROR RE-ARM DOGE/USDT:USDT: san NHAN lenh nhung KHONG giu lenh treo (gioi han lenh dieu kien cua san) — vi the dang KHONG co SL/TP tren san; monitor mem dang bao ve, se thu lai sau ~300s
+..2026-11-20 13:07:39,823 WARNING RE-ARM DOGE/USDT:USDT that bai lan 1 (vi the KHONG co SL/TP tren san; monitor phan mem dang bao ve): binance {"code":-4045,"msg":"Reach max stop order limit."}
+..2026-11-20 13:07:39,825 WARNING RE-ARM BTC/USDT:USDT that bai lan 1 (vi the KHONG co SL/TP tren san; monitor phan mem dang bao ve): binance {"code":-4045,"msg":"Reach max stop order limit."}
+.2026-11-20 13:07:39,825 WARNING RE-ARM: da dat lai SL/TP tren san cho BTC/USDT:USDT (sl=98.0 tp=200.0)
+......................2026-11-20 13:07:40,152 WARNING DUST BANK/USDT:USDT qty=0.1 notional=10.00 < 20.00 -> chot so + ghi CLOSE
+2026-11-20 13:07:40,152 INFO CLOSE BANK/USDT:USDT DUST qty=0.1 < minNotional @ 100.0
+.2026-11-20 13:07:40,155 WARNING DUST BANK/USDT:USDT qty=0.1 notional=10.00 < 20.00 -> chot so + ghi CLOSE
+2026-11-20 13:07:40,156 INFO CLOSE BANK/USDT:USDT DUST qty=0.1 < minNotional @ 100.0
+2026-11-20 13:07:40,156 ERROR DUST BANK/USDT:USDT qty=0.1: san TU CHOI dong (notional qua nho) lan 1/3 -> GIU LAI vi the + da arm lai bao ve; se BO QUAN LY neu con that bai.
+2026-11-20 13:07:40,157 WARNING DUST BANK/USDT:USDT qty=0.1 notional=10.00 < 20.00 -> chot so + ghi CLOSE
+2026-11-20 13:07:40,157 INFO CLOSE BANK/USDT:USDT DUST qty=0.1 < minNotional @ 100.0
+2026-11-20 13:07:40,157 ERROR DUST BANK/USDT:USDT qty=0.1: san TU CHOI dong (notional qua nho) lan 2/3 -> GIU LAI vi the + da arm lai bao ve; se BO QUAN LY neu con that bai.
+2026-11-20 13:07:40,159 WARNING DUST BANK/USDT:USDT qty=0.1 notional=10.00 < 20.00 -> chot so + ghi CLOSE
+2026-11-20 13:07:40,159 INFO CLOSE BANK/USDT:USDT DUST qty=0.1 < minNotional @ 100.0
+2026-11-20 13:07:40,161 WARNING DUST BANK/USDT:USDT qty=0.1: KHONG THE DONG (3 lan that bai) -> BO QUAN LY (ghi vao C:\Users\User\AppData\Local\Temp\tmpj4j2bonf\dust_skip.json). Vi the van nam tren san (gia tri ~0); tu day khong con lam rac journal/re-arm moi vong. Bo bang: xoa symbol khoi file do.
+.....................................................................................................................................................................................................................................................................................................................................................................................2026-11-20 13:08:00,528 INFO AGENTS: provider=cline model=mimo-v2.6-pro shadow=True (Phase 1: chi ghi nhan)
+...............C:\Users\User\.vscode\Projects\autonomous-trading-bot\tools\switch_local_model.py:28: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpuffx6jcc\\.env' mode='r' encoding='utf-8'>
+  lines = io.open(p, encoding="utf-8").read().splitlines()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+C:\Users\User\.vscode\Projects\autonomous-trading-bot\tools\switch_local_model.py:43: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmpuffx6jcc\\.env' mode='w' encoding='utf-8'>
+  io.open(p, "w", encoding="utf-8").write("\n".join(out) + "\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.C:\Users\User\.vscode\Projects\autonomous-trading-bot\tools\switch_local_model.py:28: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmp6f_ws6ys\\.env' mode='r' encoding='utf-8'>
+  lines = io.open(p, encoding="utf-8").read().splitlines()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+C:\Users\User\.vscode\Projects\autonomous-trading-bot\tools\switch_local_model.py:43: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\User\\AppData\\Local\\Temp\\tmp6f_ws6ys\\.env' mode='w' encoding='utf-8'>
+  io.open(p, "w", encoding="utf-8").write("\n".join(out) + "\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+........................................................................................................................
+----------------------------------------------------------------------
+Ran 1703 tests in 147.011s
+
+OK (skipped=3)

@@ -1,0 +1,12 @@
+﻿ ...ot\\turbo_demo.py" => "atb-live\\turbo_demo.py" | 37 ++--------------------
+ 1 file changed, 2 insertions(+), 35 deletions(-)
+ "autonomous-trading-bot\\config.py" => "atb-live\\config.py" | 6 ------
+ 1 file changed, 6 deletions(-)
+ ...s\\bug_catalog.py" => "atb-live\\tools\\bug_catalog.py" | 14 --------------
+ 1 file changed, 14 deletions(-)
+ "autonomous-trading-bot\\OPERATIONS.md" => "atb-live\\OPERATIONS.md" | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+ ...omous-trading-bot\\CONTEXT.md" => "atb-live\\CONTEXT.md" | 13 -------------
+ 1 file changed, 13 deletions(-)
+ ...en\\bug_manifest.json" => "atb-live\\golden\\bug_manifest.json" | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)

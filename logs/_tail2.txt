@@ -1,0 +1,31 @@
+﻿=== LIVE turbo_err tail ===
+20 12:36:57,122 INFO   reconcile: vong lenh khong co OPEN trong journal: BTC/USDT:USDT LONG qty=0.002 entry=68530.1 luc 2026-11-13 06:22 -> bo qua
+2026-11-20 12:36:57,123 INFO   reconcile: vong lenh khong co OPEN trong journal: XRP/USDT:USDT LONG qty=6 entry=1.0247 luc 2026-11-13 06:24 -> bo qua
+2026-11-20 12:36:57,123 INFO   reconcile: vong lenh khong co OPEN trong journal: SOL/USDT:USDT LONG qty=0.1 entry=79.64 luc 2026-11-13 06:25 -> bo qua
+2026-11-20 12:36:57,123 INFO   reconcile: vong lenh khong co OPEN trong journal: XRP/USDT:USDT LONG qty=6 entry=1.0241 luc 2026-11-13 06:26 -> bo qua
+2026-11-20 12:36:57,515 WARNING LIVE INTERLOCK OK: du dieu kien sang tien that (n=709 PF=1.231 risk=2.0% lev=8)
+2026-11-20 12:36:57,515 WARNING live_guard: 7 OPEN chua co CLOSE trong journal (co the la vi the mo tay hoac lenh dong bi thieu) � xem `python positions.py`
+2026-11-20 12:37:04,122 WARNING ADOPT vi the san: adopted=['ETH/USDT:USDT', 'XRP/USDT:USDT', 'ADA/USDT:USDT', 'SOL/USDT:USDT', 'AVAX/USDT:USDT', '1000CAT/USDT:USDT', '1000000MOG/USDT:USDT'] armed=['ETH/USDT:USDT', 'XRP/U
+2026-11-20 12:37:07,958 INFO TURBO DEMO start: ('1000000MOG/USDT:USDT', '1000BONK/USDT:USDT', '1000CAT/USDT:USDT', '1000PEPE/USDT:USDT', 'AAVE/USDT:USDT', 'ADA/USDT:USDT', 'APT/USDT:USDT', 'ARB/USDT:USDT', 'AVAX/USDT:USD
+2026-11-20 12:37:44,749 WARNING SCAN warmup: cho 120s truoc vong quet (tai trong IP vua reset)
+2026-11-20 12:39:44,755 INFO SCAN batch: 12/33 cap (dot so 0)
+2026-11-20 12:40:52,593 INFO AGENTS: provider=cline model=mimo-v2.6-pro shadow=True (Phase 1: chi ghi nhan)
+2026-11-20 12:40:53,599 INFO round 1 monitor={} -> [{'symbol': '1000000MOG/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBOL'}, {'symbol': '1000CAT/USDT:USDT', 'status': 'SKIP_OPEN', 'reason_code': 'DUP_SYMBO
+=== TESTNET turbo_err tail ===
+2026-11-20 12:38:33,366 WARNING CANH BAO drift nguong kill-switch (auto_reset_hours: file=0.0 -> dung 24.0 (.env))
+2026-11-20 12:38:59,461 WARNING RECONCILE: 89 fill -> 8 vong lenh | khop OPEN=2 | da ghi=2 | ghi bu=0 | bo qua=6
+2026-11-20 12:38:59,461 INFO   reconcile: vong lenh khong co OPEN trong journal: AERO/USDT:USDT LONG qty=238.2 entry=0.488491 luc 2026-11-13 07:29 -> bo qua
+2026-11-20 12:38:59,461 INFO   reconcile: vong lenh khong co OPEN trong journal: 1000SHIB/USDT:USDT LONG qty=23333 entry=0.004291 luc 2026-11-13 10:11 -> bo qua
+2026-11-20 12:38:59,461 INFO   reconcile: vong lenh khong co OPEN trong journal: 1000BONK/USDT:USDT LONG qty=37037 entry=0.002709 luc 2026-11-13 13:22 -> bo qua
+2026-11-20 12:38:59,461 INFO   reconcile: vong lenh khong co OPEN trong journal: 1000BONK/USDT:USDT LONG qty=41665 entry=0.0025247 luc 2026-11-14 07:20 -> bo qua
+2026-11-20 12:38:59,461 INFO   reconcile: vong lenh khong co OPEN trong journal: AERO/USDT:USDT SHORT qty=76.9 entry=0.4561 luc 2026-11-14 07:44 -> bo qua
+2026-11-20 12:39:03,828 WARNING ADOPT: BO QUA 3 vi the theo ADOPT_SKIP_SYMBOLS: ['BAT/USDT:USDT', '1000PEPE/USDT:USDT', '1000SHIB/USDT:USDT']
+2026-11-20 12:39:03,828 WARNING ADOPT vi the san: adopted=['AERO/USDT:USDT', 'ADA/USDT:USDT', 'BANK/USDT:USDT', '1000BONK/USDT:USDT'] armed=['AERO/USDT:USDT', 'ADA/USDT:USDT', 'BANK/USDT:USDT', '1000BONK/USDT:USDT'] KHON
+2026-11-20 12:39:05,037 INFO TURBO DEMO start: ('1000BONK/USDT:USDT', '1000PEPE/USDT:USDT', '1000SHIB/USDT:USDT', 'ACE/USDT:USDT', 'ADA/USDT:USDT', 'AERO/USDT:USDT', 'AIN/USDT:USDT', 'AIOT/USDT:USDT', 'AKE/USDT:USDT', 'A
+2026-11-20 12:39:36,349 WARNING SCAN warmup: cho 120s truoc vong quet (tai trong IP vua reset)
+2026-11-20 12:41:36,353 INFO SCAN batch: 20/146 cap (dot so 0)
+=== ban file mtime ===
+
+Friday, November 20, 2026 10:29:48 AM
+
+

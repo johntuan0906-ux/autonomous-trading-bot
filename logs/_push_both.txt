@@ -1,0 +1,7 @@
+﻿00a4938 chore(state): cap nhat STATE.md 20/11/2026 12:31:18 (n=3063, PF(R)=1.832, TESTNET)
+46a055b docs(bot): cap nhat CONTEXT.md va OPERATIONS.md cho B-068 (scan batch + warmup)
+## test-ai-agents...origin/test-ai-agents
+|| LIVE:
+9d59a10 feat(scan): B-068 quet theo dot (SCAN_BATCH) + do tre khoi dong/sau ban (SCAN_WARMUP_SEC)
+dcd2ed9 chore(state): cap nhat STATE.md 20/11/2026 12:31:25 (n=709, PF(R)=1.231, LIVE)
+## master...origin/master

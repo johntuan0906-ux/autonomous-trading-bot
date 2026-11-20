@@ -1,0 +1,15 @@
+﻿VI THE: 6 | LENH TREO: 12
+  XRP/USDT:USDT      LONG  qty=9.5 lenh treo=2
+  ADA/USDT:USDT      SHORT qty=34.0 lenh treo=2
+  SOL/USDT:USDT      SHORT qty=0.07 lenh treo=2
+  AVAX/USDT:USDT     SHORT qty=1.0 lenh treo=2
+  1000CAT/USDT:USDT  LONG  qty=4008.0 lenh treo=2
+  1000000MOG/USDT:USDT SHORT qty=64.2 lenh treo=2
+  che do tai khoan: HEDGE (dung positionSide)
+  XRP/USDT:USDT: da du SL/TP tren san -> KHONG dat them
+  ADA/USDT:USDT: da du SL/TP tren san -> KHONG dat them
+  SOL/USDT:USDT: da du SL/TP tren san -> KHONG dat them
+  AVAX/USDT:USDT: da du SL/TP tren san -> KHONG dat them
+  1000CAT/USDT:USDT: da du SL/TP tren san -> KHONG dat them
+  1000000MOG/USDT:USDT: da du SL/TP tren san -> KHONG dat them
+=> dat duoc 0 lenh, loi 0. Kiem tra lai: python arm_protection.py

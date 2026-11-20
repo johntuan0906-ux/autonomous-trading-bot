@@ -1,0 +1,8 @@
+﻿### logs\_full3.txt lines=64
+
+### logs\_full3e.txt lines=116
+Ran 1703 tests in 147.011s | OK (skipped=3)
+### logs\_livefull.txt lines=62
+
+### logs\_livefulle.txt lines=116
+Ran 1703 tests in 87.506s | OK (skipped=3)

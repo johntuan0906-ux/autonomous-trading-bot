@@ -780,3 +780,16 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      `SCAN_WARMUP_SEC=120` ⇒ ~150–200 weight/phút thay vì ~600–900, còn địa cho hội đồng + công cụ.
      7 test chốt (cả 2 hướng: phải cắt đợt / phải lấy hết, phải chờ / phải không chờ).
    - Catalog **67 lớp / 260 test chốt**.
+17. **B-069 — `arm_protection.py --arm` ĐẶT TRÙNG SL/TP trên LIVE (20/11).**
+   - Đo thật: chế độ đọc in đúng `LENH TREO: 15` (mỗi vị thế 2 lệnh) nhưng `--arm --yes-live`
+     vẫn đặt thêm **14 lệnh** ⇒ 6 vị thế còn lại thành **4 lệnh bảo vệ/vị thế**
+     (STOP_MARKET=14, TAKE_PROFIT_MARKET=13) + 3 lệnh mồ côi (BTC/ETH đã đóng).
+   - Nguyên nhân: chế độ đọc chỉ **in** số lệnh treo; nhánh `--arm` đặt **vô điều kiện**
+     (`for tag, otype, price in (("SL",...), ("TP",...))`), không hề so với lệnh đang có.
+   - Vá: `arm_protection.missing_legs(existing, sl, tp)` — hàm **thuần**, phân loại theo `type`
+     (`STOP_MARKET/STOP/STOP_LOSS/TRAILING_STOP_MARKET` = đã có SL; `TAKE_PROFIT_MARKET/
+     TAKE_PROFIT/TAKE_PROFIT_LIMIT` = đã có TP; `LIMIT`/không type **không** tính; giá ≤ 0 ⇒ bỏ
+     chặn đó). `--arm` chỉ đặt chặn còn thiếu, vị thế đủ bảo vệ in `-> KHONG dat them`.
+   - Dọn hậu quả (đã làm, LIVE): `orders_audit --target live --dedupe` (huỷ 15, giữ 12) →
+     `--cancel-orphans` (huỷ 2) ⇒ **6 vị thế × 2 lệnh**, `KET LUAN: gon`.
+   - 7 test chốt (cả 2 hướng: phải đặt / phải không đặt). Catalog **68 lớp / 267 test chốt**.

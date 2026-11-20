@@ -1,0 +1,4 @@
+﻿== autonomous-trading-bot -1003 sau 12:35 ==
+count=0
+== atb-live -1003 sau 12:35 ==
+count=0

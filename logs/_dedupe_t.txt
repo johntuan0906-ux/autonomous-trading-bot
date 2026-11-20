@@ -1,0 +1,16 @@
+﻿=== KIEM KE LENH CHO: LIVE (LIVE THAT) ===
+  vi the dang mo   : 6
+  lenh cho         : 27  (bao ve: 27)
+  theo loai        : STOP_MARKET=14, TAKE_PROFIT_MARKET=13
+    1000000MOG/USDT:USDT bao ve=4   <-- DU/TRUNG (chi can 2)
+    1000CAT/USDT:USDT    bao ve=4   <-- DU/TRUNG (chi can 2)
+    ADA/USDT:USDT        bao ve=4   <-- DU/TRUNG (chi can 2)
+    AVAX/USDT:USDT       bao ve=4   <-- DU/TRUNG (chi can 2)
+    SOL/USDT:USDT        bao ve=4   <-- DU/TRUNG (chi can 2)
+    XRP/USDT:USDT        bao ve=4   <-- DU/TRUNG (chi can 2)
+  MO COI (khong co vi the): 3 lenh / 2 symbol
+    BTC/USDT:USDT, ETH/USDT:USDT
+  GIU / HUY (gom lai): giu 12, huy 15
+  KET LUAN: 3 lenh MO COI -> nen huy (python tools/orders_audit.py --cancel-orphans)
+--- HUY 15 LENH (giu 12) ---
+  da huy 15, loi 0

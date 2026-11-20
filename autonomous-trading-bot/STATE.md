@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 21/11/2026 02:09:17 · commit `7bdd964`
+- **Cập nhật**: 21/11/2026 02:39:17 · commit `30ab561`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `220` · nhịp tim cách đây 0.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `33732` · round `227` · nhịp tim cách đây 132.3s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3256.72 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3065 lệnh đóng, WR 41.04%, E(R) 0.234, PnL -1003.06$)
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
@@ -43,9 +43,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ADA/USDT:USDT | SHORT | 385.0 | 0.1504 | 0.1502496 | 0.135784 | True | True | 1.56 |
-| AERO/USDT:USDT | SHORT | 172.13 | 0.4153 | 0.4148847 | 0.382768 | True | True | 1.752 |
-| GTC/USDT:USDT | SHORT | 559.7 | 0.1365 | 0.143646 | 0.122208 | False | False | 0.14 |
+| ADA/USDT:USDT | SHORT | 385.0 | 0.1504 | 0.1502496 | 0.135784 | True | True | 1.587 |
+| AERO/USDT:USDT | SHORT | 172.13 | 0.4153 | 0.4148847 | 0.382768 | True | True | 1.918 |
+| GTC/USDT:USDT | SHORT | 559.7 | 0.1365 | 0.143646 | 0.122208 | False | False | 0.378 |
 | NEAR/USDT:USDT | SHORT | 18.2 | 3.041 | 3.037959 | 2.742032 | True | True | 1.619 |
 
 ---

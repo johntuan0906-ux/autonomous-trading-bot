@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 21/11/2026 10:39:21 · commit `9bb479c`
+- **Cập nhật**: 21/11/2026 11:09:22 · commit `35de368`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `353` · nhịp tim cách đây 24.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3260.84 USDT
+- **Bot**: pid `33732` · round `361` · nhịp tim cách đây 38.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3071 lệnh đóng, WR 41.06%, E(R) 0.2372, PnL -980.99$)
@@ -19,7 +19,7 @@
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 30 ngay [lenh BOT] = 1.115 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 0.576 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 30 ngay [lenh BOT] = 1.134 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 0.584 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -35,16 +35,17 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (3)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.441 |
-| GTC/USDT:USDT | SHORT | 559.7 | 0.1365 | 0.143646 | 0.122208 | False | False | 0.756 |
+| GTC/USDT:USDT | SHORT | 559.7 | 0.1365 | 0.143646 | 0.122208 | False | False | 0.98 |
+| QNT/USDT:USDT | SHORT | 0.4 | 132.2 | 140.442536 | 115.714928 | False | False | 0.0 |
 | XRP/USDT:USDT | SHORT | 98.3 | 0.8972 | 0.937856 | 0.815888 | False | False | 0.536 |
 
 ---

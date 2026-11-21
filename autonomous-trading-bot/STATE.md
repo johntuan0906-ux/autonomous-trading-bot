@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 22/11/2026 02:39:32 · commit `d485c26`
+- **Cập nhật**: 22/11/2026 03:09:32 · commit `fd00ec6`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `601` · nhịp tim cách đây 69.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3255.35 USDT
+- **Bot**: pid `33732` · round `609` · nhịp tim cách đây 32.9s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3254.67 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3072 lệnh đóng, WR 41.05%, E(R) 0.2368, PnL -984.41$)
+## Hiệu suất (journal: 3073 lệnh đóng, WR 41.03%, E(R) 0.2364, PnL -988.41$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 22 | 50.0 | 5.78 | 9.919 | 0.8309 | 65.14 |
-| 14 ngày | 133 | 48.12 | 2.707 | 1.943 | 0.4882 | 139.35 |
-| 30 ngày | 171 | 39.77 | 1.814 | 0.882 | 0.307 | -47.75 |
+| 7 ngày | 23 | 47.83 | 4.582 | 6.411 | 0.7513 | 61.15 |
+| 14 ngày | 134 | 47.76 | 2.637 | 1.892 | 0.477 | 135.35 |
+| 30 ngày | 172 | 39.53 | 1.786 | 0.874 | 0.2994 | -51.75 |
 
 ## Cổng sang LIVE
 
@@ -26,7 +26,7 @@
 ## Cấu hình rủi ro
 
 - risk/lệnh `0.4%` · trần tổng `1.6%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 781 lần cập nhật trọng số · Hội đồng AI: **5 model**
+- Learner: 782 lần cập nhật trọng số · Hội đồng AI: **5 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -46,7 +46,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.6 |
 | GTC/USDT:USDT | SHORT | 391.79 | 0.1365 | 0.1363635 | 0.122208 | True | True | 1.175 |
 | LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.343 |
-| XRP/USDT:USDT | SHORT | 98.3 | 0.8972 | 0.937856 | 0.815888 | False | False | 0.819 |
+| SEI/USDT:USDT | SHORT | 3072.0 | 0.0343 | 0.035602 | 0.031696 | False | False | 0.0 |
 
 ---
 

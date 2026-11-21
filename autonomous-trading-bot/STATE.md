@@ -3,19 +3,19 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 21/11/2026 20:39:28 · commit `170752d`
+- **Cập nhật**: 21/11/2026 21:09:28 · commit `14fd7ba`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `508` · nhịp tim cách đây 111.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3258.34 USDT
+- **Bot**: pid `33732` · round `516` · nhịp tim cách đây 52.6s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3255.97 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3071 lệnh đóng, WR 41.06%, E(R) 0.2372, PnL -980.99$)
+## Hiệu suất (journal: 3072 lệnh đóng, WR 41.05%, E(R) 0.2368, PnL -984.41$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 26 | 50.0 | 11.078 | 22.278 | 1.0798 | 82.54 |
-| 14 ngày | 134 | 47.76 | 2.64 | 1.887 | 0.4774 | 134.95 |
-| 30 ngày | 171 | 39.77 | 1.814 | 0.863 | 0.307 | -56.78 |
+| 7 ngày | 26 | 46.15 | 7.602 | 10.853 | 0.9711 | 71.96 |
+| 14 ngày | 135 | 47.41 | 2.572 | 1.845 | 0.4661 | 131.53 |
+| 30 ngày | 172 | 39.53 | 1.785 | 0.856 | 0.2992 | -60.21 |
 
 ## Cổng sang LIVE
 
@@ -26,7 +26,7 @@
 ## Cấu hình rủi ro
 
 - risk/lệnh `0.4%` · trần tổng `1.6%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 780 lần cập nhật trọng số · Hội đồng AI: **5 model**
+- Learner: 781 lần cập nhật trọng số · Hội đồng AI: **5 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -39,13 +39,12 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.441 |
+| AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.57 |
 | GTC/USDT:USDT | SHORT | 391.79 | 0.1365 | 0.1363635 | 0.122208 | True | True | 1.175 |
-| QNT/USDT:USDT | SHORT | 0.4 | 132.2 | 140.442536 | 115.714928 | False | False | 0.519 |
 | XRP/USDT:USDT | SHORT | 98.3 | 0.8972 | 0.937856 | 0.815888 | False | False | 0.819 |
 
 ---

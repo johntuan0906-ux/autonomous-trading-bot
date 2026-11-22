@@ -3,17 +3,17 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 22/11/2026 17:09:48 · commit `cfdb3b8`
+- **Cập nhật**: 22/11/2026 17:39:48 · commit `ab2f2aa`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `821` · nhịp tim cách đây 146.3s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3255.51 USDT
+- **Bot**: pid `33732` · round `829` · nhịp tim cách đây 79.9s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3256.42 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3074 lệnh đóng, WR 41.05%, E(R) 0.2364, PnL -987.36$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 23 | 47.83 | 4.572 | 6.394 | 0.7493 | 60.96 |
+| 7 ngày | 19 | 57.89 | 10.013 | 9.737 | 1.045 | 64.84 |
 | 14 ngày | 98 | 39.8 | 2.595 | 1.732 | 0.5526 | 96.25 |
 | 30 ngày | 173 | 39.88 | 1.79 | 0.876 | 0.2992 | -50.7 |
 
@@ -39,12 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (3)
+## Vị thế đang quản lý (4)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.952 |
-| LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.425 |
+| AERO/USDT:USDT | LONG | 120.4 | 0.3853 | 0.38568529999999995 | 0.425812 | True | True | 1.137 |
+| LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.507 |
+| PLUME/USDT:USDT | LONG | 9661.0 | 0.01077 | 0.010356 | 0.011598 | False | False | 0.097 |
 | SEI/USDT:USDT | SHORT | 3072.0 | 0.0343 | 0.035602 | 0.031696 | False | False | 0.614 |
 
 ---

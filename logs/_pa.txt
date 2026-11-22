@@ -1,0 +1,10 @@
+﻿=== PRUNE ===
+=== DONG BUI | TESTNET | DRY-RUN | 0 vi the bui (trong dust_skip: 0) ===
+  dust_skip: 4 -> 0 symbol (bo 4 muc cu)
+  KET LUAN: khong co vi the bui
+=== ARM ===
+VI THE: 4 | LENH TREO: 8
+  GTC/USDT:USDT      SHORT qty=391.8 lenh treo=2
+  AERO/USDT:USDT     LONG  qty=172.0 lenh treo=2
+  LSK/USDT:USDT      LONG  qty=654.0 lenh treo=2
+  SEI/USDT:USDT      SHORT qty=3072.0 lenh treo=2

@@ -1,0 +1,62 @@
+AGENT_AUTO_APPLY != true -> KHONG tu dong ap dung (an toan).
+Muon bat: dat AGENT_AUTO_APPLY=true trong .env, roi chay lai.
+[CHO] san chan IP (B-044): con 60 phut (toi 15:55:14) -> KHONG goi API
+[TU CHOI] --target live --arm dat lenh THAT: them --yes-live.
+[LOI] thieu API key trong C:\Users\User\AppData\Local\Temp\tmpa9nk008_\.env
+[TU CHOI] --target live --apply phai kem --yes-live (2 lop xac nhan)
+GOLDEN SET — 1 ca | PASS 1 | FAIL 0 | 0.000s
+  normal    1/ 1 dat
+  - risk_cap            1/ 1
+GOLDEN SET — 1 ca | PASS 0 | FAIL 1 | 0.001s
+  normal    0/ 1 dat
+  - risk_cap            0/ 1
+  FAIL c1
+       - .ok: can False, nhan True
+GOLDEN SET — 1 ca | PASS 0 | FAIL 1 | 0.001s
+  normal    0/ 1 dat
+  - risk_cap            0/ 1
+  FAIL c1
+       - .ok: can False, nhan True
+========================================================================================
+LIVE INTERLOCK (Phase 5) | testnet=True dry_run=False live_confirm=False
+========================================================================================
+  journal     : n_dong=50/30   PF(R)=3.000/1.05
+  risk/account: risk_tong=2.00%/2%  leverage=8/10 (PF<1.5 -> <=8)
+  kill-switch : binh thuong
+
+-> Dang TESTNET: khong co gi bi chan. Muon thu LIVE: dat BINANCE_TESTNET=false (interlock se kiem tra lai).
+============================================================================================
+CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=1/300 | PF(R)=1.500 | PF($)=1.500
+  RIENG LENH BOT            | n_bot=1 | PF(R)=1.500 | PF($)=1.500 | PnL=+1.00
+============================================================================================
+  CUA SO         n     WR%    PF(R)    PF($)      E(R)       PnL$
+  7 ngay         1    50.0    1.500    1.500   +0.1000      +1.00
+  toan bo        1    50.0    1.500    1.500   +0.1000      +1.00
+  nguong    : PF(R)>=1.2  PF($)>=1.1  n>=300  risk<=2.0%  lev<=8 khi PF<1.5
+  kill-switch: binh thuong
+--------------------------------------------------------------------------------------------
+VERDICT: HOAN THANH
+============================================================================================
+CONG HOAN THANH TESTNET -> LIVE | n_toan_bo=0/300 | PF(R)=0.000 | PF($)=0.000
+  RIENG LENH BOT            | n_bot=0 | PF(R)=0.000 | PF($)=0.000 | PnL=+0.00
+============================================================================================
+  CUA SO         n     WR%    PF(R)    PF($)      E(R)       PnL$
+  7 ngay         0     0.0    0.000    0.000   +0.0000      +0.00
+  14 ngay        0     0.0    0.000    0.000   +0.0000      +0.00
+  30 ngay        0     0.0    0.000    0.000   +0.0000      +0.00
+  toan bo        0     0.0    0.000    0.000   +0.0000      +0.00
+  nguong    : PF(R)>=1.05  PF($)>=1.1  n>=300  risk<=2.0%  lev<=8 khi PF<1.5
+  kill-switch: binh thuong
+--------------------------------------------------------------------------------------------
+VERDICT: CHUA HOAN THANH
+   [CHAN] journal chua co lenh dong nao (n=0) — chua the danh gia
+   [CHAN] cua so 7 ngay: khong co lenh dong nao
+   [CHAN] cua so 14 ngay: khong co lenh dong nao
+   [CHAN] cua so 30 ngay: khong co lenh dong nao
+   [CHAN] n lenh dong toan bo = 0 < 300
+   [CHAN] huong LONG chi co 0 lenh < 5 (mau chua can doi)
+   [CHAN] huong SHORT chi co 0 lenh < 5 (mau chua can doi)
+[CHO] san chan IP (B-044): con 60 phut (toi 15:57:19) -> KHONG goi API (moi request lam ban dai them; cho het roi chay lai)
+2026-11-22 14:58:12 dong log thu
+doc vi the loi: mang loi
+dat ISOLATED loi: boom khac

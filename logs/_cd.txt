@@ -1,0 +1,41 @@
+﻿10: 2. **Nang vi the cung chieu len >= 6 USDT** (du bien so voi muc 5), roi
+15: o buoc "nang" se TAO them vi the. Tool nay: mac dinh DRY-RUN, `--limit`, va voi LIVE phai them
+33: MIN_NOTIONAL = 5.0
+34: RAISE_TO = 6.0                      # nang len 6 USDT: du bien so voi 5, phi khong dang ke
+37: def plan_raise(notional: float, min_notional: float = MIN_NOTIONAL,
+39: """So USDT can THEM de vuot minNotional (0 = khong phai bui / khong can nang)."""
+41: if n <= 0 or n >= float(min_notional):
+46: def dust_positions(positions: list, dust=None,
+47: min_notional: float = MIN_NOTIONAL) -> list:
+48: """Loc ra vi the BUI (0 < notional < minNotional). `dust` = tap symbol da ghi dust_skip."""
+68: if notional <= 0 or notional >= float(min_notional):
+79: def close_one(ex, pos: dict, *, apply: bool = False,
+80: min_notional: float = MIN_NOTIONAL, target: float = RAISE_TO,
+82: """Nang roi dong 1 vi the bui. Tra {symbol, ok, added, qty_total, left, why}."""
+84: res = {"symbol": sym, "ok": False, "added": 0.0, "qty_total": pos.get("qty"),
+86: need = plan_raise(pos.get("notional"), min_notional, target)
+88: res["why"] = "khong phai bui (notional >= %.2f)" % float(min_notional)
+99: add_qty = float(ex.quantize_qty(sym, need / price))
+103: res["added"] = add_qty
+104: if add_qty <= 0:
+105: res["why"] = "qty nang = 0 (step qua lon so voi von can bu)"
+107: plan = ("%s %s: bui %.2f USDT -> nang +%.8f (~%.2f USDT) roi dong toan bo"
+108: % (sym, direction, pos.get("notional") or 0.0, add_qty, need))
+114: ex.market_entry(sym, direction, add_qty)           # cung chieu ⇒ tang vi the
+116: total = float(qty_now) if qty_now else float(pos.get("qty") or 0) + add_qty
+129: def clear_skip(base: Path, symbols) -> int:
+151: def prune_skip(base: Path, dust_symbols) -> list:
+173: def main(argv=None) -> int:
+179: ap.add_argument("--target", choices=("testnet", "live"), default="testnet")
+180: ap.add_argument("--apply", action="store_true", help="dong THAT (mac dinh chi in)")
+181: ap.add_argument("--yes-live", action="store_true",
+183: ap.add_argument("--min-notional", type=float, default=MIN_NOTIONAL)
+184: ap.add_argument("--raise-to", type=float, default=RAISE_TO)
+185: ap.add_argument("--limit", type=int, default=0, help="chi lam N vi the dau (0 = het)")
+186: ap.add_argument("--clear-skip", action="store_true",
+188: ap.add_argument("--prune-skip", action="store_true",
+190: ap.add_argument("--json", action="store_true")
+215: todo = dust_positions(raw, OA.load_dust(base), args.min_notional)
+223: dust_positions(raw, None, args.min_notional)])
+231: r = close_one(ex, pos, apply=args.apply, min_notional=args.min_notional,
+240: planned = sum(1 for r in done if float(r.get("added") or 0) > 0)

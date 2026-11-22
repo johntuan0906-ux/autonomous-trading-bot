@@ -793,3 +793,13 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - Dọn hậu quả (đã làm, LIVE): `orders_audit --target live --dedupe` (huỷ 15, giữ 12) →
      `--cancel-orphans` (huỷ 2) ⇒ **6 vị thế × 2 lệnh**, `KET LUAN: gon`.
    - 7 test chốt (cả 2 hướng: phải đặt / phải không đặt). Catalog **68 lớp / 267 test chốt**.
+18. **B-070 — `close_dust.py`: lệnh NÂNG nhỏ hơn minNotional ⇒ vị thế bụi SÁT NGƯỠNG không bao giờ đóng được (21/11).**
+   - Đo thật TESTNET: `--apply` đóng được 3 vị thế (0,00–0,01 USDT) nhưng **NEAR** (qty 1.0 = 2,87 USDT)
+     lỗi `-4164 Order's notional must be no smaller than 5`: tool cần thêm 3,13 USDT để lên 6 ⇒
+     **lệnh nâng** chỉ 3,13 USDT ⇒ sàn từ chối ⇒ vị thế nằm lại, không SL/TP (dưới minNotional).
+   - Nguyên nhân: `plan_raise()` tính USDT cần cho **vị thế**, nhưng Binance kiểm notional của
+     **từng lệnh**.
+   - Vá: `add_order_usdt(need, min_notional) = max(need, min_notional)` cho lệnh nâng; sau khi làm
+     tròn theo step còn kiểm lại `qty*price >= minNotional`, thiếu thì nâng thêm bước (×1,5, tối đa
+     3 lần); vẫn thiếu ⇒ **không đặt lệnh**, báo `step quá lớn, phải đóng tay` (trước đây đặt rồi ăn `-4164`).
+   - 4 test chốt (gồm đúng ca NEAR 2,87 USDT @ 3,13). Catalog **69 lớp / 271 test chốt**.

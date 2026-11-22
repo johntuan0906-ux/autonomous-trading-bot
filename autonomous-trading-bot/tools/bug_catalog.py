@@ -808,6 +808,17 @@ CLASSES = [
                   "test_arm_protection.py::TestMissingLegs::test_lenh_khac_loai_khong_duoc_tinh_la_bao_ve",
                   "test_arm_protection.py::TestMissingLegs::test_gia_0_thi_bo_qua_chan_do"],
     },
+    {
+        "code": "B-070", "kind": "rui-ro", "seen": "21/11/2026",
+        "title": "`close_dust.py --apply` khong dong duoc vi the bui SAT NGUONG: lenh NANG < minNotional ⇒ `-4164`",
+        "symptom": "Do that TESTNET 21/11: NEAR SHORT qty=1.0 (=2.87 USDT), can them 3.13 USDT de len 6 ⇒ Binance tra `-4164 Order's notional must be no smaller than 5` va vi the bui **khong bao gio dong duoc** (van nam do, khong co SL/TP vi duoi minNotional). 3 vi the khac (0.00-0.01 USDT) dong duoc binh thuong — loi chi lo ra khi bui nam trong khoang ~minNotional/2",
+        "guard": "`close_dust.add_order_usdt(need, min_notional)` = `max(need, min_notional)`: san kiem tra notional cua **chinh lenh nang**, khong chi cua vi the sau khi nang. Sau khi lam tron theo step, `close_one` con kiem lai `qty*price >= minNotional`; neu thieu thi nang them 1 buoc (x1.5, toi da 3 lan); van thieu ⇒ **khong dat lenh** va bao ro `step qua lon, phai dong tay` (truoc day dat lenh va an `-4164`)",
+        "files": ["tools/close_dust.py", "tests/test_close_dust.py"],
+        "tests": ["test_close_dust.py::TestChonBui::test_lenh_nang_phai_dat_min_notional",
+                  "test_close_dust.py::TestDongMotViThe::test_bui_sat_nguong_van_dong_duoc",
+                  "test_close_dust.py::TestDongMotViThe::test_apply_nang_roi_dong_toan_bo",
+                  "test_close_dust.py::TestDongMotViThe::test_step_qua_lon_thi_bao_ro_chu_khong_dat_lenh"],
+    },
 ]
 
 

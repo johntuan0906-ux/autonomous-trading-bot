@@ -1,0 +1,45 @@
+﻿
+
+class TestDongMotViThe(unittest.TestCase):
+    def test_dry_run_khong_dat_lenh(self):
+        ex = FakeEx()
+        r = CD.close_one(ex, _pos(1.0), apply=False, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("DRY-RUN", r["why"])
+        self.assertEqual(ex.calls, [])
+
+    def test_apply_nang_roi_dong_toan_bo(self):
+        ex = FakeEx(price=2.0, step=1.0, left=0.0, qty=1.0)
+        r = CD.close_one(ex, _pos(1.0, qty=1.0), apply=True, log=lambda *_: None)
+        self.assertTrue(r["ok"], r)
+        kinds = [c[0] for c in ex.calls]
+        self.assertEqual(kinds, ["entry", "close"])
+        entry = ex.calls[0]
+        self.assertEqual(entry[2], "LONG", "phai nang CUNG CHIEU")
+        self.assertAlmostEqual(entry[3], 2.0)      # need 5 USDT / gia 2 => 2.5 => quantize 2
+        self.assertAlmostEqual(ex.calls[1][3], 3.0,
+                               msg="dong TOAN BO (1 cu + 2 nang) chu khong chi phan nang")
+
+    def test_con_lai_thi_bao_loi_chu_khong_bao_ok(self):
+        ex = FakeEx(price=2.0, step=1.0, left=0.5)
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("con", r["why"])
+
+    def test_loi_san_thi_tra_why(self):
+        ex = FakeEx(boom=True)
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("-2019", r["why"])
+
+    def test_qty_nang_0_thi_dung_lai(self):
+        ex = FakeEx(price=1000.0, step=1.0)      # 5 USDT / 1000 = 0.005 => quantize 0
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("qty nang = 0", r["why"])
+        self.assertEqual(ex.calls, [])
+
+
+class TestClearSkip(unittest.TestCase):
+    def test_xoa_symbol_da_dong(self):
+        with tempfile.TemporaryDirectory() as td:

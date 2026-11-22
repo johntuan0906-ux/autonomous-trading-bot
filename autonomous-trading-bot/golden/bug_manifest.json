@@ -1,7 +1,7 @@
 {
- "n_classes": 68,
- "n_tests": 267,
- "digest": "37f6e9fc7c26cb38ba81e34e27d41a7c545715dc778233b5575e28c27cc1a9a9",
+ "n_classes": 69,
+ "n_tests": 271,
+ "digest": "0225a3fd087e4cfc17a0abde463b10e8b70e1caedd8f3d280b016540d7b0e5e3",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
@@ -10,6 +10,7 @@
   "test_arm_protection.py",
   "test_atomic_write.py",
   "test_bot.py",
+  "test_close_dust.py",
   "test_council_daemon.py",
   "test_council_evals.py",
   "test_exchange_errors.py",

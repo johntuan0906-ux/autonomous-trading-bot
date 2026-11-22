@@ -1,0 +1,12 @@
+﻿==============================================================================================
+RECONCILE | journal=logs/journal.jsonl | OPEN=659 CLOSE=722 | OPEN mo coi (FIFO, chan doan)=8 | apply=False | days=7
+==============================================================================================
+fill doc duoc=401 | vong lenh tai tao=125 | khop OPEN=5 | da co CLOSE=5 | can ghi bu=0
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): ETH/USDT:USDT LONG  qty=0.011 entry=1950.34 2026-11-13 19:41 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): BTC/USDT:USDT SHORT qty=0.008 entry=68161.8 2026-11-13 21:05 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): SOL/USDT:USDT LONG  qty=0.1 entry=78.1 2026-11-13 22:06 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): ADA/USDT:USDT LONG  qty=30 entry=0.1666 2026-11-13 23:04 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): SOL/USDT:USDT LONG  qty=0.1 entry=78.33 2026-11-14 00:02 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT LONG  qty=120.6 entry=0.0828681 2026-11-14 02:21 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): ETH/USDT:USDT LONG  qty=0.011 entry=1910 2026-11-14 02:23 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): SOL/USDT:USDT LONG  qty=0.1 entry=76.08 2026-11-14 02:23 -> bo qua

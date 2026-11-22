@@ -1,0 +1,89 @@
+﻿=== reconcile.py ===
+3: Van de (phat hien 2026-09-30): journal co 53 OPEN nhung chi 35 CLOSE. Khi bot
+8: VI SAO KHONG DUNG FIFO CUA monitor_report: FIFO ghep CLOSE voi OPEN cu nhat.
+10: -> OPEN nao "mo coi" theo FIFO KHONG phai la OPEN thieu ghi (kiem chung 30/09:
+11: 11/16 OPEN "mo coi" thuc ra DA CO CLOSE ghi, chi la bi ghep lech). Vi vay phai
+17: 2) Ghep vong lenh do voi OPEN trong journal (symbol, huong, gia vao, qty,
+45: ENTRY_TOL_PCT = 0.003             # gia vao vong lenh vs OPEN: lech toi da 0.3%
+47: OPEN_TS_TOL_MS = 600_000          # ts OPEN (gio local) vs fill: lech toi da 10 phut
+54: def _f(v, default: float = 0.0) -> float:
+61: def journal_records(path: str = "logs/journal.jsonl") -> tuple:
+62: """(opens, closes) — dung lai quy uoc cua monitor_report."""
+66: def orphan_opens(path: str = "logs/journal.jsonl") -> list:
+67: """CHAN DOAN: OPEN chua ghep duoc CLOSE theo FIFO (khong dung de ghi bu).
+73: opens, closes = load_journal(path)
+74: _pairs, still = match_pairs(opens, closes)
+78: def norm_fills(rows) -> list:
+104: def fetch_fills(ex, symbols, days: int = LOOKBACK_DAYS, log=None) -> list:
+131: def _episode(sym: str, side: int, entry_legs: list, exit_legs: list) -> dict:
+140: "open_ts": min(f["ts"] for f in entry_legs),
+148: def build_episodes(fills, symbols=None) -> tuple:
+155: tien cua symbol do se bi lech va gan nhu chac chan KHONG khop OPEN nao ->
+163: still_open: list = []
+190: still_open.append({
+193: "open_ts": min(l[2] for l in lots),
+196: return episodes, still_open
+200: def pair_episodes_to_opens(episodes: list, opens: list) -> tuple:
+201: """Ghep vong lenh (tu san) voi OPEN trong journal -> (matched, unmatched).
+204: thoi gian mo lenh lech <= 10 phut. Moi OPEN chi dung 1 lan (chon sat nhat).
+209: for ep in sorted(episodes, key=lambda e: e["open_ts"]):
+211: for i, o in enumerate(opens):
+224: d = abs(int(_f(o.get("ts")) * 1000) - ep["open_ts"])
+225: if d > OPEN_TS_TOL_MS:
+233: matched.append((opens[best], ep))
+237: def already_recorded(ep: dict, closes: list) -> bool:
+243: huong + qty, thoi gian lech <= 60s) de `reconcile --apply` IDEMPOTENT.
+263: def build_close(op: dict, legs: list, now: float | None = None) -> dict:
+264: """Ban ghi CLOSE ghi bu cho 1 OPEN (legs = fill dong, da sort theo ts).
+299: def infer_reason(op: dict, exit_price: float, tol_pct: float = 0.002) -> str:
+310: def plan_backfill(opens: list, closes: list, fills: list, now: float | None = None) -> dict:
+312: episodes, still_open = build_episodes(fills)
+313: matched, unmatched = pair_episodes_to_opens(episodes, opens)
+319: "episodes": len(episodes), "open_positions": still_open,
+321: "unmatched_episodes": unmatched,          # khong co OPEN -> bo qua
+327: def apply_closes(path: str, closes: list, backup: bool = True) -> dict:
+335: with open(path, "r", encoding="utf-8") as src, \
+336: open(bak, "w", encoding="utf-8") as dst:
+347: def _load_state(path: str = STATE_PATH) -> dict:
+349: with open(path, "r", encoding="utf-8") as f:
+355: def _save_state(state: dict, path: str = STATE_PATH) -> None:
+359: with open(tmp, "w", encoding="utf-8") as f:
+366: def reconcile(cfg, ex, log=None, apply: bool = True, now: float | None = None,
+380: opens, closes = journal_records(path)
+381: if not opens:
+384: syms = sorted({str(o.get("pair") or o.get("symbol")) for o in opens})
+387: plan = plan_backfill(opens, closes, fills, now=now)
+390: open_qty = {p.get("symbol"): abs(_f(p.get("contracts")))
+393: open_qty = {}
+395: if _f(open_qty.get(ep["symbol"])) <= 0]
+396: rep = {"orphans": len(orphan_opens(path)), "episodes": plan["episodes"],
+399: "fills": len(fills), "matched_open": len(todo), "written": 0}
+400: if apply and todo:
+401: rep.update(apply_closes(path, [build_close(o, ep["exit_legs"], now=now)
+404: "written": rep["written"], "matched": rep["matched_open"]}, st_path)
+406: log.warning("RECONCILE: %d fill -> %d vong lenh | khop OPEN=%d | da ghi=%d | "
+408: rep["matched"], rep["already"], rep["matched_open"],
+409: rep["unmatched"], "" if apply else " [DRY-RUN]")
+411: log.info("  reconcile: vong lenh khong co OPEN trong journal: %s %s qty=%.6g "
+414: time.strftime("%Y-%m-%d %H:%M", time.gmtime(ep["open_ts"] / 1000)))
+418: def active_symbols(cfg) -> tuple:
+427: def main(argv: list | None = None) -> int:
+430: ap.add_argument("--journal", default="logs/journal.jsonl")
+431: ap.add_argument("--apply", action="store_true",
+433: ap.add_argument("--days", type=int, default=LOOKBACK_DAYS)
+434: ap.add_argument("--json", default="", help="ghi bao cao JSON ra file")
+441: opens, closes = journal_records(args.journal)
+443: print(f"RECONCILE | journal={args.journal} | OPEN={len(opens)} CLOSE={len(closes)} | "
+444: f"OPEN mo coi (FIFO, chan doan)={len(orphan_opens(args.journal))} | "
+445: f"apply={args.apply} | days={args.days}")
+450: syms = sorted({str(o.get("pair") or o.get("symbol")) for o in opens})
+452: plan = plan_backfill(opens, closes, fills)
+454: f"khop OPEN={plan['matched']} | da co CLOSE={plan['already']} | "
+463: print("  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): "
+466: time.strftime("%Y-%m-%d %H:%M", time.gmtime(ep["open_ts"] / 1000))))
+467: for p in plan["open_positions"]:
+470: if args.apply and plan["closes"]:
+471: rep = apply_closes(args.journal, plan["closes"])
+475: print("\n(chua ghi gi — them --apply de ghi that)")
+477: with open(args.json, "w", encoding="utf-8") as f:
+480: "open_positions": plan["open_positions"],

@@ -2,12 +2,12 @@
 
 | # | Thieu hut | Do (hien tai -> can) | Tu lam |
 |---|---|---|---|
-| 1 | calibration | brier: 0.32 -> <= 0.25 | co |
+| 1 | calibration | brier: 0.3159 -> <= 0.25 | co |
 | 2 | thin_models | so model co n_ghep < min_n: 10 -> 0 | co |
-| 3 | value_negative | model co value_r <= 0: 1 -> 0 | KHONG (can nguoi) |
+| 3 | value_negative | model co value_r <= 0: 2 -> 0 | KHONG (can nguoi) |
 
 ## calibration (high)
-- Do: **brier = 0.32** (can: <= 0.25)
+- Do: **brier = 0.3159** (can: <= 0.25)
 - Can thu thap / lam:
   - [ ] >= 30 phieu co `confidence` VA co ket qua that
   - [ ] phan bo confidence theo khoang (calibration bins) de biet lech o dau
@@ -24,9 +24,9 @@
 - Tu lam duoc: CO
 
 ## value_negative (med)
-- Do: **model co value_r <= 0 = 1** (can: 0)
+- Do: **model co value_r <= 0 = 2** (can: 0)
 - Can thu thap / lam:
-  - [ ] value_r + n cua tung model (auto)
+  - [ ] value_r + n cua tung model (auto, cline-pass/qwen3.7-max)
   - [ ] xac nhan khong phai do ghep nham (xem `match_exact`)
 - Viec phai lam: sau khi ghep chinh xac: them vao `CLINE_SKIP_MODELS`/`LOCAL_SKIP_MODELS`
 - Tu lam duoc: KHONG — phai co nguoi (ghi vao `tools/ops_queue.py`)

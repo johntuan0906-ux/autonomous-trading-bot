@@ -43,6 +43,16 @@ def plan_raise(notional: float, min_notional: float = MIN_NOTIONAL,
     return max(0.0, float(target) - n)
 
 
+def add_order_usdt(need: float, min_notional: float = MIN_NOTIONAL) -> float:
+    """(20/11, B-070) USDT cho CHINH lenh NANG — phai >= minNotional.
+
+    Binance kiem tra notional cua **tung lenh**, khong chi cua vi the sau khi nang. Do that
+    TESTNET 21/11: NEAR 2.87 USDT, can them 3.13 (len 6) ⇒ `-4164 Order's notional must be no
+    smaller than 5` ⇒ vi the bui khong bao gio dong duoc. Nay lenh nang >= 5 USDT.
+    """
+    return max(float(need or 0.0), float(min_notional))
+
+
 def dust_positions(positions: list, dust=None,
                    min_notional: float = MIN_NOTIONAL) -> list:
     """Loc ra vi the BUI (0 < notional < minNotional). `dust` = tap symbol da ghi dust_skip."""
@@ -96,16 +106,31 @@ def close_one(ex, pos: dict, *, apply: bool = False,
         res["why"] = "gia = 0"
         return res
     try:
-        add_qty = float(ex.quantize_qty(sym, need / price))
+        add_qty = float(ex.quantize_qty(sym, add_order_usdt(need, min_notional) / price))
     except Exception as e:  # noqa: BLE001
         res["why"] = "khong quantize duoc: %s" % str(e)[:120]
         return res
+    # (20/11, B-070) sau khi lam tron, notional cua lenh nang van phai >= minNotional
+    _usdt = add_order_usdt(need, min_notional)
+    for _ in range(3):
+        if add_qty <= 0 or add_qty * price >= float(min_notional):
+            break
+        _usdt *= 1.5
+        try:
+            add_qty = float(ex.quantize_qty(sym, _usdt / price))
+        except Exception:  # noqa: BLE001
+            break
     res["added"] = add_qty
     if add_qty <= 0:
         res["why"] = "qty nang = 0 (step qua lon so voi von can bu)"
         return res
+    if add_qty * price < float(min_notional):
+        res["why"] = ("lenh nang %.8f (~%.2f USDT) van duoi minNotional %.2f "
+                      "— step qua lon, phai dong tay" % (add_qty, add_qty * price,
+                                                         min_notional))
+        return res
     plan = ("%s %s: bui %.2f USDT -> nang +%.8f (~%.2f USDT) roi dong toan bo"
-            % (sym, direction, pos.get("notional") or 0.0, add_qty, need))
+            % (sym, direction, pos.get("notional") or 0.0, add_qty, add_qty * price))
     if not apply:
         res["why"] = "DRY-RUN: " + plan
         log("  [DRY] " + plan)

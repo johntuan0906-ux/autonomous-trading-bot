@@ -1,0 +1,34 @@
+﻿=== RECONCILE ===
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): XRP/USDT:USDT SHORT qty=9.5 entry=0.9509 2026-11-20 02:06 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000PEPE/USDT:USDT SHORT qty=1401 entry=0.0035848 2026-11-20 03:29 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): XRP/USDT:USDT LONG  qty=9.5 entry=0.96 2026-11-20 04:27 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): SOL/USDT:USDT SHORT qty=0.4 entry=68.77 2026-11-20 16:30 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): XRP/USDT:USDT SHORT qty=33 entry=0.9132 2026-11-20 16:30 -> bo qua
+  - vi the con MO (khong ghi): ETH/USDT:USDT LONG qty=0.009 entry=1643.42
+  - vi the con MO (khong ghi): BTC/USDT:USDT SHORT qty=0.002 entry=61427
+  - vi the con MO (khong ghi): SOL/USDT:USDT LONG qty=0.2 entry=69.37
+  - vi the con MO (khong ghi): ADA/USDT:USDT LONG qty=34 entry=0.1491
+  - vi the con MO (khong ghi): 1000000MOG/USDT:USDT LONG qty=64.2 entry=0.08009
+  - vi the con MO (khong ghi): XRP/USDT:USDT SHORT qty=16 entry=0.9114
+  - vi the con MO (khong ghi): AAVE/USDT:USDT SHORT qty=0.1 entry=96.48
+=== POSITIONS ===
+    AAVE/USDT:USDT   short qty=0.1        entry=96.48        mark=96.1957      uPnL=+0.03$  [bot dang quan ly]
+
+[2] JOURNAL: OPEN chua ghep CLOSE  (LICH SU, khong phai vi the dang mo)
+    10-19 05:40  1000BONK/USDT:USDT SHORT entry=0.002958     qty=3533.0
+    10-19 07:02  1000BONK/USDT:USDT SHORT entry=0.002953     qty=4126.0
+    11-19 19:16  1000BONK/USDT:USDT SHORT entry=0.002326     qty=2150.0
+    11-20 04:53  1000000MOG/USDT:USDT SHORT entry=0.08004      qty=64.2
+    11-20 05:12  1000CAT/USDT:USDT LONG  entry=0.001508     qty=4008.0
+    11-20 05:37  1000CAT/USDT:USDT LONG  entry=0.001508     qty=4008.0
+    11-20 05:37  1000000MOG/USDT:USDT SHORT entry=0.07991      qty=64.2
+    11-20 16:04  AAVE/USDT:USDT   SHORT entry=97.02        qty=0.1
+    ^ ghi chep lich su (lenh cu). Doi chieu voi fill that: python reconcile.py
+
+[3] managed_state.json (bot dang giu state cho cac lenh)
+    AAVE/USDT:USDT   SHORT entry=97.02        qty=0.1        sl=103.151      partial=False be=False
+    XRP/USDT:USDT    SHORT entry=0.9114       qty=16.0       sl=0.967108     partial=False be=False
+    SOL/USDT:USDT    LONG  entry=69.37        qty=0.2        sl=65.0603      partial=False be=False
+    ETH/USDT:USDT    SHORT entry=1644.32      qty=0.015      sl=1735.31      partial=False be=False
+
+[4] KILL-SWITCH: binh thuong

@@ -62,6 +62,13 @@ class TestChonBui(unittest.TestCase):
         self.assertEqual(CD.plan_raise(0.0), 0.0)
         self.assertEqual(CD.plan_raise(0.0, 5.0, 100.0), 0.0)
 
+    def test_lenh_nang_phai_dat_min_notional(self):
+        # (20/11, B-070) do that: NEAR bui 2.87, "can them 3.13" ⇒ -4164 vi lenh nang < 5
+        self.assertAlmostEqual(CD.add_order_usdt(3.13, 5.0), 5.0)
+        self.assertAlmostEqual(CD.add_order_usdt(5.0, 5.0), 5.0)
+        self.assertAlmostEqual(CD.add_order_usdt(6.0, 5.0), 6.0)   # need lon hon thi giu
+        self.assertAlmostEqual(CD.add_order_usdt(0.0, 5.0), 5.0)
+
     def test_loc_vi_the_bui(self):
         poss = [
             {"symbol": "A/USDT:USDT", "contracts": 1, "notional": 0.8, "side": "long"},
@@ -94,9 +101,32 @@ class TestDongMotViThe(unittest.TestCase):
         self.assertEqual(kinds, ["entry", "close"])
         entry = ex.calls[0]
         self.assertEqual(entry[2], "LONG", "phai nang CUNG CHIEU")
-        self.assertAlmostEqual(entry[3], 2.0)      # need 5 USDT / gia 2 => 2.5 => quantize 2
-        self.assertAlmostEqual(ex.calls[1][3], 3.0,
-                               msg="dong TOAN BO (1 cu + 2 nang) chu khong chi phan nang")
+        # (20/11, B-070) need 5 USDT ⇒ 2.5 => quantize 2.0 => chi 4.0 USDT < 5 ⇒ nang 1 buoc
+        self.assertAlmostEqual(entry[3], 3.0, msg="lenh nang phai >= minNotional 5 USDT")
+        self.assertGreaterEqual(entry[3] * 2.0, 5.0)
+        self.assertAlmostEqual(ex.calls[1][3], 4.0,
+                               msg="dong TOAN BO (1 cu + 3 nang) chu khong chi phan nang")
+
+    def test_bui_sat_nguong_van_dong_duoc(self):
+        # (20/11, B-070) dung ca NEAR that: bui 2.87 USDT, gia 3.13 ⇒ cu "nang 3.13" bi -4164
+        ex = FakeEx(price=3.13, step=1.0, left=0.0, qty=1.0)
+        r = CD.close_one(ex, _pos(2.87, symbol="NEAR/USDT:USDT", qty=1.0), apply=True,
+                         log=lambda *_: None)
+        self.assertTrue(r["ok"], r)
+        entry = ex.calls[0]
+        self.assertGreaterEqual(entry[3] * 3.13, 5.0, "lenh nang phai qua minNotional")
+        self.assertAlmostEqual(ex.calls[1][3], 3.0, msg="1 cu + 2 nang = 3, dong toan bo")
+
+    def test_step_qua_lon_thi_bao_ro_chu_khong_dat_lenh(self):
+        class KhoEx(FakeEx):
+            def quantize_qty(self, sym, qty):
+                return 1.0 if qty > 0 else 0.0      # buoc nhay qua tho: 1 x 4.5 = 4.5 < 5
+
+        ex = KhoEx(price=4.5, step=1.0, left=0.0, qty=1.0)
+        r = CD.close_one(ex, _pos(1.0), apply=True, log=lambda *_: None)
+        self.assertFalse(r["ok"])
+        self.assertIn("minNotional", r["why"])
+        self.assertEqual(ex.calls, [], "khong duoc dat lenh nao khi khong qua duoc minNotional")
 
     def test_con_lai_thi_bao_loi_chu_khong_bao_ok(self):
         ex = FakeEx(price=2.0, step=1.0, left=0.5)

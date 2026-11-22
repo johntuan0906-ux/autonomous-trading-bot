@@ -1,0 +1,14 @@
+﻿== autonomous-trading-bot
+=== KIEM TRA BUG CATALOG | 69 lop | 271 test chot | 78 file test ===
+  KET LUAN: OK
+GOLDEN SET ù 45 ca | PASS 45 | FAIL 0 | 5.587s  [baseline]
+=== DRIFT TAI LIEU <-> CODE | 51 muc | LECH 0 | CANH BAO 1 ===
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)
+  KET LUAN: bang chung khop code + khop SECURITY_AUDIT.md
+== atb-live
+=== KIEM TRA BUG CATALOG | 69 lop | 271 test chot | 78 file test ===
+  KET LUAN: OK
+GOLDEN SET ù 45 ca | PASS 45 | FAIL 0 | 4.311s  [baseline]
+=== DRIFT TAI LIEU <-> CODE | 51 muc | LECH 0 | CANH BAO 1 ===
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)
+  KET LUAN: bang chung khop code + khop SECURITY_AUDIT.md

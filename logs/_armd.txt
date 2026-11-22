@@ -1,0 +1,13 @@
+﻿=== ARM TESTNET ===
+VI THE: 5 | LENH TREO: 8
+  GTC/USDT:USDT      SHORT qty=391.8 lenh treo=2
+  NEAR/USDT:USDT     SHORT qty=1.0 lenh treo=0   <-- KHONG co SL/TP tren san
+  AERO/USDT:USDT     LONG  qty=172.0 lenh treo=2
+  LSK/USDT:USDT      LONG  qty=654.0 lenh treo=2
+  SEI/USDT:USDT      SHORT qty=3072.0 lenh treo=2
+1 vi the khong co bao ve tren san: ['NEAR/USDT:USDT']
+Bot van bao ve bang MONITOR phan mem. Thu lai: python arm_protection.py --arm
+=== DUST DRY ===
+=== DONG BUI | TESTNET | DRY-RUN | 1 vi the bui (trong dust_skip: 1) ===
+  [DRY] NEAR/USDT:USDT SHORT: bui 2.87 USDT -> nang +1.00000000 (~3.13 USDT) roi dong toan bo
+  KET LUAN: se dong duoc (co ke hoach) 1/1

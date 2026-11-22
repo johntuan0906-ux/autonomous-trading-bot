@@ -1,0 +1,6 @@
+﻿=== DONG BUI | TESTNET | APPLY | 4 vi the bui (trong dust_skip: 4) ===
+  [OK] 1000PEPE/USDT:USDT: 1000PEPE/USDT:USDT SHORT: bui 0.00 USDT -> nang +1793.00000000 (~6.00 USDT) roi dong toan bo
+  [OK] 1000SHIB/USDT:USDT: 1000SHIB/USDT:USDT SHORT: bui 0.01 USDT -> nang +1675.00000000 (~5.99 USDT) roi dong toan bo
+  [OK] BAT/USDT:USDT: BAT/USDT:USDT SHORT: bui 0.01 USDT -> nang +78.30000000 (~5.99 USDT) roi dong toan bo
+  [LOI] NEAR/USDT:USDT: loi: binance {"code":-4164,"msg":"Order's notional must be no smaller than 5 (unless you choose reduce only)."}
+  KET LUAN: dong duoc 3/4

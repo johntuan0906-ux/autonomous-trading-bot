@@ -1,0 +1,3 @@
+﻿=== DONG BUI | TESTNET | APPLY | 1 vi the bui (trong dust_skip: 1) ===
+  [OK] NEAR/USDT:USDT: NEAR/USDT:USDT SHORT: bui 2.88 USDT -> nang +2.00000000 (~5.76 USDT) roi dong toan bo
+  KET LUAN: dong duoc 1/1

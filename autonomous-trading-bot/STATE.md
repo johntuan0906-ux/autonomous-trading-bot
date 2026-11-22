@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 22/11/2026 13:39:42 · commit `803d1f5`
+- **Cập nhật**: 22/11/2026 14:09:43 · commit `c93319c`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `769` · nhịp tim cách đây 129.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3257.87 USDT
+- **Bot**: pid `33732` · round `777` · nhịp tim cách đây 4.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3256.8 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3073 lệnh đóng, WR 41.03%, E(R) 0.2364, PnL -988.41$)
@@ -14,7 +14,7 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 22 | 45.45 | 4.518 | 6.301 | 0.7714 | 59.91 |
-| 14 ngày | 131 | 48.85 | 2.868 | 2.062 | 0.5119 | 147.9 |
+| 14 ngày | 109 | 45.87 | 2.696 | 1.836 | 0.5284 | 110.0 |
 | 30 ngày | 172 | 39.53 | 1.786 | 0.874 | 0.2994 | -51.75 |
 
 ## Cổng sang LIVE
@@ -45,7 +45,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 |---|---|---|---|---|---|---|---|---|
 | AERO/USDT:USDT | LONG | 172.0 | 0.3853 | 0.358294 | 0.425812 | False | False | 0.622 |
 | GTC/USDT:USDT | SHORT | 391.79 | 0.1365 | 0.1363635 | 0.122208 | True | True | 1.175 |
-| LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.343 |
+| LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.409 |
 | SEI/USDT:USDT | SHORT | 3072.0 | 0.0343 | 0.035602 | 0.031696 | False | False | 0.614 |
 
 ---

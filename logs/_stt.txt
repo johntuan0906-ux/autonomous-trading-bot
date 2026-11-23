@@ -1,0 +1,26 @@
+﻿bot.py:107: _r = self.exchange.stop_tp_orders(sym, pos.direction, pos.qty,
+bot.py:125: _r = self.exchange.stop_tp_orders(sym, pos.direction, pos.qty,
+bot.py:266: r2 = self.exchange.stop_tp_orders(sym, pos.direction, abs(float(left)),
+bot.py:364: _r = self.exchange.stop_tp_orders(symbol, direction, qty, lv["sl"], lv["tp"])
+bot.py:372: _r2 = self.exchange.stop_tp_orders(symbol, direction, landed,
+exchange.py:531: def stop_tp_orders(self, symbol: str, direction: str, qty: float, sl: float,
+graph_memory.py:194: "exchange.py:close_position", "exchange.py:stop_tp_orders"
+position_sync.py:213: res = ex.stop_tp_orders(sym, d, qty, sl, tp, cid_prefix="adopt")
+turbo_demo.py:327: res = bot.exchange.stop_tp_orders(
+turbo_demo.py:344: res = bot.exchange.stop_tp_orders(sym, pos.direction, pos.qty, sl, tp,
+turbo_demo.py:1392: _res = bot.exchange.stop_tp_orders(sym, direction, qty, lv["sl"], lv["tp"])
+turbo_demo.py:1413: _res = bot.exchange.stop_tp_orders(sym, direction, landed,
+bug_catalog.py:745: "guard": "`hedge_mode(ttl=300)` cache co HAN (het 300s la hoi lai) + `_invalidate_hedge()`; `market_entry` va `stop_tp_orders` bat `-4061` ⇒ xoa cache, tinh lai `_pos_side()` va **thu lai dung 1 lan**; nhanh fallback ben trong (`closePosition` <-> `reduceOnly`) **khong duoc nuot `-4061`** (truoc day nuot ⇒ khong bao gio retry). Test chot: vao lenh 4061 -> goi 2 lan va lan 2 KHONG co `positionSide`; SL/TP 4061 -> arm lai duoc; cache con han thi khong hoi lai, het TTL thi hoi lai",
+orders_audit.py:15: 3. Partial/BE/trail gọi `stop_tp_orders` nhiều lần.
+--- cancel_first=False ---
+exchange.py:533: cancel_first: bool = True) -> dict:
+exchange.py:536: P0-5: `cancel_first=True` HUY het lenh treo cu truoc khi arm -> khong con
+exchange.py:546: cid_prefix, cancel_first)
+exchange.py:553: cid_prefix, cancel_first)
+exchange.py:557: cancel_first: bool) -> dict:
+exchange.py:559: out: dict = {"cancelled": self.cancel_symbol_orders(symbol) if cancel_first else None}
+exchange.py:728: (`cancel_first=False`) => tich tu trung lap, cham tran stop-order =>
+turbo_demo.py:295: - arm voi `cancel_first=False`: o day lenh dang treo DA duoc xac dinh la THIEU,
+turbo_demo.py:329: cid_prefix="drift", cancel_first=True)
+turbo_demo.py:345: cid_prefix="retry", cancel_first=False)
+orders_audit.py:12: (`cancel_first=False`) ⇒ lệnh đặt được nhưng lần đối soát sau KHÔNG thấy

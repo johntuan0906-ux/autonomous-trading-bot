@@ -1,7 +1,7 @@
 {
- "n_classes": 69,
- "n_tests": 271,
- "digest": "0225a3fd087e4cfc17a0abde463b10e8b70e1caedd8f3d280b016540d7b0e5e3",
+ "n_classes": 70,
+ "n_tests": 277,
+ "digest": "dfaddcde50a54845fae7c93598ecf693823fda0a58853f98b946cca1203066c3",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",

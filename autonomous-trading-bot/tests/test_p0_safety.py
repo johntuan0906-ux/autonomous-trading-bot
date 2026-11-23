@@ -826,6 +826,17 @@ class TestRearmBaoVe(unittest.TestCase):
         self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
         self.assertEqual(ex.named("stop_tp_orders"), [])
 
+    def test_doc_bao_ve_loi_thi_khong_arm_lai(self):
+        """(22/11, B-071) `unknown=True` (API loi) KHONG duoc coi la 'thieu bao ve'."""
+        ex = FakeExchange(prot={self.SYM: {"sl": None, "tp": None, "unknown": True}})
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
+        self.assertEqual(ex.named("stop_tp_orders"), [],
+                         "doc loi ma van arm ⇒ dat trung (ETH LIVE tung co 4 lenh)")
+
     def test_san_van_chan_thi_khong_crash(self):
         """San tra -4045 -> tra [] va chi log, de vong sau thu lai."""
         ex = FakeExchange(arm_boom=True)

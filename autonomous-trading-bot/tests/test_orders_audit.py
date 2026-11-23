@@ -183,9 +183,39 @@ class TestExchangeAlgo(unittest.TestCase):
         self.assertEqual(prot["sl"], 110.5)
         self.assertEqual(prot["tp"], 90.5)
 
-    def test_algo_loi_thi_khong_crash(self):
+    def test_algo_loi_thi_bao_unknown(self):
+        # (22/11, B-071) loi doc != "khong co bao ve" -> caller phai biet de KHONG arm lai
         prot = self._ex(FakeAlgoClient(fail_algo=True)).fetch_protection("SOL/USDT:USDT")
-        self.assertEqual(prot, {"sl": None, "tp": None})
+        self.assertIsNone(prot["sl"])
+        self.assertIsNone(prot["tp"])
+        self.assertTrue(prot["unknown"], "doc loi phai bao unknown")
+
+    def test_algo_loi_nhung_thay_du_sl_tp_thi_khong_unknown(self):
+        # lenh thuong (fetch_open_orders) van cho thay du 2 chan -> khong coi la khong biet
+        cli = FakeAlgoClient(fail_algo=True)
+        cli.fetch_open_orders = lambda symbol=None: [
+            {"type": "STOP_MARKET", "stopPrice": "110.5"},
+            {"type": "TAKE_PROFIT_MARKET", "stopPrice": "90.5"}]
+        prot = self._ex(cli).fetch_protection("SOL/USDT:USDT")
+        self.assertEqual((prot["sl"], prot["tp"]), (110.5, 90.5))
+        self.assertFalse(prot["unknown"])
+
+    def test_open_orders_loi_thi_bao_unknown(self):
+        cli = FakeAlgoClient()
+
+        def _boom(symbol=None):
+            raise RuntimeError("mang loi")
+
+        cli.fetch_open_orders = _boom
+        prot = self._ex(cli).fetch_protection("SOL/USDT:USDT")
+        self.assertTrue(prot["unknown"])
+
+    def test_algo_orders_raise_on_error(self):
+        with self.assertRaises(RuntimeError):
+            self._ex(FakeAlgoClient(fail_algo=True)).algo_orders(
+                "SOL/USDT:USDT", raise_on_error=True)
+        # mac dinh van nuot loi (goi cu khong doi hanh vi)
+        self.assertEqual(self._ex(FakeAlgoClient(fail_algo=True)).algo_orders(), [])
 
     def test_cancel_symbol_orders_huy_ca_algo(self):
         res = self._ex(FakeAlgoClient()).cancel_symbol_orders("SOL/USDT:USDT")
@@ -195,7 +225,8 @@ class TestExchangeAlgo(unittest.TestCase):
         ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=True)
         ex._client = FakeAlgoClient(algo=[{"algoId": 1, "symbol": "SOLUSDT"}])
         self.assertEqual(ex.algo_orders(), [])
-        self.assertEqual(ex.fetch_protection("SOL/USDT:USDT"), {"sl": None, "tp": None})
+        self.assertEqual(ex.fetch_protection("SOL/USDT:USDT"),
+                         {"sl": None, "tp": None, "unknown": False})
 
 
 class TestViTheBuiVaTran(unittest.TestCase):

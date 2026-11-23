@@ -803,3 +803,17 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
      tròn theo step còn kiểm lại `qty*price >= minNotional`, thiếu thì nâng thêm bước (×1,5, tối đa
      3 lần); vẫn thiếu ⇒ **không đặt lệnh**, báo `step quá lớn, phải đóng tay` (trước đây đặt rồi ăn `-4164`).
    - 4 test chốt (gồm đúng ca NEAR 2,87 USDT @ 3,13). Catalog **69 lớp / 271 test chốt**.
+19. **B-071 — Đọc bảo vệ lỗi bị coi là "không có bảo vệ" ⇒ bot đặt TRÙNG cặp SL/TP thứ 2 (22/11).**
+   - Đo thật LIVE 23:37: `orders_audit --target live --json` → `orders=12, positions=5,
+     dupes={"ETH/USDT:USDT": 4}`; `arm_protection.py` đã vá (B-069) và bot dùng `cancel_first=True`
+     nên nghi vấn rơi vào đường **re-arm định kỳ**.
+   - Nguyên nhân: `algo_orders()` nuốt lỗi đọc Algo API rồi trả `[]` ⇒ `fetch_protection()` trả
+     `{sl: None, tp: None}` ⇒ `_rearm_missing()` kết luận "thiếu bảo vệ" ⇒ đặt lại với
+     `cancel_first=False` ⇒ **mỗi lần đọc lỗi là thêm 1 cặp** (chạm trần stop-order, cặp cũ vẫn nằm
+     đó và có thể kích hoạt sai).
+   - Vá: `algo_orders(..., raise_on_error=False)` · `fetch_protection()` thêm khoá **`unknown`**
+     ("KHÔNG ĐỌC ĐƯỢC", chỉ bật khi thiếu thông tin) · `_rearm_missing()` gặp `unknown` ⇒ không huỷ,
+     **không đặt thêm**, log `RE-ARM BO QUA … (API loi)`, thử lại vòng sau.
+   - Dọn trạng thái (đã làm, LIVE): `orders_audit --dedupe` đưa 12 → **10 lệnh / 5 vị thế**,
+     `dupes={}`, `naked=[]`.
+   - 6 test chốt. Catalog **70 lớp / 277 test chốt**.

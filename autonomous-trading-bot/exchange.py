@@ -717,7 +717,8 @@ class BinanceFutures:
         except Exception as e:  # noqa: BLE001
             return 0, str(e)[:200]
 
-    def algo_orders(self, symbol: str | None = None) -> list:
+    def algo_orders(self, symbol: str | None = None,
+                    raise_on_error: bool = False) -> list:
         """Lenh cho DIEU KIEN dang treo (Algo Order API `/fapi/v1/algoOrder`).
 
         Vi sao can (12/10): Binance chuyen lenh dieu kien sang Algo Order API.
@@ -751,6 +752,11 @@ class BinanceFutures:
                             "ts": o.get("bookTime") or o.get("time") or 0})
         except Exception as e:  # noqa: BLE001
             self.last_error = "algoOrders: %s" % str(e)[:200]
+            # (22/11, B-071) `raise_on_error`: nguoi goi CAN biet "doc loi" ≠ "khong co lenh".
+            # Truoc day loi bi nuot ⇒ `fetch_protection` tra (None, None) ⇒ `_rearm_missing`
+            # tuong thieu bao ve ⇒ dat THEM 1 cap nua (do that: ETH LIVE co 4 lenh SL/TP).
+            if raise_on_error:
+                raise
         return out
 
     def fetch_positions(self, symbols=None) -> list:
@@ -803,7 +809,7 @@ class BinanceFutures:
         return 0.0
 
     def fetch_protection(self, symbol: str) -> dict:
-        """SL/TP dang TREO tren san -> {'sl': float|None, 'tp': float|None}.
+        """SL/TP dang TREO tren san -> {'sl': float|None, 'tp': float|None, 'unknown': bool}.
 
         Dung khi khoi dong lai: biet vi the con duoc bao ve hay khong.
 
@@ -811,16 +817,24 @@ class BinanceFutures:
         `fetch_open_orders` (lenh thuong) -> luon thay "thieu bao ve" du dang co
         lenh SL/TP treo => `_rearm_missing` dat lai moi 60s => tich tu 200 lenh
         trung tren LIVE (do duoc 12/10) => cham tran stop-order (`-4045`).
+
+        (22/11, B-071) `unknown=True` = **KHONG DOC DUOC** (API loi/chan), KHAC voi
+        "khong co bao ve". Nguoi goi KHONG duoc arm lai khi unknown: do that ETH LIVE
+        co 4 lenh SL/TP vi mot lan doc algo loi ⇒ bot tuong thieu ⇒ dat them 1 cap.
         """
-        out: dict = {"sl": None, "tp": None}
+        out: dict = {"sl": None, "tp": None, "unknown": False}
         if self._client is None or self.dry_run:
             return out
         orders: list = []
+        unknown = False
         try:
             orders.extend(self._client.fetch_open_orders(symbol) or [])
         except Exception:  # noqa: BLE001
-            pass
-        orders.extend(self.algo_orders(symbol))
+            unknown = True          # (B-071) khong coi la "khong co lenh"
+        try:
+            orders.extend(self.algo_orders(symbol, raise_on_error=True))
+        except Exception:  # noqa: BLE001
+            unknown = True
         for o in orders:
             t = str((o or {}).get("type") or "")
             px = (o.get("stopPrice") or (o.get("info") or {}).get("stopPrice")
@@ -835,5 +849,7 @@ class BinanceFutures:
                 out["sl"] = px
             elif t == "TAKE_PROFIT_MARKET":
                 out["tp"] = px
+        # chi coi la "khong biet" khi THIEU thong tin; thay du ca 2 thi khong can biet
+        out["unknown"] = bool(unknown) and not (out["sl"] and out["tp"])
         return out
 

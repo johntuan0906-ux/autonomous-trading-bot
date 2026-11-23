@@ -317,6 +317,14 @@ def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
             tp = float(getattr(mt, "tp", 0) or pos.tp or 0)
             prot = (bot.exchange.fetch_protection(sym)
                     if hasattr(bot.exchange, "fetch_protection") else {}) or {}
+            if prot.get("unknown"):
+                # (22/11, B-071) "doc loi" KHAC "khong co bao ve": arm lai luc nay = dat TRUNG
+                # (do that LIVE: ETH co 4 lenh SL/TP, phai `orders_audit --dedupe`). Chi thu lai
+                # vong sau (throttle `every`), KHONG huy va KHONG dat them.
+                _PROT_TRY[sym] = now
+                log.warning("RE-ARM BO QUA %s: khong doc duoc bao ve tren san (API loi) "
+                            "-> khong dat them, thu lai vong sau", sym)
+                continue
             if prot.get("sl") and prot.get("tp"):
                 # (12/10) Co bao ve nhung GIA LECH managed_state: do la lenh CU
                 # (BE/trail truoc day huy khong duoc lenh dieu kien o Algo Order

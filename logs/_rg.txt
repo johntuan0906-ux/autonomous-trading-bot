@@ -1,0 +1,26 @@
+﻿test_orders_audit.py:162: def test_algo_orders_chuan_hoa_symbol_va_bo_lenh_da_huy(self):
+test_orders_audit.py:169: out = self._ex(cli).algo_orders("AERO/USDT:USDT")
+test_orders_audit.py:174: def test_fetch_protection_thay_sl_tp_trong_algo(self):
+test_orders_audit.py:182: prot = self._ex(cli).fetch_protection("SOL/USDT:USDT")
+test_orders_audit.py:187: prot = self._ex(FakeAlgoClient(fail_algo=True)).fetch_protection("SOL/USDT:USDT")
+test_orders_audit.py:197: self.assertEqual(ex.algo_orders(), [])
+test_orders_audit.py:198: self.assertEqual(ex.fetch_protection("SOL/USDT:USDT"), {"sl": None, "tp": None})
+test_p0_safety.py:135: def fetch_protection(self, s):
+test_p0_safety.py:136: self._log("fetch_protection")
+test_p0_safety.py:389: def test_fetch_protection_parse_sl_tp(self):
+test_p0_safety.py:390: p = ex_with(FakeClient()).fetch_protection("BTC/USDT:USDT")
+test_p0_safety.py:810: ex = FakeExchange()                       # fetch_protection -> {sl:None,tp:None}
+test_p0_safety.py:815: done = td._rearm_missing(bot, logging.getLogger("test"), every_sec=0)
+test_p0_safety.py:826: self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
+test_p0_safety.py:835: self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
+test_p0_safety.py:871: ex = FakeExchange()                      # fetch_protection -> thieu SL/TP
+test_p0_safety.py:878: self.assertEqual(td._rearm_missing(bot, log, every_sec=0), [self.SYM])
+test_p0_safety.py:882: self.assertEqual(td._rearm_missing(bot, log), [])
+test_p0_safety.py:885: self.assertEqual(td._rearm_missing(bot, log, every_sec=0), [self.SYM])
+test_p0_safety.py:913: td._rearm_missing(bot, logging.getLogger("test"), every_sec=0)
+test_p0_safety.py:920: ex = FakeExchange()          # arm "thanh cong" nhung fetch_protection -> rong
+test_p0_safety.py:924: td._rearm_missing(bot, log, every_sec=0)
+test_p0_safety.py:935: td._rearm_missing(bot, log, every_sec=0)
+test_p0_safety.py:936: td._rearm_missing(bot, log, every_sec=0)      # lan 2 trong cung cua so -> im
+test_p0_safety.py:944: td._rearm_missing(bot, log, every_sec=0)       # loi 3 lan lien tiep
+test_p0_safety.py:946: self.assertEqual(td._rearm_missing(bot, log, every_sec=10), [],

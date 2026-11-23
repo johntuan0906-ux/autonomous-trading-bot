@@ -819,6 +819,19 @@ CLASSES = [
                   "test_close_dust.py::TestDongMotViThe::test_apply_nang_roi_dong_toan_bo",
                   "test_close_dust.py::TestDongMotViThe::test_step_qua_lon_thi_bao_ro_chu_khong_dat_lenh"],
     },
+    {
+        "code": "B-071", "kind": "rui-ro", "seen": "22/11/2026",
+        "title": "Doc bao ve SL/TP loi (API/Algo) bi coi la \"khong co bao ve\" ⇒ bot dat TRUNG cap SL/TP thu 2",
+        "symptom": "Do that LIVE 22/11 23:37: ETH/USDT co **4 lenh bao ve** (2 SL + 2 TP, tong 12 lenh cho 5 vi the) trong khi `arm_protection.py` da va (B-069) va bot dung `cancel_first=True`. Nguyen nhan: `algo_orders()` nuot loi doc Algo API rồi tra `[]`, `fetch_protection()` vi the tra `{sl: None, tp: None}`, `_rearm_missing()` ket luan \"thieu bao ve\" va dat lai voi `cancel_first=False` ⇒ moi lan doc loi la them 1 cap (cham tran stop-order, va SL/TP cu van nam do co the kich hoat sai)",
+        "guard": "`algo_orders(symbol, raise_on_error=False)` bao loi khi nguoi goi can biet · `fetch_protection()` them khoa **`unknown`** = \"KHONG DOC DUOC\" (fetch_open_orders loi hoac algo loi) va chi dat `unknown=True` khi THIEU thong tin (thay du SL+TP thi khong can) · `turbo_demo._rearm_missing()` gap `unknown` ⇒ **khong huy, khong dat them**, log WARNING va thu lai vong sau. Don trang thai: `orders_audit --target live --dedupe` (12→10 lenh, `KET LUAN: gon`)",
+        "files": ["exchange.py", "turbo_demo.py", "tests/test_orders_audit.py", "tests/test_p0_safety.py"],
+        "tests": ["test_orders_audit.py::TestExchangeAlgo::test_algo_loi_thi_bao_unknown",
+                  "test_orders_audit.py::TestExchangeAlgo::test_algo_loi_nhung_thay_du_sl_tp_thi_khong_unknown",
+                  "test_orders_audit.py::TestExchangeAlgo::test_open_orders_loi_thi_bao_unknown",
+                  "test_orders_audit.py::TestExchangeAlgo::test_algo_orders_raise_on_error",
+                  "test_orders_audit.py::TestExchangeAlgo::test_dry_run_khong_goi_san",
+                  "test_p0_safety.py::TestRearmBaoVe::test_doc_bao_ve_loi_thi_khong_arm_lai"],
+    },
 ]
 
 

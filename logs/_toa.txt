@@ -1,0 +1,75 @@
+﻿    def fetch_open_orders(self, symbol=None):
+        return []
+
+    def fapiPrivateGetOpenAlgoOrders(self, params=None):
+        if self.fail_algo:
+            raise RuntimeError("mang loi")
+        return list(self._algo)
+
+    def fapiPrivateDeleteAlgoOpenOrders(self, params=None):
+        return [{"algoId": 1}]
+
+    def fapiPrivateDeleteAlgoOrder(self, params=None):
+        self.deleted.append(params)
+        return {"algoId": params.get("algoId")}
+
+    def cancel_all_orders(self, symbol):
+        return []
+
+    def fapiPrivateGetPositionSideDual(self):
+        return {"dualSidePosition": False}
+
+
+class TestExchangeAlgo(unittest.TestCase):
+    """`exchange.py` phai NHIN THAY va HUY DUOC lenh dieu kien."""
+
+    def _ex(self, cli):
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=False)
+        ex._client = cli
+        ex._public = cli
+        return ex
+
+    def test_algo_orders_chuan_hoa_symbol_va_bo_lenh_da_huy(self):
+        cli = FakeAlgoClient(algo=[
+            {"algoId": 7, "symbol": "AEROUSDT", "orderType": "STOP_MARKET",
+             "triggerPrice": "0.89", "clientAlgoId": "glowsgsl1", "algoStatus": "NEW"},
+            {"algoId": 8, "symbol": "AEROUSDT", "orderType": "STOP_MARKET",
+             "triggerPrice": "0.89", "algoStatus": "CANCELED"},
+        ])
+        out = self._ex(cli).algo_orders("AERO/USDT:USDT")
+        self.assertEqual(len(out), 1, "lenh da huy khong tinh la dang treo")
+        self.assertEqual(out[0]["symbol"], "AERO/USDT:USDT")
+        self.assertTrue(out[0]["algo"])
+
+    def test_fetch_protection_thay_sl_tp_trong_algo(self):
+        """Day la GOC cua vong lap re-arm: truoc day luon tra {None, None}."""
+        cli = FakeAlgoClient(algo=[
+            {"algoId": 1, "symbol": "SOLUSDT", "orderType": "STOP_MARKET",
+             "triggerPrice": "110.5", "algoStatus": "NEW"},
+            {"algoId": 2, "symbol": "SOLUSDT", "orderType": "TAKE_PROFIT_MARKET",
+             "triggerPrice": "90.5", "algoStatus": "NEW"},
+        ])
+        prot = self._ex(cli).fetch_protection("SOL/USDT:USDT")
+        self.assertEqual(prot["sl"], 110.5)
+        self.assertEqual(prot["tp"], 90.5)
+
+    def test_algo_loi_thi_khong_crash(self):
+        prot = self._ex(FakeAlgoClient(fail_algo=True)).fetch_protection("SOL/USDT:USDT")
+        self.assertEqual(prot, {"sl": None, "tp": None})
+
+    def test_cancel_symbol_orders_huy_ca_algo(self):
+        res = self._ex(FakeAlgoClient()).cancel_symbol_orders("SOL/USDT:USDT")
+        self.assertEqual(res["cancelled_algo"], 1)
+
+    def test_dry_run_khong_goi_san(self):
+        ex = BinanceFutures(api_key="k", api_secret="s", testnet=False, dry_run=True)
+        ex._client = FakeAlgoClient(algo=[{"algoId": 1, "symbol": "SOLUSDT"}])
+        self.assertEqual(ex.algo_orders(), [])
+        self.assertEqual(ex.fetch_protection("SOL/USDT:USDT"), {"sl": None, "tp": None})
+
+
+class TestViTheBuiVaTran(unittest.TestCase):
+    """(22/10) Do that: 2/6 vi the TESTNET thieu SL/TP la **bui** da ghi
+    `dust_skip.json` (qty=1 < minNotional => san khong cho dat bao ve). Cong cu cu
+    bao "KHONG co SL/TP" cho ca bui roi van ket luan "gon" => vua bao dong gia vua
+    che mat vi the TRAN that. Nay phai phan biet ro.

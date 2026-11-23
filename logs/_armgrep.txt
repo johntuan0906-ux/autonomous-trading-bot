@@ -1,0 +1,8 @@
+﻿exchange:531: def stop_tp_orders(self, symbol: str, direction: str, qty: float, sl: float,
+exchange:555: def _arm_protection(self, symbol: str, direction: str, close_side: str,
+exchange:720: def algo_orders(self, symbol: str | None = None) -> list:
+exchange:724: ccxt `fetch_open_orders()` chi tra lenh THUONG -> tra `[]` du tai khoan
+exchange:726: LIVE co **200** lenh algo (TESTNET 100) trong khi `fetch_open_orders`
+exchange:811: `fetch_open_orders` (lenh thuong) -> luon thay "thieu bao ve" du dang co
+exchange:820: orders.extend(self._client.fetch_open_orders(symbol) or [])
+exchange:823: orders.extend(self.algo_orders(symbol))

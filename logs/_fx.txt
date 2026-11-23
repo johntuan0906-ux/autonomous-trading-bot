@@ -1,0 +1,60 @@
+﻿    def market_entry(self, s, d, q, cid=None):
+        self._log("market_entry", cid=cid, qty=q)
+        if self.entry_raises:
+            raise RuntimeError("simulated network timeout")
+        return {"id": "entry-1"}
+
+    def stop_tp_orders(self, s, d, q, sl, tp, cid_prefix="sg", cancel_first=True):
+        self._log("stop_tp_orders", qty=q, sl=sl, tp=tp, cancel_first=cancel_first)
+        if self.arm_boom:
+            raise RuntimeError('binance {"code":-4045,"msg":"Reach max stop order limit."}')
+        return {"sl_order": {"id": "sl"}, "tp_order": {"id": "tp"}}
+
+    def close_position(self, s, d, q, cid=None):
+        self._log("close_position", qty=q)
+        if self.close_already:
+            # `-2022`: SL tren san da khop truoc ⇒ vi the ve 0 (xem exchange.close_position)
+            return {"symbol": s, "qty": q, "already_closed": True, "left_qty": 0.0,
+                    "reason": 'binance {"code":-2022,"msg":"ReduceOnly Order is rejected."}'}
+        out = {"id": "close-1"}
+        out.update(self.close_extra)
+        return out
+
+    def cancel_symbol_orders(self, s):
+        self._log("cancel_symbol_orders")
+        return {"cancelled": 1}
+
+    def fetch_positions(self, symbols=None):
+        self._log("fetch_positions")
+        return self.rows
+
+    def position_qty(self, s, direction=None):
+        self._log("position_qty", direction=direction)
+        return self.landing
+
+    def fetch_protection(self, s):
+        self._log("fetch_protection")
+        return self.prot.get(s, {"sl": None, "tp": None})
+
+    def last_price(self, s):
+        return 100.0
+
+    def fetch_ohlcv(self, s, tf="15m", limit=200):
+        return bull_df()
+
+
+class FakeClient:
+    """ccxt client gia cho cac test exchange.py (thu tu goi + params)."""
+
+    def __init__(self, fail_first_create=False):
+        self.calls: list = []
+        self.fail_first_create = fail_first_create
+        self._n_create = 0
+
+    def cancel_all_orders(self, symbol):
+        self.calls.append(("cancel_all_orders", symbol))
+        return [{"id": 1}, {"id": 2}]
+
+    def create_order(self, symbol, otype, side, amount, params=None):
+        self._n_create += 1
+        self.calls.append(("create_order", otype, amount, dict(params or {})))

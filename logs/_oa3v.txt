@@ -1,0 +1,27 @@
+﻿{
+  "orders": 12,
+  "positions": 5,
+  "by_type": {
+    "TAKE_PROFIT_MARKET": 6,
+    "STOP_MARKET": 6
+  },
+  "protect_orders": 12,
+  "orphans": 0,
+  "orphan_symbols": [],
+  "dupes": {
+    "ETH/USDT:USDT": 4
+  },
+  "per_symbol": {
+    "AAVE/USDT:USDT": 2,
+    "BTC/USDT:USDT": 2,
+    "ETH/USDT:USDT": 4,
+    "SOL/USDT:USDT": 2,
+    "XRP/USDT:USDT": 2
+  },
+  "dust": [],
+  "naked": [],
+  "keep": 10,
+  "to_cancel": 2,
+  "target": "live",
+  "live": true
+}

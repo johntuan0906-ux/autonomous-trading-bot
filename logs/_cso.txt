@@ -1,0 +1,41 @@
+﻿> C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:683:    def cancel_symbol_orders(self, symbol: str) -> dict:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:684:        """Huy MOI lenh dang treo cua symbol (best-effort, khong nem loi).
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:685:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:686:        (12/10) Huy CA lenh dieu kien o Algo Order API. Truoc day chi goi
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:687:        `cancel_all_orders` (endpoint lenh THUONG) -> lenh SL/TP nam o algo
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:688:        KHONG BAO GIO duoc huy: vi the dong xong van con STOP/TP treo, co the
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:689:        kich hoat va dong/mo nham vi the sau nay.
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:690:        """
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:691:        if self._client is None or self.dry_run:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:692:            return {"symbol": symbol, "cancelled": 0, "dry_run": True}
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:693:        n = 0
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:694:        err = None
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:695:        try:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:696:            res = self._client.cancel_all_orders(symbol)
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:697:            n += len(res) if isinstance(res, list) else 1
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:698:        except Exception as e:  # noqa: BLE001
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:699:            err = str(e)[:200]
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:700:        n_algo, aerr = self._cancel_algo(symbol)
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:701:        out = {"symbol": symbol, "cancelled": n + n_algo, "cancelled_algo": n_algo}
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:702:        if err:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:703:            out["error"] = err
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:704:        if aerr:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:705:            out["error_algo"] = aerr
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:706:        return out
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:707:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:708:    def _cancel_algo(self, symbol: str) -> tuple:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:709:        """Huy lenh dieu kien dang treo cua 1 symbol. Tra (so lenh, loi)."""
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:710:        fn = getattr(self._client, "fapiPrivateDeleteAlgoOpenOrders", None)
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:711:        if fn is None:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:712:            return 0, None
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:713:        try:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:714:            res = fn({"symbol": to_raw_symbol(symbol)})
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:715:            n = len(res) if isinstance(res, list) else (1 if res else 0)
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:716:            return n, None
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:717:        except Exception as e:  # noqa: BLE001
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:718:            return 0, str(e)[:200]
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:719:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:720:    def algo_orders(self, symbol: str | None = None) -> list:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:721:        """Lenh cho DIEU KIEN dang treo (Algo Order API `/fapi/v1/algoOrder`).
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:722:
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\exchange.py:723:        Vi sao can (12/10): Binance chuyen lenh dieu kien sang Algo Order API.

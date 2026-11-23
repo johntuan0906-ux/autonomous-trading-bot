@@ -1,0 +1,19 @@
+﻿=== OPS ===
+=== OPS REPORT 2026-11-22 23:37:11 | cua so 30 phut ===
+TESTNET  round=918  phase=end              equity=3257.74    hb=61s
+         supervisor=92188 child_pid=33732 managed=4
+         san: 4 vi the / 8 lenh cho / 0 mo coi (snapshot orders_audit)
+         loi trong 30 phut: KHONG (sach)
+         vong trong log: 66 | vong cuoi #918: {'BLOCKED_STRAT': 7, 'SKIP_OPEN': 4, 'SKIP_CHASE': 4, 'SKIP_RISK': 4, 'SKIP_LESSON': 2, 'NO_TRADE': 2}
+         log cuoi: 2026-11-22 23:36:10
+LIVE     round=1302 phase=end              equity=53.22      hb=50s
+         supervisor=56328 child_pid=116944 managed=4
+         san: 5 vi the / 12 lenh cho / 0 mo coi (snapshot orders_audit) | 1 cap TRUNG
+         loi trong 30 phut: KHONG (sach)
+         vong trong log: 107 | vong cuoi #1302: {'SKIP_MAX_POS': 9, 'SKIP_OPEN': 4, 'SKIP_CHASE': 2, 'BLOCKED_STRAT': 1}
+         log cuoi: 2026-11-22 23:36:21
+KET LUAN: OK ΓÇö khong van de
+=== AUDIT LIVE json ===
+{
+  "orders": 12,
+  "positions": 5,

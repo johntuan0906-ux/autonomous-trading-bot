@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 24/11/2026 05:54:28 · commit `63ca356`
+- **Cập nhật**: 24/11/2026 06:54:05 · commit `c73b5e2`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `79460` · round `None` · nhịp tim cách đây 19.1s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `79460` · round `None` · nhịp tim cách đây 3562.6s (watchdog 360s) → ⚠️ KHÔNG THẤY NHỊP TIM
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -39,11 +39,9 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (1)
+## Vị thế đang quản lý (0)
 
-| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
-|---|---|---|---|---|---|---|---|---|
-| BANK/USDT:USDT | SHORT | 5073.0 | 0.01585 | 0.015834149999999998 | 0.014746 | True | True | 1.232 |
+_không có vị thế nào trong `managed_state.json`_
 
 ---
 

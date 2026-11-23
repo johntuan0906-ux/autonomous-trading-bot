@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 23/11/2026 10:10:05 · commit `8e64555`
+- **Cập nhật**: 23/11/2026 10:40:07 · commit `a8f46a9`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `33732` · round `1081` · nhịp tim cách đây 28.9s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: ? USDT
+- **Bot**: pid `33732` · round `1088` · nhịp tim cách đây 154.7s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3264.8 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3075 lệnh đóng, WR 41.07%, E(R) 0.2367, PnL -980.99$)
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
@@ -44,8 +44,8 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | BANK/USDT:USDT | SHORT | 5072.2 | 0.01585 | 0.015834149999999998 | 0.014746 | True | True | 1.232 |
-| LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.54 |
-| PLUME/USDT:USDT | LONG | 9661.0 | 0.01077 | 0.010356 | 0.011598 | False | False | 0.386 |
+| LSK/USDT:USDT | LONG | 654.0 | 0.1387 | 0.132586 | 0.150928 | False | False | 0.834 |
+| PLUME/USDT:USDT | LONG | 9661.0 | 0.01077 | 0.010356 | 0.011598 | False | False | 0.459 |
 | SEI/USDT:USDT | SHORT | 3072.0 | 0.0343 | 0.035602 | 0.031696 | False | False | 0.614 |
 
 ---

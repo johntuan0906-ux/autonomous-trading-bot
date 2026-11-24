@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 24/11/2026 09:54:09 · commit `3d6ee8a`
+- **Cập nhật**: 24/11/2026 10:53:47 · commit `a081144`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `70252` · round `None` · nhịp tim cách đây 15.7s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `69976` · round `2` · nhịp tim cách đây 0.9s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -14,12 +14,12 @@
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
 | 7 ngày | 17 | 64.71 | 7.749 | 6.324 | 1.2055 | 60.75 |
-| 14 ngày | 51 | 47.06 | 2.714 | 2.179 | 0.5301 | 72.48 |
+| 14 ngày | 50 | 48.0 | 2.899 | 2.332 | 0.5608 | 76.51 |
 | 30 ngày | 172 | 42.44 | 1.937 | 1.005 | 0.3431 | 2.01 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.774 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.754 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,9 +39,12 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (0)
+## Vị thế đang quản lý (2)
 
-_không có vị thế nào trong `managed_state.json`_
+| Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
+|---|---|---|---|---|---|---|---|---|
+| AIOT/USDT:USDT | LONG | 560.0 | 0.0749 | 0.067766 | 0.089168 | False | False | 0.0 |
+| ALGO/USDT:USDT | LONG | 1239.1 | 0.08083 | 0.077602 | 0.087286 | False | False | 0.0 |
 
 ---
 

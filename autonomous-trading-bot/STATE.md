@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 25/11/2026 05:54:33 · commit `c17a547`
+- **Cập nhật**: 25/11/2026 06:53:51 · commit `8a7b8ac`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `3020` · round `None` · nhịp tim cách đây 26.9s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `3020` · round `3` · nhịp tim cách đây 2934.4s (watchdog 360s) → ⚠️ KHÔNG THẤY NHỊP TIM
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -19,7 +19,7 @@
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.740 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.746 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,12 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (2)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| AIOT/USDT:USDT | LONG | 560.0 | 0.0749 | 0.067766 | 0.089168 | False | False | 0.0 |
 | ALGO/USDT:USDT | LONG | 1239.1 | 0.08083 | 0.077602 | 0.087286 | False | False | 0.0 |
+| ALT/USDT:USDT | SHORT | 27777.0 | 0.00431 | 0.004454 | 0.004022 | False | False | 0.208 |
+| BANK/USDT:USDT | SHORT | 7326.0 | 0.01514 | 0.015686 | 0.014048 | False | False | 0.0 |
 
 ---
 

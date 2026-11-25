@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 25/11/2026 21:32:47 · commit `614f108`
+- **Cập nhật**: 25/11/2026 22:02:47 · commit `4aba435`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `110664` · round `102` · nhịp tim cách đây 0.6s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3286.34 USDT
+- **Bot**: pid `110664` · round `110` · nhịp tim cách đây 24.8s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3079 lệnh đóng, WR 41.12%, E(R) 0.2374, PnL -968.85$)
+## Hiệu suất (journal: 3080 lệnh đóng, WR 41.14%, E(R) 0.2379, PnL -961.77$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 17 | 64.71 | 7.749 | 6.324 | 1.2055 | 60.75 |
-| 14 ngày | 47 | 46.81 | 3.082 | 2.474 | 0.6051 | 78.13 |
-| 30 ngày | 172 | 42.44 | 1.937 | 1.005 | 0.3431 | 2.01 |
+| 7 ngày | 18 | 66.67 | 8.332 | 6.944 | 1.2368 | 67.83 |
+| 14 ngày | 48 | 47.92 | 3.211 | 2.607 | 0.6294 | 85.21 |
+| 30 ngày | 172 | 43.02 | 1.997 | 1.059 | 0.3594 | 21.38 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.822 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.857 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -35,7 +35,7 @@
 | < 20 | **giảm lệnh** | 1.0% | 1 | SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 20 – < 62 | **cân bằng** | 0.5% | 2 | SOL/USDT:USDT,XRP/USDT:USDT,LINK/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
 | 62 – < 100 | **cân bằng + BTC** | 1.0% | 2 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,AVAX/USDT:USDT |
-| 100 trở lên | **an toàn** ⬅ **hiện tại** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
+| 100 trở lên | **an toàn** | 1.0% | 4 | BTC/USDT:USDT,SOL/USDT:USDT,XRP/USDT:USDT + ADA/USDT:USDT,DOGE/USDT:USDT,LINK/USDT:USDT,AVAX/USDT:USDT |
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
@@ -43,10 +43,10 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| ALT/USDT:USDT | SHORT | 19443.9 | 0.00431 | 0.004305689999999999 | 0.004022 | True | True | 1.944 |
-| APT/USDT:USDT | SHORT | 308.6 | 0.3617 | 0.37466 | 0.33578 | False | False | 0.741 |
-| BANK/USDT:USDT | SHORT | 7326.0 | 0.01514 | 0.015686 | 0.014048 | False | False | 0.623 |
-| SPX/USDT:USDT | SHORT | 422.0 | 0.2607 | 0.270168 | 0.241764 | False | False | 0.486 |
+| APT/USDT:USDT | SHORT | 308.6 | 0.3617 | 0.37466 | 0.33578 | False | False | 0.91 |
+| BANK/USDT:USDT | SHORT | 7326.0 | 0.01514 | 0.015686 | 0.014048 | False | False | 0.897 |
+| QNT/USDT:USDT | SHORT | 0.5 | 135.37 | 142.177966 | 121.754068 | False | False | 0.0 |
+| SPX/USDT:USDT | SHORT | 422.0 | 0.2607 | 0.270168 | 0.241764 | False | False | 0.697 |
 
 ---
 

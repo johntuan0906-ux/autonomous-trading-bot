@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 25/11/2026 09:54:19 · commit `d49491d`
+- **Cập nhật**: 25/11/2026 10:53:50 · commit `4ea9712`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `30360` · round `None` · nhịp tim cách đây 2.5s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `30360` · round `None` · nhịp tim cách đây 3505.4s (watchdog 360s) → ⚠️ KHÔNG THẤY NHỊP TIM
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -19,7 +19,7 @@
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.746 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 0.752 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 

@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 27/11/2026 01:06:30 · commit `3e52032`
+- **Cập nhật**: 27/11/2026 01:36:30 · commit `a00caf2`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `85976` · round `183` · nhịp tim cách đây 21.8s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `21400` · round `736` · nhịp tim cách đây 0.4s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
@@ -45,7 +45,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 |---|---|---|---|---|---|---|---|---|
 | CKB/USDT:USDT | LONG | 83333.0 | 0.000805 | 0.000757 | 0.000901 | False | False | 1.0 |
 | FIL/USDT:USDT | LONG | 212.7 | 0.5479 | 0.529102 | 0.585496 | False | False | 0.128 |
-| WIF/USDT:USDT | LONG | 775.1 | 0.1343 | 0.12914 | 0.14462 | False | False | 0.911 |
+| WIF/USDT:USDT | LONG | 542.57 | 0.1343 | 0.1344343 | 0.14462 | True | True | 1.221 |
 
 ---
 

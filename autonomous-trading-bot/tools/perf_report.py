@@ -71,18 +71,27 @@ def closes(all_rows: list) -> list:
 
 
 def attach_context(all_rows: list, close_rows: list) -> list:
-    """Gan `setup_type` / `market_regime` tu ban ghi OPEN cung cap (FIFO) vao moi CLOSE."""
+    """Gan `setup_type` / `market_regime` tu ban ghi OPEN cung cap (FIFO, `open.ts <= close.ts`) vao moi CLOSE."""
+    open_rows = [
+        r for r in all_rows
+        if not r.get("void") and "entry" in r and str(r.get("event") or "") == "OPEN"
+    ]
+    open_rows.sort(key=lambda r: float(r.get("ts") or 0.0))
     pend: dict = {}
-    for r in all_rows:
-        if "entry" in r and str(r.get("event") or "") == "OPEN":
-            key = str(r.get("pair") or r.get("symbol") or "")
-            pend.setdefault(key, []).append(r)
+    for r in open_rows:
+        key = str(r.get("pair") or r.get("symbol") or "")
+        pend.setdefault(key, []).append(r)
     out = []
     for c in close_rows:
         rec = dict(c)
         key = str(rec.get("pair") or rec.get("symbol") or "")
         queue = pend.get(key) or []
-        o = queue.pop(0) if queue else {}
+        c_ts = float(rec.get("ts") or 0.0)
+        o = {}
+        if queue:
+            o_ts = float(queue[0].get("ts") or 0.0)
+            if c_ts <= 0.0 or o_ts <= 0.0 or o_ts <= c_ts:
+                o = queue.pop(0)
         if o:
             rec.setdefault("setup_type", o.get("setup_type"))
             rec.setdefault("market_regime", o.get("market_regime"))

@@ -44,6 +44,7 @@ LOOKBACK_DAYS = 7                 # Binance chi tra userTrades toi da 7 ngay/lan
 BINANCE_WINDOW_MS = 7 * 86400 * 1000
 ENTRY_TOL_PCT = 0.003             # gia vao vong lenh vs OPEN: lech toi da 0.3%
 QTY_TOL = 0.02                    # khoi luong lech toi da 2%
+LOOSE_ENTRY_TOL_PCT = 0.03        # (B-074) buoc 2: gia vao journal vs fill lech toi da 3%
 OPEN_TS_TOL_MS = 600_000          # ts OPEN (gio local) vs fill: lech toi da 10 phut
 CLOSE_TS_TOL_MS = 30 * 60 * 1000  # da co CLOSE trong +/-30 phut => coi nhu da ghi
 EXIT_TOL_PCT = 0.005              # gia thoat lech toi da 0.5% (bot ghi gia quan sat)
@@ -102,7 +103,13 @@ def norm_fills(rows) -> list:
 
 
 def fetch_fills(ex, symbols, days: int = LOOKBACK_DAYS, log=None) -> list:
-    """Fill THAT tu san cho cac symbol (chia cua so 7 ngay vi Binance gioi han)."""
+    """Fill THAT tu san cho cac symbol (chia cua so 7 ngay vi Binance gioi han).
+
+    (26/11, B-074) KHONG dung khi mot cua so 7 ngay rong: san chi tra userTrades
+    trong tung cua so, cap KHONG giao dich 7 ngay gan nhat van co the co lenh cu
+    hon ⇒ dung som se bo mat fill ⇒ `reconcile` ket luan "khong ghi bu duoc" va
+    cac OPEN cu nam lai vinh vien (do that LIVE: 1000BONK 19/10, MOG/AAVE 20-23/11).
+    """
     client = getattr(ex, "_client", None)
     if client is None or not symbols:
         return []
@@ -119,11 +126,8 @@ def fetch_fills(ex, symbols, days: int = LOOKBACK_DAYS, log=None) -> list:
                     log.warning("reconcile: fetch_my_trades %s loi: %s", sym,
                                 str(e)[:160])
                 break
-            if not rows:
-                break
-            out.extend(norm_fills(rows))
-            if end - s < BINANCE_WINDOW_MS:
-                break
+            if rows:
+                out.extend(norm_fills(rows))
             s = end
     return sorted(out, key=lambda f: f["ts"])
 
@@ -307,20 +311,69 @@ def infer_reason(op: dict, exit_price: float, tol_pct: float = 0.002) -> str:
     return "CLOSE"
 
 
+def _loose_pair(unmatched: list, opens: list, used: set) -> tuple:
+    """Ghep BU vong lenh chua khop voi OPEN chua dung, CHI dua vao cap+huong+qty+thoi gian.
+
+    (26/11, B-074) Vi the duoc ADOPT giua doi co the ghi `entry` lech gia fill that
+    (do that LIVE: AAVE 20/11 16:04 journal `entry=97.02`, fill that `96.48` = lech
+    0,56% > nguong 0,3%) ⇒ vong lenh that bi coi la "lenh tay" va OPEN nam mo coi
+    MAI. O day chi nhan khi **dung MOT** OPEN thoa: cung cap + huong, qty lech
+    <= 2%, thoi gian mo lech <= 10 phut. Nhieu hon 1 ung vien ⇒ bo qua (an toan).
+    """
+    out, left = [], []
+    for ep in unmatched:
+        cand = []
+        for o in opens:
+            if id(o) in used:
+                continue
+            if str(o.get("pair") or o.get("symbol")) != ep["symbol"]:
+                continue
+            if str(o.get("direction") or "").upper() != ep["direction"]:
+                continue
+            q = _f(o.get("qty"))
+            if q <= 0 or abs(q - ep["qty"]) / max(q, 1e-12) > QTY_TOL:
+                continue
+            if abs(int(_f(o.get("ts")) * 1000) - ep["open_ts"]) > OPEN_TS_TOL_MS:
+                continue
+            e = _f(o.get("entry"))
+            if e > 0 and ep["entry_px"] > 0 and \
+                    abs(e - ep["entry_px"]) / ep["entry_px"] > LOOSE_ENTRY_TOL_PCT:
+                continue
+            cand.append(o)
+        if len(cand) == 1:
+            used.add(id(cand[0]))
+            out.append((cand[0], ep))
+        else:
+            left.append(ep)
+    return out, left
+
+
 def plan_backfill(opens: list, closes: list, fills: list, now: float | None = None) -> dict:
     """Doi chieu fill voi journal -> ke hoach ghi bu (KHONG ghi gi o day)."""
     episodes, still_open = build_episodes(fills)
     matched, unmatched = pair_episodes_to_opens(episodes, opens)
+    # Buoc 2 (B-074): ghep long hon cho OPEN bi lech `entry` so voi fill that.
+    used = {id(o) for o, _ in matched}
+    loose, unmatched = _loose_pair(unmatched, opens, used)
+    for o, ep in loose:
+        ep = dict(ep)
+        ep["loose"] = True
+        matched.append((o, ep))
+    res = [build_close(o, ep["exit_legs"], now=now) for o, ep in
+           (m for m in matched)]
+    for c, (o, ep) in zip(res, matched):
+        if ep.get("loose"):
+            c["recon_src"] = "exchange_loose"
     todo, done = [], []
-    for o, ep in matched:
-        (done if already_recorded(ep, closes) else todo).append((o, ep))
+    for c, (o, ep) in zip(res, matched):
+        (done if already_recorded(ep, closes) else todo).append((o, ep, c))
     todo.sort(key=lambda x: x[1]["close_ts"])
     return {
         "episodes": len(episodes), "open_positions": still_open,
-        "matched": len(matched), "already": len(done),
+        "matched": len(matched), "loose": len(loose), "already": len(done),
         "unmatched_episodes": unmatched,          # khong co OPEN -> bo qua
-        "closes": [build_close(o, ep["exit_legs"], now=now) for o, ep in todo],
-        "todo_pairs": todo,
+        "closes": [c for _o, _ep, c in todo],
+        "todo_pairs": [(o, ep) for o, ep, _c in todo],
     }
 
 
@@ -431,6 +484,9 @@ def main(argv: list | None = None) -> int:
     ap.add_argument("--apply", action="store_true",
                     help="ghi that (mac dinh chi xem truoc, KHONG sua gi)")
     ap.add_argument("--days", type=int, default=LOOKBACK_DAYS)
+    ap.add_argument("--all-symbols", action="store_true",
+                    help="quet fill cho MOI cap trong journal (mac dinh: chi cap con "
+                         "OPEN chua CLOSE — it request hon, tranh -1003)")
     ap.add_argument("--json", default="", help="ghi bao cao JSON ra file")
     args = ap.parse_args(argv)
 
@@ -439,15 +495,22 @@ def main(argv: list | None = None) -> int:
     cfg = Settings()
     ex = BinanceFutures(cfg.api_key, cfg.api_secret, cfg.testnet, dry_run=False)
     opens, closes = journal_records(args.journal)
+    orphans = orphan_opens(args.journal)
     print("=" * 94)
     print(f"RECONCILE | journal={args.journal} | OPEN={len(opens)} CLOSE={len(closes)} | "
-          f"OPEN mo coi (FIFO, chan doan)={len(orphan_opens(args.journal))} | "
+          f"OPEN mo coi (FIFO, chan doan)={len(orphans)} | "
           f"apply={args.apply} | days={args.days}")
     print("=" * 94)
     if not cfg.api_key or not cfg.api_secret:
         print("Thieu BINANCE_API_KEY/SECRET trong .env -> khong doc duoc fill.")
         return 2
-    syms = sorted({str(o.get("pair") or o.get("symbol")) for o in opens})
+    if args.all_symbols:
+        syms = sorted({str(o.get("pair") or o.get("symbol")) for o in opens})
+    else:
+        # (26/11, B-074) Chi hoi fill cho cap CON OPEN chua CLOSE: dung muc dich ghi bu
+        # va khong dot weight (moi cap x so cua so 7 ngay).
+        syms = sorted({str(o.get("pair") or o.get("symbol")) for o in orphans}
+                      or {str(o.get("pair") or o.get("symbol")) for o in opens})
     fills = fetch_fills(ex, syms, days=args.days)
     plan = plan_backfill(opens, closes, fills)
     print(f"fill doc duoc={len(fills)} | vong lenh tai tao={plan['episodes']} | "

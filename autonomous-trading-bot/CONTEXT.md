@@ -829,4 +829,30 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - Vá: `stop_tp_orders(..., legs=("tp",))` chỉ đặt chặng yêu cầu (mặc định vẫn cả 2) ·
      `_rearm_missing()` tính `half` từ `prot` ⇒ đặt **đúng chặng thiếu**, `cancel_first=False` ·
      `arm_protection.py` in `<-- THIEU SL/TP` và tổng kết "N vị thế chỉ còn MỘT chặng".
-   - 5 test chốt. Catalog **71 lớp / 282 test chốt**.
+   - 5 test chốt. Catalog **72 lớp / 292 test chốt**.
+20. **B-073 — ADOPT ghi `OPEN` lặp cho CÙNG một vị thế ⇒ journal đầy `OPEN` "mồ côi" (26/11).**
+   - Đo thật LIVE 09:25: `journal.jsonl` = **721 OPEN / 747 CLOSE** nhưng `positions.py`/`live_ready.py`
+     báo `OPEN` chưa `CLOSE` mãi (8 → 59 trong 30 phút), `live_guard.py` cảnh báo mỗi lần chạy.
+   - Nguyên nhân: `position_sync.adopt()` chạy lại **mỗi lần restart** và **mỗi `ADOPT_EVERY_ROUNDS`**,
+     mỗi lần lại ghi `OPEN adopted=True` cho cùng vị thế (B-050) ⇒ ETH 0.016 @1708.79 có **7 bản ghi**
+     24–25/11, XRP 7.3 @0.9362 có 6, SOL 0.09 @71.82 có 5 ⇒ `n`/`PF`/`WR` bị pha loãng.
+   - Vá: `journal.pending_keys()` (key = cặp + hướng + khối lượng + giá vào, khớp với `CLOSE`) ·
+     `position_sync.adopt(..., unclosed_fn=...)` ⇒ vị thế **đã có OPEN chưa CLOSE** thì không ghi lại
+     (`rep["journal_skip"]`; lỗi đọc journal ⇒ ghi như cũ) · `turbo_demo._open_keys()` cache theo
+     `(path, mtime)`.
+   - Dọn lịch sử: `tools/journal_fix.py --apply` thêm `void: true` (có backup, **không xoá**);
+     `monitor_report.load_journal` bỏ qua bản ghi `void` ⇒ mọi báo cáo tự sạch.
+   - 10 test chốt. Catalog **73 lớp / 299 test chốt**.
+21. **B-074 — `reconcile` bỏ sót fill cũ ⇒ OPEN không bao giờ có CLOSE (26/11).**
+   - Đo thật LIVE: `reconcile.py --days 30 --apply` báo `can ghi bu=0` nhưng `positions.py` vẫn còn
+     1000BONK (19/10), MOG/1000CAT (20/11), AAVE (20–23/11) chưa có CLOSE.
+   - Nguyên nhân kép: `fetch_fills()` **`break` ngay khi một cửa sổ 7 ngày trả rỗng** (fill cũ hơn bị
+     bỏ; chỉ đọc được 48 fill) và `pair_episodes_to_opens()` đòi giá vào lệch ≤ 0,3% nên vị thế ADOPT
+     giữa đời bị coi là "lệnh tay" (AAVE journal `97.02` vs fill `96.48` = 0,56%).
+   - Vá: quét **đủ** mọi cửa sổ 7 ngày (chỉ dừng khi lỗi API) · mặc định chỉ hỏi fill cho **cặp còn
+     OPEN chưa CLOSE** (`--all-symbols` để quét hết) · bước 2 `_loose_pair()`: cặp + hướng + qty ±2% +
+     thời gian ±10 phút + giá vào lệch ≤ 3%, **đúng một** ứng viên ⇒ ghi bù `recon_src="exchange_loose"`.
+   - Kết quả LIVE: ghi bù AAVE (entry 97,02 → exit 103,14, R −1,00).
+   - Kèm `tools/journal_fix.py --void-stale`: OPEN cũ (> 1 ngày) **không còn vị thế trên sàn** và không
+     ghi bù được ⇒ `void_reason=NO_FILL_EVIDENCE`; đọc vị thế lỗi (0 vị thế) ⇒ **bỏ qua** (không void).
+   - 7 test chốt. Catalog **73 lớp / 299 test chốt**.

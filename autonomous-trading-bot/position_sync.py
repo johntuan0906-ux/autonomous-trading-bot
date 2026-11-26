@@ -125,7 +125,7 @@ def add_dust_skip(sym: str, why: str = "", path=None, now=None) -> dict:
 
 
 def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
-          journal_fn=None) -> dict:
+          journal_fn=None, unclosed_fn=None) -> dict:
     """Gan vi the san vao `bot.portfolio` + `bot.managed`; arm lai SL/TP khi can.
 
     Tra bao cao: {adopted, armed, unmanaged, skipped, ignored, errors}.
@@ -138,7 +138,8 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
     """
     ex = bot.exchange
     rep: dict = {"adopted": [], "armed": [], "unarmed": [], "unmanaged": [],
-                 "skipped": [], "errors": [], "stale": [], "ignored": []}
+                 "skipped": [], "errors": [], "stale": [], "ignored": [],
+                 "journal_skip": []}
     ignore = {str(s).strip().upper() for s in (skip_symbols or ()) if str(s).strip()}
     # (20/10) B-024: vi the bui "CHET" (notional < 5 USDT ⇒ san khong cho dong bang bat ky
     # lenh nao) da duoc bot BO QUAN LY ⇒ phai bo qua o day nua, neu khong moi vong adopt lai
@@ -197,14 +198,27 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
             # (19/11, B-050) Vi the ADOPT sau restart: journal KHONG co OPEN cho no ⇒ khi
             # dong se sinh CLOSE "mo coi" (do that LIVE: OPEN=627 / CLOSE=705, 78 dong lech).
             # Ghi OPEN gia (`adopted=True`) de so sach khop va `perf_report` khong phai doan.
+            # (26/11, B-073) NHUNG adopt chay lai moi lan restart / vong ADOPT dinh ky ⇒ vi the
+            # giu nhieu ngay bi ghi OPEN lap (do that LIVE: ETH 0.016 @1708.79 co 7 ban ghi
+            # 24-25/11). `unclosed_fn` = vi the nay DA co OPEN chua CLOSE ⇒ khong ghi lai.
             if journal_fn is not None:
-                try:
-                    journal_fn(event="OPEN", pair=sym, direction=d, entry=pos.entry,
-                               qty=float(qty), sl=float(sl), tp=float(tp),
-                               strategy=str(getattr(mt, "strategy", "") or ""),
-                               adopted=True, reason="ADOPT")
-                except Exception:  # noqa: BLE001
-                    pass
+                dup = False
+                if unclosed_fn is not None:
+                    try:
+                        dup = bool(unclosed_fn(pair=sym, direction=d,
+                                               qty=float(qty), entry=float(pos.entry)))
+                    except Exception:  # noqa: BLE001
+                        dup = False          # loi doc journal -> cu ghi nhu cu (khong chan nham)
+                if dup:
+                    rep.setdefault("journal_skip", []).append(sym)
+                else:
+                    try:
+                        journal_fn(event="OPEN", pair=sym, direction=d, entry=pos.entry,
+                                   qty=float(qty), sl=float(sl), tp=float(tp),
+                                   strategy=str(getattr(mt, "strategy", "") or ""),
+                                   adopted=True, reason="ADOPT")
+                    except Exception:  # noqa: BLE001
+                        pass
             rep["adopted"].append(sym)  # da vao portfolio -> MONITOR phan mem da quan ly
             # src 'state' -> arm lai cho khop chien luoc; 'atr' -> chua co bao ve nao.
             # src 'exchange' -> dang duoc bao ve, KHONG dung vao (tranh huy nham).

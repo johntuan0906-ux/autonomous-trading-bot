@@ -514,6 +514,7 @@ class Settings:
     sentiment_cache_sec: int = field(default_factory=lambda: _get_int("SENTIMENT_CACHE_SEC", 300))
     block_long_below: float = field(default_factory=lambda: _get_float("BLOCK_LONG_BELOW", -0.5))
     block_short_above: float = field(default_factory=lambda: _get_float("BLOCK_SHORT_ABOVE", 0.5))
+    econ_event_gate: bool = field(default_factory=lambda: _get_bool("ECON_EVENT_GATE", False))
     use_llm_sentiment: bool = field(default_factory=lambda: _get_bool("USE_LLM_SENTIMENT", False))
 
     def __post_init__(self) -> None:

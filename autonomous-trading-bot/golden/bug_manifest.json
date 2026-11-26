@@ -1,7 +1,7 @@
 {
- "n_classes": 71,
- "n_tests": 282,
- "digest": "0a8987c4e300e9d1c4fdf33fc0c4b80d7372b3216425fb0ad2e267eff27ac000",
+ "n_classes": 73,
+ "n_tests": 299,
+ "digest": "12bfff7808d64b53d6e0cf8d6fbdfa5c1624625e741918223ab94c94348daff8",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
@@ -16,6 +16,7 @@
   "test_exchange_errors.py",
   "test_exchange_hedge.py",
   "test_golden_set.py",
+  "test_journal_void.py",
   "test_learner_label.py",
   "test_learner_refit.py",
   "test_lessons.py",
@@ -30,6 +31,7 @@
   "test_provider_probe.py",
   "test_reason_codes_wiring.py",
   "test_reconcile.py",
+  "test_reconcile_loose.py",
   "test_review_due.py",
   "test_risk_cap_base.py",
   "test_risk_mode.py",

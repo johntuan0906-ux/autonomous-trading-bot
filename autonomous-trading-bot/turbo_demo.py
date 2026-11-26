@@ -47,7 +47,7 @@ import entries_gate
 import fee_edge
 import freshness
 import reason_codes as RC
-from ranking import Candidate, composite_alpha, sentiment_veto
+from ranking import Candidate, composite_alpha, econ_event_veto, sentiment_veto
 from reconcile import reconcile as reconcile_journal
 from risk import atr_levels, load_state as load_risk_state, position_size
 from risk import save_state as save_risk_state
@@ -1116,6 +1116,12 @@ def turbo_round(bot: TradingBot) -> list[dict]:
         except Exception:
             liq_bias = 0.0
         nf = news_features(getattr(senti, "headlines", []))
+        if getattr(cfg, "econ_event_gate", False):
+            _ev_reason = econ_event_veto(direction, float(getattr(senti, "score", 0.0) or 0.0),
+                                         bool(nf.get("econ_event")), bool(t.get("vol_confirm")))
+            if _ev_reason:
+                results.append({"symbol": sym, "status": "BLOCKED_SENT", "reason": _ev_reason})
+                continue
         news_risk = min(nf["macro_risk"] + nf["crypto_risk"], 0.0)
         sig100 = signal_score_100(regime_b, mtf_b, st["struct"], t.get("near_sr"),
                                   t.get("pattern_bias", 0.0), t.get("vol_confirm", False),
@@ -1488,7 +1494,10 @@ def adopt_now(bot, cfg, ex, log, syms) -> dict:
                                                 or "").split(",") if x.strip()],
                               alert=lambda t: tg(cfg, t),
                               # (19/11, B-050) ghi OPEN cho vi the adopt ⇒ journal khop
-                              journal_fn=log_trade)
+                              journal_fn=log_trade,
+                              # (26/11, B-073) chi ghi OPEN khi vi the CHUA co OPEN chua
+                              # CLOSE — chan ban ghi lap moi lan restart / vong ADOPT
+                              unclosed_fn=lambda **kw: journal.rec_key(**kw) in _open_keys(cfg))
         heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
         if rep.get("ignored"):
             # (15/10) Vi the do nguoi dung/bot khac mo (ADOPT_SKIP_SYMBOLS): bot KHONG

@@ -55,6 +55,21 @@ def sentiment_veto(direction: str, sentiment: float,
     return None
 
 
+def econ_event_veto(direction: str, sentiment: float, econ_event: bool,
+                    vol_confirm: bool):
+    """Chan mo lenh giua tin vi mo nong (FOMC/CPI/NFP/FED/OPEC) khi thieu vol_confirm
+    hoac di nguoc huong tin tuc."""
+    if not econ_event:
+        return None
+    if not vol_confirm:
+        return "econ_event active without vol_confirm"
+    if direction == "LONG" and sentiment < 0.0:
+        return f"econ_event negative sentiment {sentiment} blocks LONG"
+    if direction == "SHORT" and sentiment > 0.0:
+        return f"econ_event positive sentiment {sentiment} blocks SHORT"
+    return None
+
+
 class MarketRanker:
     def __init__(self, pairs=None, technical_weight: float = 0.6,
                  sentiment_weight: float = 0.4):

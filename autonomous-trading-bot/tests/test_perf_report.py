@@ -193,6 +193,37 @@ class TestJournalThat(unittest.TestCase):
         self.assertEqual(rep["trades"], 0)
         PR.render(rep)                      # khong nem loi
 
+    def test_attach_context_khong_lay_open_tuong_lai(self):
+        rows_ = [
+            _close(T0 + 10, -50.0, -1.0, pair="XRP/USDT:USDT"),
+            {"ts": T0 + 100, "event": "OPEN", "pair": "XRP/USDT:USDT", "entry": 1.0,
+             "strategy": "B_BREAKOUT_RETEST"},
+            _close(T0 + 160, 20.0, 2.0, pair="XRP/USDT:USDT"),
+        ]
+        cs = PR.attach_context(rows_, PR.closes(rows_))
+        self.assertFalse(cs[0]["_bot"])
+        self.assertTrue(cs[1]["_bot"])
+        self.assertEqual(cs[1]["strategy"], "B_BREAKOUT_RETEST")
+
+    def test_monitor_match_pairs_va_econ_event_veto(self):
+        import monitor_report as MR
+        from ranking import econ_event_veto
+        opens = [{"event": "OPEN", "pair": "XRP/USDT:USDT", "entry": 1.0, "ts": 100.0}]
+        closes = [
+            {"event": "CLOSE", "pair": "XRP/USDT:USDT", "won": False, "r": -1.0, "ts": 10.0},
+            {"event": "CLOSE", "pair": "XRP/USDT:USDT", "won": True, "r": 2.0, "ts": 120.0},
+        ]
+        pairs, still = MR.match_pairs(opens, closes)
+        self.assertIsNone(pairs[0][0])
+        self.assertIsNotNone(pairs[1][0])
+        self.assertEqual(len(still), 0)
+        self.assertIsNone(econ_event_veto("LONG", -0.2, False, False))
+        self.assertIsNotNone(econ_event_veto("LONG", 0.1, True, False))
+        self.assertIsNotNone(econ_event_veto("LONG", -0.05, True, True))
+        self.assertIsNotNone(econ_event_veto("SHORT", 0.05, True, True))
+        self.assertIsNone(econ_event_veto("LONG", 0.05, True, True))
+        self.assertIsNone(econ_event_veto("SHORT", -0.05, True, True))
+
 
 class TestBaoCaoTrenJournalThat(unittest.TestCase):
     def test_chay_duoc_tren_journal_cua_repo(self):

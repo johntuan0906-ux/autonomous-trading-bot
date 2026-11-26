@@ -47,7 +47,12 @@ MIN_RECENT_BLOCKED_LEARN = 10  # so BLOCKED_LEARN toi thieu moi bat dau de danh 
 
 
 def load_journal(path: str) -> tuple:
-    """Tra (opens, closes). Close = event=CLOSE hoac co 'won' khong phai OPEN."""
+    """Tra (opens, closes). Close = event=CLOSE hoac co 'won' khong phai OPEN.
+
+    Ban ghi `void: true` (OPEN trung do adopt chay lap — B-073, xem journal.py)
+    bi BO QUA o day: moi bo dem trong repo deu di qua ham nay nen chi can sua
+    mot cho. Lich su goc van con nguyen trong file.
+    """
     opens: list = []
     closes: list = []
     if not os.path.exists(path):
@@ -61,6 +66,8 @@ def load_journal(path: str) -> tuple:
                 rec = json.loads(line)
             except Exception:
                 continue
+            if rec.get("void") is True:
+                continue
             if rec.get("event") == "CLOSE" or ("won" in rec and rec.get("event") != "OPEN"):
                 closes.append(rec)
             elif "entry" in rec:
@@ -69,15 +76,29 @@ def load_journal(path: str) -> tuple:
 
 
 def match_pairs(opens: list, closes: list) -> tuple:
-    """Gan tung CLOSE voi OPEN cung pair som nhat chua gan (FIFO)."""
+    """Gan tung CLOSE voi OPEN cung pair som nhat chua gan ma `open.ts <= close.ts` (FIFO).
+
+    Chan loi lenh CLOSE tay/bui cu (khong co OPEN) lay nham ban ghi OPEN cua bot o
+    tuong lai (`open.ts > close.ts`). Neu thieu `ts` (=0) thi giu FIFO nhu cu.
+    """
     pending: dict = defaultdict(deque)
-    for o in opens:
+    for o in sorted(opens, key=lambda r: float((r or {}).get("ts") or 0.0)):
         pending[o.get("pair") or o.get("symbol", "?")].append(o)
-    pairs = []
-    for c in closes:
+    indexed = sorted(
+        enumerate(closes),
+        key=lambda ic: (float((ic[1] or {}).get("ts") or 0.0), ic[0]),
+    )
+    pairs: list = [None] * len(closes)
+    for idx, c in indexed:
         key = c.get("pair") or c.get("symbol", "?")
-        o = pending[key].popleft() if pending.get(key) else None
-        pairs.append((o, c))
+        q = pending.get(key)
+        c_ts = float((c or {}).get("ts") or 0.0)
+        o_pick = None
+        if q:
+            o_ts = float((q[0] or {}).get("ts") or 0.0)
+            if c_ts <= 0.0 or o_ts <= 0.0 or o_ts <= c_ts:
+                o_pick = q.popleft()
+        pairs[idx] = (o_pick, c)
     still = [o for q in pending.values() for o in q]
     return pairs, still
 

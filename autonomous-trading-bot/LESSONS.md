@@ -1,427 +1,192 @@
 # BAI HOC TU JOURNAL (tu dong)
 
 > Sinh boi `python tools/learn_review.py`. Nguong chan: xem `logs/lessons.json`.
-> Muc do NGUOI viet nam trong 2 marker `
+> Muc do NGUOI viet nam trong 2 marker `<!-- HUMAN -->` se KHONG bi ghi de.
 
-<!-- AUTO:LESSONS -->
+## So lieu
 
-## Bài học tự sinh (đừng sửa tay — chạy `python tools\lessons_wiki.py --write`)
+- So lenh da dong doc duoc: **1085**
+- To hop DIEU KIEN dang theo doi: **42**
+- Lenh CLOSE khong co OPEN (DUST / ke thua) â€” DA LOAI khoi thong ke: **2455**
+- To hop DANG CHAN (du mau + ky vong am): **12**
 
-Nguồn: `C:\Users\User\.vscode\Projects\autonomous-trading-bot\logs\journal.jsonl` · khóa = `strategy + setup_type + market_regime + direction` · ngưỡng mẫu n ≥ 8 · sắp theo `avg_r` tăng dần.
+## Rut kinh nghiem
 
-| Khóa (strategy · setup · regime · hướng) | n | thắng | avg R | PnL | trích dẫn |
+**NEN TRANH (ky vong am):**
+-   - B_BREAKOUT_RETEST | BOS_UP | SIDEWAY | LONG: n=5 avgR=-0.575 WR=40% PnL=-14.68
+-   - B_BREAKOUT_RETEST | BOS_UP | UPTREND | LONG: n=12 avgR=-0.315 WR=33% PnL=-23.44
+-   - NONE | NONE | SIDEWAY | SHORT: n=21 avgR=-0.300 WR=43% PnL=-49.70  [DANG CHAN]
+-   - NONE | BOS_DOWN | UPTREND | LONG: n=21 avgR=-0.262 WR=43% PnL=-8.44  [DANG CHAN]
+-   - NONE | BOS_UP | UPTREND | LONG: n=20 avgR=-0.260 WR=40% PnL=-38.73  [DANG CHAN]
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT: n=22 avgR=-0.247 WR=36% PnL=-48.68  [DANG CHAN]
+-   - A_TREND_PULLBACK | NONE | DOWNTREND | SHORT: n=14 avgR=-0.218 WR=29% PnL=-23.69
+-   - B_BREAKOUT_RETEST | BOS_DOWN | SIDEWAY | SHORT: n=11 avgR=-0.203 WR=46% PnL=-6.85
+**NEN UU TIEN (ky vong duong):**
+-   - B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT: n=38 avgR=+0.681 WR=95% PnL=+182.66
+-   - A_TREND_PULLBACK | NONE | COMPRESSION | SHORT: n=13 avgR=+0.589 WR=62% PnL=+9.25
+-   - NONE | NONE | BREAKDOWN | SHORT: n=10 avgR=+0.267 WR=60% PnL=+24.60
+-   - B_BREAKOUT_RETEST | BOS_UP | DOWNTREND | LONG: n=6 avgR=+0.266 WR=50% PnL=-1.98
+-   - NONE | NONE | COMPRESSION | SHORT: n=195 avgR=+0.137 WR=63% PnL=+104.74
+-   - NONE | BOS_UP | COMPRESSION | LONG: n=11 avgR=+0.132 WR=46% PnL=+14.55
+-   - D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT: n=17 avgR=+0.112 WR=82% PnL=+3.80
+-   - NONE | BOS_UP | COMPRESSION | SHORT: n=20 avgR=+0.098 WR=80% PnL=+25.04
+
+## Ky nang da rut ra (`/evolve`)
+
+| Ky nang | loai | n | avgR | WR | PnL |
 |---|---|---|---|---|---|
-| B_BREAKOUT_RETEST | BOS_UP | UPTREND | LONG (!) | 8 | 37.5% | -0.736 | -22.33 | ts=1791659590, ts=1791715301, ts=1791836740 |
-| A_TREND_PULLBACK | NONE | COMPRESSION | SHORT (!) | 14 | 42.9% | -0.519 | -35.96 | ts=1790241246, ts=1791895772, ts=1791941462 |
-| B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG (!) | 16 | 31.2% | -0.427 | -67.80 | ts=1791172737, ts=1791192600, ts=1791703530 |
-| NONE | BOS_DOWN | UPTREND | LONG (!) | 15 | 53.3% | -0.233 | -36.16 | ts=1790944473, ts=1791171483, ts=1791209887 |
-| D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT (!) | 16 | 50.0% | -0.230 | -25.99 | ts=1790234668, ts=1790242256, ts=1790247753 |
-| D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT (!) | 23 | 52.2% | -0.193 | -42.81 | ts=1790235075, ts=1790678431, ts=1790859967 |
-| NONE | BOS_UP | UPTREND | LONG (!) | 17 | 47.1% | -0.167 | -22.89 | ts=1790860024, ts=1790944746, ts=1791207439 |
-| NONE | BOS_DOWN | DOWNTREND | SHORT (!) | 15 | 53.3% | -0.154 | -15.09 | ts=1791483918, ts=1791483918, ts=1791822472 |
-| NONE | NONE | UPTREND | LONG (!) | 79 | 57.0% | -0.124 | -59.07 | ts=1790163248, ts=1790163442, ts=1790679289 |
-| NONE | BOS_DOWN | COMPRESSION | LONG (!) | 15 | 60.0% | -0.108 | -14.25 | ts=1790942445, ts=1790950155, ts=1790950634 |
-| NONE | NONE | DOWNTREND | LONG (!) | 8 | 62.5% | -0.089 | -7.09 | ts=1790305214, ts=1791744554, ts=1791782456 |
-| A_TREND_PULLBACK | NONE | DOWNTREND | SHORT (!) | 13 | 30.8% | -0.076 | -10.69 | ts=1790262914, ts=1790328557, ts=1792407163 |
-| NONE | BOS_UP | DOWNTREND | SHORT (!) | 23 | 60.9% | -0.058 | -15.58 | ts=1790292546, ts=1790672545, ts=1791480340 |
-| NONE | NONE | COMPRESSION | LONG (!) | 129 | 59.7% | -0.014 | +9.47 | ts=1790868713, ts=1790872757, ts=1790930989 |
-| NONE | BOS_UP | COMPRESSION | SHORT (!) | 21 | 71.4% | -0.007 | -0.35 | ts=1790861108, ts=1790935903, ts=1791177991 |
-| NONE | NONE | UPTREND | SHORT | 9 | 66.7% | +0.005 | +1.29 | ts=1791830821, ts=1791890678, ts=1791918198 |
-| NONE | NONE | BREAKDOWN | SHORT | 9 | 66.7% | +0.025 | -0.96 | ts=1791842018, ts=1791849801, ts=1791850443 |
-| NONE | NONE | DOWNTREND | SHORT | 115 | 67.0% | +0.029 | +6.36 | ts=1790254886, ts=1790255830, ts=1790283974 |
-| B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT | 27 | 70.4% | +0.082 | +8.06 | ts=1790244695, ts=1790246692, ts=1790251768 |
-| B_BREAKOUT_RETEST | BOS_DOWN | BREAKDOWN | LONG | 17 | 35.3% | +0.090 | -35.62 | ts=1791209952, ts=1791209952, ts=1791672167 |
-| B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG | 18 | 77.8% | +0.103 | +18.41 | ts=1790875371, ts=1790938154, ts=1790940554 |
-| NONE | NONE | COMPRESSION | SHORT | 194 | 66.0% | +0.104 | +30.72 | ts=1790235075, ts=1790235538, ts=1790240549 |
-| NONE | BOS_UP | COMPRESSION | LONG | 10 | 70.0% | +0.209 | +20.96 | ts=1790929940, ts=1790938286, ts=1790950567 |
-| B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT | 35 | 85.7% | +0.267 | +85.76 | ts=1790255830, ts=1791465270, ts=1791465573 |
-| B_BREAKOUT_RETEST | BOS_DOWN | BREAKDOWN | SHORT | 93 | 68.8% | +0.315 | +254.65 | ts=1790247218, ts=1791210909, ts=1791452680 |
-| NONE | NONE | BREAKOUT | LONG | 9 | 66.7% | +0.338 | +2.72 | ts=1790670756, ts=1790675507, ts=1790935934 |
-| NONE | NONE | SIDEWAY | LONG | 8 | 62.5% | +0.345 | +31.78 | ts=1791859390, ts=1791970339, ts=1791970954 |
-| NONE | NONE | SIDEWAY | SHORT | 20 | 75.0% | +0.416 | +92.77 | ts=1791478900, ts=1791478941, ts=1791824867 |
-| NONE | BOS_DOWN | COMPRESSION | SHORT | 20 | 75.0% | +0.466 | +26.88 | ts=1790950647, ts=1791205436, ts=1791459655 |
-| ? | ? | ? | LONG | 1187 | 19.4% | +0.994 | -2342.30 | ts=1791654635, ts=1791660863, ts=1791662067 |
-| ? | ? | ? | SHORT | 1237 | 73.5% | +2.868 | +1220.32 | ts=1791517281, ts=1791524196, ts=1791525385 |
+| uu_tien: COMPRESSION / SHORT | uu_tien | 195 | +0.137 | 63% | +104.74 |
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / DOWNTREND / SHORT | uu_tien | 38 | +0.681 | 95% | +182.66 |
+| uu_tien: A_TREND_PULLBACK / COMPRESSION / SHORT | uu_tien | 13 | +0.589 | 62% | +9.25 |
+| tranh: DOWNTREND / SHORT | tranh | 123 | -0.053 | 55% | -58.02 |
+| tranh: SIDEWAY / SHORT | tranh | 21 | -0.300 | 43% | -49.70 |
+| tranh: COMPRESSION / LONG | tranh | 130 | -0.045 | 53% | -44.03 |
 
-```json
-{
- "? | ? | ? | LONG": {
-  "avg_r": 0.994,
-  "n": 1187,
-  "pnl": -2342.3,
-  "refs": [
-   "ts=1791654635",
-   "ts=1791660863",
-   "ts=1791662067"
-  ],
-  "winrate": 19.4,
-  "wins": 230
- },
- "? | ? | ? | SHORT": {
-  "avg_r": 2.868,
-  "n": 1237,
-  "pnl": 1220.32,
-  "refs": [
-   "ts=1791517281",
-   "ts=1791524196",
-   "ts=1791525385"
-  ],
-  "winrate": 73.5,
-  "wins": 909
- },
- "A_TREND_PULLBACK | NONE | COMPRESSION | SHORT": {
-  "avg_r": -0.519,
-  "n": 14,
-  "pnl": -35.96,
-  "refs": [
-   "ts=1790241246",
-   "ts=1791895772",
-   "ts=1791941462"
-  ],
-  "winrate": 42.9,
-  "wins": 6
- },
- "A_TREND_PULLBACK | NONE | DOWNTREND | SHORT": {
-  "avg_r": -0.076,
-  "n": 13,
-  "pnl": -10.69,
-  "refs": [
-   "ts=1790262914",
-   "ts=1790328557",
-   "ts=1792407163"
-  ],
-  "winrate": 30.8,
-  "wins": 4
- },
- "B_BREAKOUT_RETEST | BOS_DOWN | BREAKDOWN | LONG": {
-  "avg_r": 0.09,
-  "n": 17,
-  "pnl": -35.62,
-  "refs": [
-   "ts=1791209952",
-   "ts=1791209952",
-   "ts=1791672167"
-  ],
-  "winrate": 35.3,
-  "wins": 6
- },
- "B_BREAKOUT_RETEST | BOS_DOWN | BREAKDOWN | SHORT": {
-  "avg_r": 0.315,
-  "n": 93,
-  "pnl": 254.65,
-  "refs": [
-   "ts=1790247218",
-   "ts=1791210909",
-   "ts=1791452680"
-  ],
-  "winrate": 68.8,
-  "wins": 64
- },
- "B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT": {
-  "avg_r": 0.082,
-  "n": 27,
-  "pnl": 8.06,
-  "refs": [
-   "ts=1790244695",
-   "ts=1790246692",
-   "ts=1790251768"
-  ],
-  "winrate": 70.4,
-  "wins": 19
- },
- "B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT": {
-  "avg_r": 0.267,
-  "n": 35,
-  "pnl": 85.76,
-  "refs": [
-   "ts=1790255830",
-   "ts=1791465270",
-   "ts=1791465573"
-  ],
-  "winrate": 85.7,
-  "wins": 30
- },
- "B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG": {
-  "avg_r": -0.427,
-  "n": 16,
-  "pnl": -67.8,
-  "refs": [
-   "ts=1791172737",
-   "ts=1791192600",
-   "ts=1791703530"
-  ],
-  "winrate": 31.2,
-  "wins": 5
- },
- "B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG": {
-  "avg_r": 0.103,
-  "n": 18,
-  "pnl": 18.41,
-  "refs": [
-   "ts=1790875371",
-   "ts=1790938154",
-   "ts=1790940554"
-  ],
-  "winrate": 77.8,
-  "wins": 14
- },
- "B_BREAKOUT_RETEST | BOS_UP | UPTREND | LONG": {
-  "avg_r": -0.736,
-  "n": 8,
-  "pnl": -22.33,
-  "refs": [
-   "ts=1791659590",
-   "ts=1791715301",
-   "ts=1791836740"
-  ],
-  "winrate": 37.5,
-  "wins": 3
- },
- "D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT": {
-  "avg_r": -0.23,
-  "n": 16,
-  "pnl": -25.99,
-  "refs": [
-   "ts=1790234668",
-   "ts=1790242256",
-   "ts=1790247753"
-  ],
-  "winrate": 50.0,
-  "wins": 8
- },
- "D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT": {
-  "avg_r": -0.193,
-  "n": 23,
-  "pnl": -42.81,
-  "refs": [
-   "ts=1790235075",
-   "ts=1790678431",
-   "ts=1790859967"
-  ],
-  "winrate": 52.2,
-  "wins": 12
- },
- "NONE | BOS_DOWN | COMPRESSION | LONG": {
-  "avg_r": -0.108,
-  "n": 15,
-  "pnl": -14.25,
-  "refs": [
-   "ts=1790942445",
-   "ts=1790950155",
-   "ts=1790950634"
-  ],
-  "winrate": 60.0,
-  "wins": 9
- },
- "NONE | BOS_DOWN | COMPRESSION | SHORT": {
-  "avg_r": 0.466,
-  "n": 20,
-  "pnl": 26.88,
-  "refs": [
-   "ts=1790950647",
-   "ts=1791205436",
-   "ts=1791459655"
-  ],
-  "winrate": 75.0,
-  "wins": 15
- },
- "NONE | BOS_DOWN | DOWNTREND | SHORT": {
-  "avg_r": -0.154,
-  "n": 15,
-  "pnl": -15.09,
-  "refs": [
-   "ts=1791483918",
-   "ts=1791483918",
-   "ts=1791822472"
-  ],
-  "winrate": 53.3,
-  "wins": 8
- },
- "NONE | BOS_DOWN | UPTREND | LONG": {
-  "avg_r": -0.233,
-  "n": 15,
-  "pnl": -36.16,
-  "refs": [
-   "ts=1790944473",
-   "ts=1791171483",
-   "ts=1791209887"
-  ],
-  "winrate": 53.3,
-  "wins": 8
- },
- "NONE | BOS_UP | COMPRESSION | LONG": {
-  "avg_r": 0.209,
-  "n": 10,
-  "pnl": 20.96,
-  "refs": [
-   "ts=1790929940",
-   "ts=1790938286",
-   "ts=1790950567"
-  ],
-  "winrate": 70.0,
-  "wins": 7
- },
- "NONE | BOS_UP | COMPRESSION | SHORT": {
-  "avg_r": -0.007,
-  "n": 21,
-  "pnl": -0.35,
-  "refs": [
-   "ts=1790861108",
-   "ts=1790935903",
-   "ts=1791177991"
-  ],
-  "winrate": 71.4,
-  "wins": 15
- },
- "NONE | BOS_UP | DOWNTREND | SHORT": {
-  "avg_r": -0.058,
-  "n": 23,
-  "pnl": -15.58,
-  "refs": [
-   "ts=1790292546",
-   "ts=1790672545",
-   "ts=1791480340"
-  ],
-  "winrate": 60.9,
-  "wins": 14
- },
- "NONE | BOS_UP | UPTREND | LONG": {
-  "avg_r": -0.167,
-  "n": 17,
-  "pnl": -22.89,
-  "refs": [
-   "ts=1790860024",
-   "ts=1790944746",
-   "ts=1791207439"
-  ],
-  "winrate": 47.1,
-  "wins": 8
- },
- "NONE | NONE | BREAKDOWN | SHORT": {
-  "avg_r": 0.025,
-  "n": 9,
-  "pnl": -0.96,
-  "refs": [
-   "ts=1791842018",
-   "ts=1791849801",
-   "ts=1791850443"
-  ],
-  "winrate": 66.7,
-  "wins": 6
- },
- "NONE | NONE | BREAKOUT | LONG": {
-  "avg_r": 0.338,
-  "n": 9,
-  "pnl": 2.72,
-  "refs": [
-   "ts=1790670756",
-   "ts=1790675507",
-   "ts=1790935934"
-  ],
-  "winrate": 66.7,
-  "wins": 6
- },
- "NONE | NONE | COMPRESSION | LONG": {
-  "avg_r": -0.014,
-  "n": 129,
-  "pnl": 9.47,
-  "refs": [
-   "ts=1790868713",
-   "ts=1790872757",
-   "ts=1790930989"
-  ],
-  "winrate": 59.7,
-  "wins": 77
- },
- "NONE | NONE | COMPRESSION | SHORT": {
-  "avg_r": 0.104,
-  "n": 194,
-  "pnl": 30.72,
-  "refs": [
-   "ts=1790235075",
-   "ts=1790235538",
-   "ts=1790240549"
-  ],
-  "winrate": 66.0,
-  "wins": 128
- },
- "NONE | NONE | DOWNTREND | LONG": {
-  "avg_r": -0.089,
-  "n": 8,
-  "pnl": -7.09,
-  "refs": [
-   "ts=1790305214",
-   "ts=1791744554",
-   "ts=1791782456"
-  ],
-  "winrate": 62.5,
-  "wins": 5
- },
- "NONE | NONE | DOWNTREND | SHORT": {
-  "avg_r": 0.029,
-  "n": 115,
-  "pnl": 6.36,
-  "refs": [
-   "ts=1790254886",
-   "ts=1790255830",
-   "ts=1790283974"
-  ],
-  "winrate": 67.0,
-  "wins": 77
- },
- "NONE | NONE | SIDEWAY | LONG": {
-  "avg_r": 0.345,
-  "n": 8,
-  "pnl": 31.78,
-  "refs": [
-   "ts=1791859390",
-   "ts=1791970339",
-   "ts=1791970954"
-  ],
-  "winrate": 62.5,
-  "wins": 5
- },
- "NONE | NONE | SIDEWAY | SHORT": {
-  "avg_r": 0.416,
-  "n": 20,
-  "pnl": 92.77,
-  "refs": [
-   "ts=1791478900",
-   "ts=1791478941",
-   "ts=1791824867"
-  ],
-  "winrate": 75.0,
-  "wins": 15
- },
- "NONE | NONE | UPTREND | LONG": {
-  "avg_r": -0.124,
-  "n": 79,
-  "pnl": -59.07,
-  "refs": [
-   "ts=1790163248",
-   "ts=1790163442",
-   "ts=1790679289"
-  ],
-  "winrate": 57.0,
-  "wins": 45
- },
- "NONE | NONE | UPTREND | SHORT": {
-  "avg_r": 0.005,
-  "n": 9,
-  "pnl": 1.29,
-  "refs": [
-   "ts=1791830821",
-   "ts=1791890678",
-   "ts=1791918198"
-  ],
-  "winrate": 66.7,
-  "wins": 6
- }
-}
-```
-<!-- /AUTO:LESSONS -->
+## To hop dang chan
 
-<!-- HUMAN -->` se KHONG bi ghi de.
+| Mã | To hop | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| EV-0686CA | NONE | NONE | SIDEWAY | SHORT | 21 | -0.300 | 43% | -49.70 |
+| EV-BDEB45 | NONE | BOS_DOWN | UPTREND | LONG | 21 | -0.262 | 43% | -8.44 |
+| EV-AB656E | NONE | BOS_UP | UPTREND | LONG | 20 | -0.260 | 40% | -38.73 |
+| EV-2677E0 | D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT | 22 | -0.247 | 36% | -48.68 |
+| EV-826A02 | B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG | 20 | -0.177 | 45% | -29.63 |
+| EV-2BB958 | NONE | BOS_UP | DOWNTREND | SHORT | 24 | -0.116 | 42% | -23.07 |
+| EV-509F50 | B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT | 30 | -0.095 | 57% | -14.69 |
+| EV-517508 | B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG | 23 | -0.083 | 61% | -18.96 |
+| EV-C17372 | NONE | NONE | UPTREND | LONG | 87 | -0.057 | 55% | -6.68 |
+| EV-C3375C | NONE | NONE | DOWNTREND | SHORT | 123 | -0.053 | 55% | -58.02 |
+| EV-E2B742 | NONE | NONE | COMPRESSION | LONG | 130 | -0.045 | 53% | -44.03 |
+| EV-C2C048 | NONE | BOS_DOWN | COMPRESSION | LONG | 21 | -0.036 | 38% | -8.51 |
+
+_Truy nguoc bang chung cua 1 ma (vd `EV-0686CA`):_ `python tools/trace_trade.py --key "<to hop>"`
+
+## Ghi chu cua nguoi van hanh
+
+<!-- HUMAN -->
+` se KHONG bi ghi de.
+
+## So lieu
+
+- So lenh da dong doc duoc: **1085**
+- To hop DIEU KIEN dang theo doi: **42**
+- Lenh CLOSE khong co OPEN (DUST / ke thua) â€” DA LOAI khoi thong ke: **2455**
+- To hop DANG CHAN (du mau + ky vong am): **10**
+
+## Rut kinh nghiem
+
+**NEN TRANH (ky vong am):**
+-   - B_BREAKOUT_RETEST | BOS_UP | SIDEWAY | LONG: n=5 avgR=-0.575 WR=40% PnL=-14.68
+-   - B_BREAKOUT_RETEST | BOS_UP | UPTREND | LONG: n=12 avgR=-0.315 WR=33% PnL=-23.44
+-   - NONE | NONE | SIDEWAY | SHORT: n=21 avgR=-0.300 WR=43% PnL=-49.70  [DANG CHAN]
+-   - NONE | BOS_DOWN | UPTREND | LONG: n=21 avgR=-0.262 WR=43% PnL=-8.44  [DANG CHAN]
+-   - NONE | BOS_UP | UPTREND | LONG: n=20 avgR=-0.260 WR=40% PnL=-38.73  [DANG CHAN]
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT: n=22 avgR=-0.247 WR=36% PnL=-48.68  [DANG CHAN]
+-   - A_TREND_PULLBACK | NONE | DOWNTREND | SHORT: n=14 avgR=-0.218 WR=29% PnL=-23.69
+-   - B_BREAKOUT_RETEST | BOS_DOWN | SIDEWAY | SHORT: n=11 avgR=-0.203 WR=46% PnL=-6.85
+**NEN UU TIEN (ky vong duong):**
+-   - B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT: n=38 avgR=+0.681 WR=95% PnL=+182.66
+-   - A_TREND_PULLBACK | NONE | COMPRESSION | SHORT: n=13 avgR=+0.589 WR=62% PnL=+9.25
+-   - NONE | NONE | BREAKDOWN | SHORT: n=10 avgR=+0.267 WR=60% PnL=+24.60
+-   - B_BREAKOUT_RETEST | BOS_UP | DOWNTREND | LONG: n=6 avgR=+0.266 WR=50% PnL=-1.98
+-   - NONE | NONE | COMPRESSION | SHORT: n=195 avgR=+0.137 WR=63% PnL=+104.74
+-   - NONE | BOS_UP | COMPRESSION | LONG: n=11 avgR=+0.132 WR=46% PnL=+14.55
+-   - D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT: n=17 avgR=+0.112 WR=82% PnL=+3.80
+-   - NONE | BOS_UP | COMPRESSION | SHORT: n=20 avgR=+0.098 WR=80% PnL=+25.04
+
+## Ky nang da rut ra (`/evolve`)
+
+| Ky nang | loai | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| uu_tien: COMPRESSION / SHORT | uu_tien | 195 | +0.137 | 63% | +104.74 |
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / DOWNTREND / SHORT | uu_tien | 38 | +0.681 | 95% | +182.66 |
+| uu_tien: A_TREND_PULLBACK / COMPRESSION / SHORT | uu_tien | 13 | +0.589 | 62% | +9.25 |
+| tranh: DOWNTREND / SHORT | tranh | 123 | -0.053 | 55% | -58.02 |
+| tranh: SIDEWAY / SHORT | tranh | 21 | -0.300 | 43% | -49.70 |
+| tranh: COMPRESSION / LONG | tranh | 130 | -0.045 | 53% | -44.03 |
+
+## To hop dang chan
+
+| Mã | To hop | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| EV-0686CA | NONE | NONE | SIDEWAY | SHORT | 21 | -0.300 | 43% | -49.70 |
+| EV-BDEB45 | NONE | BOS_DOWN | UPTREND | LONG | 21 | -0.262 | 43% | -8.44 |
+| EV-AB656E | NONE | BOS_UP | UPTREND | LONG | 20 | -0.260 | 40% | -38.73 |
+| EV-2677E0 | D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT | 22 | -0.247 | 36% | -48.68 |
+| EV-826A02 | B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG | 20 | -0.177 | 45% | -29.63 |
+| EV-2BB958 | NONE | BOS_UP | DOWNTREND | SHORT | 24 | -0.116 | 42% | -23.07 |
+| EV-509F50 | B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT | 30 | -0.095 | 57% | -14.69 |
+| EV-517508 | B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG | 23 | -0.083 | 61% | -18.96 |
+| EV-C17372 | NONE | NONE | UPTREND | LONG | 87 | -0.057 | 55% | -6.68 |
+| EV-C3375C | NONE | NONE | DOWNTREND | SHORT | 123 | -0.053 | 55% | -58.02 |
+
+_Truy nguoc bang chung cua 1 ma (vd `EV-0686CA`):_ `python tools/trace_trade.py --key "<to hop>"`
+
+## Ghi chu cua nguoi van hanh
+
+<!-- HUMAN -->
+` se KHONG bi ghi de.
+
+## So lieu
+
+- So lenh da dong doc duoc: **1085**
+- To hop DIEU KIEN dang theo doi: **42**
+- Lenh CLOSE khong co OPEN (DUST / ke thua) â€” DA LOAI khoi thong ke: **2455**
+- To hop DANG CHAN (du mau + ky vong am): **10**
+
+## Rut kinh nghiem
+
+**NEN TRANH (ky vong am):**
+-   - B_BREAKOUT_RETEST | BOS_UP | SIDEWAY | LONG: n=5 avgR=-0.575 WR=40% PnL=-14.68
+-   - B_BREAKOUT_RETEST | BOS_UP | UPTREND | LONG: n=12 avgR=-0.315 WR=33% PnL=-23.44
+-   - NONE | NONE | SIDEWAY | SHORT: n=21 avgR=-0.300 WR=43% PnL=-49.70  [DANG CHAN]
+-   - NONE | BOS_DOWN | UPTREND | LONG: n=21 avgR=-0.262 WR=43% PnL=-8.44  [DANG CHAN]
+-   - NONE | BOS_UP | UPTREND | LONG: n=20 avgR=-0.260 WR=40% PnL=-38.73  [DANG CHAN]
+-   - D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT: n=22 avgR=-0.247 WR=36% PnL=-48.68  [DANG CHAN]
+-   - A_TREND_PULLBACK | NONE | DOWNTREND | SHORT: n=14 avgR=-0.218 WR=29% PnL=-23.69
+-   - B_BREAKOUT_RETEST | BOS_DOWN | SIDEWAY | SHORT: n=11 avgR=-0.203 WR=46% PnL=-6.85
+**NEN UU TIEN (ky vong duong):**
+-   - B_BREAKOUT_RETEST | BOS_DOWN | DOWNTREND | SHORT: n=38 avgR=+0.681 WR=95% PnL=+182.66
+-   - A_TREND_PULLBACK | NONE | COMPRESSION | SHORT: n=13 avgR=+0.589 WR=62% PnL=+9.25
+-   - NONE | NONE | BREAKDOWN | SHORT: n=10 avgR=+0.267 WR=60% PnL=+24.60
+-   - B_BREAKOUT_RETEST | BOS_UP | DOWNTREND | LONG: n=6 avgR=+0.266 WR=50% PnL=-1.98
+-   - NONE | NONE | COMPRESSION | SHORT: n=195 avgR=+0.137 WR=63% PnL=+104.74
+-   - NONE | BOS_UP | COMPRESSION | LONG: n=11 avgR=+0.132 WR=46% PnL=+14.55
+-   - D_RANGE_REVERSAL | BOS_UP | COMPRESSION | SHORT: n=17 avgR=+0.112 WR=82% PnL=+3.80
+-   - NONE | BOS_UP | COMPRESSION | SHORT: n=20 avgR=+0.098 WR=80% PnL=+25.04
+
+## Ky nang da rut ra (`/evolve`)
+
+| Ky nang | loai | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| uu_tien: COMPRESSION / SHORT | uu_tien | 195 | +0.137 | 63% | +104.74 |
+| uu_tien: B_BREAKOUT_RETEST / BOS_DOWN / DOWNTREND / SHORT | uu_tien | 38 | +0.681 | 95% | +182.66 |
+| uu_tien: A_TREND_PULLBACK / COMPRESSION / SHORT | uu_tien | 13 | +0.589 | 62% | +9.25 |
+| tranh: DOWNTREND / SHORT | tranh | 123 | -0.053 | 55% | -58.02 |
+| tranh: SIDEWAY / SHORT | tranh | 21 | -0.300 | 43% | -49.70 |
+| tranh: COMPRESSION / LONG | tranh | 130 | -0.045 | 53% | -44.03 |
+
+## To hop dang chan
+
+| Mã | To hop | n | avgR | WR | PnL |
+|---|---|---|---|---|---|
+| EV-0686CA | NONE | NONE | SIDEWAY | SHORT | 21 | -0.300 | 43% | -49.70 |
+| EV-BDEB45 | NONE | BOS_DOWN | UPTREND | LONG | 21 | -0.262 | 43% | -8.44 |
+| EV-AB656E | NONE | BOS_UP | UPTREND | LONG | 20 | -0.260 | 40% | -38.73 |
+| EV-2677E0 | D_RANGE_REVERSAL | NONE | COMPRESSION | SHORT | 22 | -0.247 | 36% | -48.68 |
+| EV-826A02 | B_BREAKOUT_RETEST | BOS_UP | BREAKOUT | LONG | 20 | -0.177 | 45% | -29.63 |
+| EV-2BB958 | NONE | BOS_UP | DOWNTREND | SHORT | 24 | -0.116 | 42% | -23.07 |
+| EV-509F50 | B_BREAKOUT_RETEST | BOS_DOWN | COMPRESSION | SHORT | 30 | -0.095 | 57% | -14.69 |
+| EV-517508 | B_BREAKOUT_RETEST | BOS_UP | COMPRESSION | LONG | 23 | -0.083 | 61% | -18.96 |
+| EV-C17372 | NONE | NONE | UPTREND | LONG | 87 | -0.057 | 55% | -6.68 |
+| EV-C3375C | NONE | NONE | DOWNTREND | SHORT | 123 | -0.053 | 55% | -58.02 |
+
+_Truy nguoc bang chung cua 1 ma (vd `EV-0686CA`):_ `python tools/trace_trade.py --key "<to hop>"`
+
+## Ghi chu cua nguoi van hanh
+
+<!-- HUMAN -->
+` se KHONG bi ghi de.
 
 ## So lieu
 

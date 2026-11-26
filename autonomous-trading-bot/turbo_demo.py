@@ -349,13 +349,21 @@ def _rearm_missing(bot, log, *, every_sec: float | None = None) -> list:
             if sl <= 0 or tp <= 0:
                 continue
             _PROT_TRY[sym] = now
+            # (23/11, B-072) VI THE "NUA BAO VE": con 1 chan tren san (vd co SL nhung mat TP).
+            # Truoc day chi xu ly khi THIEU CA HAI ⇒ chan thieu nam lai vinh vien
+            # (do that LIVE 23/11: SOL co dung 1 lenh bao ve). Nay dat DUNG chan thieu,
+            # KHONG huy chan con lai (huy roi dat that bai = vi the tran).
+            have_sl, have_tp = bool(prot.get("sl")), bool(prot.get("tp"))
+            half = ("tp",) if have_sl else (("sl",) if have_tp else None)
             res = bot.exchange.stop_tp_orders(sym, pos.direction, pos.qty, sl, tp,
-                                              cid_prefix="retry", cancel_first=False)
+                                              cid_prefix="fix" if half else "retry",
+                                              cancel_first=False, legs=half)
             if mt is not None:
                 record_protection(mt, res)
             done.append(sym)
-            log.warning("RE-ARM: da dat lai SL/TP tren san cho %s (sl=%s tp=%s%s)", sym, sl, tp,
-                        f"; id cu={ids_now}" if ids_now else "")
+            log.warning("RE-ARM: dat lai %s tren san cho %s (sl=%s tp=%s%s)",
+                        "chan thieu (%s)" % ",".join(half).upper() if half else "SL/TP",
+                        sym, sl, tp, f"; id cu={ids_now}" if ids_now else "")
             # Xac nhan lai bang cach doc ve: san co the bao OK ma lenh khong ton tai.
             try:
                 chk = bot.exchange.fetch_protection(sym) or {}

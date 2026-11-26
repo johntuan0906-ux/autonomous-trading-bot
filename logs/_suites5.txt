@@ -1,0 +1,2 @@
+﻿logs\_s7e.txt :: Ran 1733 tests in 162.354s | OK (skipped=4)
+logs\_s7le.txt :: Ran 1733 tests in 162.033s | OK (skipped=4)

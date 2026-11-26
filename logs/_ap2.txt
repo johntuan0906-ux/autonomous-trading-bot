@@ -1,0 +1,14 @@
+﻿    print(f"VI THE: {len(poss)} | LENH TREO: {len(orders)}")
+    missing = []
+    for p in poss:
+        s = p.get("symbol")
+        n = len(per_sym.get(s, []))
+        flag = "" if n else "   <-- KHONG co SL/TP tren san"
+        if not n:
+            missing.append(s)
+        print(f"  {s:18} {str(p.get('side')).upper():5} qty={p.get('contracts')} "
+              f"lenh treo={n}{flag}")
+    if not args.arm:
+        if missing:
+            print(f"\n{len(missing)} vi the khong co bao ve tren san: {missing}")
+            print("Bot van bao ve bang MONITOR phan mem. Thu lai: "

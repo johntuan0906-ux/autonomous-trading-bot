@@ -167,12 +167,22 @@ def main(argv=None) -> int:
 
     print(f"VI THE: {len(poss)} | LENH TREO: {len(orders)}")
     missing = []
+    half = []
     for p in poss:
         s = p.get("symbol")
         n = len(per_sym.get(s, []))
-        flag = "" if n else "   <-- KHONG co SL/TP tren san"
-        if not n:
+        # (23/11, B-072) phan biet "khong co gi" va "chi con 1 chan" — ban cu chi dem so lenh
+        # nen vi the chi co TP (hoac chi co SL) trong y het vi the duoc bao ve.
+        legs = missing_legs(per_sym.get(s, []), 1.0, 1.0)
+        lack = [x[0] for x in legs]
+        if n and lack:
+            flag = "   <-- THIEU " + ",".join(lack)
+            half.append(s)
+        elif not n:
+            flag = "   <-- KHONG co SL/TP tren san"
             missing.append(s)
+        else:
+            flag = ""
         print(f"  {s:18} {str(p.get('side')).upper():5} qty={p.get('contracts')} "
               f"lenh treo={n}{flag}")
     if not args.arm:
@@ -180,6 +190,10 @@ def main(argv=None) -> int:
             print(f"\n{len(missing)} vi the khong co bao ve tren san: {missing}")
             print("Bot van bao ve bang MONITOR phan mem. Thu lai: "
                   "python arm_protection.py --arm")
+        if half:
+            print(f"\n{len(half)} vi the chi con MOT chan bao ve (thieu chan kia): {half}")
+            print("Da va 23/11 (B-072): bot tu dat chan thieu moi vong; dat ngay bang "
+                  "`python arm_protection.py --arm`")
         return 0
 
     ms = json.load(open(ms_path, encoding="utf-8"))

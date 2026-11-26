@@ -817,3 +817,14 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - Dọn trạng thái (đã làm, LIVE): `orders_audit --dedupe` đưa 12 → **10 lệnh / 5 vị thế**,
      `dupes={}`, `naked=[]`.
    - 6 test chốt. Catalog **70 lớp / 277 test chốt**.
+20. **B-072 — Vị thế "NỬA BẢO VỆ" không bao giờ được đặt chặng còn thiếu (23/11).**
+   - Đo thật LIVE 10:55: `arm_protection.py --target live` → **SOL/USDT chỉ có 1 lệnh** (4 vị thế khác
+     có 2); `orders_audit --json`: `STOP_MARKET=4, TAKE_PROFIT_MARKET=5`, `naked=[]` ⇒ cặp "nửa bảo vệ"
+     **lọt** mọi cổng (chỉ đếm số lệnh, và `naked` chỉ bắt vị thế 0 lệnh).
+   - Nguyên nhân: `_rearm_missing()` chỉ xử lý khi **thiếu cả hai** chặng (`continue` ở mọi trường hợp
+     khác), còn `stop_tp_orders()` luôn đặt **cả hai** ⇒ không có đường nào chỉ vá 1 chặng; huỷ rồi đặt
+     lại có nguy cơ mất chặng tốt (vị thế trần).
+   - Vá: `stop_tp_orders(..., legs=("tp",))` chỉ đặt chặng yêu cầu (mặc định vẫn cả 2) ·
+     `_rearm_missing()` tính `half` từ `prot` ⇒ đặt **đúng chặng thiếu**, `cancel_first=False` ·
+     `arm_protection.py` in `<-- THIEU SL/TP` và tổng kết "N vị thế chỉ còn MỘT chặng".
+   - 5 test chốt. Catalog **71 lớp / 282 test chốt**.

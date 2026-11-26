@@ -104,8 +104,10 @@ class FakeExchange:
             raise RuntimeError("simulated network timeout")
         return {"id": "entry-1"}
 
-    def stop_tp_orders(self, s, d, q, sl, tp, cid_prefix="sg", cancel_first=True):
-        self._log("stop_tp_orders", qty=q, sl=sl, tp=tp, cancel_first=cancel_first)
+    def stop_tp_orders(self, s, d, q, sl, tp, cid_prefix="sg", cancel_first=True,
+                       legs=None):
+        self._log("stop_tp_orders", qty=q, sl=sl, tp=tp, cancel_first=cancel_first,
+                  legs=legs)
         if self.arm_boom:
             raise RuntimeError('binance {"code":-4045,"msg":"Reach max stop order limit."}')
         return {"sl_order": {"id": "sl"}, "tp_order": {"id": "tp"}}
@@ -825,6 +827,39 @@ class TestRearmBaoVe(unittest.TestCase):
                                                      95.0, 115.0)
         self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0), [])
         self.assertEqual(ex.named("stop_tp_orders"), [])
+
+    def test_con_mot_chan_thi_dat_dung_chan_thieu(self):
+        """(23/11, B-072) Vi the con SL nhung mat TP ⇒ chi dat TP, KHONG huy SL."""
+        ex = FakeExchange(prot={self.SYM: {"sl": 98.0, "tp": None}})
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        self.assertEqual(td._rearm_missing(bot, logging.getLogger("test"), every_sec=0),
+                         [self.SYM])
+        arms = ex.named("stop_tp_orders")
+        self.assertEqual(len(arms), 1)
+        self.assertEqual(arms[0][1]["legs"], ("tp",), "chi dat chan THIEU")
+        self.assertFalse(arms[0][1]["cancel_first"], "khong huy chan con lai")
+
+    def test_con_tp_thi_chi_dat_sl(self):
+        ex = FakeExchange(prot={self.SYM: {"sl": None, "tp": 120.0}})
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 120.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 120.0)
+        td._rearm_missing(bot, logging.getLogger("test"), every_sec=0)
+        self.assertEqual(ex.named("stop_tp_orders")[0][1]["legs"], ("sl",))
+
+    def test_thieu_ca_hai_thi_dat_ca_hai(self):
+        ex = FakeExchange()
+        bot = self._bot(ex)
+        bot.portfolio.positions[self.SYM] = Position(self.SYM, "LONG", 100.0, 10.0,
+                                                     98.0, 200.0)
+        bot.managed[self.SYM] = new_trade(self.SYM, "LONG", 100.0, 10.0, 98.0, 200.0)
+        td._rearm_missing(bot, logging.getLogger("test"), every_sec=0)
+        self.assertIsNone(ex.named("stop_tp_orders")[0][1]["legs"],
+                          "thieu ca hai ⇒ giu hanh vi cu (dat ca 2)")
 
     def test_doc_bao_ve_loi_thi_khong_arm_lai(self):
         """(22/11, B-071) `unknown=True` (API loi) KHONG duoc coi la 'thieu bao ve'."""

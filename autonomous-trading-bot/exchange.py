@@ -530,34 +530,42 @@ class BinanceFutures:
 
     def stop_tp_orders(self, symbol: str, direction: str, qty: float, sl: float,
                        tp: float, cid_prefix: str = "sg",
-                       cancel_first: bool = True) -> dict:
+                       cancel_first: bool = True,
+                       legs: tuple | None = None) -> dict:
         """Arm SL/TP.
 
         P0-5: `cancel_first=True` HUY het lenh treo cu truoc khi arm -> khong con
         tinh trang 2-4 lenh STOP/TP chong nhau (partial/BE/trail cu goi lai nhieu
         lan, va lenh cu co the kich hoat dong nham vi the MOI mo sau do).
         P0-4: moi lenh co clientOrderId rieng.
+
+        (23/11, B-072) `legs`: chi dat cac chan duoc yeu cau, vd `("tp",)` khi vi the
+        da co SL. Truoc day ham nay LUON dat ca 2 ⇒ vi the "nua bao ve" khong bao gio
+        duoc va chan thieu (do that: SOL LIVE co 1 lenh).
         """
         if self._client is None or self.dry_run:
             return {"sl": sl, "tp": tp, "dry_run": True}
         close_side = "sell" if direction == "LONG" else "buy"
         try:
             return self._arm_protection(symbol, direction, close_side, qty, sl, tp,
-                                        cid_prefix, cancel_first)
+                                        cid_prefix, cancel_first, legs)
         except Exception as e:  # noqa: BLE001
             # (19/11, B-064) che do tai khoan DOI ⇒ SL/TP hong het (`-4061`) ⇒ thu lai 1 lan
             if "-4061" not in str(e):
                 raise
             self._invalidate_hedge()
             return self._arm_protection(symbol, direction, close_side, qty, sl, tp,
-                                        cid_prefix, cancel_first)
+                                        cid_prefix, cancel_first, legs)
 
     def _arm_protection(self, symbol: str, direction: str, close_side: str,
                         qty: float, sl: float, tp: float, cid_prefix: str,
-                        cancel_first: bool) -> dict:
+                        cancel_first: bool, legs: tuple | None = None) -> dict:
         ps = self._pos_side(direction)   # HEDGE: bat buoc co positionSide (khong dung reduceOnly)
         out: dict = {"cancelled": self.cancel_symbol_orders(symbol) if cancel_first else None}
+        want = tuple(legs) if legs else ("sl", "tp")
         for tag, otype, price in (("sl", "STOP_MARKET", sl), ("tp", "TAKE_PROFIT_MARKET", tp)):
+            if tag not in want:
+                continue
             base = {"stopPrice": price, "workingType": "CONTRACT_PRICE",
                     "newClientOrderId": _cid(cid_prefix + tag)}
             base.update(ps)

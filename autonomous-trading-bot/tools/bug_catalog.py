@@ -832,6 +832,19 @@ CLASSES = [
                   "test_orders_audit.py::TestExchangeAlgo::test_dry_run_khong_goi_san",
                   "test_p0_safety.py::TestRearmBaoVe::test_doc_bao_ve_loi_thi_khong_arm_lai"],
     },
+    {
+        "code": "B-072", "kind": "rui-ro", "seen": "23/11/2026",
+        "title": "Vị thế \"NỬA BẢO VỆ\" (còn 1 chặn SL hoặc TP) không bao giờ được đặt chặn còn thiếu",
+        "symptom": "Đo thật LIVE 23/11 10:55: `arm_protection.py --target live` → SOL/USDT có **1 lệnh** (4 vị thế khác 2), `orders_audit`: `STOP_MARKET=4, TAKE_PROFIT_MARKET=5` ⇒ SOL thiếu 1 chặn. `_rearm_missing()` chỉ xử lý khi **thiếu cả hai** (`if prot['sl'] and prot['tp']` ngược lại `continue`) nên chặn thiếu nằm lại VĨNH VIỄN; `stop_tp_orders()` cũng luôn đặt **cả hai**, nên không có cách nào chỉ vá 1 chặn mà không huỷ chặn tốt (huỷ rồi đặt thất bại = vị thế trần)",
+        "guard": "`exchange.stop_tp_orders(..., legs=(\"tp\",))` — chỉ đặt chặn được yêu cầu (`_arm_protection` bỏ qua chặn không có trong `legs`; mặc định vẫn cả 2) · `turbo_demo._rearm_missing()` tính `half = (\"tp\",) if có SL else ((\"sl\",) if có TP else None)` ⇒ đặt **đúng chặn thiếu** với `cid_prefix=\"fix\"`, `cancel_first=False` (không huỷ chặn còn lại) · `arm_protection.py` chế độ đọc in `<-- THIEU SL/TP` + tổng kết \"N vị thế chỉ còn MỘT chặn\" thay vì chỉ đếm số lệnh",
+        "files": ["exchange.py", "turbo_demo.py", "arm_protection.py", "tests/test_p0_safety.py",
+                  "tests/test_orders_audit.py"],
+        "tests": ["test_p0_safety.py::TestRearmBaoVe::test_con_mot_chan_thi_dat_dung_chan_thieu",
+                  "test_p0_safety.py::TestRearmBaoVe::test_con_tp_thi_chi_dat_sl",
+                  "test_p0_safety.py::TestRearmBaoVe::test_thieu_ca_hai_thi_dat_ca_hai",
+                  "test_orders_audit.py::TestExchangeAlgo::test_stop_tp_orders_legs_chi_dat_chan_duoc_yeu_cau",
+                  "test_orders_audit.py::TestExchangeAlgo::test_stop_tp_orders_khong_co_legs_thi_dat_ca_hai"],
+    },
 ]
 
 

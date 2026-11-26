@@ -217,6 +217,34 @@ class TestExchangeAlgo(unittest.TestCase):
         # mac dinh van nuot loi (goi cu khong doi hanh vi)
         self.assertEqual(self._ex(FakeAlgoClient(fail_algo=True)).algo_orders(), [])
 
+    def test_stop_tp_orders_legs_chi_dat_chan_duoc_yeu_cau(self):
+        """(23/11, B-072) `legs=("tp",)` ⇒ chi 1 lenh TAKE_PROFIT, khong dat lai SL."""
+        cli = FakeAlgoClient()
+        cli.created = []
+
+        def _create(symbol, otype, side, amount, params=None):
+            cli.created.append((otype, amount, dict(params or {})))
+            return {"id": "x%d" % len(cli.created)}
+
+        cli.create_order = _create
+        ex = self._ex(cli)
+        ex._pos_side = lambda direction: {}          # ONE-WAY cho de doc
+        res = ex.stop_tp_orders("SOL/USDT:USDT", "SHORT", 2.0, 110.5, 90.5,
+                                cancel_first=False, legs=("tp",))
+        self.assertEqual([c[0] for c in cli.created], ["TAKE_PROFIT_MARKET"])
+        self.assertIn("tp_order", res)
+        self.assertNotIn("sl_order", res)
+
+    def test_stop_tp_orders_khong_co_legs_thi_dat_ca_hai(self):
+        cli = FakeAlgoClient()
+        cli.created = []
+        cli.create_order = lambda symbol, otype, side, amount, params=None: (
+            cli.created.append(otype) or {"id": "x"})
+        ex = self._ex(cli)
+        ex._pos_side = lambda direction: {}
+        ex.stop_tp_orders("SOL/USDT:USDT", "SHORT", 2.0, 110.5, 90.5, cancel_first=False)
+        self.assertEqual(cli.created, ["STOP_MARKET", "TAKE_PROFIT_MARKET"])
+
     def test_cancel_symbol_orders_huy_ca_algo(self):
         res = self._ex(FakeAlgoClient()).cancel_symbol_orders("SOL/USDT:USDT")
         self.assertEqual(res["cancelled_algo"], 1)

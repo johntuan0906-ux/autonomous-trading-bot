@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 26/11/2026 20:06:27 · commit `4ec2d72`
+- **Cập nhật**: 26/11/2026 20:36:27 · commit `8688fe4`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `110076` · round `438` · nhịp tim cách đây 9.7s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `110076` · round `465` · nhịp tim cách đây 26.0s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: 1000.0 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3085 lệnh đóng, WR 41.1%, E(R) 0.2371, PnL -966.27$)
+## Hiệu suất (journal: 3086 lệnh đóng, WR 41.12%, E(R) 0.2376, PnL -959.24$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 23 | 56.52 | 3.904 | 3.303 | 0.9119 | 63.33 |
-| 14 ngày | 46 | 45.65 | 2.82 | 2.34 | 0.6018 | 77.57 |
-| 30 ngày | 177 | 42.37 | 1.915 | 1.045 | 0.3419 | 16.89 |
+| 7 ngày | 24 | 58.33 | 4.148 | 3.559 | 0.9472 | 70.36 |
+| 14 ngày | 47 | 46.81 | 2.935 | 2.462 | 0.6264 | 84.6 |
+| 30 ngày | 178 | 42.7 | 1.941 | 1.064 | 0.3499 | 23.91 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 1.010 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 1.032 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -39,11 +39,10 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (4)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| AIOT/USDT:USDT | LONG | 331.0 | 0.0907 | 0.0907907 | 0.107632 | True | True | 1.217 |
 | BANK/USDT:USDT | SHORT | 7326.0 | 0.01514 | 0.015686 | 0.014048 | False | False | 0.897 |
 | CKB/USDT:USDT | LONG | 83333.0 | 0.000805 | 0.000757 | 0.000901 | False | False | 1.0 |
 | FIL/USDT:USDT | LONG | 212.7 | 0.5479 | 0.529102 | 0.585496 | False | False | 0.112 |

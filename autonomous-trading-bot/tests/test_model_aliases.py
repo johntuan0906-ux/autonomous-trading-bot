@@ -22,6 +22,7 @@ class TestMapGateway(unittest.TestCase):
             "cline-pass/glm-5.3": "z-ai/glm-5.3",
             "cline-pass/deepseek-v4-pro": "deepseek/deepseek-v4-pro",
             "cline-pass/deepseek-v4.1-flash": "deepseek/deepseek-v4.1-flash",
+            "cline-pass/deepseek-v4.1-flash-1017": "deepseek/deepseek-v4.1-flash-1017",
             "cline-pass/qwen3.8-max": "qwen/qwen3.8-max-prime",
             "cline-pass/qwen3.7-plus": "qwen/qwen3.7-plus",
             "cline-pass/kimi-k3": "moonshotai/kimi-k3",

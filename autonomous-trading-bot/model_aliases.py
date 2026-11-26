@@ -24,6 +24,7 @@ GATEWAY_MAP = {
     "glm-5.3-flashx": "z-ai/glm-5.3-flashx",
     "deepseek-v4-pro": "deepseek/deepseek-v4-pro",
     "deepseek-v4.1-flash": "deepseek/deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017": "deepseek/deepseek-v4.1-flash-1017",
     "qwen3.8-max": "qwen/qwen3.8-max-prime",
     "qwen3.7-plus": "qwen/qwen3.7-plus",
     "qwen3.7-max": "qwen/qwen3.7-max",

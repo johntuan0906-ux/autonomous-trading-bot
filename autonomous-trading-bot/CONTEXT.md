@@ -1,12 +1,14 @@
 # CONTEXT.md — Ngữ cảnh hiện tại của dự án (đọc file này ĐẦU TIÊN)
 
 > **Mục đích**: một chỗ duy nhất ghi *trạng thái + kiến thức đã kiểm chứng* của dự án, để khi mở lại VS Code / mở phiên chat mới (người hoặc AI) là **nhớ lại ngay**, không phải suy đoán lại.
-> **Cập nhật lần cuối**: 06/11/2026 (B-035 chuẩn hoá tên model + B-040 gọi được Copilot CLI qua `node npm-loader.js` + B-041 cảnh báo agent bị tắt/hết quota + B-042 ẩn cửa sổ console mồ côi; 41 lớp lỗi / 108 test chốt).
+> **Cập nhật lần cuối**: 26/11/2026 (Cline DeepSeek V4.1 Flash 1017 + Antigravity CLI tham gia council TESTNET).
 > **Quy tắc vàng**: mọi con số ở đây **có ngày** và **kèm lệnh tự kiểm chứng**. Số liệu hiệu suất thay đổi mỗi ngày → chạy lại lệnh ở §3 trước khi kết luận.
 
 ---
 
 ## 0. Khôi phục ngữ cảnh trong 60 giây (dành cho phiên AI mới)
+**HỘI ĐỒNG CLINE + ANTIGRAVITY (26/11)**: TESTNET `.env` chọn `cline-pass/deepseek-v4.1-flash-1017` (probe Cline OK, 2s) và `antigravity/gemini-4-hydrogen-high`. Antigravity adapter gọi `agy --print` trong sandbox, chế độ `plan`, cwd tạm; council timeout 30s. Cấu hình có hiệu lực sau khi restart TESTNET; phiên này **chưa restart**. `atb-live` chưa sửa. Kiểm tra model thực sự bỏ phiếu: `python agents.py --council-health --hours 48`.
+
 
 **Đang chạy 2 instance SONG SONG** (từ 11/10): repo chính = **TESTNET** (demo, học), `../atb-live/` = **LIVE** (tiền thật ~19.7 USDT). Mỗi instance có `logs/`, `.env`, kill-switch RIÊNG; code dùng chung (sync bằng robocopy `*.py tools tests`). Cả hai quét **458 cặp** (nạp 522 → lọc sàn → ban BTC vĩnh viễn; danh sách trong `.env` `SYMBOLS` do `tools/apply_symbols.py` giữ, luôn trừ `logs/banned_pairs.json` của từng instance).
 

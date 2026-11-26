@@ -289,6 +289,10 @@ class Settings:
     agent_provider: str = field(default_factory=lambda: _get("AGENT_PROVIDER", "stub"))
     agent_model: str = field(default_factory=lambda: _get("AGENT_MODEL", ""))
     agent_timeout_sec: int = field(default_factory=lambda: _get_int("AGENT_TIMEOUT_SEC", 6))
+    agent_antigravity_bin: str = field(
+        default_factory=lambda: _get("AGENT_ANTIGRAVITY_BIN", "agy"))
+    agent_antigravity_timeout_sec: int = field(
+        default_factory=lambda: _get_int("AGENT_ANTIGRAVITY_TIMEOUT_SEC", 30))
     agent_cache_sec: int = field(default_factory=lambda: _get_int("AGENT_CACHE_SEC", 900))
     agent_daily_calls: int = field(default_factory=lambda: _get_int("AGENT_DAILY_CALLS", 200))
     agent_daily_budget_usd: float = field(
@@ -355,6 +359,8 @@ class Settings:
     # 14 model (tru CLINE_SKIP_MODELS) | csv | rong = tat. Can CLINE_API_KEY.
     agent_council_cline: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_CLINE", ""))
+    agent_council_antigravity: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_ANTIGRAVITY", ""))
     # (05/10) Tam nghi 1 bo hoi dong theo ngay (ISO YYYY-MM-DD): bo QuaProvider do den
     # het ngay nay (vd Copilot het quota hang thang -> AGENT_COUNCIL_COPILOT_UNTIL=2026-11-01).
     # Rong = khong chan. Provider con lai tu lam 100% (khong treo, khong ngat viec).
@@ -362,6 +368,8 @@ class Settings:
         default_factory=lambda: _get("AGENT_COUNCIL_COPILOT_UNTIL", ""))
     agent_council_cline_until: str = field(
         default_factory=lambda: _get("AGENT_COUNCIL_CLINE_UNTIL", ""))
+    agent_council_antigravity_until: str = field(
+        default_factory=lambda: _get("AGENT_COUNCIL_ANTIGRAVITY_UNTIL", ""))
     # Model Muse (Meta Model API, muse/...) tham gia hoi dong (06/10): csv | rong = tat.
     # Can MUSE_API_KEY tai https://dev.meta.ai. Tam nghi theo ngay: AGENT_COUNCIL_MUSE_UNTIL.
     agent_council_muse: str = field(

@@ -1,0 +1,8 @@
+﻿live_guard.py:115: warns.append(f"{len(still)} OPEN chua co CLOSE trong journal (co the la vi the "
+live_ready.py:187: warnings.append(f"{len(still)} OPEN chua co CLOSE trong journal (lich su ghi chep)")
+loss_report.py:219: print("\n(%d OPEN chua co CLOSE — lich su ghi chep)" % len(still))
+positions.py:10: 2. journal.jsonl (OPEN chua co CLOSE) -> CHI LA LICH SU ghi chep, khong phai
+harness_audit.py:70: `orphan` = OPEN khong co CLOSE tuong ung (theo so luong) — dau hieu vi the mo coi
+harness_audit.py:229: add(checks, "WARN", "journal", "%d OPEN khong co CLOSE" % jb["orphan"],
+restart_bot.py:139: """So vi the dang mo theo JOURNAL (OPEN chua co CLOSE cung cap).
+selfops.py:63: """So vi the dang mo theo journal (OPEN chua co CLOSE) — khong goi san."""

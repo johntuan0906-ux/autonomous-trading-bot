@@ -1,0 +1,32 @@
+﻿            weak[code] = g
+    for code, g in weak.items():
+        if code in block:
+            warnings.append(f"chien luoc {code} am (n={g['n']}) — da bi STRATEGY_BLOCK chan")
+        elif gate:
+            # (09/10) SUA: runtime TU dong chan chinh xac tap nay (strategy.gate_check:
+            # n >= STRAT_MIN_N VA avgR <= -STRAT_AVG_R) khi STRATEGY_GATE=true
+            # => chi la CANH BAO, khong duoc coi la chan (truoc day chan oan).
+            warnings.append(f"chien luoc {code} am (n={g['n']}, avgR={g['avg_r']:+.2f}) — "
+                            f"runtime TU dong chan (STRATEGY_GATE=true)")
+        else:
+            blockers.append(
+                f"chien luoc {code} (n={g['n']} avgR={g['avg_r']:+.2f}) dang am nhung "
+                f"KHONG bi chan: STRATEGY_BLOCK khong co ten nay VA STRATEGY_GATE dang TAT")
+    for d in DIRECTIONS_REQUIRED:
+        g = (st_all.get("by_direction") or {}).get(d) or {}
+        if int(g.get("n", 0)) < MIN_DIRECTION_TRADES:
+            blockers.append(f"huong {d} chi co {int(g.get('n', 0))} lenh "
+                            f"< {MIN_DIRECTION_TRADES} (mau chua can doi)")
+
+    if bool(getattr(cfg, "testnet", True)):
+        warnings.append("dang TESTNET (BINANCE_TESTNET=true) — sang LIVE phai doi "
+                        "BINANCE_TESTNET=false")
+    if not bool(getattr(cfg, "live_confirm", False)):
+        warnings.append("LIVE_CONFIRM=false — live_guard.py se chan khi doi sang LIVE")
+    if still:
+        warnings.append(f"{len(still)} OPEN chua co CLOSE trong journal (lich su ghi chep)")
+
+    facts = {"n_all": int(st_all["n"]), "pf_r_all": float(st_all["pf_r"]),
+             "pf_pnl_all": float(st_all["pf_pnl"]), "risk_pct": risk_pct, "leverage": lev,
+             "kill_tripped": tripped,
+             # (15/11) so RIENG cua lenh BOT — day la so dung de quyet dinh LIVE

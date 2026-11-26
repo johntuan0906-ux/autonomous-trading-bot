@@ -1,0 +1,3 @@
+﻿106: pairs, still = match_pairs(opens, closes)
+186: if still:
+187: warnings.append(f"{len(still)} OPEN chua co CLOSE trong journal (lich su ghi chep)")

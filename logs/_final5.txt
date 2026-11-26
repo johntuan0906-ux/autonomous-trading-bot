@@ -1,0 +1,30 @@
+﻿=== OPS ===
+=== OPS REPORT 2026-11-26 09:20:04 | cua so 20 phut ===
+TESTNET  round=1    phase=end              equity=3270.99    hb=26s
+         supervisor=69648 child_pid=87860 managed=3
+         san: 3 vi the / 8 lenh cho / 2 mo coi (snapshot orders_audit)
+         loi trong 20 phut: KHONG (sach)
+         vong trong log: 1 | vong cuoi #1: {'SKIP_LESSON': 9, 'SKIP_OPEN': 3, 'NO_TRADE': 3, 'SKIP_RISK': 3, 'WAIT': 2, 'BLOCKED_STRAT': 2}
+         log cuoi: 2026-11-26 09:19:38
+LIVE     round=2    phase=start            equity=None       hb=5s
+         supervisor=15984 child_pid=108764 managed=4
+         san: 5 vi the / 10 lenh cho / 0 mo coi (snapshot orders_audit)
+         loi trong 20 phut: KHONG (sach)
+         vong trong log: 102 | vong cuoi #1: {'SKIP_MAX_POS': 11, 'SKIP_OPEN': 4, 'SKIP_CHASE': 1}
+         log cuoi: 2026-11-26 09:17:59
+KET LUAN: OK ΓÇö khong van de
+=== AUDIT LIVE ===
+"orders": 10,
+"positions": 5,
+"protect_orders": 10,
+"dupes": {},
+"naked": [],
+"keep": 10,
+"to_cancel": 0,
+=== ARM LIVE ===
+VI THE: 5 | LENH TREO: 10
+  BTC/USDT:USDT      LONG  qty=0.001 lenh treo=2
+  ETH/USDT:USDT      LONG  qty=0.016 lenh treo=2
+  XRP/USDT:USDT      LONG  qty=7.0 lenh treo=2
+  SOL/USDT:USDT      SHORT qty=0.09 lenh treo=2
+  1000000MOG/USDT:USDT SHORT qty=64.7 lenh treo=2

@@ -1148,6 +1148,39 @@ MUSE_PREFIX = "muse/"
 QWEN_PREFIX = "qwen/"
 MUSE_CLI_PREFIX = "muse-cli/"
 LOCAL_PREFIX = "local/"
+ANTIGRAVITY_PREFIX = "antigravity/"
+
+
+class AntigravityCliProvider:
+    """Antigravity CLI, prompt đơn trong sandbox và project tạm."""
+
+    name = "antigravity_cli"
+
+    def __init__(self, model: str = "", bin_path: str = "agy", runner=None,
+                 cwd: str | None = None, env: dict | None = None):
+        self.model = (str(model)[len(ANTIGRAVITY_PREFIX):]
+                      if str(model or "").startswith(ANTIGRAVITY_PREFIX)
+                      else str(model or ""))
+        self._base = _split_cmd(bin_path) or ["agy"]
+        self._base[0] = _resolve_exe(self._base[0])
+        self._runner = runner or _subprocess_runner
+        self.cwd = cwd or os.getenv("TEMP") or os.getenv("TMP") or None
+        self.env = env
+
+    def complete(self, system: str, user: str, *, timeout: float = 30.0) -> dict:
+        prompt = f"{system}\n\n{user}"
+        cmd = self._base + ["--print", prompt, "--model", self.model,
+                            "--output-format", "json", "--print-timeout",
+                            f"{max(1, int(timeout))}s", "--sandbox", "--mode", "plan"]
+        rc, out, err = self._runner(cmd, timeout, cwd=self.cwd, env=self.env)
+        if rc != 0 and not str(out).strip():
+            raise RuntimeError(f"antigravity CLI rc={rc}: {str(err).strip()[:200]}")
+        text = _extract_text(out)
+        if not text:
+            raise RuntimeError(f"antigravity CLI khong tra van ban (rc={rc}): "
+                               f"{str(err).strip()[:160]}")
+        return {"text": text, "tokens_in": approx_tokens(prompt),
+                "tokens_out": approx_tokens(text)}
 
 
 class ClineProvider:
@@ -2249,6 +2282,8 @@ def _provider_blocked(provider: str, cfg=None) -> str:
         until = str(getattr(cfg, "agent_council_copilot_until", "") or "").strip()
     elif cfg is not None and provider == "cline":
         until = str(getattr(cfg, "agent_council_cline_until", "") or "").strip()
+    elif cfg is not None and provider == "antigravity":
+        until = str(getattr(cfg, "agent_council_antigravity_until", "") or "").strip()
     elif cfg is not None and provider == "muse":
         until = str(getattr(cfg, "agent_council_muse_until", "") or "").strip()
     elif cfg is not None and provider == "muse_cli":
@@ -2293,6 +2328,8 @@ def _timeout_for_model(cfg, model: str) -> float:
     """
     if _is_local_model(model):
         return _f(getattr(cfg, "agent_local_timeout_sec", 180.0), 180.0)
+    if str(model).startswith(ANTIGRAVITY_PREFIX):
+        return _f(getattr(cfg, "agent_antigravity_timeout_sec", 30.0), 30.0)
     return _f(getattr(cfg, "agent_timeout_sec", 6.0), 6.0)
 
 
@@ -2362,6 +2399,8 @@ def _fallback_chains(models: list, cfg=None) -> dict:
             g = "qwen"
         elif m.startswith(LOCAL_PREFIX):
             g = "local"
+        elif m.startswith(ANTIGRAVITY_PREFIX):
+            g = "antigravity"
         else:
             continue
         groups.setdefault(g, []).append(m)
@@ -2373,8 +2412,10 @@ def _fallback_chains(models: list, cfg=None) -> dict:
     return chains
 
 
-_MODEL_PREFIX_PROVIDER = ((CLINE_PREFIX, "cline"), (MUSE_PREFIX, "muse"),
-                          ("qwen/", "qwen"), ("local/", "local"))
+_MODEL_PREFIX_PROVIDER = ((CLINE_PREFIX, "cline"),
+                          (ANTIGRAVITY_PREFIX, "antigravity"),
+                          (MUSE_PREFIX, "muse"), ("qwen/", "qwen"),
+                          ("local/", "local"))
 
 
 PROBE_CACHE_PATH = "logs/model_probe.json"
@@ -2453,12 +2494,14 @@ def _council_models(cfg) -> list:
     copilot_models = [m.strip() for m in raw.split(",") if m.strip()] or list(COUNCIL_MULTI_MODELS)
     copilot_models = _dedup_models(copilot_models + promote_copilot_candidates(cfg))
     cline_models = _cline_council_models(cfg)
+    antigravity_models = _antigravity_council_models(cfg)
     muse_models = _muse_council_models(cfg)
     muse_cli_models = _muse_cli_council_models(cfg)
     qwen_models = _qwen_council_models(cfg)
     local_models = _local_council_models(cfg)
     copilot_blocked = _provider_blocked("copilot", cfg)
     cline_blocked = _provider_blocked("cline", cfg)
+    antigravity_blocked = _provider_blocked("antigravity", cfg)
     muse_blocked = _provider_blocked("muse", cfg)
     muse_cli_blocked = _provider_blocked("muse_cli", cfg)
     qwen_blocked = _provider_blocked("qwen", cfg)
@@ -2468,6 +2511,8 @@ def _council_models(cfg) -> list:
         out.extend(copilot_models)
     if not cline_blocked:
         out.extend(cline_models)
+    if not antigravity_blocked:
+        out.extend(antigravity_models)
     if not muse_blocked:
         out.extend(muse_models)
     if not muse_cli_blocked:
@@ -2480,9 +2525,9 @@ def _council_models(cfg) -> list:
     # chua model cua provider khac (vd `cline-pass/...`). Truoc day ten hong
     # `qwen/cline-pass/x` che mat loi nay; khi Cline bi chan thi model cline van duoc dung
     # -> goi gateway vo ich + sai bang chung "provider con lai lam 100%".
-    blocked_provs = {"cline": cline_blocked, "muse": muse_blocked,
-                     "muse_cli": muse_cli_blocked, "qwen": qwen_blocked,
-                     "local": local_blocked}
+    blocked_provs = {"cline": cline_blocked, "antigravity": antigravity_blocked,
+                     "muse": muse_blocked, "muse_cli": muse_cli_blocked,
+                     "qwen": qwen_blocked, "local": local_blocked}
     for pref, prov in _MODEL_PREFIX_PROVIDER:
         if blocked_provs.get(prov):
             out = [m for m in out if not str(m).startswith(pref)]
@@ -2519,6 +2564,15 @@ def _cline_council_models(cfg) -> list:
         names = [m.strip() for m in raw.split(",") if m.strip()]
     skip = {m.strip() for m in os.getenv("CLINE_SKIP_MODELS", "").split(",") if m.strip()}
     return _apply_skip(names, skip, CLINE_PREFIX)
+def _antigravity_council_models(cfg) -> list:
+    """Model Antigravity CLI tham gia hoi dong."""
+    raw = str(getattr(cfg, "agent_council_antigravity", "") or "").strip()
+    if not raw:
+        return []
+    names = [m.strip() for m in raw.split(",") if m.strip()]
+    skip = {m.strip() for m in os.getenv("ANTIGRAVITY_SKIP_MODELS", "").split(",")
+            if m.strip()}
+    return _apply_skip(names, skip, ANTIGRAVITY_PREFIX)
 
 
 def _apply_skip(names: list, skip: set, prefix: str) -> list:
@@ -2597,6 +2651,8 @@ def _skipped_council_models(cfg) -> list:
     """
     out: list = []
     groups = ((getattr(cfg, "agent_council_cline", ""), "CLINE_SKIP_MODELS", CLINE_PREFIX),
+              (getattr(cfg, "agent_council_antigravity", ""),
+               "ANTIGRAVITY_SKIP_MODELS", ANTIGRAVITY_PREFIX),
               (getattr(cfg, "agent_council_local", ""), "LOCAL_SKIP_MODELS", LOCAL_PREFIX),
               (getattr(cfg, "agent_council_qwen", ""), "QWEN_SKIP_MODELS", QWEN_PREFIX),
               (getattr(cfg, "agent_council_muse", ""), "MUSE_SKIP_MODELS", MUSE_PREFIX),
@@ -2935,7 +2991,11 @@ def multi_model_council(cfg, payload: dict, role: str = "critic", log=None,
     lo_base = str(getattr(cfg, "agent_local_base_url", "") or "")
     lo_key = str(getattr(cfg, "agent_local_api_key", "") or "local")
     make_provider = provider_factory or (
-        lambda m: (ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
+        lambda m: (AntigravityCliProvider(
+                       model=m,
+                       bin_path=str(getattr(cfg, "agent_antigravity_bin", "agy") or "agy"))
+                   if m.startswith(ANTIGRAVITY_PREFIX)
+                   else ClineProvider(model=m) if m.startswith(CLINE_PREFIX)
                    else MuseProvider(model=m) if m.startswith(MUSE_PREFIX)
                    else MuseCliProvider(model=m, bin_path=mc_bin, args=mc_args)
                    if m.startswith(MUSE_CLI_PREFIX)

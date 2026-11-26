@@ -42,3 +42,10 @@ Background worker command: Only start the worker when the user asks for backgrou
 $py = "C:\Users\User\AppData\Local\Programs\Python\Python312\python.exe"
 & $py C:\Users\User\AppData\Local\CopilotClineRelay\relay_worker.py --cwd C:\Users\User\.vscode\Projects\autonomous-trading-bot
 ```
+
+## Antigravity Swarm / Coding Team Models
+
+When Antigravity spawns swarm workers (`swarm` tool `action="add"` or `action="model"`), pin workers to the user's designated 3-model roster:
+- `gemini-4-hydrogen-high` (`Gemini 4 Hydrogen (High)`)
+- `claude-sonnet-5-5-high` (`Claude Sonnet 5.5 (High)`)
+- `claude-opus-5-5-high` (`Claude Opus 5.5 (High)`)

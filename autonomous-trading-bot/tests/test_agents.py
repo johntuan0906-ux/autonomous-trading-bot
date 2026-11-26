@@ -1656,6 +1656,8 @@ class TestCouncilProviderFallback(unittest.TestCase):
         object.__setattr__(c, "agent_council_muse_cli", "")
         object.__setattr__(c, "agent_council_qwen", "")
         object.__setattr__(c, "agent_council_local", "")
+        object.__setattr__(c, "agent_council_antigravity", "")
+        object.__setattr__(c, "agent_council_antigravity_until", "")
         for k, v in kw.items():
             object.__setattr__(c, k, v)
         return c
@@ -2237,6 +2239,44 @@ class TestProviderAgentDon(unittest.TestCase):
     def test_provider_la_van_tra_stub(self):
         cfg = _cfg(agent_provider="khong_ton_tai", agent_model="x")
         self.assertEqual(type(A.build_provider(cfg)).__name__, "StubProvider")
+
+
+class TestAntigravityCliProvider(unittest.TestCase):
+    def test_complete_uses_sandbox_and_extracts_response(self):
+        captured = {}
+        response = '{"action":"ALLOW","confidence":0.5}'
+
+        def runner(cmd, timeout, cwd=None, env=None):
+            captured.update(cmd=cmd, timeout=timeout, cwd=cwd, env=env)
+            return 0, json.dumps({"response": response}), ""
+
+        provider = A.AntigravityCliProvider(
+            model="antigravity/gemini-3.8-flash-medium",
+            bin_path=r"C:\tools\agy.exe", runner=runner, cwd=r"C:\temp")
+        result = provider.complete("system", "user", timeout=17)
+
+        self.assertEqual(provider.model, "gemini-3.8-flash-medium")
+        self.assertEqual(result["text"], response)
+        self.assertEqual(captured["cwd"], r"C:\temp")
+        self.assertIn("--sandbox", captured["cmd"])
+        self.assertIn("--mode", captured["cmd"])
+        self.assertIn("plan", captured["cmd"])
+        self.assertIn("17s", captured["cmd"])
+
+    def test_council_selects_antigravity_model(self):
+        from unittest import mock
+
+        cfg = SimpleNamespace(
+            agent_council_models="auto", agent_council_models_candidates="",
+            agent_council_cline="", agent_council_antigravity="gemini-3.8-flash-medium",
+            agent_council_muse="", agent_council_muse_cli="", agent_council_qwen="",
+            agent_council_local="")
+        with mock.patch.dict(os.environ, {"ANTIGRAVITY_SKIP_MODELS": ""}), \
+             mock.patch.dict(A._PROVIDER_BLOCKED, {}, clear=True):
+            models = A._council_models(cfg)
+
+        self.assertIn("antigravity/gemini-3.8-flash-medium", models)
+        self.assertEqual(A._timeout_for_model(SimpleNamespace(), models[-1]), 30.0)
 
 
 class TestRunnerAnCuaSo(unittest.TestCase):

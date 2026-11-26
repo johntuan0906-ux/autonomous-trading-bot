@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 26/11/2026 21:06:28 · commit `33c5c9b`
+- **Cập nhật**: 26/11/2026 21:36:28 · commit `b2774da`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `85976` · round `119` · nhịp tim cách đây 10.2s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 3272.2 USDT
+- **Bot**: pid `110076` · round `519` · nhịp tim cách đây 21.3s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 1000.0 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3087 lệnh đóng, WR 41.11%, E(R) 0.2372, PnL -963.41$)
@@ -39,12 +39,13 @@
 
 _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_sync.py` sẽ áp đúng mức theo **ví thật** (risk%, MAX_POSITIONS, danh sách cặp)._
 
-## Vị thế đang quản lý (2)
+## Vị thế đang quản lý (3)
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | CKB/USDT:USDT | LONG | 83333.0 | 0.000805 | 0.000757 | 0.000901 | False | False | 1.0 |
-| FIL/USDT:USDT | LONG | 212.7 | 0.5479 | 0.529102 | 0.585496 | False | False | 0.112 |
+| FIL/USDT:USDT | LONG | 212.7 | 0.5479 | 0.529102 | 0.585496 | False | False | 0.128 |
+| WIF/USDT:USDT | LONG | 775.1 | 0.1343 | 0.12914 | 0.14462 | False | False | 0.0 |
 
 ---
 

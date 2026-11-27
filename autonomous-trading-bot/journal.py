@@ -17,6 +17,11 @@ ENTRY_TOL_PCT = 0.0
 QTY_REL_TOL = 1e-6
 #: 2 OPEN cung nhom cach nhau < nguong nay = 1 su kien ghi (khong phai trung that).
 MIN_GAP_SEC = 30.0
+#: (27/11, B-076) So khop MEM cho ADOPT: journal ghi gia KE HOACH (`lv["entry"]`) con
+#: `position_sync.adopt` doc `entryPrice` THAT tu san -> lech vai phan nghin la binh thuong.
+#: `pending_keys`/`rec_key` so khop TUYET DOI nen truoc day chi can lech 1 chu so la
+#: khong nhan ra "da co OPEN" => lai ghi OPEN lan 2 (B-073 tai phat o dang khac).
+ADOPT_ENTRY_TOL_PCT = 0.005
 #: CLOSE phai nam trong khoang nay sau OPEN moi duoc coi la cua vi the do.
 CLOSE_MAX_LAG_SEC = 30 * 86400.0
 
@@ -66,6 +71,60 @@ def rec_key(*, pair: str = "", direction: str = "", qty=0.0, entry=0.0) -> tuple
     """Key dung y het `_group_key` — de so voi `pending_keys()`."""
     return (str(pair or "?"), str(direction or "").upper(),
             round(_f(qty), 10), round(_f(entry), 10))
+
+
+def pending_positions(path: str = "logs/journal.jsonl") -> list:
+    """[(cap, huong, gia vao)] cua OPEN con **chua co CLOSE** — de so khop MEM (B-076).
+
+    Khac `pending_keys()` (khop TUYET DOI ca qty + gia): o day **bo qty** vi qty tren
+    san da giam sau partial trong khi OPEN giu qty ban dau, va gia vao chi can lech
+    <= `ADOPT_ENTRY_TOL_PCT` vi journal ghi gia KE HOACH con san tra `entryPrice` THAT.
+    Chi DOC journal.
+    """
+    opens, closes = _load(path)
+    cnt: dict = {}
+    for o in opens:
+        k = (_pair(o), _dir(o))
+        cnt[k] = cnt.get(k, 0) + 1
+    for c in closes:
+        k = (_pair(c), _dir(c))
+        cnt[k] = cnt.get(k, 0) - 1
+    return [(k[0], k[1], _f(o.get("entry")))
+            for o in opens
+            for k in [(_pair(o), _dir(o))]
+            if cnt.get(k, 0) > 0]
+
+
+def matches_pending(rows, *, pair: str = "", direction: str = "", qty=0.0,
+                    entry=0.0, entry_pct: float = ADOPT_ENTRY_TOL_PCT) -> bool:
+    """True neu `rows` (tu `pending_positions`) da co vi the nay chua CLOSE.
+
+    So khop: cap + huong, roi gia vao lech <= `entry_pct` (tuong doi). Gia vao khong
+    doc duoc (<=0) o MOT trong hai ben ⇒ coi la khop (tranh ghi lap khi thieu du lieu).
+    `qty` chi de tuong thich chu ky goi `rec_key` — KHONG dung (xem `pending_positions`).
+    """
+    want_dir = str(direction or "").upper()
+    want_pair = str(pair or "?").strip().upper()
+    try:
+        want_entry = _f(entry)
+    except Exception:  # noqa: BLE001
+        want_entry = 0.0
+    tol = max(0.0, float(entry_pct))
+    for row in rows or ():
+        try:
+            p, d, e = row
+        except (TypeError, ValueError):
+            continue
+        if str(p or "").strip().upper() != want_pair:
+            continue
+        if str(d or "").upper() != want_dir:
+            continue
+        have = _f(e)
+        if have <= 0 or want_entry <= 0:
+            return True
+        if abs(have - want_entry) <= tol * max(abs(have), abs(want_entry)):
+            return True
+    return False
 
 
 def log_trade(path: str = "logs/journal.jsonl", **fields) -> dict:

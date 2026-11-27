@@ -19,6 +19,50 @@ from portfolio import Position
 from risk import atr_levels
 from trade_mgmt import new_trade, record_protection
 
+#: (27/11, B-075) Duong vao THAT tren san lech duong vao KE HOACH bao nhieu (tuong doi)
+#: thi moi ghi lai `mt.entry`. Duoi nguong nay coi nhu trung (lam tron tick size).
+ENTRY_RESYNC_PCT = 0.002
+
+
+def fill_entry(order: dict) -> float:
+    """Gia khop TRUNG BINH cua lenh market (ccxt: `average` -> `avgPrice` -> `price`).
+
+    Tra 0.0 khi response khong co (TESTNET co luc tra `average=None` ngay sau khi khop)
+    ⇒ nguoi goi giu gia KE HOACH; `adopt` se dong bo lai tu `entryPrice` o vong sau.
+    """
+    for k in ("average", "avgPrice", "price"):
+        try:
+            v = float((order or {}).get(k) or 0.0)
+        except (TypeError, ValueError):
+            v = 0.0
+        if v > 0:
+            return v
+    return 0.0
+
+
+def sync_entry(mt, entry: float, *, pct: float | None = None) -> bool:
+    """Dong bo `mt.entry` theo gia vao THAT (giu nguyen `initial_sl`/`init_qty`).
+
+    Vi sao (B-075): `ManagedTrade.entry` la GOC cua moi moc R/BE/partial (`risk_per_unit`
+    = |entry - initial_sl|) va cua cot `r` trong journal. Truoc day no = gia KE HOACH
+    (`lv["entry"]`) trong khi vi the khop gia khac (do that LIVE: MOG state `0.07926`
+    vs san `0.07963` = 0,47%) ⇒ R sai theo, partial/BE kich hoat lech moc.
+    Tra True neu CO sua.
+    """
+    try:
+        new = float(entry or 0.0)
+        old = float(getattr(mt, "entry", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return False
+    if new <= 0:
+        return False
+    thr = ENTRY_RESYNC_PCT if pct is None else float(pct)
+    if old > 0 and abs(new - old) <= thr * abs(old):
+        return False
+    mt.entry = new
+    return True
+
+
 
 def normalize(rows) -> list:
     """ccxt fetch_positions -> [{symbol, direction, qty, entry}] chi vi the dang mo."""
@@ -139,7 +183,7 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
     ex = bot.exchange
     rep: dict = {"adopted": [], "armed": [], "unarmed": [], "unmanaged": [],
                  "skipped": [], "errors": [], "stale": [], "ignored": [],
-                 "journal_skip": []}
+                 "journal_skip": [], "entry_fix": []}
     ignore = {str(s).strip().upper() for s in (skip_symbols or ()) if str(s).strip()}
     # (20/10) B-024: vi the bui "CHET" (notional < 5 USDT ⇒ san khong cho dong bang bat ky
     # lenh nao) da duoc bot BO QUAN LY ⇒ phai bo qua o day nua, neu khong moi vong adopt lai
@@ -173,6 +217,11 @@ def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
                 mt.qty = qty                             # qty THAT tren san la chuan
                 if not mt.entry:
                     mt.entry = entry
+                elif sync_entry(mt, entry):
+                    # (27/11, B-075) state ghi gia KE HOACH (hoac gia cu) trong khi san tra
+                    # `entryPrice` THAT ⇒ moi moc R/BE/partial lech theo. Dong bo lai GOC,
+                    # giu `initial_sl` (moc rui ro da dat khi mo lenh).
+                    rep["entry_fix"].append(sym)
                 sl, tp = float(mt.sl or 0), float(mt.tp or 0)
                 if sl > 0:
                     src = "state"

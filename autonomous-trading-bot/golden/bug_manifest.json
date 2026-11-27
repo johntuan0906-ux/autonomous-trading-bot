@@ -1,7 +1,7 @@
 {
- "n_classes": 73,
- "n_tests": 299,
- "digest": "12bfff7808d64b53d6e0cf8d6fbdfa5c1624625e741918223ab94c94348daff8",
+ "n_classes": 76,
+ "n_tests": 325,
+ "digest": "20d5bc7883fc249ee8229e135263f90adf1355123d62cbfcd738c7059e49968a",
  "files": [
   "test_agent_authority.py",
   "test_agents.py",
@@ -13,6 +13,7 @@
   "test_close_dust.py",
   "test_council_daemon.py",
   "test_council_evals.py",
+  "test_entry_resync.py",
   "test_exchange_errors.py",
   "test_exchange_hedge.py",
   "test_golden_set.py",
@@ -21,6 +22,7 @@
   "test_learner_refit.py",
   "test_lessons.py",
   "test_live_ready.py",
+  "test_monitor_report.py",
   "test_notify_redact.py",
   "test_ops_safety.py",
   "test_ops_tools.py",

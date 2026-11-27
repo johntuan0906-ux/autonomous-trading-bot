@@ -31,6 +31,7 @@ from exchange import BinanceFutures, classify_error
 from indicators import (liquidity_sweep, market_regime, mtf_trend, retest_ok,
                         technical_score, vwap)
 from journal import log_trade
+import journal
 from live_guard import enforce as live_guard_enforce
 from learner import (OnlineLearner, extract_features, money_label, news_features,
                      signal_score_100, structure_score)
@@ -42,7 +43,7 @@ from managed_state import load as ms_load, load_into as ms_load_into
 from managed_state import save as ms_save
 from trade_mgmt import record_protection
 from portfolio import Position, can_add_risk, planned_risk_usd, risk_cap_base
-from position_sync import adopt as adopt_positions
+from position_sync import ENTRY_RESYNC_PCT, adopt as adopt_positions, fill_entry
 import entries_gate
 import fee_edge
 import freshness
@@ -55,6 +56,31 @@ from risk import save_state as save_risk_state
 SYMBOLS = ("BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "XRP/USDT:USDT")
 FEE_ROUNDTRIP_PCT = 0.001  # 0.05% x 2 chieu x leverage buffer
 LEARN_MIN_EDGE = -0.30  # nguong hoc: duoi muc nay thi giam size/khong vao
+
+#: (27/11, B-076) Cache danh sach OPEN chua CLOSE theo `(duong dan, mtime)` — adopt chay
+#: lai moi vong ADOPT dinh ky nen doc journal moi vong la lang phi; mtime doi khi bot ghi
+#: them ban ghi nen cache tu lam moi.
+_PENDING_CACHE: dict = {}
+JOURNAL_PATH = "logs/journal.jsonl"
+
+
+def _pending_rows(cfg=None) -> list:
+    """[(cap, huong, gia vao)] cua OPEN **chua CLOSE** (so khop MEM — `journal.matches_pending`).
+
+    Truoc day cho nay goi `_open_keys(cfg)` — mot ham **KHONG TON TAI** ⇒ `NameError`
+    bi `position_sync.adopt` nuot (`except Exception: dup = False`) nen B-073 khong co
+    tac dung tren ban that: moi vong adopt van ghi OPEN lap. Xem B-076.
+    """
+    path = str(getattr(cfg, "journal_path", "") or JOURNAL_PATH)
+    try:
+        mt = os.path.getmtime(path)
+    except OSError:
+        return []
+    key = (path, mt)
+    if key not in _PENDING_CACHE:
+        _PENDING_CACHE.clear()
+        _PENDING_CACHE[key] = journal.pending_positions(path)
+    return _PENDING_CACHE[key]
 
 
 def active_symbols(cfg) -> tuple:
@@ -1353,6 +1379,14 @@ def turbo_round(bot: TradingBot) -> list[dict]:
                                 " -> tiep tuc voi che do hien tai", sym, _mode)
             bot.exchange.set_leverage(sym, cfg.leverage)
             entry_res = bot.exchange.market_entry(sym, direction, qty)
+            # (27/11, B-075) Gia vao THAT (khop trung binh) thay cho gia KE HOACH: moi moc
+            # R/BE/partial va cot `entry` trong journal lay tu day. Truoc day plan price bi
+            # lech so voi san (MOG 0.07926 vs 0.07963) ⇒ R sai theo. San khong tra
+            # `average` ⇒ giu gia ke hoach (adopt se dong bo o vong sau).
+            _fill = fill_entry(entry_res)
+            if _fill > 0:
+                lv = dict(lv)
+                lv["entry"] = float(_fill)
             # Bypass MAX_POSITIONS: ghi thang vao portfolio (van cam trung symbol)
             bot.portfolio.positions[sym] = Position(sym, direction, lv["entry"], qty,
                                                     lv["sl"], lv["tp"])
@@ -1497,7 +1531,9 @@ def adopt_now(bot, cfg, ex, log, syms) -> dict:
                               journal_fn=log_trade,
                               # (26/11, B-073) chi ghi OPEN khi vi the CHUA co OPEN chua
                               # CLOSE — chan ban ghi lap moi lan restart / vong ADOPT
-                              unclosed_fn=lambda **kw: journal.rec_key(**kw) in _open_keys(cfg))
+                              # (27/11, B-076) so khop MEM (cap+huong+gia vao ±0,5%, BO qty)
+                              # vi journal ghi gia KE HOACH va qty da giam sau partial.
+                              unclosed_fn=lambda **kw: journal.matches_pending(_pending_rows(cfg), **kw))
         heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
         if rep.get("ignored"):
             # (15/10) Vi the do nguoi dung/bot khac mo (ADOPT_SKIP_SYMBOLS): bot KHONG
@@ -1508,6 +1544,11 @@ def adopt_now(bot, cfg, ex, log, syms) -> dict:
                     "chua-bao-ve=%s skipped=%s errors=%s (state nap=%s)",
                     rep["adopted"], rep["armed"], rep["unarmed"],
                     rep["unmanaged"], rep["skipped"], rep["errors"], n_state)
+        if rep.get("entry_fix"):
+            # (27/11, B-075) state giu gia KE HOACH, san tra gia khop THAT ⇒ moc R da duoc
+            # dong bo lai. Ghi ro de doc lai duoc lich su (khong sua state trong im lang).
+            log.warning("ADOPT: dong bo gia vao theo SAN (state lech > %.2f%%): %s",
+                        100.0 * float(ENTRY_RESYNC_PCT), rep["entry_fix"])
         if rep["unarmed"]:
             log.error("ADOPT: %d vi the KHONG dat duoc SL/TP TREN SAN (%s) — dang duoc "
                       "bao ve bang MONITOR phan mem (bot tu dong khi gia cham SL/TP). "

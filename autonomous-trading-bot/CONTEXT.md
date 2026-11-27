@@ -856,3 +856,35 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - Kèm `tools/journal_fix.py --void-stale`: OPEN cũ (> 1 ngày) **không còn vị thế trên sàn** và không
      ghi bù được ⇒ `void_reason=NO_FILL_EVIDENCE`; đọc vị thế lỗi (0 vị thế) ⇒ **bỏ qua** (không void).
    - 7 test chốt. Catalog **73 lớp / 299 test chốt**.
+22. **B-075 — Giá vào của lệnh quản lý = giá KẾ HOẠCH, không phải giá KHỚP (27/11).**
+   - Đo thật LIVE: `managed_state.json` giữ MOG `entry=0.07926` trong khi sàn báo `0.07963`
+     (0,47%) — cùng qty 64.7 ⇒ 1R, mốc BE/partial và cột `r` trong journal đều lệch theo tỉ lệ đó.
+   - Nguyên nhân: đường mở lệnh tạo `ManagedTrade`/`Position` bằng `lv["entry"]` (giá đóng nến tín hiệu)
+     chứ không phải giá khớp trung bình của lệnh market; không chỗ nào sửa lại sau khi khớp.
+   - Vá: `position_sync.fill_entry(order)` (`average` → `avgPrice` → `price`) · `turbo_demo` và
+     `bot.Bot.open` dùng giá khớp cho `Position`/`ManagedTrade`/`journal OPEN` · `position_sync.sync_entry()`
+     đồng bộ `mt.entry` khi state lệch > `ENTRY_RESYNC_PCT` (0,2%), **giữ** `initial_sl`/`init_qty`,
+     đếm vào `rep["entry_fix"]` + log (không sửa state trong im lặng).
+   - 11 test chốt. Catalog **74 lớp / 310 test chốt**.
+23. **B-076 — Chặn `OPEN` lặp của ADOPT không hề chạy: `_open_keys` không tồn tại (27/11).**
+   - Phát hiện khi rà lại đường dây B-073: `adopt_now` gọi `journal.rec_key(**kw) in _open_keys(cfg)`,
+     nhưng **`_open_keys` không được định nghĩa ở bất kỳ đâu** và module `journal` còn **không được import**
+     ⇒ mỗi lần gọi là `NameError`, bị `position_sync.adopt` nuốt (`except Exception: dup = False`)
+     ⇒ B-073 **không có tác dụng trên bản thật**, adopt vẫn ghi `OPEN` lặp mỗi vòng.
+   - Nguyên nhân phụ: `rec_key` so khớp **tuyệt đối** cả `qty` ⇒ vị thế đã partial (qty giảm) hoặc giá
+     journal là giá kế hoạch (B-075) thì không bao giờ khớp ⇒ lại ghi `OPEN` lần 2.
+   - Vá: `turbo_demo._pending_rows(cfg)` (cache theo `(path, mtime)`, tự làm mới khi bot ghi thêm) +
+     `journal.pending_positions()` (cặp + hướng + giá vào, **bỏ qty**) + `journal.matches_pending()`
+     (giá vào lệch ≤ `ADOPT_ENTRY_TOL_PCT` 0,5%; giá không đọc được ⇒ coi là khớp) · `import journal`
+     ở cấp module · test gọi **thật** `_pending_rows()` nên hàm bị xoá/đổi tên sẽ đỏ ngay.
+   - 11 test chốt. Catalog **75 lớp / 321 test chốt**.
+24. **B-077 — `match_pairs` ghép `CLOSE` với `OPEN` KHÁC HƯỚNG trên cùng cặp (27/11).**
+   - Đo thật LIVE 11:12: `live_guard` cảnh báo **22 OPEN chưa có CLOSE** trong khi
+     `positions.py`/`journal_fix` báo **3** (đúng số vị thế đang mở).
+   - Nguyên nhân: khoá ghép chỉ là **cặp** (`pending[pair]`) ⇒ một `CLOSE` SHORT "ăn" mất
+     bản ghi `OPEN` LONG của cùng cặp (và ngược lại) ⇒ vị thế đã đóng bị coi là còn mở,
+     cảnh báo sai mỗi lần chạy `live_guard`/`monitor_report`.
+   - Vá: `monitor_report._match_key(rec)` = **(cặp, hướng)** cho cả hai phía; bản ghi cũ
+     không có `direction` vẫn có đường lùi: OPEN không hướng ghép theo cặp, CLOSE không hướng cứu theo cặp; vẫn giữ FIFO và
+     bất biến `open.ts <= close.ts`.
+   - 4 test chốt. Catalog **76 lớp / 325 test chốt**.

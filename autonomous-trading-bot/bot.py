@@ -9,7 +9,7 @@ from exchange import BinanceFutures
 from indicators import technical_score
 from journal import log_trade
 from portfolio import PortfolioManager, Position
-from position_sync import add_dust_skip
+from position_sync import add_dust_skip, fill_entry
 from ranking import Candidate, rank_markets, sentiment_veto
 from risk import KillSwitch, atr_levels, position_size
 from sentiment import SentimentCache
@@ -361,6 +361,12 @@ class TradingBot:
         _r = None                              # response arm SL/TP (de luu clientOrderId)
         try:
             entry_res = self.exchange.market_entry(symbol, direction, qty)
+            # (27/11, B-075) Gia vao THAT (khop trung binh) la goc cua R/BE/partial, khong
+            # phai gia KE HOACH. San khong tra `average` ⇒ giu plan (adopt dong bo sau).
+            _fill = fill_entry(entry_res)
+            if _fill > 0:
+                lv = dict(lv)
+                lv["entry"] = float(_fill)
             _r = self.exchange.stop_tp_orders(symbol, direction, qty, lv["sl"], lv["tp"])
         except Exception as e:  # noqa: BLE001  (vd: -2019 margin, -4003 qty...)
             log.warning("order %s %s failed: %s", direction, symbol, e)

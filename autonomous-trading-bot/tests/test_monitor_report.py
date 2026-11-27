@@ -7,6 +7,46 @@ import unittest
 import monitor_report as mr
 
 
+class TestMatchPairsTheoHuong(unittest.TestCase):
+    """B-077: ghép CLOSE với OPEN **cùng hướng** (trước đây chỉ theo cặp)."""
+
+    def test_close_short_khong_lay_open_long(self):
+        opens = [{"event": "OPEN", "pair": "ETH/USDT:USDT", "direction": "LONG",
+                  "entry": 1700.0, "ts": 1.0}]
+        closes = [{"event": "CLOSE", "pair": "ETH/USDT:USDT", "direction": "SHORT",
+                   "entry": 1700.0, "won": True, "r": 1.0, "ts": 2.0}]
+        pairs, still = mr.match_pairs(opens, closes)
+        self.assertIsNone(pairs[0][0])          # KHONG ghep lech huong
+        self.assertEqual(len(still), 1)         # OPEN LONG van la "chua co CLOSE"
+
+    def test_cung_huong_van_ghep_fifo(self):
+        opens = [{"event": "OPEN", "pair": "ETH/USDT:USDT", "direction": "LONG",
+                  "entry": 1700.0, "ts": 1.0},
+                 {"event": "OPEN", "pair": "ETH/USDT:USDT", "direction": "LONG",
+                  "entry": 1710.0, "ts": 3.0}]
+        closes = [{"event": "CLOSE", "pair": "ETH/USDT:USDT", "direction": "LONG",
+                   "won": True, "r": 1.0, "ts": 4.0}]
+        pairs, still = mr.match_pairs(opens, closes)
+        self.assertAlmostEqual(pairs[0][0]["entry"], 1700.0)   # OPEN cu nhat
+        self.assertEqual([o["entry"] for o in still], [1710.0])
+
+    def test_ban_ghi_cu_khong_co_huong_van_ghep(self):
+        opens = [{"event": "OPEN", "pair": "XRP/USDT:USDT", "entry": 1.0, "ts": 1.0}]
+        closes = [{"pair": "XRP/USDT:USDT", "entry": 1.0, "won": False, "r": -1.0, "ts": 2.0}]
+        pairs, still = mr.match_pairs(opens, closes)
+        self.assertIsNotNone(pairs[0][0])
+        self.assertEqual(still, [])
+
+    def test_close_cu_thieu_huong_van_ghep_open_co_huong(self):
+        """Journal cũ: OPEN có `direction`, CLOSE không có ⇒ vẫn phải ghép (không mồ côi giả)."""
+        opens = [{"event": "OPEN", "pair": "BTC/USDT:USDT", "direction": "SHORT",
+                  "entry": 84000.0, "ts": 1.0}]
+        closes = [{"event": "CLOSE", "pair": "BTC/USDT:USDT", "won": True, "r": 1.0, "ts": 2.0}]
+        pairs, still = mr.match_pairs(opens, closes)
+        self.assertAlmostEqual(pairs[0][0]["entry"], 84000.0)
+        self.assertEqual(still, [])
+
+
 class TestJournalLoad(unittest.TestCase):
     def test_open_close_split_and_pairing(self):
         recs = [

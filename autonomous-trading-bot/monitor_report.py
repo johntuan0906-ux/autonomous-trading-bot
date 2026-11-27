@@ -75,31 +75,69 @@ def load_journal(path: str) -> tuple:
     return opens, closes
 
 
+def _match_key(rec: dict) -> tuple:
+    """Khoa ghep (cap, huong) — 27/11, B-077.
+
+    Truoc day chi ghep theo CAP: mot CLOSE SHORT lay nham OPEN LONG cung cap (va nguoc
+    lai) ⇒ (a) bao sai "OPEN chua co CLOSE" (do that LIVE 27/11: `live_guard` bao 22
+    trong khi `positions.py` bao 3), (b) `still` dung de canh bao nen canh bao sai.
+    Ban ghi khong co `direction` (journal cu) ⇒ khoa `("")` rieng, van ghep duoc voi nhau.
+    """
+    r = rec or {}
+    return (str(r.get("pair") or r.get("symbol") or "?"),
+            str(r.get("direction") or "").upper())
+
+
+def _pop_match(q, c_ts: float):
+    """Lay OPEN dau hang (FIFO) neu `open.ts <= close.ts` (hoac thieu `ts`)."""
+    if not q:
+        return None
+    o_ts = float((q[0] or {}).get("ts") or 0.0)
+    if c_ts <= 0.0 or o_ts <= 0.0 or o_ts <= c_ts:
+        return q.popleft()
+    return None
+
+
 def match_pairs(opens: list, closes: list) -> tuple:
-    """Gan tung CLOSE voi OPEN cung pair som nhat chua gan ma `open.ts <= close.ts` (FIFO).
+    """Gan tung CLOSE voi OPEN cung (pair, huong) som nhat chua gan ma `open.ts <= close.ts`.
 
     Chan loi lenh CLOSE tay/bui cu (khong co OPEN) lay nham ban ghi OPEN cua bot o
     tuong lai (`open.ts > close.ts`). Neu thieu `ts` (=0) thi giu FIFO nhu cu.
+
+    Journal CU co the KHONG ghi `direction` (hoac chi 1 phia ghi) ⇒ co duong lui de
+    khong bien ban ghi lich su thanh "mo coi" gia tao (xem `_match_key`).
     """
-    pending: dict = defaultdict(deque)
+    pending: dict = defaultdict(deque)      # (cap, huong) -> OPEN
+    unknown: dict = defaultdict(deque)      # cap -> OPEN khong ro huong
     for o in sorted(opens, key=lambda r: float((r or {}).get("ts") or 0.0)):
-        pending[o.get("pair") or o.get("symbol", "?")].append(o)
+        pair, dirn = _match_key(o)
+        (pending[(pair, dirn)] if dirn else unknown[pair]).append(o)
     indexed = sorted(
         enumerate(closes),
         key=lambda ic: (float((ic[1] or {}).get("ts") or 0.0), ic[0]),
     )
     pairs: list = [None] * len(closes)
     for idx, c in indexed:
-        key = c.get("pair") or c.get("symbol", "?")
-        q = pending.get(key)
+        pair, dirn = _match_key(c)
         c_ts = float((c or {}).get("ts") or 0.0)
-        o_pick = None
-        if q:
-            o_ts = float((q[0] or {}).get("ts") or 0.0)
-            if c_ts <= 0.0 or o_ts <= 0.0 or o_ts <= c_ts:
-                o_pick = q.popleft()
+        o_pick = _pop_match(pending.get((pair, dirn)) if dirn else None, c_ts)
+        if o_pick is None:                       # OPEN cu khong ghi huong
+            o_pick = _pop_match(unknown.get(pair), c_ts)
+        if o_pick is None and not dirn:          # CLOSE cu khong ghi huong: cuu theo cap
+            best = None
+            for (p2, _d), q in pending.items():
+                if p2 != pair or not q:
+                    continue
+                o_ts = float((q[0] or {}).get("ts") or 0.0)
+                if c_ts > 0.0 and o_ts > 0.0 and o_ts > c_ts:
+                    continue
+                if best is None or o_ts < best[0]:
+                    best = (o_ts, q)
+            if best is not None:
+                o_pick = best[1].popleft()
         pairs[idx] = (o_pick, c)
     still = [o for q in pending.values() for o in q]
+    still += [o for q in unknown.values() for o in q]
     return pairs, still
 
 

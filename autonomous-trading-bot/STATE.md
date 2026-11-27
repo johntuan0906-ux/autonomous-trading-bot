@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 27/11/2026 15:26:49 · commit `0e8b4ec`
+- **Cập nhật**: 27/11/2026 15:56:50 · commit `1068f75`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `22700` · round `163` · nhịp tim cách đây 21.2s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `22700` · round `190` · nhịp tim cách đây 40.4s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: 1000.0 USDT
 - **Kill-switch**: bình thường
 

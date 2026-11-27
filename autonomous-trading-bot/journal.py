@@ -50,21 +50,54 @@ def _load(path: str) -> tuple:
     return opens, closes
 
 
+def _unclosed_opens(opens: list, closes: list) -> list:
+    """OPEN **chua co CLOSE** — ghep theo (cap, huong, gia vao), FIFO theo `ts`.
+
+    Vi sao khong dem `so OPEN - so CLOSE` (B-078): bo dem THO theo cap+huong am khi
+    lich su co nhieu CLOSE hon OPEN (CLOSE ghi bu cua `reconcile`, lenh dong tay, ban
+    ghi OPEN bi void o B-073) ⇒ vi the DANG MO bi coi la "da dong" ⇒ `adopt` lai ghi
+    `OPEN` lan nua (do that LIVE 27/11 11:12: ETH 1705.46 / XRP 0.9621 / SOL 70.11).
+    O day moi CLOSE chi "an" MOT OPEN co cung cap + huong + gia vao lech
+    <= `ADOPT_ENTRY_TOL_PCT` va `open.ts <= close.ts` (lech <= `CLOSE_MAX_LAG_SEC`);
+    CLOSE thua (khong co OPEN tuong ung) bi bo qua, khong keo OPEN that xuong.
+    """
+    by_key: dict = {}
+    for c in closes:
+        by_key.setdefault((_pair(c), _dir(c)), []).append(c)
+    for rows in by_key.values():
+        rows.sort(key=lambda r: _f(r.get("ts")))
+    used: dict = {}
+    out: list = []
+    for o in sorted(opens, key=lambda r: _f(r.get("ts"))):
+        key = (_pair(o), _dir(o))
+        ots, oen = _f(o.get("ts")), _f(o.get("entry"))
+        hit = None
+        for i, c in enumerate(by_key.get(key) or []):
+            if i in used.get(key, ()):
+                continue
+            cts, cen = _f(c.get("ts")), _f(c.get("entry"))
+            if cts < ots or (ots > 0 and cts - ots > CLOSE_MAX_LAG_SEC):
+                continue
+            if oen > 0 and cen > 0 and \
+                    abs(cen - oen) > ADOPT_ENTRY_TOL_PCT * max(abs(cen), abs(oen)):
+                continue
+            hit = i
+            break
+        if hit is None:
+            out.append(o)
+        else:
+            used.setdefault(key, set()).add(hit)
+    return out
+
+
 def pending_keys(path: str = "logs/journal.jsonl") -> set:
-    """Key (cap, huong, qty, gia vao) con OPEN **chua co CLOSE**.
+    """Key (cap, huong, qty, gia vao) con OPEN **chua co CLOSE** — B-073/B-078.
 
     Dung de chan ghi OPEN lan 2 cho CUNG mot vi the: `position_sync.adopt` chay
-    lai sau moi lan restart (hoac vong ADOPT dinh ky) — B-073. Chi DOC journal.
+    lai sau moi lan restart (hoac vong ADOPT dinh ky). Chi DOC journal.
     """
     opens, closes = _load(path)
-    cnt: dict = {}
-    for o in opens:
-        k = _group_key(o)
-        cnt[k] = cnt.get(k, 0) + 1
-    for c in closes:
-        k = _group_key(c)
-        cnt[k] = cnt.get(k, 0) - 1
-    return {k for k, v in cnt.items() if v > 0}
+    return {_group_key(o) for o in _unclosed_opens(opens, closes)}
 
 
 def rec_key(*, pair: str = "", direction: str = "", qty=0.0, entry=0.0) -> tuple:
@@ -82,17 +115,8 @@ def pending_positions(path: str = "logs/journal.jsonl") -> list:
     Chi DOC journal.
     """
     opens, closes = _load(path)
-    cnt: dict = {}
-    for o in opens:
-        k = (_pair(o), _dir(o))
-        cnt[k] = cnt.get(k, 0) + 1
-    for c in closes:
-        k = (_pair(c), _dir(c))
-        cnt[k] = cnt.get(k, 0) - 1
-    return [(k[0], k[1], _f(o.get("entry")))
-            for o in opens
-            for k in [(_pair(o), _dir(o))]
-            if cnt.get(k, 0) > 0]
+    return [(_pair(o), _dir(o), _f(o.get("entry")))
+            for o in _unclosed_opens(opens, closes)]
 
 
 def matches_pending(rows, *, pair: str = "", direction: str = "", qty=0.0,

@@ -924,6 +924,18 @@ CLASSES = [
                   "test_monitor_report.py::TestMatchPairsTheoHuong::test_ban_ghi_cu_khong_co_huong_van_ghep",
                   "test_monitor_report.py::TestMatchPairsTheoHuong::test_close_cu_thieu_huong_van_ghep_open_co_huong"],
     },
+    {
+        "code": "B-078", "kind": "du-lieu", "seen": "27/11/2026",
+        "title": "`journal.pending_*` dem THO `so OPEN - so CLOSE` theo cap+huong ⇒ vi the DANG MO bi coi la da dong, ADOPT ghi `OPEN` lap",
+        "symptom": "Journal LIVE 27/11 co 3 ban ghi `OPEN` luc 11:12 (ETH `1705.46` / XRP `0.9621` / SOL `70.11`) trung voi vi the VAN DANG MO. Chay lai `journal.pending_positions` tren journal truoc 11:12: 71 dong nhung KHONG co dong nao cua 3 vi the do — ca 3 deu `LONG`/`SHORT` ma lich su cap do co nhieu CLOSE hon OPEN (CLOSE ghi bu cua `reconcile`, dong tay, OPEN bi void o B-073) ⇒ bo dem ra so AM ⇒ `matches_pending` tra False ⇒ `position_sync.adopt` ghi `OPEN` lan nua moi lan restart",
+        "guard": "`journal._unclosed_opens(opens, closes)` ghep TUNG CAP BAN GHI: moi CLOSE chi 'an' mot OPEN cung cap + huong + gia vao lech <= `ADOPT_ENTRY_TOL_PCT` (0,5%), `open.ts <= close.ts` va lech <= `CLOSE_MAX_LAG_SEC` (30 ngay); CLOSE thua bi bo qua nen khong keo vi the that xuong · `pending_keys()` va `pending_positions()` deu di qua ham nay",
+        "files": ["journal.py", "tests/test_entry_resync.py"],
+        "tests": ["test_entry_resync.py::TestPendingKhongDemTho::test_close_thua_khong_keo_open_that_xuong",
+                  "test_entry_resync.py::TestPendingKhongDemTho::test_close_cung_gia_vao_moi_khep_open",
+                  "test_entry_resync.py::TestPendingKhongDemTho::test_close_truoc_open_khong_khep",
+                  "test_entry_resync.py::TestPendingKhongDemTho::test_pending_keys_cung_khong_dem_tho",
+                  "test_entry_resync.py::TestPendingKhongDemTho::test_open_cu_qua_lau_khong_ghep_close_moi"],
+    },
 ]
 
 

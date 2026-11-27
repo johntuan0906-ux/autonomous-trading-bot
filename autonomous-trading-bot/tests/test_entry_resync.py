@@ -205,6 +205,72 @@ class TestMatchesPending(unittest.TestCase):
                                                  direction="SHORT", entry=1708.79))
 
 
+class TestPendingKhongDemTho(unittest.TestCase):
+    """B-078: bo dem `so OPEN - so CLOSE` theo cap+huong am ⇒ vi the DANG MO bi coi la da
+    dong ⇒ ADOPT ghi `OPEN` lap. Phai ghep theo (cap, huong, GIA VAO) tung ban ghi.
+
+    Do that LIVE 27/11 11:12: ETH `1705.46` / XRP `0.9621` / SOL `70.11` bi ghi lai OPEN
+    dung luc vi the van mo, chi vi lich su cap do co nhieu CLOSE hon OPEN.
+    """
+
+    def test_close_thua_khong_keo_open_that_xuong(self):
+        """3 CLOSE nhung chi 2 OPEN: CLOSE thua KHONG duoc "an" vi the con mo."""
+        path = _write([
+            _open(1000.0, entry=1630.78),
+            _close(2000.0, entry=1630.78),
+            _open(3000.0, entry=1691.89),
+            _close(4000.0, entry=1691.89),
+            _open(5000.0, entry=1705.46),          # vi the DANG MO (khong co CLOSE)
+            _close(5500.0, entry=1500.00),         # CLOSE ghi bu / dong tay cap do khac
+            _close(6000.0, entry=1500.00),         # tiep: tong CLOSE > OPEN
+        ])
+        try:
+            rows = journal.pending_positions(path)
+            self.assertEqual([(p, d, e) for p, d, e in rows],
+                             [("ETH/USDT:USDT", "SHORT", 1705.46)])
+            self.assertTrue(journal.matches_pending(rows, pair="ETH/USDT:USDT",
+                                                    direction="SHORT", entry=1705.46))
+        finally:
+            os.unlink(path)
+
+    def test_close_cung_gia_vao_moi_khep_open(self):
+        path = _write([_open(1000.0, entry=1705.46), _close(2000.0, entry=1705.46)])
+        try:
+            self.assertEqual(journal.pending_positions(path), [])
+        finally:
+            os.unlink(path)
+
+    def test_close_truoc_open_khong_khep(self):
+        path = _write([_close(1000.0, entry=1705.46), _open(2000.0, entry=1705.46)])
+        try:
+            self.assertEqual(len(journal.pending_positions(path)), 1)
+        finally:
+            os.unlink(path)
+
+    def test_pending_keys_cung_khong_dem_tho(self):
+        path = _write([
+            _open(1000.0, entry=1705.46),
+            _close(2000.0, entry=1500.00),
+            _close(3000.0, entry=1500.00),
+        ])
+        try:
+            keys = journal.pending_keys(path)
+            self.assertIn(journal.rec_key(pair="ETH/USDT:USDT", direction="SHORT",
+                                          qty=0.016, entry=1705.46), keys)
+        finally:
+            os.unlink(path)
+
+    def test_open_cu_qua_lau_khong_ghep_close_moi(self):
+        """OPEN 40 ngay truoc mot CLOSE cung gia ⇒ khong phai cung vi the (lag > 30 ngay)."""
+        old = 1000.0
+        path = _write([_open(old, entry=1705.46),
+                       _close(old + journal.CLOSE_MAX_LAG_SEC + 60.0, entry=1705.46)])
+        try:
+            self.assertEqual(len(journal.pending_positions(path)), 1)
+        finally:
+            os.unlink(path)
+
+
 class TestTurboDemoWiring(unittest.TestCase):
     """B-076: `_pending_rows` phai TON TAI va tra du lieu that (truoc day NameError)."""
 

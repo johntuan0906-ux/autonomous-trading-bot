@@ -887,4 +887,15 @@ Yêu cầu: "muốn hội đồng đa dạng hơn `auto`, dùng thêm Cline/Qwen
    - Vá: `monitor_report._match_key(rec)` = **(cặp, hướng)** cho cả hai phía; bản ghi cũ
      không có `direction` vẫn có đường lùi: OPEN không hướng ghép theo cặp, CLOSE không hướng cứu theo cặp; vẫn giữ FIFO và
      bất biến `open.ts <= close.ts`.
-   - 4 test chốt. Catalog **76 lớp / 325 test chốt**.
+   - 4 test chốt. Catalog **77 lớp / 330 test chốt**.
+25. **B-078 — `journal.pending_*` đếm THÔ `số OPEN - số CLOSE` ⇒ vị thế ĐANG MỞ bị coi là đã đóng (27/11).**
+   - Đo thật LIVE 11:12: 3 `OPEN` được ghi lại đúng lúc vị thế vẫn mở (ETH `1705.46`,
+     XRP `0.9621`, SOL `70.11`). Chạy lại `pending_positions` trên journal TRƯỚC 11:12: 71 dòng
+     nhưng KHÔNG có dòng nào của 3 vị thế đó — bộ đếm thô theo cặp + hướng ra số ÂM vì
+     lịch sử của cặp đó có nhiều CLOSE hơn OPEN (CLOSE ghi bù của `reconcile`, đóng tay,
+     OPEN bị `void` ở B-073) ⇒ `matches_pending` trả False ⇒ `adopt` ghi `OPEN` lập mỗi lần restart.
+   - Vá: `journal._unclosed_opens(opens, closes)` ghép TỪNG CẶP bản ghi (cặp + hướng + giá vào
+     lệch ≤ `ADOPT_ENTRY_TOL_PCT` 0,5%, `open.ts <= close.ts`, lệch ≤ `CLOSE_MAX_LAG_SEC` 30 ngày);
+     CLOSE thừa bị bỏ qua nên không kéo vị thế thật xuống · `pending_keys()` và
+     `pending_positions()` đều đi qua hàm này.
+   - 5 test chốt. Catalog **77 lớp / 330 test chốt**.

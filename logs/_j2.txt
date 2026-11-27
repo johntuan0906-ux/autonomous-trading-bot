@@ -1,0 +1,55 @@
+﻿116:          <= ENTRY_TOL_PCT, thoi gian <= CLOSE_MAX_LAG_SEC) -> OPEN "da co CLOSE".
+117:       3. OPEN con lai ma trong nhom CO mot OPEN da co CLOSE voi CUNG gia vao
+118:          (cach nhau >= MIN_GAP_SEC) = OPEN TRUNG.
+119:          Khong tim duoc "ban sao" nhu vay -> dua vao `review` (co the vi the
+120:          con mo, gia vao lech, hoac thieu du lieu) va KHONG dung toi.
+121:     """
+122:     by_key: dict = {}
+123:     for o in opens:
+124:         by_key.setdefault(_group_key(o), []).append(o)
+125:     cl_by_key: dict = {}
+126:     for c in closes:
+127:         cl_by_key.setdefault(_group_key(c), []).append(c)
+128: 
+129:     dupes: list = []
+130:     review: list = []
+131:     for key, ops in by_key.items():
+132:         ops = sorted(ops, key=lambda x: _f(x.get("ts")))
+133:         cls = sorted(cl_by_key.get(key) or [], key=lambda x: _f(x.get("ts")))
+134:         free = list(ops)
+135:         bound: list = []
+136:         for c in cls:
+137:             cts = _f(c.get("ts"))
+138:             cen = _f(c.get("entry"))
+139:             pick, best = None, -1.0
+140:             for o in free:
+141:                 ots, oen = _f(o.get("ts")), _f(o.get("entry"))
+142:                 if ots > cts or cts - ots > CLOSE_MAX_LAG_SEC:
+143:                     continue
+144:                 if not _same_entry(oen, cen):
+145:                     continue
+146:                 if ots >= best:            # OPEN gan CLOSE nhat (phia truoc)
+147:                     pick, best = o, ots
+148:             if pick is not None:
+149:                 free.remove(pick)
+150:                 bound.append(pick)
+151:         for o in free:
+152:             ots, oen = _f(o.get("ts")), _f(o.get("entry"))
+153:             twin = None
+154:             for b in bound:
+155:                 bts, ben = _f(b.get("ts")), _f(b.get("entry"))
+156:                 if abs(bts - ots) < MIN_GAP_SEC:
+157:                     continue
+158:                 if _same_entry(ben, oen):
+159:                     twin = b
+160:                     break
+161:             (dupes if twin else review).append({"open": o, "twin": twin})
+162:     dupes.sort(key=lambda d: _f(d["open"].get("ts")))
+163:     review.sort(key=lambda d: _f(d["open"].get("ts")))
+164:     return {"dupes": dupes, "review": review}
+165: 
+166: 
+167: 
+168: def _rec_id(rec: dict) -> tuple:
+169:     return (_f(rec.get("ts")), _pair(rec), _dir(rec),
+170:             round(_f(rec.get("qty")), 10), round(_f(rec.get("entry")), 12))

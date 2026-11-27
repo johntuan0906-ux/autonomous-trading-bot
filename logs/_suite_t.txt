@@ -1,0 +1,13 @@
+﻿- [{'code': None,
+-   'doc': None,
+-   'file': 'tools/journal_fix.py',
+-   'level': 'drift',
+-   'note': 'khong tai lieu nao trong OPERATIONS.md/README.md/AGENTS.md nhac ten',
+-   'ok': False,
+-   'what': 'tool duoc tai lieu hoa'}] : ['khong tai lieu nao trong 
+OPERATIONS.md/README.md/AGENTS.md nhac ten']
+
+----------------------------------------------------------------------
+Ran 1748 tests in 81.457s
+
+FAILED (failures=1, skipped=4)

@@ -1,0 +1,3 @@
+﻿=== MANIFEST | 72 lop | 292 test chot ===
+  C:\Users\User\.vscode\Projects\autonomous-trading-bot\golden\bug_manifest.json
+  digest=d4725b4e6f1b4c6e

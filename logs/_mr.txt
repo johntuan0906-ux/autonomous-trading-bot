@@ -1,0 +1,2 @@
+﻿49: def load_journal(path: str) -> tuple:
+71: def match_pairs(opens: list, closes: list) -> tuple:

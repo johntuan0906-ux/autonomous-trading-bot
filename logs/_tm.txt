@@ -1,0 +1,14 @@
+﻿53: def __post_init__(self) -> None:
+60: def risk_per_unit(self) -> float:
+62: return abs(self.entry - self.initial_sl)
+71: def risk_distance_ok(entry: float, sl: float, *, min_pct: float = MIN_RISK_PCT) -> bool:
+82: def r_multiple(direction: str, entry: float, sl0: float, price: float) -> float:
+97: def _be_sl(trade: ManagedTrade, buffer_pct: float) -> float:
+103: def record_protection(mt, res) -> dict:
+124: def dust_notional(qty: float, price: float, min_notional: float = 0.0) -> bool:
+138: def manage(trade: ManagedTrade, price: float, atr: float = 0.0, *,
+214: def new_trade(symbol: str, direction: str, entry: float, qty: float,
+221: def cfg_from_env(env: dict | None = None) -> dict:
+226: def f(name: str, d: float) -> float:
+238: def manage_trade(trade: ManagedTrade, price: float, atr: float = 0.0,
+245: def trade_result(trade: ManagedTrade, exit_reason: str, exit_price: float, *,

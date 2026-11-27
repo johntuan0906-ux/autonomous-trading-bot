@@ -1,0 +1,12 @@
+﻿_g1t size=174
+_g2t size=1094
+_g3t size=524
+_g4t size=308
+_g1l size=174
+_g2l size=1094
+_g3l size=524
+_g4l size=308
+_s5t size=35876
+_s5l size=35186
+_s5sum size=49
+now=2026-11-27 10:06:14

@@ -1,0 +1,11 @@
+﻿python : ...........
+At line:1 char:61
++ ... trading-bot'; python -m unittest tests.test_journal_void 2>&1 | Selec ...
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (...........:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+----------------------------------------------------------------------
+Ran 11 tests in 0.058s
+
+OK

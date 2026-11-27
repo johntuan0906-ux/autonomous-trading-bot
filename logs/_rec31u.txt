@@ -1,0 +1,9 @@
+﻿==============================================================================================
+RECONCILE | journal=logs/journal.jsonl | OPEN=692 CLOSE=747 | OPEN mo coi (FIFO, chan doan)=10 | apply=False | days=30
+==============================================================================================
+fill doc duoc=50 | vong lenh tai tao=15 | khop OPEN=12 | da co CLOSE=12 | can ghi bu=0
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): AAVE/USDT:USDT SHORT qty=0.1 entry=130.54 2026-11-07 05:29 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT SHORT qty=55.6 entry=0.0897 2026-11-10 16:49 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): AAVE/USDT:USDT SHORT qty=0.1 entry=96.48 2026-11-20 16:04 -> bo qua
+  - vi the con MO (khong ghi): 1000CAT/USDT:USDT LONG qty=4006 entry=0.001508
+  - vi the con MO (khong ghi): 1000000MOG/USDT:USDT SHORT qty=64.7 entry=0.07963

@@ -1,0 +1,3 @@
+﻿=== KIEM TRA BUG CATALOG | 72 lop | 292 test chot | 79 file test ===
+  MANIFEST: danh sach test chot DA DOI (was 282 test / now 292 test) ΓÇö neu la thay doi co chu y thi chay `--manifest`; neu khong, co test bi xoa/doi ten
+  KET LUAN: CAN SUA

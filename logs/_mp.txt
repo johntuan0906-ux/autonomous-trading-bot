@@ -1,0 +1,30 @@
+﻿agents.py:498: from monitor_report import load_journal, match_pairs
+agents.py:500: pairs, still = match_pairs(opens, closes)
+clinepass_review.py:83: from monitor_report import load_journal, match_pairs, stats
+clinepass_review.py:85: pairs, still = match_pairs(opens, closes)
+compare_modes.py:45: from monitor_report import load_journal, match_pairs, stats
+compare_modes.py:53: st = stats(match_pairs(opens, closes)[0])
+dashboard_server.py:373: pairs, still = MR.match_pairs(self.opens, self.closes)
+live_guard.py:33: from monitor_report import MIN_PF, MIN_TRADES, load_journal, match_pairs, stats  # noqa: E402
+live_guard.py:71: pairs, still = match_pairs(opens, closes)
+live_ready.py:41: DIRECTIONS_REQUIRED, MIN_DIRECTION_TRADES, MIN_PF, load_journal, match_pairs,
+live_ready.py:106: pairs, still = match_pairs(opens, closes)
+loss_report.py:27: from monitor_report import load_journal, match_pairs
+loss_report.py:34: pairs, still = match_pairs(opens, closes)
+monitor_report.py:71: def match_pairs(opens: list, closes: list) -> tuple:
+monitor_report.py:307: pairs, still = match_pairs(opens, closes)
+positions.py:29: from monitor_report import load_journal, match_pairs  # noqa: E402
+positions.py:35: _pairs, still = match_pairs(opens, closes)
+reconcile.py:72: from monitor_report import match_pairs
+reconcile.py:74: _pairs, still = match_pairs(opens, closes)
+telegram_report.py:33: from monitor_report import load_journal, match_pairs, stats  # noqa: E402
+telegram_report.py:188: pairs, still = match_pairs(opens, closes)
+atr_quality_probe.py:66: def match_pairs(opens: list, closes: list) -> list:
+atr_quality_probe.py:67: """Ghep OPEN<->CLOSE theo FIFO cung cap (giong `monitor_report.match_pairs`)."""
+atr_quality_probe.py:347: pairs = [(o, c) for o, c in match_pairs(opens, closes) if sl_pct(o) > 0]
+test_atr_quality_probe.py:81: def test_match_pairs_FIFO_cung_cap(self):
+test_atr_quality_probe.py:84: pairs = P.match_pairs(opens, closes)
+test_dashboard_server.py:342: pairs, _ = MR.match_pairs(opens, closes)
+test_live_ready.py:165: pairs, _ = LR.match_pairs(opens, closes)
+test_live_ready.py:228: pairs, _ = LR.match_pairs(opens, closes)
+test_monitor_report.py:27: pairs, still = mr.match_pairs(opens, closes)

@@ -1,0 +1,17 @@
+﻿FAIL: test_chay_duoc_va_in_ket_qua_guard 
+(test_tools_coverage.TestDiagReview.test_chay_duoc_va_in_ket_qua_guard)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\User\.vscode\Projects\atb-live\tests\test_tools_coverage.py", line 320, in 
+test_chay_duoc_va_in_ket_qua_guard
+    self.assertIn("_provider_blocked(", out)       # phai kiem tra CA ten co/khong _cli
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '_provider_blocked(' not found in "=== CHAN DOAN REVIEW AGENT | 
+cwd=C:\\Users\\User\\.vscode\\Projects\\atb-live ===\n  AGENTS_ENABLED=True | 
+AGENT_COUNCIL_COPILOT_UNTIL=\n  [LOI] khong tao duoc layer review: cannot import name 
+'econ_event_veto' from 'ranking' (C:\\Users\\User\\.vscode\\Projects\\atb-live\\ranking.py)\n"
+
+----------------------------------------------------------------------
+Ran 1609 tests in 78.988s
+
+FAILED (failures=3, errors=25, skipped=10)

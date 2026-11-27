@@ -1,0 +1,9 @@
+﻿==============================================================================================
+RECONCILE | journal=logs/journal.jsonl | OPEN=692 CLOSE=747 | OPEN mo coi (FIFO, chan doan)=10 | apply=False | days=30
+==============================================================================================
+fill doc duoc=50 | vong lenh tai tao=15 | khop OPEN=14 | da co CLOSE=13 | can ghi bu=1
+  + 2026-11-23 14:13 AAVE/USDT:USDT SHORT entry=97.02        exit=103.14       qty=0.1        R=-0.9972 pnl=  -0.6114 won=False legs=1 (san: -0.6660)
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): AAVE/USDT:USDT SHORT qty=0.1 entry=130.54 2026-11-07 05:29 -> bo qua
+  - vi the con MO (khong ghi): 1000CAT/USDT:USDT LONG qty=4006 entry=0.001508
+  - vi the con MO (khong ghi): 1000000MOG/USDT:USDT SHORT qty=64.7 entry=0.07963
+(chua ghi gi ∙ them --apply de ghi that)

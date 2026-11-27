@@ -1,0 +1,29 @@
+﻿== _g1t ==
+=== KIEM TRA BUG CATALOG | 73 lop | 299 test chot | 80 file test ===
+  KET LUAN: OK
+== _g2t ==
+GOLDEN SET ù 45 ca | PASS 45 | FAIL 0 | 4.216s  [baseline]
+  normal   16/16 dat
+  edge     15/15 dat
+  failure  14/14 dat
+  - api_ban             2/ 2
+  - council_ready       2/ 2
+  - entries_gate        3/ 3
+  - feats               3/ 3
+  - freshness           5/ 5
+  - go_live             3/ 3
+  - journal_feats       1/ 1
+  - kill_switch         4/ 4
+  - learner_edge        5/ 5
+  - lessons_gate        2/ 2
+  - portfolio_open      4/ 4
+  - risk_cap            3/ 3
+  - strategy_classify   4/ 4
+  - strategy_gate       4/ 4
+== _g3t ==
+=== DRIFT TAI LIEU <-> CODE | 52 muc | LECH 0 | CANH BAO 1 ===
+  [WARN] docs                         ma lop loi trong tai lieu  ma B-034 khong co trong bug_catalog.CLASSES (co the la lich su)
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)
+== _g4t ==
+=== SECURITY AUDIT | 6 phat hien | 5 kiem soat | 5 test chot | high 1 ╖ medium 2 ╖ low 3 ===
+  KET LUAN: bang chung khop code + khop SECURITY_AUDIT.md

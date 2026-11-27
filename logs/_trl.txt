@@ -1,0 +1,19 @@
+﻿  File "C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_reconcile_loose.py", line 30, in 
+test_entry_lech_nhe_van_ghep_duoc_va_ghi_dau_loose
+    self.assertEqual(len(plan["closes"]), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_khop_chinh_xac_van_ghi_dau_exchange 
+(tests.test_reconcile_loose.TestLoosePair.test_khop_chinh_xac_van_ghi_dau_exchange)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\User\.vscode\Projects\autonomous-trading-bot\tests\test_reconcile_loose.py", line 41, in 
+test_khop_chinh_xac_van_ghi_dau_exchange
+    self.assertEqual(len(plan["closes"]), 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.003s
+
+FAILED (failures=3)

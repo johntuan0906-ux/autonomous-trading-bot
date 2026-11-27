@@ -1,0 +1,27 @@
+﻿9: 1. chuan hoa du lieu ccxt -> {symbol, direction, qty, entry}
+23: def normalize(rows) -> list:
+24: """ccxt fetch_positions -> [{symbol, direction, qty, entry}] chi vi the dang mo."""
+39: entry = float(p.get("entryPrice") or 0) or 0.0
+41: entry = 0.0
+42: out.append({"symbol": sym, "direction": direction, "qty": qty, "entry": entry})
+46: def _atr_levels_for(bot, sym: str, direction: str, entry: float, atr_fn) -> tuple:
+47: """Tinh SL/TP bang ATR. Tra (sl, tp, entry) — 0.0 neu khong tinh duoc."""
+54: px = float(a.get("price") or entry or 0)
+58: return 0.0, 0.0, entry
+60: return float(lv["sl"]), float(lv["tp"]), float(entry or lv["entry"])
+63: def _sym_in_ignore(sym: str, ignore: set) -> bool:
+74: def dust_skip_path(path=None):
+81: def load_dust_skip(path=None) -> set:
+95: def add_dust_skip(sym: str, why: str = "", path=None, now=None) -> dict:
+127: def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
+152: sym, d, qty, entry = p["symbol"], p["direction"], p["qty"], p["entry"]
+164: # lenh mo TAY cua nguoi dung; neu lay sl/tp cu (sat entry cu) thi bot
+174: if not mt.entry:
+175: mt.entry = entry
+184: a_sl, a_tp, entry = _atr_levels_for(bot, sym, d, entry, atr_fn)
+191: if entry <= 0:
+192: entry = sl
+193: pos = Position(sym, d, float(entry), float(qty), float(sl), float(tp))
+196: mt = new_trade(sym, d, pos.entry, qty, sl or pos.entry, tp or pos.entry)
+209: qty=float(qty), entry=float(pos.entry)))
+216: journal_fn(event="OPEN", pair=sym, direction=d, entry=pos.entry,

@@ -1,0 +1,15 @@
+﻿## test-ai-agents...origin/test-ai-agents
+ M CONTEXT.md
+ M COUNCIL_GAPS.md
+ M LESSONS.md
+ M OPERATIONS.md
+ M config.py
+ M golden/bug_manifest.json
+ M journal.py
+ M monitor_report.py
+ M position_sync.py
+ M ranking.py
+ M tests/test_perf_report.py
+ M tools/bug_catalog.py
+ M tools/perf_report.py
+ M turbo_demo.py

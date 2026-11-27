@@ -1,0 +1,7 @@
+﻿============================================================================================
+JOURNAL FIX | logs/journal.jsonl | OPEN=692 CLOSE=747 | OPEN chua CLOSE (FIFO)=10 | apply=False
+============================================================================================
+Khong co OPEN trung dang danh dau duoc.
+
+(chua ghi gi ∙ them --apply de danh dau that; 0 ban ghi se duoc void)
+

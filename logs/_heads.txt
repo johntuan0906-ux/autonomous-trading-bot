@@ -1,0 +1,1 @@
+﻿034d635 fix(journal): B-073 chan ADOPT ghi OPEN lap + B-074 reconcile khong bo sot fill cu | a4c364c fix(journal): B-073 chan ADOPT ghi OPEN lap + B-074 reconcile khong bo sot fill cu

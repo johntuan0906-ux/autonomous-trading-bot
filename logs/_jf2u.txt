@@ -1,0 +1,105 @@
+﻿============================================================================================
+JOURNAL FIX | logs/journal.jsonl | OPEN=721 CLOSE=747 | OPEN chua CLOSE (FIFO)=20 | apply=False
+============================================================================================
+  x TRUNG  2026-11-20 12:12 XRP/USDT:USDT          LONG  qty=9.5        entry=0.96         adopted
+           ban sao da co CLOSE: 2026-11-20 12:37 XRP/USDT:USDT          LONG  qty=9.5        entry=0.96         adopted
+  x TRUNG  2026-11-20 12:12 AVAX/USDT:USDT         SHORT qty=1          entry=7.024        adopted
+           ban sao da co CLOSE: 2026-11-20 12:37 AVAX/USDT:USDT         SHORT qty=1          entry=7.024        adopted
+  x TRUNG  2026-11-20 12:12 1000CAT/USDT:USDT      LONG  qty=4008       entry=0.001508     adopted
+           ban sao da co CLOSE: 2026-11-20 12:37 1000CAT/USDT:USDT      LONG  qty=4008       entry=0.001508     adopted
+  x TRUNG  2026-11-24 05:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-24 09:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-24 11:33 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-25 00:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-25 05:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-25 09:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  ? XEM TAY 2026-09-17 17:04 ETH/USDT:USDT          SHORT qty=0.467      entry=2431.17        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-17 17:04 XRP/USDT:USDT          SHORT qty=556.9      entry=1.2938         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-23 14:12 SOL/USDT:USDT          LONG  qty=10.81      entry=118.72         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-23 14:12 XRP/USDT:USDT          LONG  qty=390.4      entry=1.6209         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-24 12:21 BTC/USDT:USDT          SHORT qty=0.0299     entry=84150          (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-24 12:21 ETH/USDT:USDT          SHORT qty=0.698      entry=2690           (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-24 12:21 SOL/USDT:USDT          SHORT qty=11.58      entry=115.48         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-24 12:31 XRP/USDT:USDT          SHORT qty=737.6      entry=1.5086         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-29 13:17 BTC/USDT:USDT          SHORT qty=0.0314     entry=83793.1        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-09-29 16:50 BTC/USDT:USDT          SHORT qty=0.036      entry=84100.7        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-01 19:18 BTC/USDT:USDT          LONG  qty=0.0353     entry=83964.3        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-01 19:18 ADA/USDT:USDT          LONG  qty=3639       entry=0.2489         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-01 19:18 AVAX/USDT:USDT         SHORT qty=71         entry=11.017         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-02 00:05 ADA/USDT:USDT          LONG  qty=2586       entry=0.2468         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-02 00:16 DOGE/USDT:USDT         LONG  qty=10224      entry=0.09441        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-02 00:33 SOL/USDT:USDT          SHORT qty=9.81       entry=118.5          (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-05 13:46 AVAX/USDT:USDT         SHORT qty=89         entry=10.936         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:35 BTC/USDT:USDT          SHORT qty=0.0486     entry=82608.7        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:35 SOL/USDT:USDT          SHORT qty=14.22      entry=110.5          (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:35 XRP/USDT:USDT          SHORT qty=1440       entry=1.3996         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:35 DOGE/USDT:USDT         SHORT qty=23474      entry=0.08501        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:35 AVAX/USDT:USDT         SHORT qty=76         entry=10.391         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:58 SOL/USDT:USDT          SHORT qty=0.15       entry=110.34         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-09 16:58 XRP/USDT:USDT          SHORT qty=14.1       entry=1.3998         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 12:43 1000BONK/USDT:USDT     LONG  qty=4402       entry=0.003383       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 12:43 1000CAT/USDT:USDT      SHORT qty=7547       entry=0.002034       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 13:00 1000000MOG/USDT:USDT   LONG  qty=143.6      entry=0.1107         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 13:01 1000BONK/USDT:USDT     LONG  qty=4393       entry=0.003382       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 13:01 1000CAT/USDT:USDT      SHORT qty=7532       entry=0.002036       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 13:34 1000000MOG/USDT:USDT   LONG  qty=137.7      entry=0.1107         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 13:34 1000BONK/USDT:USDT     LONG  qty=4419       entry=0.0034         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 16:30 1000BONK/USDT:USDT     LONG  qty=4343       entry=0.003393       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 16:30 1000CAT/USDT:USDT      SHORT qty=8687       entry=0.002039       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 21:41 1000000MOG/USDT:USDT   LONG  qty=161.1      entry=0.1106         (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 21:41 1000CHEEMS/USDT:USDT   LONG  qty=24099      entry=0.0005272      (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-11 22:40 1000CHEEMS/USDT:USDT   LONG  qty=23053      entry=0.0005264      (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-10-22 07:16 1000CAT/USDT:USDT      SHORT qty=5722       entry=0.001838       (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-19 17:44 1000PEPE/USDT:USDT     SHORT qty=1595       entry=0.0037937      (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-19 20:32 SOL/USDT:USDT          LONG  qty=0.1        entry=74           adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-19 23:37 SOL/USDT:USDT          SHORT qty=0.1        entry=73.67        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 03:58 XRP/USDT:USDT          LONG  qty=9.5        entry=0.9633       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 12:12 ETH/USDT:USDT          SHORT qty=0.012      entry=1721.7       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 12:36 ETH/USDT:USDT          SHORT qty=0.012      entry=1721.7       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 12:37 ADA/USDT:USDT          SHORT qty=34         entry=0.1493       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 12:37 SOL/USDT:USDT          SHORT qty=0.07       entry=73.64        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 12:37 1000000MOG/USDT:USDT   SHORT qty=64.2       entry=0.07991      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 23:04 AAVE/USDT:USDT         SHORT qty=0.1        entry=97.02          (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-20 23:55 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-22 17:08 SOL/USDT:USDT          LONG  qty=0.09       entry=70.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 10:37 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 10:40 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 10:40 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 10:40 AAVE/USDT:USDT         SHORT qty=0.1        entry=96.48        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 11:09 SOL/USDT:USDT          SHORT qty=0.09       entry=71.09        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 12:54 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 12:54 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-23 12:55 AAVE/USDT:USDT         SHORT qty=0.1        entry=96.48        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-24 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-24 09:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-24 09:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-24 11:33 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-24 11:33 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 00:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 00:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 09:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 09:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 15:02 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 16:23 SOL/USDT:USDT          SHORT qty=0.09       entry=67.65        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-25 20:50 XRP/USDT:USDT          LONG  qty=7.3        entry=0.897        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 00:50 SOL/USDT:USDT          LONG  qty=0.09       entry=69.26        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 01:19 1000000MOG/USDT:USDT   SHORT qty=64.7       entry=0.07926        (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 02:08 SOL/USDT:USDT          SHORT qty=0.09       entry=70.11        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 07:22 ETH/USDT:USDT          LONG  qty=0.016      entry=1705.46      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 09:08 XRP/USDT:USDT          LONG  qty=7          entry=0.9553       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 09:14 ETH/USDT:USDT          LONG  qty=0.016      entry=1705.46      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 09:14 XRP/USDT:USDT          LONG  qty=7          entry=0.9553       adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 09:14 SOL/USDT:USDT          SHORT qty=0.09       entry=70.11        adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+  ? XEM TAY 2026-11-26 09:14 1000000MOG/USDT:USDT   SHORT qty=64.7       entry=0.07963      adopted  (khong co OPEN nao cung gia da duoc CLOSE)
+
+(chua ghi gi ∙ them --apply de danh dau that; 9 ban ghi se duoc void)
+Con 81 OPEN can xem tay (khong tu dong void).

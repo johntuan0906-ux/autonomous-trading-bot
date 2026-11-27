@@ -1,0 +1,29 @@
+﻿... ok
+At line:1 char:61
++ ... ading-bot'; python -m unittest tests.test_journal_void -v > ..\logs\_ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_chua_co_op...van_ghi) ... ok:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+test_khi_da_co_open_thi_khong_ghi_them 
+(tests.test_journal_void.TestAdoptKhongGhiLap.test_khi_da_co_open_thi_khong_ghi_them) ... ok
+test_hai_ban_ghi_sat_nhau_duoi_30s_khong_bi_coi_la_trung 
+(tests.test_journal_void.TestFindDuplicateOpens.test_hai_ban_ghi_sat_nhau_duoi_30s_khong_bi_coi_la_trung) ... ok
+test_hai_open_cung_gia_va_mot_close_bi_coi_la_trung 
+(tests.test_journal_void.TestFindDuplicateOpens.test_hai_open_cung_gia_va_mot_close_bi_coi_la_trung) ... ok
+test_hai_vi_the_that_khac_gia_khong_bi_danh_dau 
+(tests.test_journal_void.TestFindDuplicateOpens.test_hai_vi_the_that_khac_gia_khong_bi_danh_dau) ... ok
+test_vi_the_con_mo_khong_bi_danh_dau 
+(tests.test_journal_void.TestFindDuplicateOpens.test_vi_the_con_mo_khong_bi_danh_dau) ... ok
+test_ban_ghi_void_khong_duoc_tinh (tests.test_journal_void.TestPendingKeys.test_ban_ghi_void_khong_duoc_tinh) ... ok
+test_pending_chi_gom_vi_the_chua_dong 
+(tests.test_journal_void.TestPendingKeys.test_pending_chi_gom_vi_the_chua_dong) ... ok
+test_dry_run_khong_sua_file (tests.test_journal_void.TestVoidRecords.test_dry_run_khong_sua_file) ... ok
+test_void_ghi_co_void_va_load_journal_bo_qua 
+(tests.test_journal_void.TestVoidRecords.test_void_ghi_co_void_va_load_journal_bo_qua) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.115s
+
+OK
+

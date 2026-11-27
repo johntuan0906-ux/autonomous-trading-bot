@@ -1,0 +1,33 @@
+﻿git : warning: in the working copy of 'tools/bug_catalog.py', LF will be replaced by CRLF the next time Git touches it
+At line:1 char:38
++ ... vscode\Projects'; git -C atb-live --no-pager diff --stat 2>&1 | Out-F ...
++                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ CONTEXT.md               |  19 ++++-
+ COUNCIL_GAPS.md          |   4 +-
+ OPERATIONS.md            |   3 +-
+ golden/bug_manifest.json |   7 +-
+ journal.py               | 210 ++++++++++++++++++++++++++++++++++++++++++++++-
+ monitor_report.py        |  35 ++++++--
+ position_sync.py         |  32 ++++++--
+ tools/bug_catalog.py     |  18 ++++
+ turbo_demo.py            |  35 +++++++-
+ 9 files changed, 336 insertions(+), 27 deletions(-)
+git : warning: in the working copy of 'tools/bug_catalog.py', LF will be replaced by CRLF the next time Git touches it
+At line:1 char:126
++ ... s\_lvdiff.txt; git -C atb-live --no-pager diff --numstat 2>&1 | Out-F ...
++                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+17	2	CONTEXT.md
+2	2	COUNCIL_GAPS.md
+2	1	OPERATIONS.md
+4	3	golden/bug_manifest.json
+209	1	journal.py
+28	7	monitor_report.py
+23	9	position_sync.py
+18	0	tools/bug_catalog.py
+33	2	turbo_demo.py

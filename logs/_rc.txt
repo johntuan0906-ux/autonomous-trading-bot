@@ -1,0 +1,25 @@
+﻿test_p0_safety.py:1202: Su that: sua `config.py` de THEM `kill_monitor_only` vo tinh XOA `reconcile_journal`
+test_p0_safety.py:1204: 'reconcile_journal'`) va chi phat hien khi chay lai that (test cu khong phu duong
+test_p0_safety.py:1205: reconcile). Test nay giu danh sach truong ma bot phu thuoc.
+test_p0_safety.py:1212: # reconcile journal (duong khoi dong)
+test_p0_safety.py:1213: "reconcile_journal", "reconcile_days", "reconcile_min_interval_sec",
+test_p0_safety.py:1489: them 1 vong (doi `reconcile` vong sau don). Nay: coi nhu DA DONG, khong canh bao.
+test_reconcile.py:1: """test_reconcile.py — doi chieu journal voi fill THAT tren san (P0-reconcile).
+test_reconcile.py:4: ai ghi CLOSE -> journal thieu lenh -> gate LIVE bi lech. Module reconcile.py phai:
+test_reconcile.py:11: 5) apply_closes: backup 1 lan truoc khi ghi; throttle trong reconcile().
+test_reconcile.py:14: Chay: python -m unittest tests.test_reconcile -v
+test_reconcile.py:31: import reconcile as R  # noqa: E402
+test_reconcile.py:160: self.assertTrue(rec["reconciled"])
+test_reconcile.py:195: plan = R.plan_backfill(opens, closes, fills)
+test_reconcile.py:202: self.assertTrue(rec["reconciled"])
+test_reconcile.py:212: plan1 = R.plan_backfill(opens, closes, fills)
+test_reconcile.py:217: plan2 = R.plan_backfill(opens2, closes2, fills)
+test_reconcile.py:219: self.assertEqual(R.plan_backfill(opens2, closes2, fills)["closes"], [])
+test_reconcile.py:225: reconcile_min_interval_sec=3600,
+test_reconcile.py:226: reconcile_days=7, symbols=(), extra_symbols=())
+test_reconcile.py:229: out = R.reconcile(cfg, ex=None, log=None, apply=True,
+test_reconcile.py:258: Test chot: `plan_backfill()` phai tra ve 2 NGAN rieng (matched = bot,
+test_reconcile.py:282: plan = R.plan_backfill(opens, closes, fills)
+test_reconcile.py:292: plan = R.plan_backfill(opens, closes, fills)
+test_reconcile.py:300: """Khong co fill ⇒ khong duoc "doan" PnL (nguyen tac cua reconcile)."""
+test_reconcile.py:302: plan = R.plan_backfill(opens, closes, [])

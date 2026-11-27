@@ -1,0 +1,74 @@
+﻿ CONTEXT.md               |  19 ++++-
+ COUNCIL_GAPS.md          |   4 +-
+ OPERATIONS.md            |   3 +-
+ golden/bug_manifest.json |   7 +-
+ journal.py               | 210 ++++++++++++++++++++++++++++++++++++++++++++++-
+ monitor_report.py        |  35 ++++++--
+ position_sync.py         |  32 ++++++--
+ tools/bug_catalog.py     |  18 ++++
+ 8 files changed, 303 insertions(+), 25 deletions(-)
+-    """Tra (opens, closes). Close = event=CLOSE hoac co 'won' khong phai OPEN."""
++    """Tra (opens, closes). Close = event=CLOSE hoac co 'won' khong phai OPEN.
++    Ban ghi `void: true` (OPEN trung do adopt chay lap ΓÇö B-073, xem journal.py)
++    bi BO QUA o day: moi bo dem trong repo deu di qua ham nay nen chi can sua
++    mot cho. Lich su goc van con nguyen trong file.
++    """
++            if rec.get("void") is True:
++                continue
+-    """Gan tung CLOSE voi OPEN cung pair som nhat chua gan (FIFO)."""
++    """Gan tung CLOSE voi OPEN cung pair som nhat chua gan ma `open.ts <= close.ts` (FIFO).
++    Chan loi lenh CLOSE tay/bui cu (khong co OPEN) lay nham ban ghi OPEN cua bot o
++    tuong lai (`open.ts > close.ts`). Neu thieu `ts` (=0) thi giu FIFO nhu cu.
++    """
+-    for o in opens:
++    for o in sorted(opens, key=lambda r: float((r or {}).get("ts") or 0.0)):
+-    pairs = []
+-    for c in closes:
++    indexed = sorted(
++        enumerate(closes),
++        key=lambda ic: (float((ic[1] or {}).get("ts") or 0.0), ic[0]),
++    )
++    pairs: list = [None] * len(closes)
++    for idx, c in indexed:
+-        o = pending[key].popleft() if pending.get(key) else None
+-        pairs.append((o, c))
++        q = pending.get(key)
++        c_ts = float((c or {}).get("ts") or 0.0)
++        o_pick = None
++        if q:
++            o_ts = float((q[0] or {}).get("ts") or 0.0)
++            if c_ts <= 0.0 or o_ts <= 0.0 or o_ts <= c_ts:
++                o_pick = q.popleft()
++        pairs[idx] = (o_pick, c)
+-          journal_fn=None) -> dict:
++          journal_fn=None, unclosed_fn=None) -> dict:
+-                 "skipped": [], "errors": [], "stale": [], "ignored": []}
++                 "skipped": [], "errors": [], "stale": [], "ignored": [],
++                 "journal_skip": []}
++            # (26/11, B-073) NHUNG adopt chay lai moi lan restart / vong ADOPT dinh ky ΓçÆ vi the
++            # giu nhieu ngay bi ghi OPEN lap (do that LIVE: ETH 0.016 @1708.79 co 7 ban ghi
++            # 24-25/11). `unclosed_fn` = vi the nay DA co OPEN chua CLOSE ΓçÆ khong ghi lai.
+-                try:
+-                    journal_fn(event="OPEN", pair=sym, direction=d, entry=pos.entry,
+-                               qty=float(qty), sl=float(sl), tp=float(tp),
+-                               strategy=str(getattr(mt, "strategy", "") or ""),
+-                               adopted=True, reason="ADOPT")
+-                except Exception:  # noqa: BLE001
+-                    pass
++                dup = False
++                if unclosed_fn is not None:
++                    try:
++                        dup = bool(unclosed_fn(pair=sym, direction=d,
++                                               qty=float(qty), entry=float(pos.entry)))
++                    except Exception:  # noqa: BLE001
++                        dup = False          # loi doc journal -> cu ghi nhu cu (khong chan nham)
++                if dup:
++                    rep.setdefault("journal_skip", []).append(sym)
++                else:
++                    try:
++                        journal_fn(event="OPEN", pair=sym, direction=d, entry=pos.entry,
++                                   qty=float(qty), sl=float(sl), tp=float(tp),
++                                   strategy=str(getattr(mt, "strategy", "") or ""),
++                                   adopted=True, reason="ADOPT")
++                    except Exception:  # noqa: BLE001
++                        pass

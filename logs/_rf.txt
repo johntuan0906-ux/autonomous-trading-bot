@@ -1,0 +1,19 @@
+﻿54: def _f(v, default: float = 0.0) -> float:
+61: def journal_records(path: str = "logs/journal.jsonl") -> tuple:
+66: def orphan_opens(path: str = "logs/journal.jsonl") -> list:
+78: def norm_fills(rows) -> list:
+104: def fetch_fills(ex, symbols, days: int = LOOKBACK_DAYS, log=None) -> list:
+131: def _episode(sym: str, side: int, entry_legs: list, exit_legs: list) -> dict:
+148: def build_episodes(fills, symbols=None) -> tuple:
+200: def pair_episodes_to_opens(episodes: list, opens: list) -> tuple:
+237: def already_recorded(ep: dict, closes: list) -> bool:
+263: def build_close(op: dict, legs: list, now: float | None = None) -> dict:
+299: def infer_reason(op: dict, exit_price: float, tol_pct: float = 0.002) -> str:
+310: def plan_backfill(opens: list, closes: list, fills: list, now: float | None = None) -> dict:
+327: def apply_closes(path: str, closes: list, backup: bool = True) -> dict:
+347: def _load_state(path: str = STATE_PATH) -> dict:
+355: def _save_state(state: dict, path: str = STATE_PATH) -> None:
+366: def reconcile(cfg, ex, log=None, apply: bool = True, now: float | None = None,
+418: def active_symbols(cfg) -> tuple:
+427: def main(argv: list | None = None) -> int:
+J 9: def log_trade(path: str = "logs/journal.jsonl", **fields) -> dict:

@@ -1,0 +1,22 @@
+﻿232: def __init__(self, api_key: str = "", api_secret: str = "", testnet: bool = True,
+271: def fetch_ohlcv(self, symbol: str, timeframe: str = "15m", limit: int = 200) -> pd.DataFrame:
+354: def last_price(self, symbol: str) -> float:
+361: def hedge_mode(self, ttl: float = 300.0) -> bool:
+387: def _invalidate_hedge(self) -> None:
+392: def _pos_side(self, direction: str) -> dict:
+401: def fetch_balance_usdt(self) -> float | None:
+432: def qty_step(self, symbol: str) -> float:
+450: def quantize_qty(self, symbol: str, qty: float) -> float:
+478: def set_leverage(self, symbol: str, leverage: int) -> None:
+486: def set_margin_mode(self, symbol: str, mode: str = "ISOLATED") -> bool:
+513: def market_entry(self, symbol: str, direction: str, qty: float,
+531: def stop_tp_orders(self, symbol: str, direction: str, qty: float, sl: float,
+560: def _arm_protection(self, symbol: str, direction: str, close_side: str,
+599: def close_position(self, symbol: str, direction: str, qty: float,
+642: def _close_exact(self, symbol: str, direction: str, side: str, qty: float,
+691: def cancel_symbol_orders(self, symbol: str) -> dict:
+716: def _cancel_algo(self, symbol: str) -> tuple:
+728: def algo_orders(self, symbol: str | None = None,
+770: def fetch_positions(self, symbols=None) -> list:
+779: def position_qty(self, symbol: str, direction: str | None = None) -> float | None:
+819: def fetch_protection(self, symbol: str) -> dict:

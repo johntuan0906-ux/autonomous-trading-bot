@@ -1,0 +1,85 @@
+﻿bot.py:284: Nay: ghi symbol vao `logs/dust_skip.json`, bo khoi so sach, bao 1 lan. Vong `adopt`
+bot.py:418: # (vong `adopt` ke tiep se nhan vi the nay va arm bao ve).
+bot.py:420: " -> vong sau adopt se arm bao ve; kiem tra tay neu lap lai",
+bot.py:424: "lech) -> vong sau adopt/reconcile xu ly", symbol,
+clinepass_review.py:149: "max_atr_pct", "min_notional_usdt", "adopt_positions", "partial_at_r",
+config.py:202: adopt_positions: bool = field(default_factory=lambda: _get_bool("ADOPT_POSITIONS", True))
+config.py:203: # (15/10) Vi the do NGUOI DUNG/bot khac mo -> BO QUA hoan toan (khong adopt, khong
+config.py:204: # dat SL/TP, khong tinh vao slot). Vi du: `ADOPT_SKIP_SYMBOLS=BTW` hoac
+config.py:206: adopt_skip_symbols: str = field(
+config.py:207: default_factory=lambda: _get("ADOPT_SKIP_SYMBOLS", ""))
+exchange.py:650: (SL dong dung luc gui ⇒ lenh mo nguoc chieu) — vong `adopt` ke tiep se nhan va
+journal.py:4: mot so ban ghi OPEN bi ghi TRUNG (adopt chay lap sau restart, B-050) nen trong
+monitor_report.py:52: Ban ghi `void: true` (OPEN trung do adopt chay lap — B-073, xem journal.py)
+position_sync.py:1: """P0-1: adopt vi the dang mo THAT tren san khi bot khoi dong lai.
+position_sync.py:127: def adopt(bot, rows, *, atr_fn=None, managed=None, alert=None, skip_symbols=(),
+position_sync.py:131: Tra bao cao: {adopted, armed, unmanaged, skipped, ignored, errors}.
+position_sync.py:136: vo tinh duoc bo qua, con vi the TRONG danh sach thi bi adopt va bot se tu quan ly
+position_sync.py:140: rep: dict = {"adopted": [], "armed": [], "unarmed": [], "unmanaged": [],
+position_sync.py:144: # lenh nao) da duoc bot BO QUAN LY ⇒ phai bo qua o day nua, neu khong moi vong adopt lai
+position_sync.py:164: # se 'dong' vi the do ngay khi vua adopt.
+position_sync.py:197: # (19/11, B-050) Vi the ADOPT sau restart: journal KHONG co OPEN cho no ⇒ khi
+position_sync.py:199: # Ghi OPEN gia (`adopted=True`) de so sach khop va `perf_report` khong phai doan.
+position_sync.py:205: adopted=True, reason="ADOPT")
+position_sync.py:208: rep["adopted"].append(sym)  # da vao portfolio -> MONITOR phan mem da quan ly
+position_sync.py:213: res = ex.stop_tp_orders(sym, d, qty, sl, tp, cid_prefix="adopt")
+position_sync.py:237: keep = set(rep["adopted"]) | set(rep["skipped"])
+sentiment.py:54: _BULLISH = ["etf approval", "rate cut", "dovish", "bullish", "adoption",
+trade_mgmt.py:66: #: sat entry, hoac vi the adopt khong co SL goc) ⇒ moi R tinh ra deu RAC. Do that tren journal
+trade_mgmt.py:264: #       adopt khong co SL goc) thi mau so = 1e-12 ⇒ R NO TUNG (do that: r=793.07, mfe_r=802);
+turbo_demo.py:45: from position_sync import adopt as adopt_positions
+turbo_demo.py:237: """Gia + ATR hien tai — dung de tinh lai SL/TP khi adopt vi the cu (P0-1)."""
+turbo_demo.py:243: log.warning("adopt: khong lay duoc ATR cho %s: %s", sym, e)
+turbo_demo.py:1474: def adopt_now(bot, cfg, ex, log, syms) -> dict:
+turbo_demo.py:1475: """ADOPT vi the THAT tren san: nap state + arm lai SL/TP + dong bo equity.
+turbo_demo.py:1480: if not (cfg.adopt_positions and not cfg.dry_run):
+turbo_demo.py:1483: # P0-watchdog: ADOPT goi san nhieu lan (fetch positions + ATR + arm SL/TP)
+turbo_demo.py:1486: heartbeat({"phase": "adopt"})
+turbo_demo.py:1489: rep = adopt_positions(bot, ex.fetch_positions(list(syms)),
+turbo_demo.py:1493: str(getattr(cfg, "adopt_skip_symbols", "")
+turbo_demo.py:1496: # (19/11, B-050) ghi OPEN cho vi the adopt ⇒ journal khop
+turbo_demo.py:1498: heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
+turbo_demo.py:1500: # (15/10) Vi the do nguoi dung/bot khac mo (ADOPT_SKIP_SYMBOLS): bot KHONG
+turbo_demo.py:1502: log.warning("ADOPT: BO QUA %d vi the theo ADOPT_SKIP_SYMBOLS: %s",
+turbo_demo.py:1504: log.warning("ADOPT vi the san: adopted=%s armed=%s KHONG-arm-duoc-tren-san=%s "
+turbo_demo.py:1506: rep["adopted"], rep["armed"], rep["unarmed"],
+turbo_demo.py:1509: log.error("ADOPT: %d vi the KHONG dat duoc SL/TP TREN SAN (%s) — dang duoc "
+turbo_demo.py:1513: if rep["adopted"] or rep["unmanaged"] or n_state:
+turbo_demo.py:1514: tg(cfg, (f"[KHOI DONG LAI] adopt={rep['adopted']} armed={rep['armed']} "
+turbo_demo.py:1527: log.exception("adopt vi the that bai: %s", e)
+turbo_demo.py:1528: tg(cfg, f"[CANH BAO] Adopt vi the that bai: {str(e)[:200]} - kiem tra tay!")
+turbo_demo.py:1619: ngay, KHONG adopt -> vi the con tren san bi BO QUEN: demo chan moi lenh stop (-4045)
+turbo_demo.py:1621: da xay ra 01/10 (BTC short 0.0568). Nay: van adopt + monitor + thu arm lai, chi KHONG
+turbo_demo.py:1631: adopt_now(bot, cfg, ex, log, syms)          # vi the tren san phai duoc theo doi
+turbo_demo.py:1721: # Dat TRUOC reconcile/adopt de khong ton tien API khi cau hinh chua hop le.
+turbo_demo.py:1735: # P0-1: ADOPT vi the dang mo THAT tren san (ban cu chi log roi bo qua -> mo trung)
+turbo_demo.py:1736: adopt_now(bot, cfg, ex, log, syms0)
+turbo_demo.py:1840: # (13/10) ADOPT DINH KY: ban cu chi adopt luc khoi dong, nen vi the mo/dong
+turbo_demo.py:1844: # Adopt lai se: nap vi the that, tinh lai SL/TP neu thieu, don state 'xac',
+turbo_demo.py:1846: _adopt_every = int(os.getenv("ADOPT_EVERY_ROUNDS", "10") or 10)
+turbo_demo.py:1847: if _adopt_every > 0 and i % _adopt_every == 0:
+turbo_demo.py:1849: rep = adopt_now(bot, cfg, ex, log, syms0)
+turbo_demo.py:1850: if rep.get("stale") or rep.get("cleaned") or rep.get("adopted"):
+turbo_demo.py:1851: log.warning("ADOPT DINH KY vong %d: adopted=%s stale=%s da-don-lenh=%s",
+turbo_demo.py:1852: i, rep.get("adopted"), rep.get("stale"),
+turbo_demo.py:1855: log.warning("ADOPT DINH KY vong %d loi (bo qua, vong sau thu lai): %s",
+bug_catalog.py:178: "guard": "`ADOPT_SKIP_SYMBOLS` (nhan ca `BTW` lan `BTW/USDT:USDT`): bo qua hoan toan; doc qty loi thi GIU vi the (khong xoa mu)",
+bug_catalog.py:265: "guard": "`bot._dust_give_up()`: dem so lan that bai (`dust_fail`, `DUST_MAX_FAILS=3`) ⇒ ghi symbol vao `logs/dust_skip.json` + bo khoi so sach + bao **1 lan**; `position_sync.adopt` bo qua symbol trong file do (khong keo lai moi vong/restart). Muon theo doi lai: xoa symbol khoi file",
+bug_catalog.py:269: "test_p0_safety.py::TestViTheBuiChet::test_adopt_bo_qua_symbol_da_bo_quan_ly"],
+bug_catalog.py:341: "symptom": "Do that 26/10 tren `logs/journal.jsonl` TESTNET (3342 ban ghi CLOSE): max `r`=793.07, 319 ban ghi `r`>5, min `r`=-14.84, trung vi `r`=+0.076 (vo ly voi WR 43%). Vi du cu the: DASH entry 49.32 -> exit 48.84 (LENH LO) nhung ghi `r`=+196.36; BNB entry 727.33 -> exit 730.04 ghi `r`=793.07; 315 ban ghi FLATTEN co |r|>5. Nghia la **moi ket luan dua tren `r`/`avgR`/`PF` doc tu journal deu vo nghia** — ke ca \"do luong hinh hoc moi tot hay xau\": suyt nua thi `tools/review_due.py` da bao \"nen avgR=+1.521 PF=5.89\" (do la RAC). Nguon goc trong `trade_mgmt.r_multiple` (co chan `dist<=0` ⇒ 0.0) CHUA xac dinh — nghi `initial_sl` bi dat sat entry khi `position_sync.adopt` vi the; dang theo doi, KHONG ket luan khi chua do duoc. **ANH HUONG DO THAT (do 26/10)**: `STATE.md` bao **PF(R)=5.345** — chinh la PF tinh tu truong `r` (da kiem chung: pos/neg cua `r` = 5.345) — trong khi **PF(R) THAT** (937 lenh ghep duoc, R tinh tu gia) chi **1.013**, avgR=+0.004, WR=53% ⇒ bot dang **hoa von**, KHONG phai \"lai khung\"; cac cong dung `pf_r` doc tu journal (`state_sync.py` -> STATE.md, `live_ready.py` PF(R)>=1.2, `live_guard.py` PF>=1.2) vi vay **dang cham bang so RAC**",
+bug_catalog.py:557: "guard": "`reconcile.py` (da co tu P0) duoc dung nhu BUOC BAT BUOC khi so sanh tien: `plan_backfill()` giu **2 ngan rieng** — `closes` (khop OPEN trong journal = bot) va `unmatched_episodes` (khong co OPEN = tay); `--apply` chi ghi bu `CLOSE` thieu (backup `journal.jsonl.bak-*`), KHONG sua `risk_state`, KHONG gui lenh. Quy trinh ghi vao `OPERATIONS.md`: doi soat `reconcile.py` + `positions.py` TRUOC khi ket luan ve chien luoc hay go kill-switch; phan biet ro `journal.pnl` (lich su ghi chep) vs `equity` (su that duy nhat). (19/11) Va NGUON sinh CLOSE mo coi lon nhat: vi the duoc ADOPT sau restart KHONG co dong OPEN ⇒ `position_sync.adopt(journal_fn=...)` ghi OPEN `adopted=True` (do that LIVE: OPEN=627 / CLOSE=705)",
+bug_catalog.py:563: "test_p0_safety.py::TestAdoptGhiOpen::test_adopt_ghi_open_co_adopted",
+bug_catalog.py:564: "test_p0_safety.py::TestAdoptGhiOpen::test_khong_truyen_journal_fn_thi_khong_ghi_gi"],
+bug_catalog.py:702: "symptom": "Do that 19/11: `logs/strategy_stats.json` cua LIVE co `NONE` (n=455, ts moi) nhung `D_RANGE_REVERSAL` (ts 11/11), `B_BREAKOUT_RETEST` (ts 11/11), `A_TREND_PULLBACK` dung im gan 8 ngay — trong khi `perf_report --split strategy` (doc thang `strategy` o ban ghi OPEN) van thay D_RANGE_REVERSAL **-81 USDT** va B_BREAKOUT_RETEST **+186 USDT**. Nguyen nhan: `_pending_feats[sym]['strategy']` chi la dict trong RAM; restart (hoac vi the duoc adopt lai) ⇒ `pend=None`, `exr` khong co strategy ⇒ `strat='NONE'` ⇒ `bump()` cong sai o nhom NONE ⇒ `strategy.gate_check` (auto) khong bao gio thay chien luoc dang lo. Cung luc do 2 chien luoc lo nhat van duoc phep vao lenh tren TIEN THAT",
+council_probe.py:24: truong `--probe` truoc khi `--decision adopted`.
+harness_ledger.py:5: --evidence "B-023 + 157 loi/ngay" --decision adopted --by "nguoi van hanh"
+harness_ledger.py:7: python tools/harness_ledger.py --check     # exit 1 neu adopted KHONG co bang chung
+harness_ledger.py:16: 2. **Harnessing-level: bai hoc phai co BANG CHUNG va duoc ADOPT** — khong phai ghi y
+harness_ledger.py:20: `--check` bao: adopted/rejected ma thieu bang chung; `proposed` qua 7 ngay chua quyet;
+harness_ledger.py:38: DECISIONS = ("proposed", "adopted", "rejected", "rolled-back")
+harness_ledger.py:97: # thay doi da ADOPT ma khong co ngay ra soat thi se "va roi de do" (dung lop loi
+harness_ledger.py:168: """Muc da ADOPT **den han ra soat** (co `review_at` <= now, chua `reviewed_at`).
+harness_ledger.py:179: if str(r.get("decision") or "") != "adopted" or r.get("reviewed_at"):
+harness_ledger.py:233: if dec in ("adopted", "rejected", "rolled-back") and not ev:
+journal_fix.py:3: Van de: sau khi bot restart / arm lai, buoc ADOPT ghi OPEN lan 2 cho CUNG mot vi
+journal_fix.py:52: "adopted" if rec.get("adopted") else ""))

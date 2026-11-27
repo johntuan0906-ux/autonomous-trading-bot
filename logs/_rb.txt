@@ -1,0 +1,16 @@
+﻿3: python tools/restart_bot.py --target live --reset --wait-flat
+4: python tools/restart_bot.py --target both --reset
+5: python tools/restart_bot.py --target testnet --dry-run
+85: if not ln or ln.startswith("#") or "=" not in ln:
+193: def start(d: Path) -> int:
+201: def restart_one(target: str, reset: bool, wait: bool, dry: bool,
+236: rep["started_pid"] = start(d)
+240: def main(argv: list | None = None) -> int:
+241: ap = argparse.ArgumentParser(description="Restart bot an toan (dung -> reset -> chay)")
+242: ap.add_argument("--target", choices=("both", "testnet", "live"), default="both")
+243: ap.add_argument("--reset", action="store_true", help="xoa risk_state (go kill-switch)")
+244: ap.add_argument("--wait-flat", action="store_true",
+246: ap.add_argument("--timeout", type=float, default=900.0,
+248: ap.add_argument("--stagger", type=float, default=90.0,
+250: ap.add_argument("--dry-run", action="store_true")
+261: rep = restart_one(t, args.reset, args.wait_flat, args.dry_run, args.timeout)

@@ -1,0 +1,13 @@
+﻿1: # OPERATIONS.md — Vận hành 2 instance bot (nhanh, ổn định, ít lệnh)
+9: ## 1. Ba lệnh dùng hằng ngày
+28: ## 2. Không còn cửa sổ console nhảy lên (12/10)
+65: ## 3. Vì sao "làm hết mục tiêu Next" mất ~3 ngày — và cách rút ngắn
+89: ### 3.1 Giật lag / treo máy / mất kết nối
+106: ## 4. Thu hẹp danh sách cặp (LIVE 40 / TESTNET 150) — đã áp 12/10
+134: ## 5. Restart an toàn — 1 lệnh, đúng thứ tự
+156: ## 6. Shell VS Code chập chờn — nguyên nhân và cách làm việc
+180: ## 7. Bảng lệnh tham chiếu
+188: | Vị thế thật trên sàn | `python positions.py` (chạy trong từng instance) |
+255: | **Đối soát sổ ↔ sàn (LIVE)** (B-050) | `python reconcile.py` (xem trước) · `python reconcile.py --apply` (ghi bù `CLOSE` bị thiếu, có backup `journal.jsonl.bak-*`) · `python positions.py` (3 nguồn: sàn / journal / `managed_state`) · vòng lệnh **không có `OPEN` trong journal** = lệnh do NGƯỜI đặt tay, không phải bot |
+293: ## Mẫu TP/SL của người vận hành (ĐÃ BẬT 21/10 — theo yêu cầu người vận hành)
+321: ## 8. Hội đồng đa dạng hơn: 3 việc rõ ràng (12/11, B-052)

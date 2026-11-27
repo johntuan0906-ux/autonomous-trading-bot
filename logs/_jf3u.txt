@@ -1,0 +1,62 @@
+﻿============================================================================================
+JOURNAL FIX | logs/journal.jsonl | OPEN=721 CLOSE=747 | OPEN chua CLOSE (FIFO)=59 | apply=False
+============================================================================================
+  x TRUNG  2026-11-20 12:12 XRP/USDT:USDT          LONG  qty=9.5        entry=0.96         adopted
+           ban sao da co CLOSE: 2026-11-20 12:37 XRP/USDT:USDT          LONG  qty=9.5        entry=0.96         adopted
+  x TRUNG  2026-11-20 12:12 AVAX/USDT:USDT         SHORT qty=1          entry=7.024        adopted
+           ban sao da co CLOSE: 2026-11-20 12:37 AVAX/USDT:USDT         SHORT qty=1          entry=7.024        adopted
+  x TRUNG  2026-11-20 12:12 1000CAT/USDT:USDT      LONG  qty=4008       entry=0.001508     adopted
+           ban sao da co CLOSE: 2026-11-20 12:37 1000CAT/USDT:USDT      LONG  qty=4008       entry=0.001508     adopted
+  x TRUNG  2026-11-20 12:36 ETH/USDT:USDT          SHORT qty=0.012      entry=1721.7       adopted
+           ban sao da co CLOSE: 2026-11-20 12:12 ETH/USDT:USDT          SHORT qty=0.012      entry=1721.7       adopted
+  x TRUNG  2026-11-23 10:40 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted
+           ban sao da co CLOSE: 2026-11-23 10:37 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted
+  x TRUNG  2026-11-23 10:40 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted
+           ban sao da co CLOSE: 2026-11-20 23:55 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted
+  x TRUNG  2026-11-23 12:54 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted
+           ban sao da co CLOSE: 2026-11-23 10:37 ETH/USDT:USDT          LONG  qty=0.016      entry=1737.09      adopted
+  x TRUNG  2026-11-23 12:54 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted
+           ban sao da co CLOSE: 2026-11-20 23:55 XRP/USDT:USDT          SHORT qty=16         entry=0.9114       adopted
+  x TRUNG  2026-11-23 12:55 AAVE/USDT:USDT         SHORT qty=0.1        entry=96.48        adopted
+           ban sao da co CLOSE: 2026-11-23 10:40 AAVE/USDT:USDT         SHORT qty=0.1        entry=96.48        adopted
+  x TRUNG  2026-11-24 05:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-24 09:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+  x TRUNG  2026-11-24 09:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-24 09:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+  x TRUNG  2026-11-24 11:33 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+  x TRUNG  2026-11-24 11:33 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-24 11:33 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+  x TRUNG  2026-11-25 00:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+  x TRUNG  2026-11-25 00:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-25 00:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+  x TRUNG  2026-11-25 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+  x TRUNG  2026-11-25 05:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-25 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+  x TRUNG  2026-11-25 09:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+  x TRUNG  2026-11-25 09:54 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+           ban sao da co CLOSE: 2026-11-25 15:02 XRP/USDT:USDT          LONG  qty=7.3        entry=0.9362       adopted
+  x TRUNG  2026-11-25 09:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 SOL/USDT:USDT          LONG  qty=0.09       entry=71.82        adopted
+  x TRUNG  2026-11-25 15:02 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+           ban sao da co CLOSE: 2026-11-24 05:54 ETH/USDT:USDT          SHORT qty=0.016      entry=1708.79      adopted
+  x TRUNG  2026-11-26 09:14 ETH/USDT:USDT          LONG  qty=0.016      entry=1705.46      adopted
+           ban sao da co CLOSE: 2026-11-26 07:22 ETH/USDT:USDT          LONG  qty=0.016      entry=1705.46      adopted
+  x TRUNG  2026-11-26 09:14 XRP/USDT:USDT          LONG  qty=7          entry=0.9553       adopted
+           ban sao da co CLOSE: 2026-11-26 09:08 XRP/USDT:USDT          LONG  qty=7          entry=0.9553       adopted
+  x TRUNG  2026-11-26 09:14 SOL/USDT:USDT          SHORT qty=0.09       entry=70.11        adopted
+           ban sao da co CLOSE: 2026-11-26 02:08 SOL/USDT:USDT          SHORT qty=0.09       entry=70.11        adopted
+(chua ghi gi ∙ them --apply de danh dau that; 29 ban ghi se duoc void)

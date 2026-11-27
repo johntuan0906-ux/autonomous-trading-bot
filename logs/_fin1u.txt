@@ -1,0 +1,8 @@
+﻿============================================================================================
+JOURNAL FIX | logs/journal.jsonl | OPEN=686 CLOSE=748 | OPEN chua CLOSE (FIFO)=3 | apply=False
+============================================================================================
+Khong co OPEN trung dang danh dau duoc.
+Vi the DANG MO tren san: 5
+(se danh dau 0 OPEN cu ∙ them --apply)
+(chua ghi gi ∙ them --apply de danh dau that; 0 ban ghi se duoc void)
+rows 3278 void 35

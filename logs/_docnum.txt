@@ -1,0 +1,2 @@
+﻿OPERATIONS.md:254: | **Chuỗi kiểm tra trước khi commit** | `python tools\bug_catalog.py --check` (**71 lớp / 282 test chốt**) → `python tools\golden_set.py --check` (45 ca / 14 cổng, có DRIFT) → `python tools\drift_docs.py --check` (tài liệu ↔ code) → `python tools\security_audit.py --check` (bằng chứng audit bảo mật) → `python -m unittest discover -s tests -t .` |
+CONTEXT.md:832: - 5 test chốt. Catalog **71 lớp / 282 test chốt**.

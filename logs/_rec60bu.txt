@@ -1,0 +1,19 @@
+﻿==============================================================================================
+RECONCILE | journal=logs/journal.jsonl | OPEN=692 CLOSE=748 | OPEN mo coi (FIFO, chan doan)=9 | apply=False | days=60
+==============================================================================================
+fill doc duoc=198 | vong lenh tai tao=31 | khop OPEN=20 | da co CLOSE=19 | can ghi bu=1
+  + 2026-10-11 16:26 1000BONK/USDT:USDT LONG  entry=0.003474     exit=0.003476     qty=3185       R=+0.4838 pnl=  +0.0493 won=True  legs=3 (san: -0.0143)
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT SHORT qty=225.4 entry=0.1108 2026-10-11 05:00 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000BONK/USDT:USDT LONG  qty=13214 entry=0.00338969 2026-10-11 05:43 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000CAT/USDT:USDT SHORT qty=15079 entry=0.002034 2026-10-11 05:43 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT SHORT qty=140.6 entry=0.1111 2026-10-11 06:46 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT LONG  qty=50.7 entry=0.1114 2026-10-11 06:47 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT SHORT qty=0.1 entry=0.1108 2026-10-11 08:14 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000BONK/USDT:USDT LONG  qty=8682 entry=0.0033905 2026-10-11 09:30 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000CAT/USDT:USDT SHORT qty=16126 entry=0.00203115 2026-10-11 09:30 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT SHORT qty=149.7 entry=0.11 2026-10-11 10:24 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): 1000000MOG/USDT:USDT SHORT qty=761 entry=0.111809 2026-10-11 15:58 -> bo qua
+  - vong lenh KHONG co OPEN trong journal (lenh tay / ngoai cua so): AAVE/USDT:USDT SHORT qty=0.1 entry=130.54 2026-11-07 05:29 -> bo qua
+  - vi the con MO (khong ghi): 1000000MOG/USDT:USDT SHORT qty=337.3 entry=0.084349
+  - vi the con MO (khong ghi): 1000CAT/USDT:USDT SHORT qty=6103 entry=0.00154891
+(chua ghi gi ∙ them --apply de ghi that)

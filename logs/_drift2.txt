@@ -1,0 +1,3 @@
+﻿=== DRIFT TAI LIEU <-> CODE | 52 muc | LECH 0 | CANH BAO 1 ===
+  [WARN] docs                         ma lop loi trong tai lieu  ma B-034 khong co trong bug_catalog.CLASSES (co the la lich su)
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)

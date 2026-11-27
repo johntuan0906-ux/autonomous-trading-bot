@@ -1,0 +1,12 @@
+﻿33: from journal import log_trade
+51: from reconcile import reconcile as reconcile_journal
+491: # vao journal (event=AGENT) de do luong ("shadow"). Muon cap quyen hanh dong thi
+574: "reason": "bai hoc journal: %s avgR=%+.3f n=%s (da chan %d lan)"
+638: `qwen/...`, `local/...`) -> journal/bao cao nhom sai provider, de gay hieu nham
+701: # Ket qua ghi vao journal voi status="COUNCIL" de tich luy bang chung cap
+790: """Phase 4: cache ket qua cap quyen veto (tinh tu journal, khong ton LLM)."""
+797: res = _auth(str(getattr(cfg, "agent_journal_path", "logs/journal.jsonl")),
+889: # "agent dang TAT: ... copilot CLI ... quota" = ton 1 cuoc goi + rac journal moi
+1022: # (15/11, B-057) Cooldown THEO CAP doc tu JOURNAL: cap vua THUA thi khong vao lai trong
+1203: # bang chung am tu chinh journal (`python tools/learn_review.py`). Mac dinh TAT;
+1250: # risk thuc = risk_pct% x size_base. Ghi vao log + journal de khong con tranh cai.

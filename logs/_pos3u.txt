@@ -1,0 +1,21 @@
+﻿============================================================================================
+POSITIONS DIAGNOSTIC | testnet=False dry_run=False pair=ALL
+============================================================================================
+[1] VI THE THAT TREN SAN (nguon su that DUY NHAT)
+    BTC/USDT:USDT    long  qty=0.001      entry=61001.3      mark=60769.6      uPnL=-0.23$  [MO TAY - bot KHONG quan ly]
+    ETH/USDT:USDT    long  qty=0.016      entry=1705.46      mark=1693.12      uPnL=-0.20$  [bot dang quan ly]
+    XRP/USDT:USDT    long  qty=7.0        entry=0.9553       mark=0.9586       uPnL=+0.02$  [bot dang quan ly]
+    SOL/USDT:USDT    short qty=0.09       entry=70.11        mark=70.9         uPnL=-0.07$  [bot dang quan ly]
+    1000000MOG/USDT:USDT short qty=64.7       entry=0.07963      mark=0.0813923    uPnL=-0.11$  [bot dang quan ly]
+[2] JOURNAL: OPEN chua ghep CLOSE  (LICH SU, khong phai vi the dang mo)
+    11-20 05:37  1000000MOG/USDT:USDT SHORT entry=0.07991      qty=64.2
+    11-25 18:19  1000000MOG/USDT:USDT SHORT entry=0.07926      qty=64.7
+    11-26 02:14  1000000MOG/USDT:USDT SHORT entry=0.07963      qty=64.7
+    ^ ghi chep lich su (lenh cu). Doi chieu voi fill that: python reconcile.py
+[3] managed_state.json (bot dang giu state cho cac lenh)
+    1000000MOG/USDT:USDT SHORT entry=0.07926      qty=64.7       sl=0.084018     partial=False be=False
+    SOL/USDT:USDT    SHORT entry=70.11        qty=0.09       sl=73.7825      partial=False be=False
+    ETH/USDT:USDT    LONG  entry=1705.46      qty=0.016      sl=1641.44      partial=False be=False
+    XRP/USDT:USDT    LONG  entry=0.9553       qty=7.0        sl=0.9455       partial=False be=False
+[4] KILL-SWITCH: binh thuong
+[!] 1 vi the MO TAY (co tren san, khong co trong managed_state): bot BO QUA (khong SL/TP, khong trailing).

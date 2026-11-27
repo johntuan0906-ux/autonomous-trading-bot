@@ -1,0 +1,3 @@
+﻿33: from journal import log_trade
+1468: def adopt_now(bot, cfg, ex, log, syms) -> dict:
+1491: journal_fn=log_trade)

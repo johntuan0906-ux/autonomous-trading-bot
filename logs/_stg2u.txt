@@ -1,0 +1,12 @@
+﻿============================================================================================
+JOURNAL FIX | logs/journal.jsonl | OPEN=692 CLOSE=748 | OPEN chua CLOSE (FIFO)=9 | apply=False
+============================================================================================
+Khong co OPEN trung dang danh dau duoc.
+Vi the DANG MO tren san: 5
+  x CU     2026-10-19 12:40 1000BONK/USDT:USDT     SHORT qty=3533       entry=0.002958       (khong con vi the tren san)
+  x CU     2026-10-19 14:02 1000BONK/USDT:USDT     SHORT qty=4126       entry=0.002953       (khong con vi the tren san)
+  x CU     2026-11-20 02:16 1000BONK/USDT:USDT     SHORT qty=2150       entry=0.002326       (khong con vi the tren san)
+  x CU     2026-11-20 12:37 1000CAT/USDT:USDT      LONG  qty=4008       entry=0.001508     adopted  (khong con vi the tren san)
+  x CU     2026-11-23 10:40 AAVE/USDT:USDT         SHORT qty=0.1        entry=96.48        adopted  (khong con vi the tren san)
+(se danh dau 5 OPEN cu ∙ them --apply)
+(chua ghi gi ∙ them --apply de danh dau that; 0 ban ghi se duoc void)

@@ -1,0 +1,2 @@
+﻿=== KIEM TRA BUG CATALOG | 72 lop | 292 test chot | 79 file test ===
+  KET LUAN: OK

@@ -1,0 +1,24 @@
+﻿48: 
+49: def load_journal(path: str) -> tuple:
+50:     """Tra (opens, closes). Close = event=CLOSE hoac co 'won' khong phai OPEN."""
+51:     opens: list = []
+52:     closes: list = []
+53:     if not os.path.exists(path):
+54:         return opens, closes
+55:     with open(path, "r", encoding="utf-8") as f:
+56:         for line in f:
+57:             line = line.strip()
+58:             if not line:
+59:                 continue
+60:             try:
+61:                 rec = json.loads(line)
+62:             except Exception:
+63:                 continue
+64:             if rec.get("event") == "CLOSE" or ("won" in rec and rec.get("event") != "OPEN"):
+65:                 closes.append(rec)
+66:             elif "entry" in rec:
+67:                 opens.append(rec)
+68:     return opens, closes
+69: 
+70: 
+71: def match_pairs(opens: list, closes: list) -> tuple:

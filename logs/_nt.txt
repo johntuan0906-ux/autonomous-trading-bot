@@ -1,0 +1,54 @@
+﻿backtest.py:295: t = new_trade(str(sig.get("symbol", "?")), sig["direction"], entry, qty, sl, tp)
+bot.py:207: mt = new_trade(sym, pos.direction, pos.entry, pos.qty, pos.sl, pos.tp)
+position_sync.py:196: mt = new_trade(sym, d, pos.entry, qty, sl or pos.entry, tp or pos.entry)
+trade_mgmt.py:214: def new_trade(symbol: str, direction: str, entry: float, qty: float,
+    return not bool(d.get("tripped", False))
+
+
+def adopt_now(bot, cfg, ex, log, syms) -> dict:
+    """ADOPT vi the THAT tren san: nap state + arm lai SL/TP + dong bo equity.
+
+    Khong bao gio mo them lenh. Dung o luc khoi dong VA trong monitor-only (02/10) â€”
+    muc dich: vi the dang mo luon co nguoi quan ly, ke ca khi kill-switch dang ngung.
+    """
+    if not (cfg.adopt_positions and not cfg.dry_run):
+        return {}
+    try:
+        # P0-watchdog: ADOPT goi san nhieu lan (fetch positions + ATR + arm SL/TP)
+        # -> co the lau hon WATCHDOG_SEC. Nhip tim phai duoc ghi TRUOC/SAU buoc nay,
+        # neu khong supervisor se kill bot dang lam viec that (da xay ra 01/10).
+        heartbeat({"phase": "adopt"})
+        _ms = ms_load(cfg.managed_state_path)
+        n_state = ms_load_into(bot, _ms)
+        rep = adopt_positions(bot, ex.fetch_positions(list(syms)),
+                              atr_fn=lambda s: atr_of(ex, cfg, s),
+                              managed=_ms.get("trades"),
+                              skip_symbols=[x.strip() for x in
+                                            str(getattr(cfg, "adopt_skip_symbols", "")
+                                                or "").split(",") if x.strip()],
+                              alert=lambda t: tg(cfg, t),
+                              # (19/11, B-050) ghi OPEN cho vi the adopt â‡’ journal khop
+                              journal_fn=log_trade,
+                              # (26/11, B-073) chi ghi OPEN khi vi the CHUA co OPEN chua
+                              # CLOSE â€” chan ban ghi lap moi lan restart / vong ADOPT
+                              unclosed_fn=lambda **kw: journal.rec_key(**kw) in _open_keys(cfg))
+        heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
+        if rep.get("ignored"):
+            # (15/10) Vi the do nguoi dung/bot khac mo (ADOPT_SKIP_SYMBOLS): bot KHONG
+            # quan ly â€” khong dat SL/TP, khong chot loi, khong tinh vao slot.
+            log.warning("ADOPT: BO QUA %d vi the theo ADOPT_SKIP_SYMBOLS: %s",
+                        len(rep["ignored"]), rep["ignored"])
+        log.warning("ADOPT vi the san: adopted=%s armed=%s KHONG-arm-duoc-tren-san=%s "
+                    "chua-bao-ve=%s skipped=%s errors=%s (state nap=%s)",
+                    rep["adopted"], rep["armed"], rep["unarmed"],
+                    rep["unmanaged"], rep["skipped"], rep["errors"], n_state)
+        if rep["unarmed"]:
+            log.error("ADOPT: %d vi the KHONG dat duoc SL/TP TREN SAN (%s) â€” dang duoc "
+                      "bao ve bang MONITOR phan mem (bot tu dong khi gia cham SL/TP). "
+                      "Kiem tra bang: python arm_protection.py",
+                      len(rep["unarmed"]), rep["unarmed"])
+        if rep["adopted"] or rep["unmanaged"] or n_state:
+            tg(cfg, (f"[KHOI DONG LAI] adopt={rep['adopted']} armed={rep['armed']} "
+                     f"khong-SL-tren-san={rep['unarmed']} "
+                     f"chua-bao-ve={rep['unmanaged']} state-nap={n_state}"))
+        _eq = ex.fetch_balance_usdt()

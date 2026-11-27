@@ -1,0 +1,6 @@
+﻿827:      khác), còn `stop_tp_orders()` luôn đặt **cả hai** ⇒ không có đường nào chỉ vá 1 chặng; huỷ rồi đặt
+828:      lại có nguy cơ mất chặng tốt (vị thế trần).
+829:    - Vá: `stop_tp_orders(..., legs=("tp",))` chỉ đặt chặng yêu cầu (mặc định vẫn cả 2) ·
+830:      `_rearm_missing()` tính `half` từ `prot` ⇒ đặt **đúng chặng thiếu**, `cancel_first=False` ·
+831:      `arm_protection.py` in `<-- THIEU SL/TP` và tổng kết "N vị thế chỉ còn MỘT chặng".
+832:    - 5 test chốt. Catalog **71 lớp / 282 test chốt**.

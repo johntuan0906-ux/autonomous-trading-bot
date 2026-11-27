@@ -2,12 +2,12 @@
 
 | # | Thieu hut | Do (hien tai -> can) | Tu lam |
 |---|---|---|---|
-| 1 | calibration | brier: 0.3051 -> <= 0.25 | co |
-| 2 | thin_models | so model co n_ghep < min_n: 10 -> 0 | co |
+| 1 | calibration | brier: 0.3002 -> <= 0.25 | co |
+| 2 | thin_models | so model co n_ghep < min_n: 11 -> 0 | co |
 | 3 | value_negative | model co value_r <= 0: 3 -> 0 | KHONG (can nguoi) |
 
 ## calibration (high)
-- Do: **brier = 0.3051** (can: <= 0.25)
+- Do: **brier = 0.3002** (can: <= 0.25)
 - Can thu thap / lam:
   - [ ] >= 30 phieu co `confidence` VA co ket qua that
   - [ ] phan bo confidence theo khoang (calibration bins) de biet lech o dau
@@ -16,9 +16,9 @@
 - Tu lam duoc: CO
 
 ## thin_models (med)
-- Do: **so model co n_ghep < min_n = 10** (can: 0)
+- Do: **so model co n_ghep < min_n = 11** (can: 0)
 - Can thu thap / lam:
-  - [ ] n_ghep >= 8 cho tung model (dang thieu: claude-haiku-4.5, cline-pass/claude-sonnet-5, cline-pass/claude-sonnet-5.5, cline-pass/kimi-k3, cline-pass/mimo-v2.6-pro, cline-pass/qwen3.7-plus, cline-pass/qwen3.8-max, gemini-3.8-flash, gpt-5.6-terra, grok-4.6)
+  - [ ] n_ghep >= 8 cho tung model (dang thieu: antigravity/gemini-4-hydrogen-high, claude-haiku-4.5, cline-pass/claude-sonnet-5, cline-pass/claude-sonnet-5.5, cline-pass/kimi-k3, cline-pass/mimo-v2.6-pro, cline-pass/qwen3.7-plus, cline-pass/qwen3.8-max, gemini-3.8-flash, gpt-5.6-terra, grok-4.6)
   - [ ] 1 lan chay `tools/council_probe.py --live` de do A/B co kiem soat
 - Viec phai lam: chay them phien (hoac bo model treo) roi do lai
 - Tu lam duoc: CO

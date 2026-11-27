@@ -1,0 +1,8 @@
+﻿bot.py:87: res_c = self.exchange.close_position(sym, pos.direction, q)
+bot.py:371: _pos = Position(symbol, direction, lv["entry"], landed, lv["sl"], lv["tp"])
+bot.py:384: self.portfolio.open(Position(symbol, direction, lv["entry"], qty, lv["sl"], lv["tp"]))
+bot.py:405: _r = self.exchange.close_position(symbol, pos.direction, pos.qty)
+exchange.py:599: def close_position(self, symbol: str, direction: str, qty: float,
+position_sync.py:193: pos = Position(sym, d, float(entry), float(qty), float(sl), float(tp))
+turbo_demo.py:1357: bot.portfolio.positions[sym] = Position(sym, direction, lv["entry"], qty,
+turbo_demo.py:1426: pos = Position(sym, direction, lv["entry"], landed, lv["sl"], lv["tp"])

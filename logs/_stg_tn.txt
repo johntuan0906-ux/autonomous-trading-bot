@@ -1,0 +1,134 @@
+﻿ M autonomous-trading-bot/CONTEXT.md
+ M autonomous-trading-bot/COUNCIL_GAPS.md
+ M autonomous-trading-bot/LESSONS.md
+ M autonomous-trading-bot/OPERATIONS.md
+ M autonomous-trading-bot/config.py
+ M autonomous-trading-bot/golden/bug_manifest.json
+ M autonomous-trading-bot/journal.py
+ M autonomous-trading-bot/monitor_report.py
+ M autonomous-trading-bot/position_sync.py
+ M autonomous-trading-bot/ranking.py
+ M autonomous-trading-bot/reconcile.py
+ M autonomous-trading-bot/tests/test_perf_report.py
+ M autonomous-trading-bot/tools/bug_catalog.py
+ M autonomous-trading-bot/tools/perf_report.py
+ M autonomous-trading-bot/turbo_demo.py
+ M logs/_chk.txt
+ M logs/_drift3.txt
+ M logs/_lr3.txt
+?? autonomous-trading-bot/tests/test_journal_void.py
+?? autonomous-trading-bot/tests/test_reconcile_loose.py
+?? autonomous-trading-bot/tools/journal_fix.py
+?? logs/_adopt.txt
+?? logs/_bc.txt
+?? logs/_cat1.txt
+?? logs/_cat2.txt
+?? logs/_ci.txt
+?? logs/_cmp1.txt
+?? logs/_cmp2.txt
+?? logs/_ctx.txt
+?? logs/_ctx2.txt
+?? logs/_ctx3.txt
+?? logs/_ctxtail.txt
+?? logs/_diag2.txt
+?? logs/_diag_journal2.py
+?? logs/_docnum.txt
+?? logs/_drift1.txt
+?? logs/_drift2.txt
+?? logs/_eee.txt
+?? logs/_fin1.txt
+?? logs/_fin1u.txt
+?? logs/_g1l.txt
+?? logs/_g1t.txt
+?? logs/_g2l.txt
+?? logs/_g2t.txt
+?? logs/_g3l.txt
+?? logs/_g3t.txt
+?? logs/_g4l.txt
+?? logs/_g4t.txt
+?? logs/_gi.txt
+?? logs/_gi2.txt
+?? logs/_gitlv.txt
+?? logs/_gittn.txt
+?? logs/_imp.txt
+?? logs/_j2.txt
+?? logs/_jf1.txt
+?? logs/_jf2.txt
+?? logs/_jf2u.txt
+?? logs/_jf3.txt
+?? logs/_jf3u.txt
+?? logs/_jf4.txt
+?? logs/_jf4u.txt
+?? logs/_jp.txt
+?? logs/_junk.txt
+?? logs/_junk2.txt
+?? logs/_lr3u.txt
+?? logs/_lv2.txt
+?? logs/_lvd.txt
+?? logs/_lvdiff.txt
+?? logs/_lvf2.txt
+?? logs/_lvfails.txt
+?? logs/_lvgs.txt
+?? logs/_lvmr.txt
+?? logs/_lvok.txt
+?? logs/_lvtd.txt
+?? logs/_mani.txt
+?? logs/_mani2.txt
+?? logs/_mp.txt
+?? logs/_mr.txt
+?? logs/_ops_md.txt
+?? logs/_pos2.txt
+?? logs/_pos2u.txt
+?? logs/_pos3.txt
+?? logs/_pos3u.txt
+?? logs/_rb.txt
+?? logs/_rb2.txt
+?? logs/_rc.txt
+?? logs/_rec30.txt
+?? logs/_rec30u.txt
+?? logs/_rec31.txt
+?? logs/_rec31u.txt
+?? logs/_rec32.txt
+?? logs/_rec32u.txt
+?? logs/_rec60b.txt
+?? logs/_rec60bu.txt
+?? logs/_recap.txt
+?? logs/_recapu.txt
+?? logs/_restart.txt
+?? logs/_restartu.txt
+?? logs/_rf.txt
+?? logs/_s5l.txt
+?? logs/_s5sum.txt
+?? logs/_s5t.txt
+?? logs/_sl.txt
+?? logs/_st.txt
+?? logs/_stg.txt
+?? logs/_stg2.txt
+?? logs/_stg2u.txt
+?? logs/_stg3.txt
+?? logs/_stg3u.txt
+?? logs/_stg_tn.txt
+?? logs/_stgu.txt
+?? logs/_suite_l.txt
+?? logs/_suite_l3.txt
+?? logs/_suite_l4.txt
+?? logs/_suite_t.txt
+?? logs/_suite_t2.txt
+?? logs/_suite_t3.txt
+?? logs/_tdj.txt
+?? logs/_tngs.txt
+?? logs/_tr4.txt
+?? logs/_tr4u.txt
+?? logs/_trc.txt
+?? logs/_trl.txt
+?? logs/_trl2.txt
+?? logs/_trl2u.txt
+?? logs/_trl3.txt
+?? logs/_trl3u.txt
+?? logs/_tv.txt
+?? logs/_tv2.txt
+?? logs/_tvu.txt
+?? logs/_void_live.py
+?? logs/_voidout.txt
+?? logs/managed_state.json
+?? logs/risk_state.json

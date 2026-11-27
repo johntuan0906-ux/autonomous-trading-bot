@@ -1,0 +1,14 @@
+﻿33: def instance_dir(target: str) -> Path:
+38: def read_supervisor_pid(d: Path) -> int:
+45: def _hide() -> dict:
+53: def pid_alive(pid: int) -> bool:
+64: def kill_tree(pid: int) -> bool:
+76: def env_kv(d: Path) -> dict:
+92: def exchange_client(d: Path):
+119: def live_open_positions(d: Path, client=None) -> int | None:
+138: def open_positions(d: Path) -> int:
+166: def wait_flat(d: Path, timeout: float = 900.0, poll: float = 30.0) -> tuple:
+181: def reset_killswitch(d: Path) -> bool:
+193: def start(d: Path) -> int:
+201: def restart_one(target: str, reset: bool, wait: bool, dry: bool,
+240: def main(argv: list | None = None) -> int:

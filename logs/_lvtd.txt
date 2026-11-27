@@ -1,0 +1,30 @@
+﻿1465:         return False
+1466:     return not bool(d.get("tripped", False))
+1467: 
+1468: 
+1469: def adopt_now(bot, cfg, ex, log, syms) -> dict:
+1470:     """ADOPT vi the THAT tren san: nap state + arm lai SL/TP + dong bo equity.
+1471: 
+1472:     Khong bao gio mo them lenh. Dung o luc khoi dong VA trong monitor-only (02/10) —
+1473:     muc dich: vi the dang mo luon co nguoi quan ly, ke ca khi kill-switch dang ngung.
+1474:     """
+1475:     if not (cfg.adopt_positions and not cfg.dry_run):
+1476:         return {}
+1477:     try:
+1478:         # P0-watchdog: ADOPT goi san nhieu lan (fetch positions + ATR + arm SL/TP)
+1479:         # -> co the lau hon WATCHDOG_SEC. Nhip tim phai duoc ghi TRUOC/SAU buoc nay,
+1480:         # neu khong supervisor se kill bot dang lam viec that (da xay ra 01/10).
+1481:         heartbeat({"phase": "adopt"})
+1482:         _ms = ms_load(cfg.managed_state_path)
+1483:         n_state = ms_load_into(bot, _ms)
+1484:         rep = adopt_positions(bot, ex.fetch_positions(list(syms)),
+1485:                               atr_fn=lambda s: atr_of(ex, cfg, s),
+1486:                               managed=_ms.get("trades"),
+1487:                               skip_symbols=[x.strip() for x in
+1488:                                             str(getattr(cfg, "adopt_skip_symbols", "")
+1489:                                                 or "").split(",") if x.strip()],
+1490:                               alert=lambda t: tg(cfg, t),
+1491:                               # (19/11, B-050) ghi OPEN cho vi the adopt ⇒ journal khop
+1492:                               journal_fn=log_trade)
+1493:         heartbeat({"phase": "adopt_done", "adopted": len(rep["adopted"])})
+1494:         if rep.get("ignored"):

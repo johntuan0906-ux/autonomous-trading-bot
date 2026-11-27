@@ -1,0 +1,46 @@
+﻿    {
+        "code": "B-073", "kind": "rui-ro", "seen": "26/11/2026",
+        "title": "ADOPT ghi `OPEN` láº·p cho CÃ™NG má»™t vá»‹ tháº¿ â‡’ journal Ä‘áº§y `OPEN` \"má»“ cÃ´i\" (sai má»i bá»™ Ä‘áº¿m)",
+        "symptom": "Äo tháº­t LIVE 26/11 09:25: `journal.jsonl` cÃ³ **721 OPEN / 747 CLOSE** nhÆ°ng `positions.py` bÃ¡o 8 (rá»“i 59) `OPEN` chÆ°a CLOSE, `live_ready.py`/`live_guard.py` cáº£nh bÃ¡o má»—i láº§n cháº¡y. NguyÃªn nhÃ¢n: `position_sync.adopt()` cháº¡y láº¡i **má»—i láº§n restart** vÃ  **má»—i `ADOPT_EVERY_ROUNDS`**, má»—i láº§n láº¡i `journal_fn(event=OPEN, adopted=True)` cho cÃ¹ng vá»‹ tháº¿ (B-050) â‡’ ETH 0.016 @1708.79 cÃ³ **7 báº£n ghi** 24-25/11, XRP 7.3 @0.9362 cÃ³ 6, SOL 0.09 @71.82 cÃ³ 5. Há»‡ quáº£: `n`/`PF`/`WR` bá»‹ pha loÃ£ng, cá»•ng `live_ready` giá»¯ cáº£nh bÃ¡o vÄ©nh viá»…n, `positions.py` bÃ¡o sai sá»‘ vá»‹ tháº¿ \"má»“ cÃ´i\"",
+        "guard": "`journal.pending_keys(path)` (key = cáº·p + hÆ°á»›ng + khá»‘i lÆ°á»£ng + giÃ¡ vÃ o, khá»›p vá»›i `CLOSE`) Â· `position_sync.adopt(..., unclosed_fn=...)`: vá»‹ tháº¿ **Ä‘Ã£ cÃ³ OPEN chÆ°a CLOSE** â‡’ KHÃ”NG ghi láº¡i, Ä‘áº¿m vÃ o `rep['journal_skip']` (lá»—i Ä‘á»c journal â‡’ ghi nhÆ° cÅ©, khÃ´ng cháº·n nháº§m) Â· `turbo_demo._open_keys()` cache theo `(path, mtime)` nÃªn má»—i vÃ²ng adopt chá»‰ Ä‘á»c journal 1 láº§n Â· dá»n lá»‹ch sá»­: `tools/journal_fix.py --apply` thÃªm `void: true` (cÃ³ backup, **khÃ´ng xoÃ¡**) vÃ  `monitor_report.load_journal` bá» qua báº£n ghi `void` â‡’ má»i bÃ¡o cÃ¡o tá»± sáº¡ch",
+        "files": ["journal.py", "monitor_report.py", "position_sync.py", "turbo_demo.py",
+                  "tools/journal_fix.py", "tests/test_journal_void.py"],
+        "tests": ["test_journal_void.py::TestFindDuplicateOpens::test_hai_open_cung_gia_va_mot_close_bi_coi_la_trung",
+                  "test_journal_void.py::TestFindDuplicateOpens::test_hai_vi_the_that_khac_gia_khong_bi_danh_dau",
+                  "test_journal_void.py::TestFindDuplicateOpens::test_vi_the_con_mo_chi_giu_ban_ghi_cu",
+                  "test_journal_void.py::TestFindDuplicateOpens::test_hai_ban_ghi_sat_nhau_duoi_30s_khong_bi_coi_la_trung",
+                  "test_journal_void.py::TestVoidRecords::test_void_ghi_co_void_va_load_journal_bo_qua",
+                  "test_journal_void.py::TestVoidRecords::test_dry_run_khong_sua_file",
+                  "test_journal_void.py::TestPendingKeys::test_pending_chi_gom_vi_the_chua_dong",
+                  "test_journal_void.py::TestPendingKeys::test_ban_ghi_void_khong_duoc_tinh",
+                  "test_journal_void.py::TestAdoptKhongGhiLap::test_khi_da_co_open_thi_khong_ghi_them",
+                  "test_journal_void.py::TestAdoptKhongGhiLap::test_chua_co_open_thi_van_ghi"],
+    },
+    {
+        "code": "B-074", "kind": "rui-ro", "seen": "26/11/2026",
+        "title": "`reconcile` bá» sÃ³t fill cÅ© â‡’ OPEN khÃ´ng bao giá» cÃ³ CLOSE (dá»«ng á»Ÿ cá»­a sá»• 7 ngÃ y rá»—ng, Ä‘Ã²i `entry` lá»‡ch â‰¤ 0,3%)",
+        "symptom": "Äo tháº­t LIVE 26/11: `reconcile.py --days 30 --apply` bÃ¡o `can ghi bu=0` trong khi `positions.py` váº«n cÃ²n 1000BONK (19/10), MOG/1000CAT (20/11), AAVE (20-23/11) khÃ´ng cÃ³ CLOSE. Hai nguyÃªn nhÃ¢n: (1) `fetch_fills()` `break` ngay khi má»™t cá»­a sá»• 7 ngÃ y tráº£ rá»—ng â‡’ má»i fill cÅ© hÆ¡n bá»‹ bá», `fill doc duoc` chá»‰ 48; (2) `pair_episodes_to_opens()` Ä‘Ã²i giÃ¡ vÃ o lá»‡ch â‰¤ 0,3% nÃªn vá»‹ tháº¿ ADOPT giá»¯a Ä‘á»i bá»‹ coi lÃ  lá»‡nh tay (AAVE journal `entry=97.02` vs fill tháº­t `96.48` = 0,56%)",
+        "guard": "`fetch_fills()` quÃ©t **Ä‘á»§** má»i cá»­a sá»• 7 ngÃ y trong `--days` (khÃ´ng dá»«ng khi rá»—ng; chá»‰ dá»«ng khi lá»—i API) Â· `reconcile.main` máº·c Ä‘á»‹nh chá»‰ há»i fill cho **cáº·p cÃ²n OPEN chÆ°a CLOSE** (`--all-symbols` Ä‘á»ƒ quÃ©t háº¿t) â‡’ Ã­t weight, khÃ´ng `-1003` Â· `_loose_pair()` bÆ°á»›c 2: cáº·p + hÆ°á»›ng + qty (Â±2%) + thá»i gian (Â±10 phÃºt) + giÃ¡ vÃ o lá»‡ch â‰¤ 3% vÃ  **Ä‘Ãºng Má»˜T** á»©ng viÃªn â‡’ ghi bÃ¹ vá»›i `recon_src=\"exchange_loose\"` (váº«n láº¥y `entry`/`sl`/`tp` tá»« journal, giÃ¡ thoÃ¡t tá»« fill)",
+        "files": ["reconcile.py", "tools/journal_fix.py", "tests/test_reconcile_loose.py"],
+        "tests": ["test_reconcile_loose.py::TestLoosePair::test_entry_lech_nhe_van_ghep_duoc_va_ghi_dau_loose",
+                  "test_reconcile_loose.py::TestLoosePair::test_khop_chinh_xac_van_ghi_dau_exchange",
+                  "test_reconcile_loose.py::TestLoosePair::test_nhieu_open_ung_vien_thi_khong_ghep_bua",
+                  "test_reconcile_loose.py::TestLoosePair::test_gia_vao_lech_qua_3_phantram_thi_khong_ghep",
+                  "test_reconcile_loose.py::TestLoosePair::test_khac_huong_thi_khong_ghep",
+                  "test_reconcile_loose.py::TestFetchFillsKhongDungSom::test_cua_so_rong_van_quet_tiep",
+                  "test_reconcile_loose.py::TestFetchFillsKhongDungSom::test_loi_api_thi_dung_vong_cua_cap_do"],
+    },
+]
+
+
+def _strip_accents(s: str) -> str:
+    """Bo dau tieng Viet de tim kiem khong phu thuoc cach go."""
+    out = "".join(c for c in unicodedata.normalize("NFD", str(s or ""))
+                  if unicodedata.category(c) != "Mn")
+    return out.replace("\u0111", "d").replace("\u0110", "D")
+
+
+def norm(s: str) -> str:
+    return _strip_accents(s).lower()
+
+

@@ -1,0 +1,5 @@
+﻿(tests.test_reconcile_loose.TestFetchFillsKhongDungSom.test_cua_so_rong_van_quet_tiep) ... FAIL
+    + CategoryInfo          : NotSpecified: (test_cua_so_ron..._tiep) ... FAIL:String) [], RemoteException
+FAIL: test_cua_so_rong_van_quet_tiep 
+Ran 6 tests in 0.002s
+FAILED (failures=1)

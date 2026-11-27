@@ -1,0 +1,1 @@
+﻿     `(path, mtime)`.|   - Dọn lịch sử: `tools/journal_fix.py --apply` thêm `void: true` (có backup, **không xoá**);|     `monitor_report.load_journal` bỏ qua bản ghi `void` ⇒ mọi báo cáo tự sạch.|   - 10 test chốt. Catalog **72 lớp / 292 test chốt**.

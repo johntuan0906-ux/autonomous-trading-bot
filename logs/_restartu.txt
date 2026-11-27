@@ -1,0 +1,4 @@
+﻿LIVE     {"target": "live", "dir": "C:\\Users\\User\\.vscode\\Projects\\atb-live", "positions_before": 5, "positions_on_exchange": 5, "supervisor_pid": 42660, "killed": true, "started_pid": 85388}
+... cho 60s de lech pha vong quet
+TESTNET  {"target": "testnet", "dir": "C:\\Users\\User\\.vscode\\Projects\\autonomous-trading-bot", "positions_before": 4, "positions_on_exchange": 4, "supervisor_pid": 69648, "killed": true, "started_pid": 88748}
+XONG. Kiem tra lai: python tools/ops.py

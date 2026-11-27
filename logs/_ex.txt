@@ -1,0 +1,2 @@
+﻿613: vi the that (do lai tu san) — da kiem chung: FILLED, vi the 31 -> 0.
+779: def position_qty(self, symbol: str, direction: str | None = None) -> float | None:

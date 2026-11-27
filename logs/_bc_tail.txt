@@ -1,0 +1,90 @@
+﻿           "  Gap that : %s" % c.get("seen", "?"),
+           "  Nhan ra  : %s" % c.get("symptom"),
+           "  Chan bang: %s" % c.get("guard"),
+           "  File     : %s" % ", ".join(c.get("files") or []),
+           "  Test chot:"]
+    out += ["    - %s" % t for t in (c.get("tests") or ["(CHUA CO TEST â€” phai bo sung)"])]
+    return out
+
+
+def main(argv: list | None = None) -> int:
+    for s in (sys.stdout, sys.stderr):
+        try:
+            s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except Exception:
+            pass
+    ap = argparse.ArgumentParser(description="Danh muc lop loi + test chot")
+    ap.add_argument("--grep", default="", help="tim theo trieu chung / ten / cach chan")
+    ap.add_argument("--kind", default="", help="loc theo loai: %s" % ", ".join(KINDS))
+    ap.add_argument("--code", default="", help="chi tiet 1 ma (vd B-003)")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--graph", action="store_true",
+                    help="so do 'hanh vi -> file -> test' (mermaid + bang)")
+    ap.add_argument("--check", action="store_true",
+                    help="xac minh moi test duoc dan CO THAT (exit 1 neu thieu)")
+    ap.add_argument("--manifest", action="store_true",
+                    help="GHI LAI hash danh sach test chot vao golden/bug_manifest.json")
+    args = ap.parse_args(argv)
+
+    if args.manifest:
+        m = write_manifest()
+        print("=== MANIFEST | %d lop | %d test chot ===\n  %s\n  digest=%s"
+              % (m["n_classes"], m["n_tests"], m.get("path") or m.get("err"),
+                 m["digest"][:16]))
+        return 0 if m.get("ok") else 1
+
+    if args.graph:
+        if args.json:
+            print(json.dumps(graph(), ensure_ascii=False, indent=1))
+        else:
+            print("\n".join(graph_md()))
+        return 0
+
+    if args.check:
+        rep = check()
+        if args.json:
+            print(json.dumps(rep, ensure_ascii=False, indent=1))
+        else:
+            print("=== KIEM TRA BUG CATALOG | %d lop | %d test chot | %d file test ==="
+                  % (rep["n"], rep["pinned"], rep["tests_scanned"]))
+            if rep["no_test"]:
+                print("  LOP LOI CHUA CO TEST: %s" % ", ".join(rep["no_test"]))
+            if rep["missing"]:
+                print("  TEST BI THIEU (lop loi mat chot chan):")
+                for m in rep["missing"]:
+                    print("    - %s" % m)
+            man = rep.get("manifest") or {}
+            if not man.get("ok"):
+                print("  MANIFEST: %s" % (man.get("reason") or "lech"))
+            print("  KET LUAN: %s" % ("OK" if rep["ok"] else "CAN SUA"))
+        return 0 if rep["ok"] else 1
+
+    items = find(text=args.grep)
+    if args.kind:
+        items = [c for c in items if str(c.get("kind")) == args.kind]
+    if args.code:
+        items = [c for c in items if str(c.get("code")).upper() == args.code.upper()]
+        if not items:
+            print("khong co ma %s" % args.code)
+            return 2
+    if args.json:
+        print(json.dumps({"n": len(items), "kinds": KINDS, "items": items},
+                         ensure_ascii=False, indent=1))
+        return 0
+    print("=== DANH MUC LOP LOI | %d muc (grep=%r kind=%r) ==="
+          % (len(items), args.grep, args.kind))
+    if args.code:
+        for c in items:
+            print("\n".join(detail(c)))
+    else:
+        for ln in table(items):
+            print(ln)
+        print("\nLOAI: " + " Â· ".join("%s = %s" % (k, v) for k, v in KINDS.items()))
+        print("Chi tiet: `python tools/bug_catalog.py --code B-00X` Â· "
+              "kiem tra: `python tools/bug_catalog.py --check`")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

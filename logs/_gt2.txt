@@ -1,0 +1,15 @@
+﻿== _s5t ==
+Ran 1755 tests in 89.893s
+OK (skipped=4)
+== _s5l ==
+Ran 1751 tests in 86.789s
+OK (skipped=4)
+== _g1l ==
+=== KIEM TRA BUG CATALOG | 73 lop | 299 test chot | 80 file test ===
+  KET LUAN: OK
+== _g3l ==
+=== DRIFT TAI LIEU <-> CODE | 52 muc | LECH 0 | CANH BAO 1 ===
+  KET LUAN: tai lieu khop code (so lieu + ten tool + ma deu dung)
+== _g4l ==
+=== SECURITY AUDIT | 6 phat hien | 5 kiem soat | 5 test chot | high 1 ╖ medium 2 ╖ low 3 ===
+  KET LUAN: bang chung khop code + khop SECURITY_AUDIT.md

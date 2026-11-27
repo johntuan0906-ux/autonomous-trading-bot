@@ -1,0 +1,10 @@
+﻿python : ----------------------------------------------------------------------
+At line:1 char:61
++ ... trading-bot'; python -m unittest tests.test_reconcile -q 2>&1 | Selec ...
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (---------------...---------------:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Ran 17 tests in 0.038s
+
+OK

@@ -3,10 +3,10 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 27/11/2026 11:44:08 · commit `0b9ef2b`
+- **Cập nhật**: 27/11/2026 12:14:10 · commit `d224952`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `110076` · round `1281` · nhịp tim cách đây 25.0s (watchdog 360s) → ĐANG CHẠY
-- **Ví demo**: 1000.0 USDT
+- **Bot**: pid `26388` · round `15` · nhịp tim cách đây 45.2s (watchdog 360s) → ĐANG CHẠY
+- **Ví demo**: 3279.07 USDT
 - **Kill-switch**: bình thường
 
 ## Hiệu suất (journal: 3088 lệnh đóng, WR 41.13%, E(R) 0.2378, PnL -955.52$)
@@ -43,9 +43,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| CKB/USDT:USDT | LONG | 83333.0 | 0.000807 | 0.000757 | 0.000901 | False | False | 1.0 |
+| CKB/USDT:USDT | LONG | 58333.1 | 0.000807 | 0.000807807 | 0.000901 | True | True | 1.08 |
 | FIL/USDT:USDT | LONG | 212.7 | 0.5479 | 0.529102 | 0.585496 | False | False | 0.176 |
-| PLUME/USDT:USDT | LONG | 10582.0 | 0.01083 | 0.010452 | 0.011586 | False | False | 0.132 |
+| PLUME/USDT:USDT | LONG | 10582.0 | 0.01083 | 0.010452 | 0.011586 | False | False | 0.238 |
 | WIF/USDT:USDT | LONG | 542.6 | 0.1346314927106 | 0.1344343 | 0.14462 | True | True | 1.434 |
 
 ---

@@ -3,23 +3,23 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 27/11/2026 21:26:53 · commit `0796996`
+- **Cập nhật**: 27/11/2026 21:56:54 · commit `ff53df4`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `22700` · round `487` · nhịp tim cách đây 3.5s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `22700` · round `513` · nhịp tim cách đây 0.4s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: 1000.0 USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3088 lệnh đóng, WR 41.13%, E(R) 0.2378, PnL -955.52$)
+## Hiệu suất (journal: 3089 lệnh đóng, WR 41.11%, E(R) 0.2373, PnL -959.75$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 24 | 54.17 | 3.266 | 2.727 | 0.7802 | 54.68 |
-| 14 ngày | 44 | 50.0 | 3.724 | 3.698 | 0.7469 | 104.73 |
-| 30 ngày | 179 | 43.02 | 1.972 | 1.111 | 0.3592 | 40.56 |
+| 7 ngày | 25 | 52.0 | 2.895 | 2.405 | 0.7067 | 50.45 |
+| 14 ngày | 45 | 48.89 | 3.424 | 3.335 | 0.7068 | 100.5 |
+| 30 ngày | 180 | 42.78 | 1.941 | 1.098 | 0.3513 | 36.33 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **HOAN THANH**
+- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 1.087 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
@@ -43,9 +43,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
+| APR/USDT:USDT | SHORT | 3159.0 | 0.03052 | 0.031786 | 0.027988 | False | False | 0.0 |
 | CKB/USDT:USDT | LONG | 58334.0 | 0.000807 | 0.000807807 | 0.000901 | True | True | 1.14 |
-| FIL/USDT:USDT | LONG | 212.7 | 0.5479 | 0.529102 | 0.585496 | False | False | 0.176 |
-| PLUME/USDT:USDT | LONG | 10582.0 | 0.01083 | 0.010452 | 0.011586 | False | False | 0.423 |
+| STRK/USDT:USDT | SHORT | 2989.5 | 0.0313 | 0.032638 | 0.028624 | False | False | 0.299 |
 | WIF/USDT:USDT | LONG | 542.6 | 0.1346314927106 | 0.1344343 | 0.14462 | True | True | 1.434 |
 
 ---

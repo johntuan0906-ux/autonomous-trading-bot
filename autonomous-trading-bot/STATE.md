@@ -3,9 +3,9 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 28/11/2026 18:27:06 · commit `aea17e2`
+- **Cập nhật**: 28/11/2026 18:57:06 · commit `edbc079`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `22700` · round `1624` · nhịp tim cách đây 1.5s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `22700` · round `1651` · nhịp tim cách đây 15.5s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: 1000.0 USDT
 - **Kill-switch**: bình thường
 
@@ -44,7 +44,7 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
 | LUMIA/USDT:USDT | SHORT | 1937.9 | 0.0616 | 0.063664 | 0.057472 | False | False | 0.242 |
-| NIGHT/USDT:USDT | LONG | 1498.0 | 0.0527 | 0.05003 | 0.05804 | False | False | 0.24 |
+| NIGHT/USDT:USDT | LONG | 1498.0 | 0.0527 | 0.05003 | 0.05804 | False | False | 0.738 |
 | STRK/USDT:USDT | SHORT | 2989.5 | 0.0313 | 0.032638 | 0.028624 | False | False | 0.673 |
 | WIF/USDT:USDT | LONG | 542.6 | 0.1346314927106 | 0.1344343 | 0.14462 | True | True | 1.633 |
 

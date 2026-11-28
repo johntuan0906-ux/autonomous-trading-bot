@@ -3,30 +3,30 @@
 > File này do `state_sync.py` sinh (định kỳ qua supervisor). Muốn đổi nội dung:
 > sửa `state_sync.py` rồi chạy lại `python state_sync.py`. Ngữ cảnh dài hạn: `CONTEXT.md`.
 
-- **Cập nhật**: 28/11/2026 17:27:05 · commit `95b4b3e`
+- **Cập nhật**: 28/11/2026 17:57:06 · commit `a62b335`
 - **Chế độ**: TESTNET (demo) · `DRY_RUN=False` · `LIVE_CONFIRM=False`
-- **Bot**: pid `9196` · round `446` · nhịp tim cách đây 20.7s (watchdog 360s) → ĐANG CHẠY
+- **Bot**: pid `22700` · round `1597` · nhịp tim cách đây 1.1s (watchdog 360s) → ĐANG CHẠY
 - **Ví demo**: ? USDT
 - **Kill-switch**: bình thường
 
-## Hiệu suất (journal: 3090 lệnh đóng, WR 41.13%, E(R) 0.2373, PnL -958.77$)
+## Hiệu suất (journal: 3091 lệnh đóng, WR 41.12%, E(R) 0.2368, PnL -963.98$)
 
 | Cửa sổ | n | WR% | PF(R) | PF($) | E(R) | PnL$ |
 |---|---|---|---|---|---|---|
-| 7 ngày | 18 | 50.0 | 1.223 | 1.296 | 0.1157 | 10.62 |
-| 14 ngày | 45 | 51.11 | 3.73 | 3.633 | 0.7346 | 104.75 |
-| 30 ngày | 181 | 43.09 | 1.944 | 1.101 | 0.3507 | 37.31 |
+| 7 ngày | 19 | 47.37 | 1.073 | 1.132 | 0.0411 | 5.41 |
+| 14 ngày | 46 | 50.0 | 3.368 | 3.213 | 0.6903 | 99.54 |
+| 30 ngày | 182 | 42.86 | 1.908 | 1.085 | 0.3416 | 32.1 |
 
 ## Cổng sang LIVE
 
-- `live_ready.py`: **CHUA HOAN THANH** — PF($) cua so 30 ngay [lenh BOT] = 1.090 < 1.1
+- `live_ready.py`: **CHUA HOAN THANH** — PF(R) cua so 7 ngay = 1.073 < 1.2; PF($) cua so 30 ngay [lenh BOT] = 1.072 < 1.1
 - `live_guard.py`: OK
 - Tự động sang LIVE: **TẮT (`AUTO_LIVE_ARMED=false`)** · ĐÃ ĐỔI 1 LẦN
 
 ## Cấu hình rủi ro
 
 - risk/lệnh `0.4%` · trần tổng `1.6%` · leverage `8` · MAX_POSITIONS `4` · trần size `1000.0` USDT
-- Learner: 785 lần cập nhật trọng số · Hội đồng AI: **3 model**
+- Learner: 786 lần cập nhật trọng số · Hội đồng AI: **3 model**
 
 ## Ngưỡng rủi ro theo ví THẬT (3 mức)
 
@@ -43,9 +43,9 @@ _Mức đánh dấu ở trên tính theo **ví demo** — khi sang LIVE, `state_
 
 | Cặp | Hướng | qty | entry | SL | TP | partial | BE | mfe_R |
 |---|---|---|---|---|---|---|---|---|
-| LAB/USDT:USDT | SHORT | 3921.5 | 0.02973 | 0.03075 | 0.02769 | False | False | 0.147 |
 | LUMIA/USDT:USDT | SHORT | 1937.9 | 0.0616 | 0.063664 | 0.057472 | False | False | 0.242 |
-| STRK/USDT:USDT | SHORT | 2989.5 | 0.0313 | 0.032638 | 0.028624 | False | False | 0.523 |
+| NIGHT/USDT:USDT | LONG | 1498.0 | 0.0527 | 0.05003 | 0.05804 | False | False | 0.0 |
+| STRK/USDT:USDT | SHORT | 2989.5 | 0.0313 | 0.032638 | 0.028624 | False | False | 0.598 |
 | WIF/USDT:USDT | LONG | 542.6 | 0.1346314927106 | 0.1344343 | 0.14462 | True | True | 1.633 |
 
 ---
